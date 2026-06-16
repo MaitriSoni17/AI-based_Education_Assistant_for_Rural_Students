@@ -2,6 +2,8 @@ import { useState, useEffect, FormEvent } from 'react';
 import { LanguageCode, User, QuizQuestion, OfflineResource } from '../types';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
 import SpeakButton from './SpeakButton';
+import SpeechInputButton from './SpeechInputButton';
+import InteractiveAITeacher from './InteractiveAITeacher';
 import { speakText, stopSpeaking } from '../utils/speech';
 import { 
   Play, BookOpen, Download, CheckCircle2, ChevronRight, Award, 
@@ -171,9 +173,141 @@ const SAMPLE_LESSONS: Record<LanguageCode, LessonQuery[]> = {
       ]
     }
   ],
-  mr: [],
-  ta: [],
-  te: []
+  mr: [
+    {
+      id: 'rain',
+      query: "ढग पाऊस कसा पाडतात?",
+      subject: "विज्ञान 🔬",
+      avatarChar: "👵 दादी AI",
+      avatarName: "दादी AI (गावातील अनुभवी)",
+      explanation: "जेव्हा सूर्य नद्या आणि तलावांचे पाणी गरम करतो, तेव्हा त्याचे रूपांतर वाफेमध्ये होते. ही वाफ आकाशात वर जाऊन एकत्र होते आणि ढग तयार होतात! जेव्हा हे ढग खूप थंड आणि पाण्याच्या थेंबांनी जड होतात, तेव्हा ते जमिनीवर पाऊस म्हणून पडतात! यालाच जलचक्र म्हणतात.",
+      videoThumbColor: "from-blue-400 to-sky-600",
+      quiz: [
+        {
+          id: 'q1',
+          question: "तलावातील पाणी गरम करून वाफ बनवण्याचे काम कोण करते?",
+          options: ["चंद्र", "सूर्य", "मोठे पंखे", "वारा"],
+          answerIndex: 1,
+          explanation: "सूर्याच्या तीव्र उष्णतेमुळे पाणी गरम होऊन वाफेमध्ये बदलते."
+        },
+        {
+          id: 'q2',
+          question: "वाफ थंड झाल्यावर काय तयार होते?",
+          options: ["माती", "ढग", "दगड", "कोळसा"],
+          answerIndex: 1,
+          explanation: "वर गेलेली वाफ थंड हवेच्या संपर्कात आल्यावर त्याचे ढग बनतात."
+        }
+      ]
+    },
+    {
+      id: 'photo',
+      query: "प्रकाशसंश्लेषण म्हणजे काय?",
+      subject: "विज्ञान 🔬",
+      avatarChar: "🤖 स्वामी AI",
+      avatarName: "स्वामी AI (स्मार्ट सोबती)",
+      explanation: "प्रकाशसंश्लेषण म्हणजे वनस्पतींची स्वतःचे अन्न तयार करण्याची पद्धत! हिरवी पाने सूर्यप्रकाश, जमिनीतील पाणी आणि हवेतील कार्बन डायऑक्साइड शोषून घेऊन क्लोरोफिलच्या मदतीने अन्न तयार करतात आणि आपल्याला श्वास घेण्यासाठी शुद्ध ऑक्सिजन देतात!",
+      videoThumbColor: "from-emerald-400 to-teal-600",
+      quiz: [
+        {
+          id: 'q1',
+          question: "वनस्पती अन्न तयार करताना कोणती वायू हवेत सोडतात?",
+          options: ["कार्बन डायऑक्साइड", "ऑक्सिजन", "धूर", "नायट्रोजन"],
+          answerIndex: 1,
+          explanation: "वनस्पती हवेतील कार्बन डायऑक्साइड घेऊन शुद्ध ऑक्सिजन बाहेर सोडतात!"
+        }
+      ]
+    }
+  ],
+  ta: [
+    {
+      id: 'rain',
+      query: "மேகங்கள் எவ்வாறு மழையைத் தருகின்றன?",
+      subject: "அறிவியல் 🔬",
+      avatarChar: "👵 பாட்டி AI",
+      avatarName: "பாட்டி AI (கிராமத்து பெரியவர்)",
+      explanation: "சூரியனின் வெப்பத்தால் ஏரிகள் மற்றும் ஆறுகளிலுள்ள நீர் சூடாகி நீராவியாக மேலே செல்கிறது. இந்த நீராவி வான்வெளியில் குளிர்ந்து மேகங்களாக மாறுகிறது! மேகங்கள் மிகவும் கனமாகவும் குளிர்ச்சியாகவும் மாறும்போது, அவை மழையாக பூमीக்கு வருகின்றன! இதுவே நீர் சுழற்சி ஆகும்.",
+      videoThumbColor: "from-blue-400 to-sky-600",
+      quiz: [
+        {
+          id: 'q1',
+          question: "நீரை நீராவியாக மாற்றும் ஆற்றல் கொண்டது எது?",
+          options: ["நிலா", "சூரியன்", "பெரிய விசிறிகள்", "காற்று"],
+          answerIndex: 1,
+          explanation: "சூரியனே நீரைச் சூடாக்கி நீராவியாக மாற்றுகிறது!"
+        },
+        {
+          id: 'q2',
+          question: "நீராவி குளிர்ந்து வான்வெளியில் என்னவாக மாறும்?",
+          options: ["மண்", "மேகம்", "மலை", "நெருப்பு"],
+          answerIndex: 1,
+          explanation: "மேலே செல்லும் நீராவி குளிர்ந்த காற்றில் மேகங்களாக மாறுகிறது."
+        }
+      ]
+    },
+    {
+      id: 'photo',
+      query: "ஒளிச்சேர்க்கை என்றால் என்ன?",
+      subject: "அறிவியல் 🔬",
+      avatarChar: "🤖 சுவாமி AI",
+      avatarName: "சுவாமி AI (ஸ்மார்ட் நண்பன்)",
+      explanation: "ஒளிச்சேர்க்கை என்பது தாவரங்கள் உணவு தயாரிக்கும் முறை! பச்சை இலைகள் சூரிய ஒளி, மண்ணிலிருந்து நீர், மற்றும் காற்றிலிருந்து கார்பன் டை ஆக்சைடை உறிஞ்சி, பச்சையத்தின் உதவியுடன் தங்களுக்குத் தேவையான குளுக்கோஸ் உணவைத் தயாரித்து, நாம் சுவாசிக்க புதிய ஆக்சிஜனை வெளியிடுகின்றன!",
+      videoThumbColor: "from-emerald-400 to-teal-600",
+      quiz: [
+        {
+          id: 'q1',
+          question: "ஒளிச்சேர்க்கையின் போது தாவரங்கள் வெளியிடும் வாயு எது?",
+          options: ["கார்பன் டை ஆக்சைடு", "ஆக்சிஜன்", "நைட்ரஜன்", "புகை"],
+          answerIndex: 1,
+          explanation: "செடிகள் நமக்குத் தேவையான தூய்மையான ஆக்சிஜன் வாயுவை வெளியிடுகின்றன!"
+        }
+      ]
+    }
+  ],
+  te: [
+    {
+      id: 'rain',
+      query: "మేఘాలు వర్షాన్ని ఎలా కురిపిస్తాయి?",
+      subject: "సైన్స్ 🔬",
+      avatarChar: "👵 నానమ్మ AI",
+      avatarName: "నానమ్మ AI (గ్రామ వృద్ధురాలు)",
+      explanation: "సూర్యుడి వేడి వల్ల చెరువులు మరియు నదులలో ఉన్న నీరు ఆవిరిగా మారి పైకి వెళ్తుంది. ఈ ఆవిరి ఆకాశంలో చల్లబడి మేఘాలుగా మారుతుంది! ఆ మేఘాలు మరీ చల్లబడి బరువెక్కినప్పుడు, నీటి బిందువులు మన భూమిపై వర్షంగా కురుస్తాయి! దీనినే నీటి చక్రం అంటారు.",
+      videoThumbColor: "from-blue-400 to-sky-600",
+      quiz: [
+        {
+          id: 'q1',
+          question: "చెరువులలో నీటిని వేడి చేసి ఆవిరిగా మార్చేది ఎవరు?",
+          options: ["చంద్రుడు", "సూర్యుడు", "భారీ ఫ్యాన్లు", "అడవి మంటలు"],
+          answerIndex: 1,
+          explanation: "సూర్యుడి వేడి వల్లే నీరు ఆవిరిగా మారుతుంది."
+        },
+        {
+          id: 'q2',
+          question: "ఆవిరి చల్లబడినప్పుడు ఆకాశంలో ఏమి ఏర్పాడతాయి?",
+          options: ["మట్టి", "మేఘాలు", "కొండలు", "బొగ్గు"],
+          answerIndex: 1,
+          explanation: "పైకి వెళ్ళిన ఆవిరి ఘనీభవించి మేఘాలను ఏర్పరుస్తుంది."
+        }
+      ]
+    },
+    {
+      id: 'photo',
+      query: "キరణజన్య సంయోగ క్రియ అంటే ఏమిటి?",
+      subject: "సైన్స్ 🔬",
+      avatarChar: "🤖 స్వామి AI",
+      avatarName: "స్వామి AI (తెలివైన స్నేహితుడు)",
+      explanation: "キరణజన్య సంయోగ క్రియ అంటే మొక్కలు ఆహారాన్ని తయారు చేసుకునే విధానం! ఆకుపచ్చని ఆకులు సూర్యరశ్మి, నేల నుండి నీరు, మరియు గాలి నుండి కార్బన్ డై ఆక్సైడ్ గ్రహించి, పత్రహరితం సహాయంతో ఆహారాన్ని తయారు చేసి, మన శ్వాస కోసం స్వచ్ఛమైన ఆక్సిజన్ విడుదల చేస్తాయి!",
+      videoThumbColor: "from-emerald-400 to-teal-600",
+      quiz: [
+        {
+          id: 'q1',
+          question: "ఆహారం తయారుచేసే సమయంలో మొక్కలు విడుదల చేసే వాయువు ఏది?",
+          options: ["కార్బన్ డై ఆక్సైడ్", "ఆక్సిజన్", "నైట్రోజన్", "పొగ"],
+          answerIndex: 1,
+          explanation: "మొక్కలు మన శ్వాస కోసం స్వచ్ఛమైన ఆక్సిజన్ గాలిని విడుదల చేస్తాయి!"
+        }
+      ]
+    }
+  ]
 };
 
 const INITIAL_OFFLINE_RESOURCES: OfflineResource[] = [
@@ -195,7 +329,130 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
   const [selectedLesson, setSelectedLesson] = useState<LessonQuery>(currentLanguageLessons[0]);
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
   const [customQuery, setCustomQuery] = useState('');
+
+  // Synchronize active selected lesson when studying language changes
+  useEffect(() => {
+    const matched = currentLanguageLessons.find(l => l.id === selectedLesson.id);
+    if (matched) {
+      setSelectedLesson(matched);
+    } else {
+      setSelectedLesson(currentLanguageLessons[0]);
+    }
+    // Since language shifted, stop current video narration
+    setIsPlayingVideo(false);
+    stopSpeaking();
+  }, [lang]);
+
+  // AI Video live generation and simulation states
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStage, setGenerationStage] = useState('');
   
+  // Mascot Expression & Live Actions States
+  const [avatarAction, setAvatarAction] = useState<'idle' | 'explaining' | 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think'>('idle');
+  interface FloatingReaction {
+    id: number;
+    emoji: string;
+    text: string;
+    left: number;
+    delay: number;
+  }
+  const [floatingReactions, setFloatingReactions] = useState<FloatingReaction[]>([]);
+
+  // Helper functions for Mascot appearance
+  const getAvatarAnimationClass = (action: string) => {
+    switch (action) {
+      case 'wave':
+        return 'animate-bounce [animation-duration:0.4s] rotate-6 scale-105';
+      case 'idea':
+        return 'scale-110 ring-4 ring-amber-400 duration-300';
+      case 'thumbsup':
+        return 'animate-pulse scale-105 ring-4 ring-emerald-400 [animation-duration:0.5s]';
+      case 'celebrate':
+        return 'animate-bounce [animation-duration:0.35s] ring-4 ring-[#E07A5F] scale-110';
+      case 'think':
+        return 'scale-95 duration-500 opacity-90 -rotate-6';
+      case 'explaining':
+        return 'animate-bounce duration-1000';
+      default:
+        return 'hover:scale-105 duration-300';
+    }
+  };
+
+  const getActionOverlayEmoji = (action: string) => {
+    switch (action) {
+      case 'wave': return '👋';
+      case 'idea': return '💡';
+      case 'thumbsup': return '👍';
+      case 'celebrate': return '🎉';
+      case 'think': return '🤔';
+      case 'explaining': return '💬';
+      default: return '';
+    }
+  };
+
+  const triggerLiveAction = (actionType: 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think') => {
+    setAvatarAction(actionType);
+    
+    const emojiMap = {
+      wave: '👋',
+      idea: '💡',
+      thumbsup: '👍',
+      celebrate: '🎉',
+      think: '🤔',
+    };
+    
+    const reactionTexts: Record<LanguageCode, Record<string, string>> = {
+      en: { wave: "Hello!", idea: "Aha! Idea!", thumbsup: "Awesome!", celebrate: "Yay!", think: "Thinking..." },
+      hi: { wave: "नमस्ते!", idea: "गजब विचार!", thumbsup: "शाबाश!", celebrate: "बधाई हो!", think: "सोच रहे हैं..." },
+      gu: { wave: "નમસ્તે!", idea: "વાહ ભાઈ વાહ!", thumbsup: "ખૂબ સરસ!", celebrate: "આનંદ કરો!", think: "વિચારે છે..." },
+      mr: { wave: "नमस्कार!", idea: "सुंदर कल्पना!", thumbsup: "शाब्बास!", celebrate: "धमाल!", think: "विचार चालू..." },
+      ta: { wave: "வணக்கம்!", idea: "அற்புதம் யோசனை!", thumbsup: "மிக நன்று!", celebrate: "கொண்டாடுவோம்!", think: "யோசனை..." },
+      te: { wave: "నమస్కారం!", idea: "అద్భుత ఆలోచన!", thumbsup: "శభాష్!", celebrate: "విజయం!", think: "ఆలోచన..." },
+    };
+
+    const text = reactionTexts[lang]?.[actionType] || reactionTexts['en'][actionType] || "";
+    const emoji = emojiMap[actionType];
+
+    // Add multiple floating reactions to create a satisfying live stream burst effect
+    const newReactions = Array.from({ length: 3 }).map((_, i) => ({
+      id: Date.now() + Math.random() + i,
+      emoji,
+      text: i === 0 ? text : '', // Only primary has text label to prevent clustering
+      left: 20 + Math.random() * 60, // Keep in bounds of center screen
+      delay: i * 0.2,
+    }));
+
+    setFloatingReactions(prev => [...prev, ...newReactions]);
+
+    // Cleanup after animation completes (3s)
+    setTimeout(() => {
+      setFloatingReactions(prev => prev.filter(r => !newReactions.some(nr => nr.id === r.id)));
+    }, 3500);
+
+    // Revert mascot gesture back to default explaining
+    setTimeout(() => {
+      setAvatarAction(prev => prev === actionType ? (isPlayingVideo ? 'explaining' : 'idle') : prev);
+    }, 2800);
+  };
+
+  // Automated spontaneous mascot reactions while speaking
+  useEffect(() => {
+    let actionInterval: NodeJS.Timeout;
+    if (isPlayingVideo) {
+      setAvatarAction('explaining');
+      // Trigger a random joyful motion every 9 seconds to keep kids glued
+      actionInterval = setInterval(() => {
+        const gestureList: ('wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think')[] = ['wave', 'idea', 'thumbsup', 'celebrate', 'think'];
+        const randomGesture = gestureList[Math.floor(Math.random() * gestureList.length)];
+        triggerLiveAction(randomGesture);
+      }, 9500);
+    } else {
+      setAvatarAction('idle');
+    }
+    return () => clearInterval(actionInterval);
+  }, [isPlayingVideo]);
+
   // Quiz States
   const [showQuiz, setShowQuiz] = useState(false);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
@@ -219,11 +476,106 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
     return () => clearInterval(interval);
   }, [isPlayingVideo, selectedLesson]);
 
+  const simulateVideoGeneration = (lesson: LessonQuery, autoPlay = true) => {
+    setIsGeneratingVideo(true);
+    setGenerationProgress(0);
+    setIsPlayingVideo(false);
+    stopSpeaking();
+    
+    // Choose appropriate initial live action: think
+    setAvatarAction('think');
+    
+    const getLocalizationStage = (pct: number, name: string) => {
+      if (pct < 30) {
+        switch (lang) {
+          case 'hi': return `✍️ ${name} पाठ स्क्रिप्ट तैयार कर रहे हैं...`;
+          case 'gu': return `✍️ ${name} પાઠ સ્ક્રિપ્ટ તૈયાર કરી રહ્યા છે...`;
+          case 'mr': return `✍️ ${name} पाठ्य आराखडा तयार करत आहेत...`;
+          case 'ta': return `✍️ ${name} பாடத் திட்டத்தை எழுதிக்கொண்டிருக்கிறார்...`;
+          case 'te': return `✍️ ${name} పాఠ్య ప్రణాళికను రూపొందిస్తున్నారు...`;
+          default: return `✍️ ${name} drafting lesson script...`;
+        }
+      } else if (pct < 65) {
+        switch (lang) {
+          case 'hi': return `🎙️ ${name} की आवाज़ और लयात्मक ट्यूनिंग सेट हो रही है...`;
+          case 'gu': return `🎙️ ${name} નો અવાજ અને પિચ સેટ થઈ રહ્યો છે...`;
+          case 'mr': return `🎙️ ${name} चा स्वर आणि संगीत समक्रमित होत आहे...`;
+          case 'ta': return `🎙️ ${name} குரல்வடிவம் சேர்க்கப்படுகிறது...`;
+          case 'te': return `🎙️ ${name} వాయిస్ రికార్డింగ్ జతచేస్తోంది...`;
+          default: return `🎙️ Synthesizing voice waveforms for ${name}...`;
+        }
+      } else if (pct < 90) {
+        switch (lang) {
+          case 'hi': return `🎬 रीयल-टाइम एनिमेशन और चेष्टाएँ सिंक हो रही हैं...`;
+          case 'gu': return `🎬 રિયલ-ટાઇમ ચહેરાના હાવભાવ બની રહ્યાં છે...`;
+          case 'mr': return `🎬 प्रत्यक्ष कृती आणि व्हिडिओ जोडला जात आहे...`;
+          case 'ta': return `🎬 பாவனைகள் மற்றும் அசைவூட்டம் தயாராகிறது...`;
+          case 'te': return `🎬 ముఖ కవళికలు మరియు చేష్టలను సమకాలీకరిస్తోంది...`;
+          default: return `🎬 Syncing real-time facial tracks & gestures...`;
+        }
+      } else {
+        switch (lang) {
+          case 'hi': return `✨ ऑफ़लाइन खेलने योग्य पाठ संकलित किया जा रहा है...`;
+          case 'gu': return `✨ ઓફલાઇન વિડીયો પેક કમ્પાઇલ થઈ રહ્યો છે...`;
+          case 'mr': return `✨ ऑफलाइन चालणारा पाठ एकत्रित होत आहे...`;
+          case 'ta': return `✨ இறுதி எடிட்டிங் செய்யப்படுகிறது...`;
+          case 'te': return `✨ అంతిమ ఇంటరాక్టివ్ పాఠాన్ని సిద్ధం చేస్తోంది...`;
+          default: return `✨ Bundling interactive offline playable video...`;
+        }
+      }
+    };
+
+    setGenerationStage(getLocalizationStage(0, lesson.avatarName));
+
+    const totalSteps = 20; // 20 * 100ms = 2 seconds loading duration (Perfect fluid pace)
+    let currentStep = 0;
+
+    const interval = setInterval(() => {
+      currentStep++;
+      const currentProgress = Math.min(Math.round((currentStep / totalSteps) * 100), 100);
+      setGenerationProgress(currentProgress);
+
+      // Trigger spontaneous AI Teacher live actions during compiling
+      if (currentProgress === 30) {
+        setAvatarAction('think');
+      } else if (currentProgress === 65) {
+        setAvatarAction('idea');
+      } else if (currentProgress === 85) {
+        setAvatarAction('thumbsup');
+      }
+
+      setGenerationStage(getLocalizationStage(currentProgress, lesson.avatarName));
+
+      if (currentProgress >= 100) {
+        clearInterval(interval);
+        setIsGeneratingVideo(false);
+        setSelectedLesson(lesson);
+        if (autoPlay) {
+          setIsPlayingVideo(true);
+          speakText(lesson.explanation, lang, lesson.avatarName, lesson.avatarChar, () => {
+            setIsPlayingVideo(false);
+            setAvatarAction('idle');
+          });
+          setAvatarAction('celebrate');
+          setTimeout(() => {
+            setAvatarAction((prev) => prev === 'celebrate' ? 'explaining' : prev);
+          }, 2000);
+        } else {
+          setAvatarAction('wave');
+          setTimeout(() => {
+            setAvatarAction('idle');
+          }, 2000);
+        }
+      }
+    }, 100);
+  };
+
   const handleLessonSelect = (lesson: LessonQuery) => {
     setSelectedLesson(lesson);
-    setIsPlayingVideo(false);
     setShowQuiz(false);
     setOtpResetQuiz();
+    // Simulate interactive generation so kids see live compile/sync on switch
+    simulateVideoGeneration(lesson, false);
   };
 
   const handleAskCustomQuery = (e: FormEvent) => {
@@ -237,44 +589,105 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
     );
 
     if (!matchesLesson) {
+      let explanation = "";
+      let quizQuestion = "";
+      let quizOptions: string[] = [];
+      let quizExplanation = "";
+      let avatarName = "";
+      let avatarChar = "";
+
+      switch (lang) {
+        case 'hi':
+          avatarChar = "🤖 स्वामी AI";
+          avatarName = "स्वामी AI (स्मार्ट साथी)";
+          explanation = `अद्भुत जिज्ञासा! आपने "${customQuery}" के बारे में पूछा। आपके शिक्षक स्वामी एआई समझाते हैं: प्रकृति में सब कुछ एक दूसरे से जुड़ा हुआ है। हम अपने मस्तिष्क में सुपर लॉजिक बनाने के लिए इन विषयों का चरण-दर-चरण अध्ययन करते हैं! सीखने के लिए नीचे खेल खेलें।`;
+          quizQuestion = `आज आपको "${customQuery}" के बारे में कौन सा एआई शिक्षक पढ़ा रहा है?`;
+          quizOptions = ["दादी एआई", "स्वामी एआई", "कोई नहीं", "एक डरावना कंप्यूटर"];
+          quizExplanation = "स्वामी एआई आपका बुद्धिमान एआई साथी है!";
+          break;
+        case 'gu':
+          avatarChar = "🤖 સ્વામી AI";
+          avatarName = "સ્વામી AI (સ્માર્ટ દોસ્ત)";
+          explanation = `અદ્ભુત જિજ્ઞાસા! તમે "${customQuery}" વિશે પૂછ્યું. તમારા શિક્ષક સ્વામી એઆઈ સમજાવે છે: પ્રકૃતિમાં બધું એકબીજાથી જોડાયેલું છે. આપણા મગજમાં સુપર લોજિક બનાવવા માટે આપણે આ વિષયોનો શાંતિથી અભ્યાસ કરીએ છીએ! ભણવા માટે આગળની રમત રમો.`;
+          quizQuestion = `આજે તમને "${customQuery}" વિશે કયા એઆઈ શિક્ષક ભણાવી રહ્યા છે?`;
+          quizOptions = ["દાદી એઆઈ", "સ્વામી એઆઈ", "કોઈ નહીં", "એક કોમ્પ્યુટર"];
+          quizExplanation = "સ્વામી એઆઈ તમારા હોશિયાર કાર્ટૂન મિત્ર છે!";
+          break;
+        case 'mr':
+          avatarChar = "🤖 स्वामी AI";
+          avatarName = "स्वामी AI (स्मार्ट सोबती)";
+          explanation = `अद्भुत जिज्ञासा! तुम्ही "${customQuery}" बद्दल विचारले. तुमचे शिक्षक स्वामी एआय स्पष्ट करतात: निसर्गातील प्रत्येक गोष्ट एकमेकांशी जोडलेली आहे. आपल्या मेंदूमध्ये सुपर लॉजिक तयार करण्यासाठी आपण या विषयांचा पद्धतशीर अभ्यास करतो! खालील खेळ खेळा आणि शिका.`;
+          quizQuestion = `आज तुम्हाला "${customQuery}" बद्दल कोणते एआई शिक्षक शिकवत आहेत?`;
+          quizOptions = ["दादी एआई", "स्वामी एआई", "कोणीही नाही", "एक संगणक"];
+          quizExplanation = "स्वामी एआय तुमचे बुद्धिमान कार्टून मित्र आहेत!";
+          break;
+        case 'ta':
+          avatarChar = "🤖 சுவாமி AI";
+          avatarName = "சுவாமி AI (ஸ்மார்ட் நண்பன்)";
+          explanation = `அற்புதமான ஆர்வம்! நீங்கள் "${customQuery}" பற்றி கேட்டீர்கள். உங்கள் ஆசிரியர் சுவாமி ஏஐ விளக்குகிறார்: இயற்கையில் அனைத்தும் ஒன்றோடொன்று இணைக்கப்பட்டுள்ளன. நமது மூளையில் சிறந்த அறிவை உருவாக்க இந்த தலைப்புகளைப் படிப்படியாகப் படிக்கிறோம்! விளையாட்டைத் தொடர்ந்து விளையாடுங்கள்.`;
+          quizQuestion = `இன்று உங்களுக்கு "${customQuery}" பற்றி கற்பிக்கும் AI ஆசிரியர் யார்?`;
+          quizOptions = ["பாட்டி ஏஐ", "சுவாமி ஏஐ", "யாரும் இல்லை", "ஒரு கணினி"];
+          quizExplanation = "சுவாமி ஏஐ உங்கள் அன்பான அனிமேஷன் நண்பன்!";
+          break;
+        case 'te':
+          avatarChar = "🤖 స్వామి AI";
+          avatarName = "స్వామి AI (తెలివైన స్నేహితుడు)";
+          explanation = `అద్భుతమైన ఉత్సుకత! మీరు "${customQuery}" గురించి అడిగారు. మీ గురువు స్వామి ఏఐ వివరిస్తారు: ప్రకృతిలో ప్రతిదీ ఒకదానికొకటి అనుసంధానించబడి ఉంటుంది. మన మెదడులో గొప్ప తెలివితేటలను పెంపొందించడానికి మనం ఈ విషయాలను చదువుతాము! కింద ఉన్న ఆటను పూర్తి చేయండి.`;
+          quizQuestion = `ఈ రోజు మీకు "${customQuery}" గురించి బోధిస్తున్న AI ఉపాధ్యాయుడు ఎవరు?`;
+          quizOptions = ["నానమ్మ ఏఐ", "స్వామి ఏఐ", "ఎవరూ లేరు", "ఒక కంప్యూటర్"];
+          quizExplanation = "స్వామి ఏఐ మీ తెలివైన కార్టూన్ స్నేహితుడు!";
+          break;
+        default:
+          avatarChar = "🤖 Swami AI";
+          avatarName = "Swami AI (Mascot Tutor)";
+          explanation = `Excellent curiosity! You asked about "${customQuery}". The AI generated character explains: Everything in nature is connected. We study these topics step by step to build super logic inside our brains! Try completing the special conceptual games that follow.`;
+          quizQuestion = `Which AI character is teaching you about "${customQuery}" today?`;
+          quizOptions = ["Dadi AI", "Swami AI", "No one", "A scary computer"];
+          quizExplanation = "Swami AI is your smart cartoon companion!";
+          break;
+      }
+
       // Create a dynamic on-the-fly interactive mock response matching their query!
       matchesLesson = {
         id: 'custom-' + Math.random().toString(36).substring(2, 5),
         query: customQuery,
         subject: "AI Generator ✨",
-        avatarChar: "🤖 Swami AI",
-        avatarName: "Swami AI (Mascot Tutor)",
-        explanation: `Excellent curiosity! You asked about "${customQuery}". The AI generated character explains: Everything in nature is connected. We study these topics step by step to build super logic inside our brains! Try completing the special conceptual games that follow.`,
+        avatarChar,
+        avatarName,
+        explanation,
         videoThumbColor: "from-fuchsia-400 to-indigo-600",
         quiz: [
           {
             id: 'cq-1',
-            question: `Which AI character is teaching you about "${customQuery}" today?`,
-            options: ["Dadi AI", "Swami AI", "No one", "A scary computer"],
+            question: quizQuestion,
+            options: quizOptions,
             answerIndex: 1,
-            explanation: "Swami AI is your smart cartoon companion!"
+            explanation: quizExplanation
           }
         ]
       };
     }
 
-    setSelectedLesson(matchesLesson);
-    setIsPlayingVideo(true);
     setCustomQuery('');
     setShowQuiz(false);
     setOtpResetQuiz();
-
-    // Trigger Speech synthesis voice assist automatically to assist kids
-    speakText(matchesLesson.explanation, lang);
+    
+    // Core Requested functionality: Put live actions by AI Teacher in generating videos!
+    simulateVideoGeneration(matchesLesson, true);
   };
 
   const handlePlayVoiceResponse = () => {
     setIsPlayingVideo(true);
-    speakText(selectedLesson.explanation, lang);
+    setAvatarAction('explaining');
+    speakText(selectedLesson.explanation, lang, selectedLesson.avatarName, selectedLesson.avatarChar, () => {
+      setIsPlayingVideo(false);
+      setAvatarAction('idle');
+    });
   };
 
   const handleStopVoiceResponse = () => {
     setIsPlayingVideo(false);
+    setAvatarAction('idle');
     stopSpeaking();
   };
 
@@ -290,12 +703,30 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
     
     setSelectedQuizAnswer(optionIdx);
     const isCorrect = optionIdx === selectedLesson.quiz[currentQuizIndex].answerIndex;
+    
+    // Localize feedback text for correct/incorrect answers so the TTS engine gets translation matching lang
+    let feedbackText = "";
     if (isCorrect) {
+      switch (lang) {
+        case 'hi': feedbackText = "बिल्कुल सही! सही उत्तर।"; break;
+        case 'gu': feedbackText = "અદ્ભુત! સાચો જવાબ છે."; break;
+        case 'mr': feedbackText = "उत्कृष्ट! अचूक उत्तर."; break;
+        case 'ta': feedbackText = "அற்புதம்! சரியான விடை."; break;
+        case 'te': feedbackText = "అద్భుతం! సరైన సమాధానం."; break;
+        default: feedbackText = "Perfect! Correct answer."; break;
+      }
       setQuizScore((prev) => prev + 1);
-      // Play brief local reward voice
-      speakText("Perfect! correct answer.", lang);
+      speakText(feedbackText, lang, selectedLesson.avatarName, selectedLesson.avatarChar);
     } else {
-      speakText("Don't worry, try again next time!", lang);
+      switch (lang) {
+        case 'hi': feedbackText = "चिंता न करें, अगली बार फिर प्रयास करें!"; break;
+        case 'gu': feedbackText = "ચિંતા ન કરો, બીજી વખત પ્રયત્ન કરજો!"; break;
+        case 'mr': feedbackText = "काळजी करू नका, पुढच्या वेळी नक्की जमेल!"; break;
+        case 'ta': feedbackText = "கவலைப்படாதீர்கள், அடுத்த முறை மீண்டும் முயற்சிக்கவும்!"; break;
+        case 'te': feedbackText = "ఆందోళన పడకండి, తదుపరి సారి ప్రయత్నించండి!"; break;
+        default: feedbackText = "Don't worry, try again next time!"; break;
+      }
+      speakText(feedbackText, lang, selectedLesson.avatarName, selectedLesson.avatarChar);
     }
   };
 
@@ -462,8 +893,14 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
                 value={customQuery}
                 onChange={(e) => setCustomQuery(e.target.value)}
                 placeholder="Ask me any science or math question... (e.g., How do birds fly?)"
-                className="w-full pl-9 pr-4 py-3 bg-gray-50/50 rounded-xl border border-gray-200 text-sm font-sans placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]"
+                className="w-full pl-9 pr-14 py-3 bg-gray-50/50 rounded-xl border border-gray-200 text-sm font-sans placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]"
               />
+              <div className="absolute right-3 top-2.5 flex items-center">
+                <SpeechInputButton 
+                  lang={lang} 
+                  onTranscript={(text) => setCustomQuery(text)} 
+                />
+              </div>
             </div>
             <button
               type="submit"
@@ -497,45 +934,109 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
               <div className="absolute -left-10 -top-10 w-44 h-44 rounded-full bg-blue-500/10 blur-xl uppercase" />
               <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-[#FAF8F4]/10 blur-xl uppercase" />
 
+              {/* Floating Live Reactions Layer */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
+                {floatingReactions.map((reaction) => (
+                  <div
+                    key={reaction.id}
+                    className="absolute bottom-16 animate-float-up flex flex-col items-center bg-white/95 backdrop-blur-xs px-3 py-1.5 rounded-full shadow-lg border border-white/25 select-none"
+                    style={{
+                      left: `${reaction.left}%`,
+                      animationDelay: `${reaction.delay}s`,
+                    }}
+                  >
+                    <span className="text-xl leading-none">{reaction.emoji}</span>
+                    {reaction.text && (
+                      <span className="text-[10px] font-extrabold font-sans text-[#3D405B] mt-0.5 leading-none px-1 whitespace-nowrap">
+                        {reaction.text}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
               {/* Avatar Mascot Container */}
-              <div className="flex-1 flex flex-col items-center justify-center space-y-4">
-                {isPlayingVideo ? (
-                  /* Running/talking active face mockup */
-                  <div className="relative space-y-2 text-center">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#E07A5F] to-[#C8644B] border-4 border-white shadow-lg flex items-center justify-center text-4xl animate-bounce duration-1000">
-                      {selectedLesson.avatarChar.split(' ')[0]}
-                    </div>
-                    {/* Pulsing voice lines mapping */}
-                    <div className="flex items-center justify-center space-x-1">
-                      <span className="h-3 w-1 bg-[#E07A5F] rounded-lg animate-pulse" />
-                      <span className="h-5 w-1 bg-[#E07A5F] rounded-lg animate-pulse" style={{ animationDelay: '0.2s' }} />
-                      <span className="h-2 w-1 bg-[#E07A5F] rounded-lg animate-pulse" style={{ animationDelay: '0.4s' }} />
-                      <span className="h-4 w-1 bg-[#E07A5F] rounded-lg animate-pulse" style={{ animationDelay: '0.1s' }} />
+              <div className="flex-1 flex flex-col items-center justify-center space-y-4 w-full">
+                {isGeneratingVideo ? (
+                  /* Active Live Actions during AI Video Generation with visual Mascot built-in */
+                  <div className="flex-1 flex flex-col items-center justify-center space-y-4 w-full max-w-sm mx-auto">
+                    <InteractiveAITeacher 
+                      avatarChar={selectedLesson.avatarChar}
+                      avatarName={selectedLesson.avatarName}
+                      action={avatarAction}
+                      isPlaying={false}
+                    />
+
+                    <div className="space-y-2 text-center w-full">
+                      <div className="flex items-center justify-between text-[9px] font-mono text-gray-400 font-bold uppercase tracking-widest px-1">
+                        <span>🤖 GENERATING VIDEO...</span>
+                        <span className="text-[#F2CC8F] font-black">{generationProgress}%</span>
+                      </div>
+                      
+                      {/* Interactive compiling progress bar */}
+                      <div className="h-2.5 w-full bg-gray-950/80 rounded-full overflow-hidden border border-white/5 p-[1px]">
+                        <div 
+                          className="h-full bg-gradient-to-r from-[#F2CC8F] via-[#E07A5F] to-[#81B29A] rounded-full transition-all duration-150"
+                          style={{ width: `${generationProgress}%` }}
+                        />
+                      </div>
+                      
+                      {/* Staging phrase */}
+                      <p className="text-[11px] sm:text-xs font-sans font-extrabold text-[#F2CC8F] leading-tight px-2 min-h-8 flex items-center justify-center animate-pulse">
+                        {generationStage}
+                      </p>
                     </div>
                   </div>
+                ) : isPlayingVideo || avatarAction !== 'idle' ? (
+                  /* Running/talking active face mockup with live actions and hands/face gestures support */
+                  <div className="relative text-center">
+                    <InteractiveAITeacher 
+                      avatarChar={selectedLesson.avatarChar}
+                      avatarName={selectedLesson.avatarName}
+                      action={avatarAction}
+                      isPlaying={isPlayingVideo}
+                    />
+                  </div>
                 ) : (
-                  /* Idle face / play button overlay */
-                  <button
-                    id="trigger-play-video-mascot"
-                    onClick={handlePlayVoiceResponse}
-                    className="w-20 h-20 bg-[#3D405B] hover:bg-[#2D2F44] border-4 border-[#F2CC8F]/30 text-white rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-110 cursor-pointer"
-                  >
-                    <Play className="h-8 w-8 text-white fill-current ml-1" />
-                  </button>
+                  /* Idle face / play button overlay styled directly over the interactive resting mascot */
+                  <div className="relative flex flex-col items-center">
+                    <div className="relative group">
+                      {/* Rest posture of Mascot behind a play button */}
+                      <div className="opacity-75 blur-xs group-hover:opacity-100 group-hover:blur-none transition-all duration-300">
+                        <InteractiveAITeacher 
+                          avatarChar={selectedLesson.avatarChar}
+                          avatarName={selectedLesson.avatarName}
+                          action="idle"
+                          isPlaying={false}
+                        />
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <button
+                          id="trigger-play-video-mascot"
+                          onClick={handlePlayVoiceResponse}
+                          className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-tr from-[#3D405B] to-[#E07A5F] border-4 border-[#F2CC8F]/50 text-white rounded-full flex items-center justify-center shadow-2xl transition-transform duration-300 hover:scale-115 cursor-pointer z-30"
+                        >
+                          <Play className="h-7 w-7 sm:h-8 sm:w-8 text-white fill-current ml-1" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
-                <div className="text-white text-center">
-                  <h4 className="font-display font-extrabold text-sm sm:text-base tracking-tight">
-                    {selectedLesson.query}
-                  </h4>
-                  <p className="text-[10px] text-gray-400 mt-0.5">
-                    {isPlayingVideo ? "Currently reading the answer aloud..." : "Click to view AI video answer response"}
-                  </p>
-                </div>
+                {!isGeneratingVideo && (
+                  <div className="text-white text-center">
+                    <h4 className="font-display font-extrabold text-sm sm:text-base tracking-tight">
+                      {selectedLesson.query}
+                    </h4>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {isPlayingVideo ? "Currently reading the answer aloud..." : "Click to view AI video answer response"}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Live Caption/Subtitle Subtitle bar (Awesome helper mechanism!) */}
-              <div className="w-full bg-black/60 backdrop-blur-md rounded-xl p-3 border border-white/10 text-center relative">
+              <div className="w-full bg-black/60 backdrop-blur-md rounded-xl p-3 border border-white/10 text-center relative z-10">
                 <div className="absolute right-2 top-2">
                   <SpeakButton text={selectedLesson.explanation} lang={lang} size="sm" className="bg-black/40 text-[#E07A5F] border-white/10" />
                 </div>
@@ -546,6 +1047,66 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
                 </div>
               </div>
 
+            </div>
+
+            {/* Live Interactive Action Controls (Allows students to trigger gestures & animation bursts) */}
+            <div className="px-4 py-2.5 bg-slate-900 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3 select-none">
+              <span className="text-[10px] font-mono font-bold text-[#F2CC8F] uppercase tracking-widest flex items-center gap-1.5 shrink-0">
+                <span className="h-2 w-2 bg-emerald-500 rounded-full animate-ping" />
+                Students Live Reactions:
+              </span>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <button
+                  type="button"
+                  id="action-wave-btn"
+                  onClick={() => triggerLiveAction('wave')}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-white/10 shadow-3xs"
+                  title="Wave Hello"
+                >
+                  <span className="text-sm">👋</span>
+                  <span className="text-[10px] sm:text-xs">Wave</span>
+                </button>
+                <button
+                  type="button"
+                  id="action-idea-btn"
+                  onClick={() => triggerLiveAction('idea')}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-white/10 shadow-3xs"
+                  title="Aha Idea!"
+                >
+                  <span className="text-sm">💡</span>
+                  <span className="text-[10px] sm:text-xs">Idea</span>
+                </button>
+                <button
+                  type="button"
+                  id="action-thumbs-btn"
+                  onClick={() => triggerLiveAction('thumbsup')}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-white/10 shadow-3xs"
+                  title="Applaud Praise"
+                >
+                  <span className="text-sm">👍</span>
+                  <span className="text-[10px] sm:text-xs">Praise</span>
+                </button>
+                <button
+                  type="button"
+                  id="action-celebrate-btn"
+                  onClick={() => triggerLiveAction('celebrate')}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-white/10 shadow-3xs"
+                  title="Celebrate Victory"
+                >
+                  <span className="text-sm">🎉</span>
+                  <span className="text-[10px] sm:text-xs">Celebrate</span>
+                </button>
+                <button
+                  type="button"
+                  id="action-think-btn"
+                  onClick={() => triggerLiveAction('think')}
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 active:scale-95 text-white rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-white/10 shadow-3xs"
+                  title="Think Deep"
+                >
+                  <span className="text-sm">🤔</span>
+                  <span className="text-[10px] sm:text-xs">Think</span>
+                </button>
+              </div>
             </div>
 
             {/* Video Controls Bar */}
@@ -566,7 +1127,7 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
                     className="px-4 py-2 bg-[#81B29A]/15 text-[#3D405B] border border-[#81B29A]/20 hover:bg-[#81B29A]/25 rounded-xl text-xs font-sans font-bold cursor-pointer flex items-center gap-1.5"
                   >
                     <Volume2 className="h-4 w-4 text-[#81B29A]" />
-                    <span>🔊 Listen Response</span>
+                    <span>Listen Response</span>
                   </button>
                 )}
               </div>

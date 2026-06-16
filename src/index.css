@@ -12,4 +12,27 @@
   --color-natural-secondary: #F2CC8F;
   --color-natural-accent: #81B29A;
   --color-natural-slate: #3D405B;
+
+  --animate-float-up: float-up 3s ease-out forwards;
+
+  @keyframes float-up {
+    0% {
+      transform: translateY(50px) scale(0.7) rotate(0deg);
+      opacity: 0;
+    }
+    15% {
+      opacity: 1;
+      transform: translateY(0px) scale(1.1) rotate(-5deg);
+    }
+    50% {
+      transform: translateY(-80px) scale(1) rotate(5deg);
+    }
+    85% {
+      opacity: 0.9;
+    }
+    100% {
+      transform: translateY(-200px) scale(0.8) rotate(-10deg);
+      opacity: 0;
+    }
+  }
 }
