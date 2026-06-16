@@ -180,7 +180,7 @@ export default function AuthView({
             <Globe className="h-4 w-4 text-[#81B29A]" />
             {t.selectLanguageLabel}
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 xs:grid-cols-3 gap-2">
             {SUPPORTED_LANGUAGES.map((item) => (
               <button
                 key={item.code}

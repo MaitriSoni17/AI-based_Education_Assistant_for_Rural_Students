@@ -103,7 +103,7 @@ export default function HomeView({
           </div>
 
           {/* AI Banner Image */}
-          <div className="lg:col-span-12 xl:col-span-5 relative mt-6 lg:mt-0 flex justify-center">
+          <div className="lg:col-span-5 relative mt-6 lg:mt-0 flex justify-center">
             <div className="relative w-full max-w-md lg:max-w-none rounded-[32px] overflow-hidden border-4 border-white shadow-xl bg-gray-55 aspect-16/9">
               <img
                 src={heroImgUrl}
@@ -111,9 +111,9 @@ export default function HomeView({
                 referrerPolicy="no-referrer"
                 className="object-cover w-full h-full transition-transform hover:scale-105 duration-700"
               />
-              <div className="absolute top-3 left-3 bg-[#FAF8F4]/95 backdrop-blur-xs text-[10px] font-mono font-bold text-[#3D405B] px-2 py-1 rounded shadow-xs uppercase tracking-wide">
+              {/*<div className="absolute top-3 left-3 bg-[#FAF8F4]/95 backdrop-blur-xs text-[10px] font-mono font-bold text-[#3D405B] px-2 py-1 rounded shadow-xs uppercase tracking-wide">
                 AI Generated Illustration
-              </div>
+              </div>*/}
             </div>
           </div>
         </div>

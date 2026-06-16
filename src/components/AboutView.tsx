@@ -26,7 +26,7 @@ export default function AboutView({ lang }: AboutViewProps) {
       </section>
 
       {/* Grid of Core Pillars */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
         {/* Core Pillar 1 */}
         <div className="bg-white rounded-[24px] p-6 border border-[#F2CC8F]/20 shadow-xs flex flex-col justify-between space-y-6">
           <div className="space-y-4">

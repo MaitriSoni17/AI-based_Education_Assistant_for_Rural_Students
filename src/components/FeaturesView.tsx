@@ -32,7 +32,7 @@ export default function FeaturesView({ lang }: FeaturesViewProps) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-white p-6 sm:p-8 rounded-[32px] border border-[#F2CC8F]/25 shadow-xs">
           
           {/* Mascot Video Tutor Card */}
-          <div className="lg:col-span-12 xl:col-span-5 space-y-4">
+          <div className="lg:col-span-5 space-y-4">
             <div className="relative rounded-2xl overflow-hidden border-2 border-[#F2CC8F]/30 shadow-md aspect-4/3">
               <img
                 src={mascotImgUrl}
@@ -40,7 +40,7 @@ export default function FeaturesView({ lang }: FeaturesViewProps) {
                 referrerPolicy="no-referrer"
                 className="object-cover w-full h-full"
               />
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
+              {/*<div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
                 <div className="flex items-center space-x-2 text-white">
                   <span className="h-2 w-2 bg-[#81B29A] rounded-full animate-ping" />
                   <span className="text-xs font-mono font-bold tracking-wider uppercase">AI Teacher Active</span>
@@ -48,7 +48,7 @@ export default function FeaturesView({ lang }: FeaturesViewProps) {
                 <p className="text-[11px] text-gray-300 font-mono mt-1">
                   Offline-ready synthetic tutoring characters
                 </p>
-              </div>
+              </div>*/}
             </div>
             <div className="text-center bg-[#FAF8F4] border border-[#F2CC8F]/20 rounded-xl py-2 px-3 text-xs text-[#3D405B] font-mono flex items-center justify-center gap-1.5">
               <BatteryCharging className="h-4 w-4 text-[#E07A5F]" />
@@ -57,7 +57,7 @@ export default function FeaturesView({ lang }: FeaturesViewProps) {
           </div>
 
           {/* Features Column */}
-          <div className="lg:col-span-12 xl:col-span-7 space-y-6">
+          <div className="lg:col-span-7 space-y-6">
             
             {/* 1. AI Response Videos */}
             <div className="flex gap-4 p-4 rounded-2xl hover:bg-[#FAF8F4] transition-colors border border-transparent hover:border-[#F2CC8F]/30">

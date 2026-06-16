@@ -49,7 +49,7 @@ export default function Navbar({
           </div>
  
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
+          <div className="hidden lg:flex items-center space-x-1 lg:space-x-2">
             <button
               id="nav-desktop-home"
               onClick={() => handleNavClick('home')}
@@ -164,7 +164,7 @@ export default function Navbar({
           </div>
  
           {/* Hamburger / Mobile Toggle */}
-          <div className="flex items-center md:hidden space-x-2">
+          <div className="flex items-center lg:hidden space-x-2">
             {/* Quick Language Toggle */}
             <div className="flex items-center bg-white border border-[#F2CC8F]/30 rounded-xl px-2 py-1">
               <Globe className="h-3.5 w-3.5 text-[#E07A5F] mr-1" />
@@ -195,7 +195,7 @@ export default function Navbar({
  
       {/* Mobile Drawer */}
       {isOpen && (
-        <div id="mobile-menu-drawer" className="md:hidden border-t border-[#F2CC8F]/20 bg-white px-4 pt-2 pb-4 space-y-2 shadow-inner transition-all animate-fade-in">
+        <div id="mobile-menu-drawer" className="lg:hidden border-t border-[#F2CC8F]/20 bg-white px-4 pt-2 pb-4 space-y-2 shadow-inner transition-all animate-fade-in">
           <button
             id="nav-mobile-home"
             onClick={() => handleNavClick('home')}
