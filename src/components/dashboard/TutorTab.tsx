@@ -1,6 +1,7 @@
-import { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { LanguageCode, User, QuizQuestion, OfflineResource } from '../../types';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../../data/translations';
+import { offlineSyncManager } from '../../utils/offlineSync';
 import SpeakButton from '../SpeakButton';
 import SpeechInputButton from '../SpeechInputButton';
 import InteractiveAITeacher from '../InteractiveAITeacher';
@@ -656,6 +657,9 @@ export default function TutorTab({
       if (quizScore + 1 >= selectedLesson.quiz.length) {
         if (!claimedMedals.includes(selectedLesson.id)) {
           setClaimedMedals((prev) => [...prev, selectedLesson.id]);
+          if (!offlineSyncManager.isOnline()) {
+            offlineSyncManager.queuePendingProgress('medal_earned', selectedLesson.id);
+          }
         }
       }
     }

@@ -153,7 +153,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // API ROUTE: OTP GENERATION
   app.post("/api/otp/generate", async (req, res) => {
@@ -331,6 +332,161 @@ async function startServer() {
       return res.status(500).json({ 
         success: false, 
         message: "Internal server error. Unable to perform secure verification." 
+      });
+    }
+  });
+
+  // API ROUTE: MULTI-MODAL GEMINI CHAT
+  app.post("/api/gemini/chat", async (req, res) => {
+    try {
+      const { message, image, systemInstruction } = req.body;
+
+      if (!message && !image) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide a query message or an image attachment."
+        });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({
+          success: false,
+          message: "Gemini API key is not configured. Please ensure GEMINI_API_KEY is defined in your secrets."
+        });
+      }
+
+      // Lazy load/initialize GoogleGenAI
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      // Prepare parts for the query
+      const parts: any[] = [];
+
+      if (image && image.data && image.mimeType) {
+        // Strip out the data:image/...;base64, prefix if present
+        let base64Data = image.data;
+        if (base64Data.includes(";base64,")) {
+          base64Data = base64Data.split(";base64,").pop();
+        }
+        parts.push({
+          inlineData: {
+            data: base64Data,
+            mimeType: image.mimeType
+          }
+        });
+      }
+
+      if (message) {
+        parts.push({
+          text: message
+        });
+      }
+
+      const getErrorInfo = (err: any) => {
+        let msg = "";
+        let status = "";
+        let code: number | undefined = undefined;
+
+        if (err) {
+          if (typeof err === 'object') {
+            const inner = err.error || err;
+            msg = inner.message || err.message || "";
+            status = inner.status || err.status || "";
+            code = inner.code || err.code || undefined;
+          } else {
+            msg = String(err);
+          }
+        }
+        return { message: msg, status: String(status), code };
+      };
+
+      let response: any = null;
+      let lastError: any = null;
+      let success = false;
+      const modelsToTry = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-3.5-flash"
+      ];
+
+      for (const modelName of modelsToTry) {
+        const maxRetries = 2; // Retry twice per model before trying fallback
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(`[GEMINI CHAT] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
+            response = await ai.models.generateContent({
+              model: modelName,
+              contents: { parts: parts },
+              config: {
+                systemInstruction: systemInstruction || "You are a helpful educational assistant.",
+                temperature: 0.7,
+              }
+            });
+            success = true;
+            console.log(`[GEMINI CHAT] Successfully generated content using model: ${modelName}`);
+            break; // Success! Exit the retry loop for this model
+          } catch (err: any) {
+            lastError = err;
+            const { message: errText, status: errStatus, code: errCode } = getErrorInfo(err);
+            console.warn(`[GEMINI CHAT ATTEMPT ${attempt} FAILED for model ${modelName}]:`, { message: errText, status: errStatus, code: errCode });
+            
+            const errMsg = errText.toLowerCase();
+            const isRetryable = 
+              errMsg.includes("503") || 
+              errMsg.includes("500") ||
+              errMsg.includes("429") ||
+              errMsg.includes("unavailable") || 
+              errMsg.includes("high demand") || 
+              errMsg.includes("resource") || 
+              errMsg.includes("limit") || 
+              errMsg.includes("rate") ||
+              errMsg.includes("busy") ||
+              errMsg.includes("quota") ||
+              errStatus.toLowerCase().includes("unavailable") ||
+              errStatus.toLowerCase().includes("exhausted") ||
+              errCode === 503 ||
+              errCode === 429 ||
+              errCode === 500;
+
+            if (attempt < maxRetries && isRetryable) {
+              const delay = attempt * 1000;
+              console.log(`Retrying model ${modelName} (attempt ${attempt + 1}/${maxRetries}) in ${delay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+              break; // Try fallback model or bubble up
+            }
+          }
+        }
+        if (success) {
+          break; // Exit model loop
+        }
+      }
+
+      if (!success && lastError) {
+        throw lastError;
+      }
+
+      const responseText = response?.text || "I was unable to process that query.";
+
+      return res.json({
+        success: true,
+        text: responseText
+      });
+
+    } catch (error: any) {
+      console.error("[GLOBAL SERVER ERROR IN /api/gemini/chat]:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "An error occurred while generating AI response."
       });
     }
   });

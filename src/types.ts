@@ -13,6 +13,9 @@ export interface User {
   name: string;
   defaultLanguage: LanguageCode;
   signupDate: string;
+  village?: string;
+  school?: string;
+  standard?: string;
 }
 
 export interface QuizQuestion {

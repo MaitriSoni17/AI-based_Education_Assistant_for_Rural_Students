@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { LanguageCode, User } from '../../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
@@ -103,8 +103,8 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
                       : 'border-gray-200 hover:bg-[#FAF8F4] text-gray-700'
                   }`}
                 >
-                  <span className="text-sm font-sans block">{sl.name}</span>
-                  <span className="text-[9px] text-gray-400 font-mono block">{sl.nativeName}</span>
+                  <span className="text-sm font-sans block">{sl.label}</span>
+                  <span className="text-[9px] text-gray-400 font-mono block">{sl.nativeLabel}</span>
                 </button>
               );
             })}
