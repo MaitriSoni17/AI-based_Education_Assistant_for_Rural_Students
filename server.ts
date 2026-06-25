@@ -413,57 +413,57 @@ async function startServer() {
       let success = false;
       const modelsToTry = [
         "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-3.5-flash"
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3.1-pro-preview"
       ];
 
       for (const modelName of modelsToTry) {
-        const maxRetries = 2; // Retry twice per model before trying fallback
+        const maxRetries = 3; // Retry three times per model before trying fallback
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
-            console.log(`[GEMINI CHAT] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
-            response = await ai.models.generateContent({
-              model: modelName,
-              contents: { parts: parts },
-              config: {
-                systemInstruction: systemInstruction || "You are a helpful educational assistant.",
-                temperature: 0.7,
-              }
-            });
-            success = true;
-            console.log(`[GEMINI CHAT] Successfully generated content using model: ${modelName}`);
-            break; // Success! Exit the retry loop for this model
+             console.log(`[GEMINI CHAT] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
+             response = await ai.models.generateContent({
+               model: modelName,
+               contents: { parts: parts },
+               config: {
+                 systemInstruction: systemInstruction || "You are a helpful educational assistant.",
+                 temperature: 0.7,
+               }
+             });
+             success = true;
+             console.log(`[GEMINI CHAT] Successfully generated content using model: ${modelName}`);
+             break; // Success! Exit the retry loop for this model
           } catch (err: any) {
-            lastError = err;
-            const { message: errText, status: errStatus, code: errCode } = getErrorInfo(err);
-            console.warn(`[GEMINI CHAT ATTEMPT ${attempt} FAILED for model ${modelName}]:`, { message: errText, status: errStatus, code: errCode });
-            
-            const errMsg = errText.toLowerCase();
-            const isRetryable = 
-              errMsg.includes("503") || 
-              errMsg.includes("500") ||
-              errMsg.includes("429") ||
-              errMsg.includes("unavailable") || 
-              errMsg.includes("high demand") || 
-              errMsg.includes("resource") || 
-              errMsg.includes("limit") || 
-              errMsg.includes("rate") ||
-              errMsg.includes("busy") ||
-              errMsg.includes("quota") ||
-              errStatus.toLowerCase().includes("unavailable") ||
-              errStatus.toLowerCase().includes("exhausted") ||
-              errCode === 503 ||
-              errCode === 429 ||
-              errCode === 500;
+             lastError = err;
+             const { message: errText, status: errStatus, code: errCode } = getErrorInfo(err);
+             console.warn(`[GEMINI CHAT ATTEMPT ${attempt} FAILED for model ${modelName}]:`, { message: errText, status: errStatus, code: errCode });
+             
+             const errMsg = errText.toLowerCase();
+             const isRetryable = 
+               errMsg.includes("503") || 
+               errMsg.includes("500") ||
+               errMsg.includes("429") ||
+               errMsg.includes("unavailable") || 
+               errMsg.includes("high demand") || 
+               errMsg.includes("resource") || 
+               errMsg.includes("limit") || 
+               errMsg.includes("rate") ||
+               errMsg.includes("busy") ||
+               errMsg.includes("quota") ||
+               errStatus.toLowerCase().includes("unavailable") ||
+               errStatus.toLowerCase().includes("exhausted") ||
+               errCode === 503 ||
+               errCode === 429 ||
+               errCode === 500;
 
-            if (attempt < maxRetries && isRetryable) {
-              const delay = attempt * 1000;
-              console.log(`Retrying model ${modelName} (attempt ${attempt + 1}/${maxRetries}) in ${delay}ms...`);
-              await new Promise(resolve => setTimeout(resolve, delay));
-            } else {
-              break; // Try fallback model or bubble up
-            }
+             if (attempt < maxRetries && isRetryable) {
+               const delay = attempt * 1500;
+               console.log(`Retrying model ${modelName} (attempt ${attempt + 1}/${maxRetries}) in ${delay}ms...`);
+               await new Promise(resolve => setTimeout(resolve, delay));
+             } else {
+               break; // Try fallback model or bubble up
+             }
           }
         }
         if (success) {
@@ -488,6 +488,40 @@ async function startServer() {
         success: false,
         message: error.message || "An error occurred while generating AI response."
       });
+    }
+  });
+
+  // API ROUTE: GOOGLE TTS PROXY WITH REFERER STRIPPING & CORS BYPASS
+  app.get("/api/tts", async (req, res) => {
+    try {
+      const { tl, q } = req.query;
+      if (!tl || !q) {
+        return res.status(400).send("Missing required parameters: tl (target language), q (text content)");
+      }
+
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(tl as string)}&client=tw-ob&q=${encodeURIComponent(q as string)}`;
+
+      const ttsResponse = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+        referrerPolicy: "no-referrer"
+      });
+
+      if (!ttsResponse.ok) {
+        console.warn(`[TTS Proxy Server] Google TTS request failed with status: ${ttsResponse.status}`);
+        return res.status(ttsResponse.status).send(`Google TTS request failed: ${ttsResponse.statusText}`);
+      }
+
+      // Stream the response directly as audio/mpeg
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Cache-Control", "public, max-age=86400"); // Cache for 1 day
+      
+      const buffer = await ttsResponse.arrayBuffer();
+      return res.send(Buffer.from(buffer));
+    } catch (err: any) {
+      console.error("[TTS Proxy Server Error]:", err);
+      return res.status(500).send("Internal server error during TTS Proxy transmission.");
     }
   });
 

@@ -13,8 +13,12 @@ const LANG_MAP: Record<LanguageCode, string> = {
 let activeAudioQueue: HTMLAudioElement[] = [];
 let currentAudioIndex = 0;
 let activeFallbackTimeout: NodeJS.Timeout | null = null;
+let currentSpeechSession = 0;
 
 export function stopSpeaking() {
+  // Invalidate any active asynchronous speech sessions immediately
+  currentSpeechSession++;
+
   // Clear any simulated fallback timeouts
   if (activeFallbackTimeout) {
     clearTimeout(activeFallbackTimeout);
@@ -53,46 +57,178 @@ function splitTextIntoTTSChunks(text: string): string[] {
   const sentences = cleanText.split(/(?<=[.!?।|।\n])\s+/);
   
   const chunks: string[] = [];
-  let currentChunk = "";
   
   for (const sentence of sentences) {
     if (!sentence) continue;
     
-    if (sentence.length > 150) {
-      // If a single sentence is too long, split further by commas or separators
-      if (currentChunk) {
-        chunks.push(currentChunk.trim());
-        currentChunk = "";
-      }
+    if (sentence.length <= 130) {
+      chunks.push(sentence.trim());
+    } else {
+      // If a single sentence is too long, split further by commas, semicolons, or spaces
+      const subParts = sentence.split(/(?<=[,၊;])\s+/);
+      let currentChunk = "";
       
-      const subParts = sentence.split(/(?<=[,،;])\s+/);
       for (const part of subParts) {
-        if ((currentChunk + " " + part).length > 150) {
+        if (!part) continue;
+        
+        if (part.length <= 130) {
+          if ((currentChunk + " " + part).length > 130) {
+            if (currentChunk.trim()) {
+              chunks.push(currentChunk.trim());
+            }
+            currentChunk = part;
+          } else {
+            currentChunk = currentChunk ? (currentChunk + " " + part) : part;
+          }
+        } else {
+          // If a subpart is still too long, split by space words
           if (currentChunk.trim()) {
             chunks.push(currentChunk.trim());
+            currentChunk = "";
           }
-          currentChunk = part;
-        } else {
-          currentChunk = currentChunk ? (currentChunk + " " + part) : part;
+          
+          const words = part.split(/\s+/);
+          for (const word of words) {
+            if (!word) continue;
+            
+            if ((currentChunk + " " + word).length > 130) {
+              if (currentChunk.trim()) {
+                chunks.push(currentChunk.trim());
+              }
+              
+              if (word.length > 130) {
+                // Squeeze extremely long single words/links
+                let remaining = word;
+                while (remaining.length > 120) {
+                  chunks.push(remaining.slice(0, 120));
+                  remaining = remaining.slice(120);
+                }
+                currentChunk = remaining;
+              } else {
+                currentChunk = word;
+              }
+            } else {
+              currentChunk = currentChunk ? (currentChunk + " " + word) : word;
+            }
+          }
         }
       }
-    } else {
-      if ((currentChunk + " " + sentence).length > 150) {
-        if (currentChunk.trim()) {
-          chunks.push(currentChunk.trim());
-        }
-        currentChunk = sentence;
-      } else {
-        currentChunk = currentChunk ? (currentChunk + " " + sentence) : sentence;
+      
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
       }
     }
   }
   
-  if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
+  return chunks.filter(c => c.trim().length > 0);
+}
+
+/**
+ * Cleans markdown, formatting, code blocks, and emojis from response text
+ * to make it highly readable and clean for TTS.
+ */
+export function cleanTextForTTS(text: string): string {
+  if (!text) return "";
+
+  let clean = text;
+
+  // 1. Remove Markdown code blocks completely, as reading code is confusing to students
+  clean = clean.replace(/```[\s\S]*?```/g, "");
+
+  // 2. Remove inline code backticks
+  clean = clean.replace(/`([^`]+)`/g, "$1");
+
+  // 3. Remove Markdown image links and standard links [text](url) -> text
+  clean = clean.replace(/!\[([^\]]*)\]\([^\)]*\)/g, "");
+  clean = clean.replace(/\[([^\]]+)\]\([^\)]*\)/g, "$1");
+
+  // 4. Remove Markdown headers (e.g. ### Title -> Title)
+  clean = clean.replace(/^#+\s+/gm, "");
+
+  // 5. Remove bold / italic symbols
+  clean = clean.replace(/\*\*([^*]+)\*\*/g, "$1");
+  clean = clean.replace(/\*([^*]+)\*/g, "$1");
+  clean = clean.replace(/__([^_]+)__/g, "$1");
+  clean = clean.replace(/_([^_]+)_/g, "$1");
+
+  // 6. Clean up bullet points or list markers
+  clean = clean.replace(/^\s*[-*+]\s+/gm, "");
+  clean = clean.replace(/^\s*\d+\.\s+/gm, "");
+
+  // 7. Remove blockquotes symbols
+  clean = clean.replace(/^\s*>\s+/gm, "");
+
+  // 8. Remove common emojis as regional TTS engines might struggle or read them as garbage
+  clean = clean.replace(/[\u{1F300}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F191}-\u{1F251}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F171}\u{1F17E}-\u{1F17F}\u{1F18E}\u{3030}\u{2B50}\u{2B55}\u{2934}-\u{2935}\u{2B05}-\u{2B07}\u{2194}-\u{2199}\u{21A9}-\u{21AA}\u{25AA}-\u{25AB}\u{25B6}\u{25C0}\u{2139}\u{25A1}\u{25A0}\u{25CF}\u{25CB}\u{2E80}-\u{2FDF}\u{3000}-\u{303F}\u{31C0}-\u{31EF}\u{3200}-\u{32FF}\u{3300}-\u{33FF}\u{3400}-\u{4DBF}\u{4E00}-\u{9FFF}\u{F900}-\u{FAFF}\u{FE30}-\u{FE4F}]/gu, "");
+
+  // 9. Remove any multiple consecutive newlines or spaces
+  clean = clean.replace(/\n+/g, " ");
+  clean = clean.replace(/\s+/g, " ");
+
+  return clean.trim();
+}
+
+/**
+ * Detects the dominant language script in the text to provide accurate voice synthesis.
+ */
+export function detectLanguageOfText(text: string, fallbackLang: LanguageCode): LanguageCode {
+  if (!text) return fallbackLang;
+
+  // 1. Check for Gujarati script
+  if (/[\u0A80-\u0AFF]/.test(text)) {
+    return 'gu';
   }
-  
-  return chunks;
+
+  // 2. Check for Tamil script
+  if (/[\u0B80-\u0BFF]/.test(text)) {
+    return 'ta';
+  }
+
+  // 3. Check for Telugu script
+  if (/[\u0C00-\u0C7F]/.test(text)) {
+    return 'te';
+  }
+
+  // 4. Check for Devanagari script (Hindi, Marathi)
+  if (/[\u0900-\u097F]/.test(text)) {
+    // If text contains Marathi-specific character LLA (ळ)
+    if (/[\u0933]/.test(text)) {
+      return 'mr';
+    }
+    // If current fallback language is Marathi, keep it Marathi
+    if (fallbackLang === 'mr') {
+      return 'mr';
+    }
+    // Otherwise default Devanagari to Hindi
+    return 'hi';
+  }
+
+  // 5. English word frequency detection:
+  // If the text has no Indic script at all, but contains typical English vocabulary, classify as 'en'.
+  // Otherwise, if it has no Indic script but contains mostly transliterated Indian language, or if we are not sure, we should fallback to fallbackLang!
+  const hasIndic = /[\u0900-\u097F\u0A80-\u0AFF\u0B80-\u0BFF\u0C00-\u0C7F]/.test(text);
+  if (!hasIndic && /[a-zA-Z]/.test(text)) {
+    if (fallbackLang === 'en') {
+      return 'en';
+    }
+
+    const lower = text.toLowerCase();
+    // If fallbackLang is a regional language, only override to English if we are absolutely certain
+    // by checking for multiple (at least 3) distinct English grammar functional words.
+    const englishGrammarWords = ['the', 'is', 'are', 'was', 'were', 'have', 'has', 'had', 'and', 'this', 'that', 'with', 'for', 'you', 'your', 'they', 'from', 'about'];
+    let grammarWordCount = 0;
+    for (const word of englishGrammarWords) {
+      if (new RegExp(`\\b${word}\\b`).test(lower)) {
+        grammarWordCount++;
+      }
+    }
+    
+    if (grammarWordCount >= 3) {
+      return 'en';
+    }
+  }
+
+  return fallbackLang;
 }
 
 export function speakText(
@@ -104,62 +240,82 @@ export function speakText(
 ) {
   if (typeof window === 'undefined') return;
 
+  // Clean the text to remove markdown code blocks, bold symbols, links, and emojis
+  const cleanedText = cleanTextForTTS(text);
+  if (!cleanedText) {
+    if (onEnd) onEnd();
+    return;
+  }
+
+  // Auto-detect voice language based on the original rich text characters
+  const detectedLang = detectLanguageOfText(text, lang);
+
   // Always halt any current speaking sessions
   stopSpeaking();
 
-  // If we are online and using a regional language, prioritize high-quality Google TTS Audio API
+  currentSpeechSession++;
+  const session = currentSpeechSession;
+
+  // If we are online and using a regional language, prioritize our secure high-quality first-party proxy TTS Audio API
   const isOnline = typeof navigator !== 'undefined' && navigator.onLine;
-  if (isOnline && lang !== 'en') {
+  if (isOnline && detectedLang !== 'en') {
     try {
-      const chunks = splitTextIntoTTSChunks(text);
+      const chunks = splitTextIntoTTSChunks(cleanedText);
       if (chunks.length > 0) {
         currentAudioIndex = 0;
-        
-        // Map chunks to Google TTS links
-        activeAudioQueue = chunks.map(chunk => {
-          const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(chunk)}`;
-          const audio = new Audio();
-          audio.src = url;
-          audio.preload = "auto";
-          return audio;
-        });
+        activeAudioQueue = [];
 
-        const playNext = () => {
-          if (currentAudioIndex >= activeAudioQueue.length) {
+        const playNext = async () => {
+          if (currentSpeechSession !== session) return;
+
+          if (currentAudioIndex >= chunks.length) {
             activeAudioQueue = [];
             currentAudioIndex = 0;
             if (onEnd) onEnd();
             return;
           }
 
-          const audio = activeAudioQueue[currentAudioIndex];
-          
-          audio.onended = () => {
-            currentAudioIndex++;
-            playNext();
-          };
+          const chunk = chunks[currentAudioIndex];
+          // Use our first-party secure /api/tts proxy route to totally bypass CORS and Referrer headers issues
+          const url = `/api/tts?tl=${detectedLang}&q=${encodeURIComponent(chunk)}`;
 
-          audio.onerror = (e) => {
-            console.warn(`Google TTS chunk failed/unsupported for ${lang}. Falling back to standard speech synthesis.`, e);
-            runNativeSpeechFallback(text, lang, avatarName, avatarChar, onEnd);
-          };
+          try {
+            const audio = new Audio(url);
+            activeAudioQueue.push(audio);
 
-          audio.play().catch(err => {
-            console.warn("Direct HTML5 audio play block/failed. Falling back to native system speech.", err);
-            runNativeSpeechFallback(text, lang, avatarName, avatarChar, onEnd);
-          });
+            audio.onended = () => {
+              if (currentSpeechSession === session) {
+                currentAudioIndex++;
+                playNext();
+              }
+            };
+
+            audio.onerror = (e) => {
+              console.warn(`[Speech TTS Client] Proxy audio element failed for chunk: "${chunk}". Falling back to native speech synthesis.`);
+              if (currentSpeechSession === session) {
+                runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, onEnd);
+              }
+            };
+
+            await audio.play();
+          } catch (err) {
+            console.warn(`[Speech TTS Client] Play failed for chunk: "${chunk}". Falling back to native system speech.`, err);
+            if (currentSpeechSession === session) {
+              runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, onEnd);
+            }
+          }
         };
 
         playNext();
-        return; // Success, handled cleanly via chunked translation audio queue
+        return; // Handled cleanly via first-party secure tts proxy
       }
     } catch (e) {
-      console.warn("Google TTS player initialization failed, falling back to Web Speech Synthesis.", e);
+      console.warn("Google TTS proxy player initialization failed, falling back to Web Speech Synthesis.", e);
     }
   }
 
   // Otherwise, use native Web Speech Synthesis (offline fallback or Default English setup)
-  runNativeSpeechFallback(text, lang, avatarName, avatarChar, onEnd);
+  runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, onEnd);
 }
 
 function runNativeSpeechFallback(
@@ -223,7 +379,19 @@ function runNativeSpeechFallback(
     // Subset voices matching the requested target language specifier
     let eligibleVoices = voices.filter(v => {
       const vLang = v.lang.toLowerCase().replace('_', '-');
-      return vLang === targetLangLower || vLang.startsWith(langLower);
+      const vName = v.name.toLowerCase();
+      
+      const matchesLang = vLang === targetLangLower || vLang.startsWith(langLower);
+      
+      // Match by language name in the voice description (e.g. if voice name contains 'gujarati' etc)
+      let matchesName = false;
+      if (langLower === 'gu' && (vName.includes('gujarati') || vName.includes('guj'))) matchesName = true;
+      if (langLower === 'mr' && (vName.includes('marathi') || vName.includes('mar'))) matchesName = true;
+      if (langLower === 'ta' && (vName.includes('tamil') || vName.includes('tam'))) matchesName = true;
+      if (langLower === 'te' && (vName.includes('telugu') || vName.includes('tel'))) matchesName = true;
+      if (langLower === 'hi' && (vName.includes('hindi') || vName.includes('hin'))) matchesName = true;
+      
+      return matchesLang || matchesName;
     });
 
     if (eligibleVoices.length === 0) {
@@ -253,6 +421,16 @@ function runNativeSpeechFallback(
             voiceNameLower.includes('lekha') ||
             voiceNameLower.includes('vaishali') ||
             voiceNameLower.includes('geeta') ||
+            voiceNameLower.includes('pallavi') ||
+            voiceNameLower.includes('kavya') ||
+            voiceNameLower.includes('latha') ||
+            voiceNameLower.includes('swara') ||
+            voiceNameLower.includes('kavita') ||
+            voiceNameLower.includes('nandini') ||
+            voiceNameLower.includes('geetha') ||
+            voiceNameLower.includes('vani') ||
+            voiceNameLower.includes('hansa') ||
+            voiceNameLower.includes('dhwani') ||
             (voiceNameLower.includes('google') && !voiceNameLower.includes('male'))
           );
         } else {
