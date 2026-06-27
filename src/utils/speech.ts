@@ -293,7 +293,7 @@ export function speakText(
             audio.onerror = (e) => {
               console.warn(`[Speech TTS Client] Proxy audio element failed for chunk: "${chunk}". Falling back to native speech synthesis.`);
               if (currentSpeechSession === session) {
-                runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, onEnd);
+                runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
               }
             };
 
@@ -301,7 +301,7 @@ export function speakText(
           } catch (err) {
             console.warn(`[Speech TTS Client] Play failed for chunk: "${chunk}". Falling back to native system speech.`, err);
             if (currentSpeechSession === session) {
-              runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, onEnd);
+              runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
             }
           }
         };
@@ -315,14 +315,15 @@ export function speakText(
   }
 
   // Otherwise, use native Web Speech Synthesis (offline fallback or Default English setup)
-  runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, onEnd);
+  runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
 }
 
 function runNativeSpeechFallback(
   text: string, 
   lang: LanguageCode, 
-  avatarName?: string, 
-  avatarChar?: string, 
+  avatarName: string | undefined, 
+  avatarChar: string | undefined, 
+  session: number,
   onEnd?: () => void
 ) {
   if (!window.speechSynthesis) {
@@ -462,6 +463,7 @@ function runNativeSpeechFallback(
 
     if (onEnd) {
       const handleEnd = (reason: string) => {
+        if (currentSpeechSession !== session) return;
         if (hasFinished) return;
         
         const elapsedTime = Date.now() - startTime;
@@ -473,6 +475,7 @@ function runNativeSpeechFallback(
           console.warn(`Native speechSynthesis failed/ended prematurely in ${elapsedTime}ms (${reason}). Running visual speech simulator for ${durationMs}ms...`);
           
           activeFallbackTimeout = setTimeout(() => {
+            if (currentSpeechSession !== session) return;
             hasFinished = true;
             onEnd();
           }, durationMs);
@@ -493,6 +496,6 @@ function runNativeSpeechFallback(
     window.speechSynthesis.speak(utterance);
   } catch (error) {
     console.error('Text-to-Speech Native Error:', error);
-    if (onEnd) onEnd();
+    if (currentSpeechSession === session && onEnd) onEnd();
   }
 }

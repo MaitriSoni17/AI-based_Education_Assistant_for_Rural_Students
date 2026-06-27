@@ -68,38 +68,9 @@ const CHARACTERS = [
       ta: "வணக்கம் நண்பா! நான் சுவாமி. அறிவியல், கணிதம் மற்றும் தர்க்க புதிர்களை ஒன்றாக தீர்ப்போம். எதையும் கேள் அல்லது உங்கள் கேள்வித்தாள் படத்தைப் பதிவேற்று!",
       te: "నమస్తే స్నేహితుడా! నేను స్వామిని. సైన్స్, మ్యాథ్స్ మరియు పజిల్స్ ని కలిసి చేధిద్దాం. ఏదైనా అడుగు లేదా మీ హోంవర్క్ ఫోటోని పంపించు!"
     }
-  },
-  { 
-    id: 'dadi', 
-    name: 'Dadi AI 👵', 
-    role: 'Village Storyteller', 
-    char: '👵 Dadi AI',
-    color: 'border-amber-200 bg-amber-50/50 hover:bg-amber-50 text-amber-900',
-    welcome: {
-      en: "Greetings, my child. Come sit with me. I have many traditional folk stories of stars, rain, crops, and animals to tell you. Ask me questions, or show me an image you would like to know about!",
-      hi: "खुश रहो मेरे बच्चे। यहाँ मेरे पास बैठो। मेरे पास तुम्हें सुनाने के लिए तारों, बारिश, फसलों और पशु-पक्षियों की कहानियां हैं। सवाल पूछिए, या मुझे कोई तस्वीर दिखाएं!",
-      gu: "ખુશ રહે બેટા. મારી પાસે બેસ. વાદળો, તારા, પશુ-પક્ષીઓ અને ખેતરની ખૂબ સરસ વાર્તાઓ સંભળાવું. કોઈ પણ ચિત્ર બતાવીને ઉત્તર પૂછો!",
-      mr: "बाळा, माझ्या शेजारी बस. माझ्याकडे तुला सांगायला ढग, तारे, कोडे आणि प्राण्यांच्या छान गोष्टी आहेत. मला काहीही विचारा किंवा चित्र दाखवा!",
-      ta: "வா மகனே. என்னருகில் அமர். உனக்கு விண்மீன்கள், மழை, பயிர்கள் மற்றும் விலங்குகள் பற்றிய கிராமியக் கதைகள் பல சொல்வேன். ஏதாவது படம் காட்டி கேள்!",
-      te: "సంతోషం బాబు. ఇటు వచ్చి కూర్చో. నీకు నక్షత్రాలు, వానలు, పంటలు మరియు జంతువుల జానపద కథలెన్నో చెబుతా. చిత్రాలను చూపించి అడుగు!"
-    }
-  },
-  { 
-    id: 'chanda', 
-    name: 'Chanda AI 🦊', 
-    role: 'Witty Mathematics Fox', 
-    char: '🦊 Chanda AI',
-    color: 'border-orange-250 bg-orange-50/50 hover:bg-orange-50 text-orange-950',
-    welcome: {
-      en: "Aha! I am Chanda, the clever forest fox. I can multiply, divide, and puzzle you with speedy, trick questions. Ask or scan any math question paper to start!",
-      hi: "अहा! मैं हूँ चंदा, जंगल की चालाक लोमड़ी। मैं तुम्हें गणित के अनोखे पहाड़ों और पहेलियों से हैरान कर सकती हूँ। गणित की कोई भी तस्वीर दिखाओ!",
-      gu: "અરે વાહ! હું ચંદા, જંગલની હોશિયાર શિયાળ. હું તને ગણિતના જાદુઈ પ્રશ્નો પૂછીને મજા કરાવીશ. ગણિતના પ્રશ્નપત્રનો ફોટો મોકલો!",
-      mr: "वा! मी आहे चंदा, जंगलातील चतुर कोल्हा. मी तुला गणित आणि बुद्धिमत्ताच्या मजेशीर ट्रिक्स शिकवीन. चला, गणिताचे कोडे किंवा पानाचा फोटो पाठवा!",
-      ta: "ஆஹா! நான் தான் சண்டா, காட்டின் தந்திர நரி. கணிதப் புதிர்களால் உன்னை சோதிக்க வந்துள்ளேன். கணித வீட்டுப்பாடப் படத்தை அனுப்பு!",
-      te: "ఆహా! నేను చందాని, అడవి తెలివైన నక్కని. మ్యాథ్స్ ట్రిక్స్ తో నిన్ను ఆశ్చర్యపరుస్తా. ఏదైనా లెక్కల ఫోటో చూపిస్తే చాలు!"
-    }
   }
 ];
+
 
 const COMPANION_TITLE_LABELS: Record<LanguageCode, string> = {
   en: "Select Your AI Companion",
@@ -733,37 +704,8 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left">
       
-      {/* LEFT: CHARACTER SQUAD PICKER & MASCOT PREVIEW */}
+      {/* LEFT: MASCOT PREVIEW & LEARNING PATHS */}
       <div className="lg:col-span-4 space-y-5">
-        
-        {/* CHARACTER GRID */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-sm space-y-3">
-          <h3 className="font-display font-extrabold text-xs text-[#3D405B] uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-2">
-            <Sparkles className="h-4 w-4 text-[#E07A5F]" />
-            {COMPANION_TITLE_LABELS[lang] || COMPANION_TITLE_LABELS['en']}
-          </h3>
-          <div className="space-y-2">
-            {CHARACTERS.map(char => (
-              <button
-                key={char.id}
-                onClick={() => setSelectedChar(char)}
-                className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
-                  selectedChar.id === char.id 
-                    ? 'ring-2 ring-[#E07A5F] border-transparent font-extrabold ' + char.color
-                    : 'border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                <div>
-                  <h4 className="text-xs sm:text-sm font-sans font-bold">{char.name}</h4>
-                  <p className="text-[10px] text-gray-500 font-sans font-medium">
-                    {COMPANION_ROLE_LABELS[lang]?.[char.id] || char.role}
-                  </p>
-                </div>
-                <ArrowRight className={`h-4 w-4 transition-transform ${selectedChar.id === char.id ? 'translate-x-1 text-[#E07A5F]' : 'text-gray-300'}`} />
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* ACTIVE MASCOT RETREAT CANVASES */}
         <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 text-center space-y-4 shadow-md relative overflow-hidden h-64 flex flex-col justify-center items-center">

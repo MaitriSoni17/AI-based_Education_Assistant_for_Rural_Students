@@ -1,5 +1,5 @@
 {
-  "name": "AI based Education Assistant for Rural Students",
+  "name": "GyaanBot",
   "description": "An offline-first, multilingual AI education assistant designed for rural students with text-to-speech support, AI auto-video response tutoring, and interactive learning games.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

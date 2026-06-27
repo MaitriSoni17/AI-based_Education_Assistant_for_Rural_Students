@@ -131,7 +131,7 @@ export default function App() {
             A specialized digital learning assistant designed to operate securely under 2G bandwidth. Built for local offline synchronization and text-to-speech literacy assistance.
           </p>
           <div className="text-[10px] font-mono text-[#3D405B]/50 uppercase tracking-widest">
-            © 2026 Gramin Shiksha. India Primary Rural Classrooms Initiatives.
+            © 2026 GyaanBot. India Primary Rural Classrooms Initiatives.
           </div>
         </div>
       </footer>

@@ -36,7 +36,7 @@ export default function Navbar({
           <div className="flex items-center">
             <button
               id="brand-logo"
-              onClick={() => handleNavClick('home')}
+              onClick={() => handleNavClick(user ? 'dashboard' : 'home')}
               className="flex items-center space-x-2 text-[#3D405B] hover:text-[#E07A5F] transition-colors cursor-pointer"
             >
               <div className="p-2.5 bg-[#E07A5F] rounded-xl flex items-center justify-center">
@@ -50,39 +50,43 @@ export default function Navbar({
  
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-1 lg:space-x-2">
-            <button
-              id="nav-desktop-home"
-              onClick={() => handleNavClick('home')}
-              className={`px-3.5 py-2 rounded-xl font-sans font-semibold text-sm transition-all cursor-pointer ${
-                currentView === 'home'
-                  ? 'bg-[#E07A5F]/15 text-[#E07A5F]'
-                  : 'text-[#3D405B]/85 hover:text-[#E07A5F] hover:bg-white/60'
-              }`}
-            >
-              {t.navHome}
-            </button>
-            <button
-              id="nav-desktop-about"
-              onClick={() => handleNavClick('about')}
-              className={`px-3.5 py-2 rounded-xl font-sans font-semibold text-sm transition-all cursor-pointer ${
-                currentView === 'about'
-                  ? 'bg-[#E07A5F]/15 text-[#E07A5F]'
-                  : 'text-[#3D405B]/85 hover:text-[#E07A5F] hover:bg-white/60'
-              }`}
-            >
-              {t.navAbout}
-            </button>
-            <button
-              id="nav-desktop-features"
-              onClick={() => handleNavClick('features')}
-              className={`px-3.5 py-2 rounded-xl font-sans font-semibold text-sm transition-all cursor-pointer ${
-                currentView === 'features'
-                  ? 'bg-[#E07A5F]/15 text-[#E07A5F]'
-                  : 'text-[#3D405B]/85 hover:text-[#E07A5F] hover:bg-white/60'
-              }`}
-            >
-              {t.navFeatures}
-            </button>
+            {!user && (
+              <>
+                <button
+                  id="nav-desktop-home"
+                  onClick={() => handleNavClick('home')}
+                  className={`px-3.5 py-2 rounded-xl font-sans font-semibold text-sm transition-all cursor-pointer ${
+                    currentView === 'home'
+                      ? 'bg-[#E07A5F]/15 text-[#E07A5F]'
+                      : 'text-[#3D405B]/85 hover:text-[#E07A5F] hover:bg-white/60'
+                  }`}
+                >
+                  {t.navHome}
+                </button>
+                <button
+                  id="nav-desktop-about"
+                  onClick={() => handleNavClick('about')}
+                  className={`px-3.5 py-2 rounded-xl font-sans font-semibold text-sm transition-all cursor-pointer ${
+                    currentView === 'about'
+                      ? 'bg-[#E07A5F]/15 text-[#E07A5F]'
+                      : 'text-[#3D405B]/85 hover:text-[#E07A5F] hover:bg-white/60'
+                  }`}
+                >
+                  {t.navAbout}
+                </button>
+                <button
+                  id="nav-desktop-features"
+                  onClick={() => handleNavClick('features')}
+                  className={`px-3.5 py-2 rounded-xl font-sans font-semibold text-sm transition-all cursor-pointer ${
+                    currentView === 'features'
+                      ? 'bg-[#E07A5F]/15 text-[#E07A5F]'
+                      : 'text-[#3D405B]/85 hover:text-[#E07A5F] hover:bg-white/60'
+                  }`}
+                >
+                  {t.navFeatures}
+                </button>
+              </>
+            )}
  
             {user ? (
               <>
@@ -155,12 +159,12 @@ export default function Navbar({
             </div>
  
             {/* Network Indicator Mockup */}
-            <div className="flex items-center space-x-1.5 pl-2" title="Offline Access Ready">
+            {/*<div className="flex items-center space-x-1.5 pl-2" title="Offline Access Ready">
               <Wifi className="h-4 w-4 text-[#81B29A] animate-pulse" />
               <span className="text-[10px] font-mono font-bold text-[#81B29A] bg-[#81B29A]/10 px-2.5 py-1 rounded-full border border-[#81B29A]/20 uppercase tracking-widest">
                 Offline Ready
               </span>
-            </div>
+            </div>*/}
           </div>
  
           {/* Hamburger / Mobile Toggle */}
@@ -191,44 +195,46 @@ export default function Navbar({
             </button>
           </div>
         </div>
-      </div>
- 
-      {/* Mobile Drawer */}
+      </div>       {/* Mobile Drawer */}
       {isOpen && (
         <div id="mobile-menu-drawer" className="lg:hidden border-t border-[#F2CC8F]/20 bg-white px-4 pt-2 pb-4 space-y-2 shadow-inner transition-all animate-fade-in">
-          <button
-            id="nav-mobile-home"
-            onClick={() => handleNavClick('home')}
-            className={`block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-medium text-sm transition-all ${
-              currentView === 'home'
-                ? 'bg-[#E07A5F]/10 text-[#E07A5F] border-l-4 border-[#E07A5F]'
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {t.navHome}
-          </button>
-          <button
-            id="nav-mobile-about"
-            onClick={() => handleNavClick('about')}
-            className={`block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-medium text-sm transition-all ${
-              currentView === 'about'
-                ? 'bg-[#E07A5F]/10 text-[#E07A5F] border-l-4 border-[#E07A5F]'
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {t.navAbout}
-          </button>
-          <button
-            id="nav-mobile-features"
-            onClick={() => handleNavClick('features')}
-            className={`block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-medium text-sm transition-all ${
-              currentView === 'features'
-                ? 'bg-[#E07A5F]/10 text-[#E07A5F] border-l-4 border-[#E07A5F]'
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {t.navFeatures}
-          </button>
+          {!user && (
+            <>
+              <button
+                id="nav-mobile-home"
+                onClick={() => handleNavClick('home')}
+                className={`block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-medium text-sm transition-all ${
+                  currentView === 'home'
+                    ? 'bg-[#E07A5F]/10 text-[#E07A5F] border-l-4 border-[#E07A5F]'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {t.navHome}
+              </button>
+              <button
+                id="nav-mobile-about"
+                onClick={() => handleNavClick('about')}
+                className={`block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-medium text-sm transition-all ${
+                  currentView === 'about'
+                    ? 'bg-[#E07A5F]/10 text-[#E07A5F] border-l-4 border-[#E07A5F]'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {t.navAbout}
+              </button>
+              <button
+                id="nav-mobile-features"
+                onClick={() => handleNavClick('features')}
+                className={`block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-medium text-sm transition-all ${
+                  currentView === 'features'
+                    ? 'bg-[#E07A5F]/10 text-[#E07A5F] border-l-4 border-[#E07A5F]'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {t.navFeatures}
+              </button>
+            </>
+          )}
  
           {user ? (
             <div className="border-t border-gray-100 pt-2 mt-2 space-y-2">

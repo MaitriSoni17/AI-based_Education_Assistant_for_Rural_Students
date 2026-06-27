@@ -118,7 +118,7 @@ async function sendSMSViaTwilio(to: string, otp: string): Promise<{ success: boo
   }
 
   const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-  const messageBody = `Your Gramin Shiksha classroom login verification code is ${otp}. Valid for 5 minutes. Please do not share it with anyone.`;
+  const messageBody = `Your GyaanBot classroom login verification code is ${otp}. Valid for 5 minutes. Please do not share it with anyone.`;
 
   try {
     const response = await fetch(endpoint, {
@@ -318,7 +318,7 @@ async function startServer() {
           success: true,
           verified: true,
           user: verifiedUser,
-          message: "Security code successfully verified! Welcome to Gramin Classroom."
+          message: "Security code successfully verified! Welcome to GyaanBot Classroom."
         });
       } else {
         const remaining = MAX_VERIFICATION_ATTEMPTS - activeOtpState.attempts;

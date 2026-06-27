@@ -1,5 +1,5 @@
-// Gramin Shiksha AI - Offline-First Service Worker
-const CACHE_NAME = 'gramin-shiksha-static-v1';
+// GyaanBot - Offline-First Service Worker
+const CACHE_NAME = 'gyaanbot-static-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

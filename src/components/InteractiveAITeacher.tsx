@@ -8,6 +8,7 @@ interface InteractiveAITeacherProps {
   isPlaying: boolean;
   themeColor?: string;
   className?: string;
+  minimal?: boolean;
 }
 
 export default function InteractiveAITeacher({
@@ -15,7 +16,8 @@ export default function InteractiveAITeacher({
   avatarName,
   action,
   isPlaying,
-  className = ""
+  className = "",
+  minimal = false
 }: InteractiveAITeacherProps) {
   const [blink, setBlink] = useState(false);
   const [mouthStep, setMouthStep] = useState(0);
@@ -676,6 +678,40 @@ export default function InteractiveAITeacher({
         );
     }
   };
+
+  if (minimal) {
+    return (
+      <div className={`relative flex items-center justify-center select-none ${className}`}>
+        {/* Dynamic Keyframes injected into DOM for gorgeous breathing rhythm & twitches */}
+        <style>{`
+          @keyframes natural-breathe {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-4px) scale(1.015); }
+          }
+          @keyframes subtle-shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+          .ai-breath-cycle {
+            animation: natural-breathe 4.5s ease-in-out infinite;
+          }
+          .animate-shimmer {
+            animation: subtle-shimmer 2s linear infinite;
+          }
+        `}</style>
+        
+        {/* Minimal rounded container that clips any overflowing shoulders, centered cleanly */}
+        <div className="relative w-36 h-36 rounded-full flex items-center justify-center ai-breath-cycle overflow-hidden bg-slate-900/50">
+          <div className="absolute inset-0 flex items-center justify-center">
+            {teacherType === 'dadi' && renderDadiFace()}
+            {teacherType === 'swami' && renderSwamiFace()}
+            {teacherType === 'chanda' && renderChandaFace()}
+            {teacherType === 'generic' && renderGenericFace()}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative flex flex-col items-center justify-center select-none ${className}`}>

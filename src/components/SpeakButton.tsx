@@ -14,11 +14,25 @@ export default function SpeakButton({ text, lang, className = "", size = "sm" }:
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   useEffect(() => {
-    // Cleanup speaking on unmount
+    let checkSpeech: NodeJS.Timeout | null = null;
+    if (isSpeaking) {
+      checkSpeech = setInterval(() => {
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+          if (!window.speechSynthesis.speaking) {
+            setIsSpeaking(false);
+          }
+        } else {
+          setIsSpeaking(false);
+        }
+      }, 500);
+    }
     return () => {
       stopSpeaking();
+      if (checkSpeech) {
+        clearInterval(checkSpeech);
+      }
     };
-  }, []);
+  }, [isSpeaking]);
 
   const handleSpeak = (e: MouseEvent) => {
     e.stopPropagation();
@@ -28,19 +42,6 @@ export default function SpeakButton({ text, lang, className = "", size = "sm" }:
     } else {
       setIsSpeaking(true);
       speakText(text, lang);
-
-      // Periodically check if speech has stopped to reset the icon
-      const checkSpeech = setInterval(() => {
-        if (typeof window !== 'undefined' && window.speechSynthesis) {
-          if (!window.speechSynthesis.speaking) {
-            setIsSpeaking(false);
-            clearInterval(checkSpeech);
-          }
-        } else {
-          setIsSpeaking(false);
-          clearInterval(checkSpeech);
-        }
-      }, 500);
     }
   };
 

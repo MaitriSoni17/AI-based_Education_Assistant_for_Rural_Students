@@ -725,7 +725,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
             <div className="flex gap-3 text-xs leading-relaxed">
               <span className="p-1 rounded-sm bg-purple-50 text-purple-600 block h-max">🔑</span>
               <div>
-                <p className="font-sans font-bold text-gray-800">Registered Gramin Student Academic ID</p>
+                <p className="font-sans font-bold text-gray-800">Registered GyaanBot Student Academic ID</p>
                 <span className="text-[10px] font-mono text-gray-400 font-extrabold block">Joined Date: {user.signupDate || "June 2026"}</span>
               </div>
             </div>

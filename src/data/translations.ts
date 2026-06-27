@@ -73,7 +73,7 @@ export interface TranslationSet {
 
 export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
   en: {
-    appTitle: "Gramin Shiksha AI",
+    appTitle: "GyaanBot",
     navHome: "Home",
     navAbout: "About Us",
     navFeatures: "Features",
@@ -130,7 +130,7 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     signUpBtn: "Register & Start Learning"
   },
   hi: {
-    appTitle: "ग्रामीण शिक्षा AI",
+    appTitle: "ज्ञानबॉट (GyaanBot)",
     navHome: "मुख्य पृष्ठ",
     navAbout: "हमारे बारे में",
     navFeatures: "विशेषताएं",
@@ -187,7 +187,7 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     signUpBtn: "पंजीकरण करें और पढ़ना शुरू करें"
   },
   gu: {
-    appTitle: "ગ્રામીણ શિક્ષણ AI",
+    appTitle: "જ્ઞાનબોટ (GyaanBot)",
     navHome: "મુખ્ય પાનું",
     navAbout: "અમારા વિશે",
     navFeatures: "સુવિધાઓ",
@@ -244,7 +244,7 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     signUpBtn: "રજીસ્ટ્રેશન કરો અને ભણવાનું શરૂ કરો"
   },
   mr: {
-    appTitle: "ग्रामीण शिक्षण AI",
+    appTitle: "ज्ञानबॉट (GyaanBot)",
     navHome: "मुख्य पृष्ठ",
     navAbout: "आमच्याबद्दल",
     navFeatures: "वैशिष्ट्ये",
@@ -301,7 +301,7 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     signUpBtn: "नोंदणी करा आणि शिकणे सुरू करा"
   },
   ta: {
-    appTitle: "கிராமப்புற கல்வி AI",
+    appTitle: "ஞான்பாட் (GyaanBot)",
     navHome: "முகப்பு",
     navAbout: "எங்களைப் பற்றி",
     navFeatures: "அம்சங்கள்",
@@ -358,7 +358,7 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     signUpBtn: "பதிவு செய்து கற்க அடியெடுத்து வை"
   },
   te: {
-    appTitle: "గ్రామీణ విద్యా AI",
+    appTitle: "జ్ఞానబోట్ (GyaanBot)",
     navHome: "హోమ్",
     navAbout: "మా గురించి",
     navFeatures: "ఫీచర్లు",

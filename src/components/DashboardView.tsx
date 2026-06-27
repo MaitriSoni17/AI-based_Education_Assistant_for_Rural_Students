@@ -13,6 +13,7 @@ import ExamPrepTab from './dashboard/ExamPrepTab';
 import CareerGuidanceTab from './dashboard/CareerGuidanceTab';
 import SettingsTab from './dashboard/SettingsTab';
 import OfflineLibraryTab from './dashboard/OfflineLibraryTab';
+import CertificatesTab from './dashboard/CertificatesTab';
 
 // Icons
 import { 
@@ -28,7 +29,7 @@ interface DashboardViewProps {
 
 export default function DashboardView({ user, lang }: DashboardViewProps) {
   // Navigation active tab controller: default to 'profile' as requested for the overview
-  const [activeTab, setActiveTab] = useState<'profile' | 'ai-assistant' | 'tutor' | 'offline-library' | 'quiz' | 'exam' | 'career' | 'settings'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'ai-assistant' | 'tutor' | 'offline-library' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates'>('profile');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Sync Manager state tracking
@@ -119,6 +120,7 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
     { id: 'tutor', label: 'Mascot Class Tutor', icon: BookOpen, color: 'text-[#81B29A] bg-[#81B29A]/10' },
     { id: 'offline-library', label: 'Offline Library', icon: Download, color: 'text-indigo-500 bg-indigo-50' },
     { id: 'quiz', label: 'Topic Play Quizzes', icon: HelpCircle, color: 'text-amber-500 bg-amber-50' },
+    { id: 'certificates', label: 'My Certificates', icon: GraduationCap, color: 'text-amber-600 bg-amber-50' },
     { id: 'exam', label: 'Competitive Exams', icon: Award, color: 'text-rose-500 bg-rose-50' },
     { id: 'career', label: 'Career Guidance', icon: Sparkles, color: 'text-purple-500 bg-purple-50' },
     { id: 'settings', label: 'System Settings', icon: SettingsIcon, color: 'text-gray-500 bg-gray-50' },
@@ -205,83 +207,7 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
         </div>
       </header>
 
-      {/* BACKGROUND RECONCILIATION & SYNC BOARD */}
-      <section className="bg-white rounded-3xl p-4 sm:p-5 border border-gray-150 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-4 text-left">
-        <div className="flex items-center gap-3 w-full md:w-auto text-left">
-          <div className={`p-3 rounded-full ${isOnline ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600 animate-pulse'}`}>
-            {isOnline ? (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-3.536 4.978 4.978 0 011.414-3.536M3 3l18 18" />
-              </svg>
-            )}
-          </div>
-          <div>
-            <div className="flex items-center gap-2 text-left justify-start">
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full uppercase ${
-                isOnline ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-              }`}>
-                {isOnline ? '🟢 Connected' : '🔴 Offline Cached Mode'}
-              </span>
-              {(pendingChatsCount > 0 || pendingProgressCount > 0) && (
-                <span className="text-[10px] bg-indigo-100 text-indigo-805 font-mono font-bold px-2 py-0.5 rounded-full uppercase">
-                  Pending Sync List
-                </span>
-              )}
-            </div>
-            <h2 className="font-display font-extrabold text-[#3D405B] text-sm mt-1">
-              Offline-to-Online Automated Sync Engine
-            </h2>
-            <p className="text-xs text-gray-500 max-w-lg mt-0.5">
-              {isOnline 
-                ? "Your internet connection is active. All chat history, notes assessments, and progress milestones are synced perfectly with the orbital classroom servers."
-                : "You are offline or have weak connectivity. Swami is auto-caching your questions, notebook snaps, and quiz scores locally. They will reconcile immediately when network returns."
-              }
-            </p>
-          </div>
-        </div>
 
-        {/* Sync Controls or Stats indicator */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto shrink-0 border-t md:border-t-0 pt-4 md:pt-0 border-gray-100 w-full md:w-auto justify-end">
-          <div className="text-left md:text-right font-mono space-y-0.5 w-full sm:w-auto">
-            <span className="text-[10px] font-bold text-gray-400 block uppercase tracking-wider">Unsynced Cache</span>
-            <div className="text-xs font-black text-gray-800 flex sm:flex-col gap-2 sm:gap-0">
-              <span className={pendingChatsCount > 0 ? 'text-indigo-600 font-bold' : 'text-gray-500'}>
-                💬 {pendingChatsCount} queued chats
-              </span>
-              <span className={pendingProgressCount > 0 ? 'text-amber-600 font-bold' : 'text-gray-500'}>
-                🏆 {pendingProgressCount} study scores
-              </span>
-            </div>
-          </div>
-
-          <button
-            onClick={handleManualSync}
-            disabled={isSyncing}
-            className={`w-full sm:w-auto p-3 px-5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all ${
-              isSyncing 
-                ? 'bg-gray-100 text-gray-400 border border-transparent' 
-                : isOnline 
-                  ? 'bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100'
-                  : 'bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100'
-            }`}
-          >
-            <svg className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 3v2M4 30" />
-            </svg>
-            <span>{isSyncing ? 'Syncing...' : 'Force Sync Now'}</span>
-          </button>
-        </div>
-      </section>
-
-      {syncFeedback && (
-        <div className="bg-[#FAF8F4] border border-[#F2CC8F] rounded-2xl p-3 px-5 text-center text-xs font-semibold text-amber-950 shadow-3xs animate-fade-in text-left">
-          {syncFeedback}
-        </div>
-      )}
 
       {/* 2. DYNAMIC WORKSPACE GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -351,14 +277,7 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
                 claimedMedals={claimedMedals}
                 offlineCount={offlineDownloadedCount}
                 onNavigateToTab={(tabId) => {
-                  if (tabId === 'profile') setActiveTab('profile');
-                  else if (tabId === 'ai-assistant') setActiveTab('ai-assistant');
-                  else if (tabId === 'tutor') setActiveTab('tutor');
-                  else if (tabId === 'offline-library') setActiveTab('offline-library');
-                  else if (tabId === 'quiz') setActiveTab('quiz');
-                  else if (tabId === 'exam') setActiveTab('exam');
-                  else if (tabId === 'career') setActiveTab('career');
-                  else if (tabId === 'settings') setActiveTab('settings');
+                  setActiveTab(tabId as any);
                 }}
               />
             )}
@@ -375,8 +294,6 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
                 lang={lang}
                 claimedMedals={claimedMedals}
                 setClaimedMedals={setClaimedMedals}
-                offlineResources={offlineResources}
-                setOfflineResources={setOfflineResources}
               />
             )}
 
@@ -389,6 +306,14 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
             {activeTab === 'quiz' && (
               <QuizTab
                 lang={lang}
+                onNavigateToTab={(tabId) => setActiveTab(tabId)}
+              />
+            )}
+
+            {activeTab === 'certificates' && (
+              <CertificatesTab
+                lang={lang}
+                onNavigateToTab={(tabId) => setActiveTab(tabId)}
               />
             )}
 
