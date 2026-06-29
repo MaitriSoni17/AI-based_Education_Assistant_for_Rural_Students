@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LanguageCode } from '../../types';
+import { LanguageCode, User as StudentUser } from '../../types';
 import { speakText } from '../../utils/speech';
 import { 
   Award, Sparkles, Download, Calendar, Clock, MessageSquare, 
@@ -30,8 +30,10 @@ interface EarnedCertificate {
 }
 
 interface CertificatesTabProps {
+  user: StudentUser;
   lang: LanguageCode;
   onNavigateToTab?: (tabId: 'quiz') => void;
+  onUpdateUser: (fields: Partial<StudentUser>) => void;
 }
 
 const TITLE_TRANSLATIONS: Record<string, string> = {
@@ -52,31 +54,38 @@ const SUBTITLE_TRANSLATIONS: Record<string, string> = {
   te: "మీరు పొందిన ధృవీకరణ పత్రాలను వీక్షించండి మరియు డౌన్‌లోड చేయండి, ఇందులో తేదీ, సమయం మరియు చాట్ ఉన్నాయి."
 };
 
-export default function CertificatesTab({ lang, onNavigateToTab }: CertificatesTabProps) {
+export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateUser }: CertificatesTabProps) {
   const [certificates, setCertificates] = useState<EarnedCertificate[]>([]);
   const [selectedCert, setSelectedCert] = useState<EarnedCertificate | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [editingName, setEditingName] = useState('');
   const [activeChatIndex, setActiveChatIndex] = useState<number | null>(null);
 
-  // Load certificates from localStorage on mount
+  // Load certificates from user object and sync when active user changes
   useEffect(() => {
-    const raw = localStorage.getItem('quizzes_earned_certificates');
+    const raw = user.earnedCertificates;
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as EarnedCertificate[];
         setCertificates(parsed);
         if (parsed.length > 0) {
           setSelectedCert(parsed[0]);
-          setEditingName(parsed[0].recipientName || localStorage.getItem('quizzes_certificate_name') || 'GyaanBot Scholar');
+          setEditingName(parsed[0].recipientName || user.certificateName || user.name || 'GyaanBot Scholar');
+        } else {
+          setSelectedCert(null);
+          setEditingName('');
         }
       } catch (err) {
         console.error("Error loading earned certificates", err);
       }
+    } else {
+      setCertificates([]);
+      setSelectedCert(null);
+      setEditingName('');
     }
-  }, []);
+  }, [user]);
 
-  // Update selected certificate name and save to localStorage
+  // Update selected certificate name and save to Firestore
   const handleUpdateName = (newName: string) => {
     setEditingName(newName);
     if (!selectedCert) return;
@@ -88,8 +97,10 @@ export default function CertificatesTab({ lang, onNavigateToTab }: CertificatesT
     // Update in list
     const updatedList = certificates.map(c => c.id === selectedCert.id ? updatedCert : c);
     setCertificates(updatedList);
-    localStorage.setItem('quizzes_earned_certificates', JSON.stringify(updatedList));
-    localStorage.setItem('quizzes_certificate_name', newName);
+    onUpdateUser({
+      earnedCertificates: JSON.stringify(updatedList),
+      certificateName: newName
+    });
   };
 
   // Delete certificate from portfolio
@@ -100,12 +111,14 @@ export default function CertificatesTab({ lang, onNavigateToTab }: CertificatesT
 
     const filtered = certificates.filter(c => c.id !== id);
     setCertificates(filtered);
-    localStorage.setItem('quizzes_earned_certificates', JSON.stringify(filtered));
+    onUpdateUser({
+      earnedCertificates: JSON.stringify(filtered)
+    });
 
     if (selectedCert?.id === id) {
       if (filtered.length > 0) {
         setSelectedCert(filtered[0]);
-        setEditingName(filtered[0].recipientName || 'GyaanBot Scholar');
+        setEditingName(filtered[0].recipientName || user.name || 'GyaanBot Scholar');
       } else {
         setSelectedCert(null);
         setEditingName('');

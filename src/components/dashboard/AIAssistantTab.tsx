@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LanguageCode } from '../../types';
+import { LanguageCode, User } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import SpeechInputButton from '../SpeechInputButton';
@@ -7,7 +7,7 @@ import InteractiveAITeacher from '../InteractiveAITeacher';
 import { 
   Sparkles, Send, Volume2, VolumeX, Smile, ArrowRight, CornerDownRight,
   Paperclip, X, Trash, Image as ImageIcon, BookOpen, Compass, Map, 
-  GraduationCap, Leaf, Sun, CloudRain, Award, Check, RotateCcw, Play
+  GraduationCap, Leaf, Sun, CloudRain, Award, Check, RotateCcw, Play, Plus
 } from 'lucide-react';
 import { offlineSyncManager } from '../../utils/offlineSync';
 import InteractiveDiagram from './InteractiveDiagram';
@@ -37,7 +37,9 @@ const parseMessageContent = (text: string) => {
 };
 
 interface AIAssistantTabProps {
+  user: User;
   lang: LanguageCode;
+  onUpdateUser: (fields: Partial<User>) => void;
 }
 
 interface ChatMessage {
@@ -51,6 +53,13 @@ interface ChatMessage {
     name?: string;
   };
   pending?: boolean;
+}
+
+interface ChatSession {
+  id: string;
+  title: string;
+  timestamp: string;
+  messages: ChatMessage[];
 }
 
 const CHARACTERS = [
@@ -279,13 +288,150 @@ const COMPANION_ROLE_LABELS: Record<LanguageCode, Record<string, string>> = {
   te: { swami: "మస్కట్ సహచరుడు", dadi: "గ్రామ కథకురాలు", chanda: "తెలివైన గణిత నక్క" }
 };
 
-export default function AIAssistantTab({ lang }: AIAssistantTabProps) {
+const NEW_CHAT_LABELS: Record<LanguageCode, string> = {
+  en: "New Chat",
+  hi: "नया चैट",
+  gu: "નવી ચેટ",
+  mr: "नवीन चॅट",
+  ta: "புதிய அரட்டை",
+  te: "కొత్త చాట్"
+};
+
+const VIEW_HISTORY_LABELS: Record<LanguageCode, string> = {
+  en: "View History",
+  hi: "इतिहास देखें",
+  gu: "ઇતિહાસ જુઓ",
+  mr: "इतिहास पहा",
+  ta: "வரலாற்றைக் காண்க",
+  te: "చరిత్రను వీక్షించండి"
+};
+
+const HISTORY_TITLE_LABELS: Record<LanguageCode, string> = {
+  en: "Chat History",
+  hi: "चैट इतिहास",
+  gu: "ચેટ ઇતિહાસ",
+  mr: "चॅट इतिहास",
+  ta: "அரட்டை வரலாறு",
+  te: "చాట్ చరిత్ర"
+};
+
+const NO_HISTORY_LABELS: Record<LanguageCode, string> = {
+  en: "No saved chat history found.",
+  hi: "कोई सहेजा गया चैट इतिहास नहीं मिला।",
+  gu: "કોઈ સાચવેલ ચેટ ઇતિહાસ મળ્યો નથી.",
+  mr: "कोणताही जतन केलेला चॅट इतिहास आढळला नाही.",
+  ta: "சேமிக்கப்பட்ட அரட்டை வரலாறு எதுவும் இல்லை.",
+  te: "సేవ్ చేసిన చాట్ చరిత్ర ఏదీ కనుగొనబడలేదు."
+};
+
+export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistantTabProps) {
   const [selectedChar, setSelectedChar] = useState(CHARACTERS[0]);
   const [inputText, setInputText] = useState('');
   const [isPlayingVoice, setIsPlayingVoice] = useState<string | null>(null);
   const [msgHistory, setMsgHistory] = useState<Record<string, ChatMessage[]>>({});
   const [mascotAction, setMascotAction] = useState<'idle' | 'explaining' | 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think'>('idle');
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => {
+    try {
+      const saved = user.chatSessions;
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    const serialized = JSON.stringify(chatSessions);
+    if (user.chatSessions !== serialized) {
+      onUpdateUser({ chatSessions: serialized });
+    }
+  }, [chatSessions]);
+
+  // Synchronize student data when logged-in student session changes
+  useEffect(() => {
+    try {
+      const savedSess = user.chatSessions;
+      setChatSessions(savedSess ? JSON.parse(savedSess) : []);
+    } catch {
+      setChatSessions([]);
+    }
+    setActivePathId(user.activePathId || null);
+    try {
+      const savedMilestones = user.completedMilestones;
+      setCompletedMilestones(savedMilestones ? JSON.parse(savedMilestones) : []);
+    } catch {
+      setCompletedMilestones([]);
+    }
+    // Reset temporary chat message state for security
+    setMsgHistory({});
+  }, [user]);
+
+  const archiveCurrentChat = (messagesToArchive?: ChatMessage[]) => {
+    const msgs = messagesToArchive || msgHistory[selectedChar.id] || [];
+    const userMsgs = msgs.filter(m => m.sender === 'user');
+    if (userMsgs.length === 0) return; // nothing to archive
+
+    // Determine title from first user message
+    const firstUserMsg = userMsgs[0].text;
+    const title = firstUserMsg.length > 30 ? firstUserMsg.slice(0, 30) + '...' : firstUserMsg;
+    const timestamp = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    const newSession: ChatSession = {
+      id: 'sess-' + Date.now(),
+      title,
+      timestamp,
+      messages: msgs
+    };
+
+    setChatSessions(prev => [newSession, ...prev]);
+  };
+
+  const handleNewChat = () => {
+    const currentMsgs = msgHistory[selectedChar.id] || [];
+    // Archive current if it has content
+    archiveCurrentChat(currentMsgs);
+
+    // Re-initialize active chat with a new welcome message
+    const defaultWelcomeText = selectedChar.welcome[lang] || selectedChar.welcome['en'];
+    const welcomeMsg: ChatMessage = {
+      id: 'welcome-' + Date.now(),
+      sender: 'assistant',
+      text: defaultWelcomeText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setMsgHistory(prev => ({
+      ...prev,
+      [selectedChar.id]: [welcomeMsg]
+    }));
+    offlineSyncManager.saveChatHistory(selectedChar.id, [welcomeMsg], user.mobile);
+  };
+
+  const handleLoadSession = (session: ChatSession) => {
+    // Archive current chat first if it has any user messages
+    const currentMsgs = msgHistory[selectedChar.id] || [];
+    archiveCurrentChat(currentMsgs);
+
+    // Load the selected session's messages
+    setMsgHistory(prev => ({
+      ...prev,
+      [selectedChar.id]: session.messages
+    }));
+    offlineSyncManager.saveChatHistory(selectedChar.id, session.messages, user.mobile);
+
+    // Remove the loaded session from list so it doesn't duplicate when archived later
+    setChatSessions(prev => prev.filter(s => s.id !== session.id));
+    
+    // Close history sidebar
+    setShowHistory(false);
+  };
+
+  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setChatSessions(prev => prev.filter(s => s.id !== sessionId));
+  };
 
   // Multi-modal state managers
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -294,24 +440,29 @@ export default function AIAssistantTab({ lang }: AIAssistantTabProps) {
 
   // Local Learning Path Database states & persistence
   const [activePathId, setActivePathId] = useState<string | null>(() => {
-    return localStorage.getItem('ai_active_learning_path_id') || null;
+    return user.activePathId || null;
   });
 
   const [completedMilestones, setCompletedMilestones] = useState<string[]>(() => {
-    const saved = localStorage.getItem('ai_completed_milestones');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = user.completedMilestones;
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
-    if (activePathId) {
-      localStorage.setItem('ai_active_learning_path_id', activePathId);
-    } else {
-      localStorage.removeItem('ai_active_learning_path_id');
+    if (user.activePathId !== (activePathId || '')) {
+      onUpdateUser({ activePathId: activePathId || '' });
     }
   }, [activePathId]);
 
   useEffect(() => {
-    localStorage.setItem('ai_completed_milestones', JSON.stringify(completedMilestones));
+    const serialized = JSON.stringify(completedMilestones);
+    if (user.completedMilestones !== serialized) {
+      onUpdateUser({ completedMilestones: serialized });
+    }
   }, [completedMilestones]);
 
   const activePath = LOCAL_LEARNING_PATHS.find(p => p.id === activePathId);
@@ -351,7 +502,17 @@ export default function AIAssistantTab({ lang }: AIAssistantTabProps) {
       ...prev,
       [selectedChar.id]: historyWithUser
     }));
-    offlineSyncManager.saveChatHistory(selectedChar.id, historyWithUser);
+    offlineSyncManager.saveChatHistory(selectedChar.id, historyWithUser, user.mobile);
+
+    offlineSyncManager.addLearningFeedEvent(user.mobile, {
+      type: 'chat',
+      title: lang === 'hi' ? `स्वामी एआई के साथ सहायक पठन` : `Assisted voice-reading with Swami AI`,
+      subtitle: lang === 'hi' ? `आज • एआई अध्ययन साथी के साथ बातचीत की` : `Today • Engaged in AI study companion dialog`,
+      icon: '🗣️',
+      bgClass: 'bg-blue-50',
+      textClass: 'text-blue-600',
+      timestamp: 'Today'
+    });
 
     if (!online) {
       offlineSyncManager.queuePendingChat({
@@ -360,7 +521,7 @@ export default function AIAssistantTab({ lang }: AIAssistantTabProps) {
         message: queryText,
         image: imagePayload,
         timestamp: userMsg.timestamp
-      });
+      }, user.mobile);
 
       const offlineNotice: ChatMessage = {
         id: 'ai-off-' + Date.now(),
@@ -374,7 +535,7 @@ export default function AIAssistantTab({ lang }: AIAssistantTabProps) {
         ...prev,
         [selectedChar.id]: finalWithNotice
       }));
-      offlineSyncManager.saveChatHistory(selectedChar.id, finalWithNotice);
+      offlineSyncManager.saveChatHistory(selectedChar.id, finalWithNotice, user.mobile);
       setMascotAction('idle');
       return;
     }
@@ -412,7 +573,7 @@ export default function AIAssistantTab({ lang }: AIAssistantTabProps) {
           const unpendUserHistory = history.map(h => h.id === userMsg.id ? { ...h, pending: false } : h);
           const updated = [...unpendUserHistory, aiMsg];
           
-          offlineSyncManager.saveChatHistory(selectedChar.id, updated);
+          offlineSyncManager.saveChatHistory(selectedChar.id, updated, user.mobile);
 
           setTimeout(() => {
             speakMessageAloud(aiMsg);
@@ -456,7 +617,7 @@ export default function AIAssistantTab({ lang }: AIAssistantTabProps) {
       setMsgHistory(prev => {
         const history = prev[selectedChar.id] || [];
         const updated = [...history, errResponse];
-        offlineSyncManager.saveChatHistory(selectedChar.id, updated);
+        offlineSyncManager.saveChatHistory(selectedChar.id, updated, user.mobile);
         return {
           ...prev,
           [selectedChar.id]: updated
@@ -468,7 +629,7 @@ export default function AIAssistantTab({ lang }: AIAssistantTabProps) {
 
   // Initialize welcome message or load historical conversations for selected character on mount or character update
   useEffect(() => {
-    const history = offlineSyncManager.getChatHistory(selectedChar.id);
+    const history = offlineSyncManager.getChatHistory(selectedChar.id, user.mobile);
     if (history && history.length > 0) {
       setMsgHistory(prev => ({
         ...prev,
@@ -486,9 +647,9 @@ export default function AIAssistantTab({ lang }: AIAssistantTabProps) {
         ...prev,
         [selectedChar.id]: [welcomeMsg]
       }));
-      offlineSyncManager.saveChatHistory(selectedChar.id, [welcomeMsg]);
+      offlineSyncManager.saveChatHistory(selectedChar.id, [welcomeMsg], user.mobile);
     }
-  }, [selectedChar, lang]);
+  }, [selectedChar, lang, user.mobile]);
 
   // Keep chat scrolled down
   useEffect(() => {
@@ -544,11 +705,19 @@ export default function AIAssistantTab({ lang }: AIAssistantTabProps) {
     };
     const targetLanguageName = languageNames[lang] || "English";
 
+    // Retrieve customized student context
+    const studentName = user.name || 'Student';
+    const gradeLevel = localStorage.getItem(`${user.mobile}_profile_standard`) || user.standard || 'Grade 6 Science';
+    const studentVillage = localStorage.getItem(`${user.mobile}_profile_village`) || user.village || 'Rampur Vilas';
+    const studentSchool = localStorage.getItem(`${user.mobile}_profile_school`) || user.school || 'Rampur Primary Public School';
+    const studentPoints = Number(localStorage.getItem(`${user.mobile}_quizzes_total_points`)) || 40;
+    const currentProgress = studentPoints < 100 ? "Beginner" : studentPoints < 300 ? "Intermediate" : "Reviewing & Advanced";
+
     const baseInstruction = (() => {
       switch (selectedChar.id) {
         case 'dadi':
-          return `You are Dadi AI 👵, a wise, warm village grandmother and traditional storyteller. 
-Your goal is to teach rural Indian children concept of stars, clouds, rain, farming, or moral life lessons.
+          return `You are Dadi AI 👵, an empathetic, wise, warm village grandmother and traditional storyteller designed specifically for rural students. 
+Your goal is to teach rural Indian children concepts of stars, clouds, rain, farming, or moral life lessons.
 Always speak very warmly and use parental language (like "Dear child", "my child", "खुश रहो मेरे बच्चे").
 Teach concepts by spinning them into short folk tales or traditional grandmother wisdom, but back it up with simple science so they learn. 
 When analyzing images or PDF documents, explain the handwritten notes, textbook pages, or educational chapters in a gentle, warm storyteller style using simple village terms.
@@ -557,7 +726,7 @@ CRITICAL RULE: The student has selected "${targetLanguageName}" as their preferr
 
 Keep answers sweet, engaging, and under 150 words.`;
         case 'chanda':
-          return `You are Chanda AI 🦊, a clever, hyperactive forest fox who is a master of Mathematics. 
+          return `You are Chanda AI 🦊, a clever, hyperactive forest fox who is a master of Mathematics, serving as an empathetic tutor for rural students. 
 You love challenges, speed tricks, multiplication tables, fast divisions, and fun logic riddles!
 Challenge the student playfully with quick sums or teach them smart maths hacks (like multiplying by 5 or 9) using rural examples like counting cows, mango fruits, or seed sacks.
 When analyzing images, textbook pages, or mathematical PDFs, spot any math problems, write out the step-by-step solution, and provide a quick witty calculation hack!
@@ -565,7 +734,7 @@ Keep your response highly energetic, fun, and extremely clear. Use playful fox a
 
 CRITICAL RULE: The student has selected "${targetLanguageName}" as their preferred language. You MUST ALWAYS write your response entirely in "${targetLanguageName}" using its proper native script/alphabets, even if the student asks their question/message in English or another language. DO NOT respond in English or any other language unless English is explicitly selected as the preferred language.`;
         default: // swami
-          return `You are Swami AI 🤖, a friendly, encouraging robot educational mascot designed for rural Indian students. 
+          return `You are Swami AI 🤖, a friendly, encouraging robot educational mascot and an empathetic, highly adaptive tutor designed specifically for rural Indian students. 
 You are an expert tutor in Science, Logic, History, and general topics.
 You explain complex modern subjects using humble, easy-to-understand village analogies (like crops, cycle pumps, rainfall, solar energy, local cattle).
 When students upload pictures of textbook pages, PDF document chapters, assignments, diagrams, or science experiment charts, analyze and summarize them thoroughly, dissect any diagrams, and give a highly interesting breakdown.
@@ -577,6 +746,26 @@ Keep replies compact and structured.`;
       }
     })();
 
+    // Dynamic adaptive student guidelines
+    const adaptationInstruction = `
+
+[EMPATHETIC ADAPTIVE LEARNING GUIDELINES]
+You MUST adapt your personality and teaching strictly based on the following student profile:
+1. [Student_Name]: Address the student personally as "${studentName}" to build strong rapport and trust.
+2. [Grade_Level]: Scale the complexity of your explanations and terminology to match exactly "${gradeLevel}". Do not be too complex or too basic.
+3. [Language/Dialect]: Respond strictly in the student's preferred language ("${targetLanguageName}"). You MUST use simple, local, and culturally relevant analogies (such as farming, village crops, local markets, cattle, or village festivals) to explain complex topics.
+4. [Subject/Topic]: Dynamically detect the subject/topic based on the student's message, and focus strictly on it.
+5. [Current_Progress]: The student's current progress level is "${currentProgress}". Tailor your explanation:
+   - For Beginner: Break things down step-by-step, explain starting terms simply, and be extra encouraging.
+   - For Intermediate: Pose questions, use active application prompts, and encourage independent reasoning.
+   - For Reviewing: Summarize key takeaways, connect concepts together, and challenge them to explain it.
+
+[BEHAVIOR & PEDAGOGICAL GUIDELINES]
+- Do not give wall-of-text answers. Use short, beautifully spaced paragraphs and bullet points for high legibility.
+- Always ask exactly ONE clear concept-checking question at the end of your response to test understanding.
+- If the student makes a mistake or gives an incorrect answer, gently guide them with hints or Socratic questions to the correct answer rather than just giving it to them.
+`;
+
     // Fetch active learning path guidelines to steer the companion tutor
     let learningPathBonus = '';
     if (activePathId) {
@@ -587,7 +776,7 @@ Keep replies compact and structured.`;
     }
 
     // Append the visual mapping guidelines for multi-modal diagrams and concept flowcharts
-    return `${baseInstruction}${learningPathBonus}
+    return `${baseInstruction}${adaptationInstruction}${learningPathBonus}
 
 CRITICAL: If the student's request or the concept you are explaining can be structured visually (like processes, water/nitrogen cycles, plant/animal anatomy, step-by-step math solutions, story timeline events, or classifications), you MUST ALWAYS append a visual structure block at the very end of your response in one of the following JSON formats inside a \`\`\`diagram-data ... \`\`\` block.
 Do not use markdown formatting (like asterisks or bolding) inside the JSON string values. Keep string values plain and clean.
@@ -702,176 +891,10 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left">
+    <div className="max-w-4xl mx-auto text-left">
       
-      {/* LEFT: MASCOT PREVIEW & LEARNING PATHS */}
-      <div className="lg:col-span-4 space-y-5">
-
-        {/* ACTIVE MASCOT RETREAT CANVASES */}
-        <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 text-center space-y-4 shadow-md relative overflow-hidden h-64 flex flex-col justify-center items-center">
-          <div className="absolute top-2 left-2 flex items-center gap-1">
-            <span className="h-1.5 w-1.5 bg-red-500 rounded-full animate-ping" />
-            <span className="text-[8px] font-mono text-gray-400 font-bold uppercase tracking-widest">
-              {ACTIVE_MASCOT_LABELS[lang] || ACTIVE_MASCOT_LABELS['en']}
-            </span>
-          </div>
-
-          <InteractiveAITeacher
-            avatarChar={selectedChar.char}
-            avatarName={selectedChar.name}
-            action={mascotAction}
-            isPlaying={isPlayingVoice !== null}
-          />
-          <span className="text-xs font-mono font-bold text-[#F2CC8F] bg-white/10 px-2.5 py-1 rounded truncate max-w-full">
-            {selectedChar.name} ({mascotAction === 'idle' ? (MASCOT_STATUS_LABELS[lang]?.listening || 'Listening...') : (MASCOT_STATUS_LABELS[lang]?.[mascotAction] || mascotAction).toUpperCase()})
-          </span>
-        </div>
-
-        {/* LEARNING PATH SELECTOR & PROGRESS TRACKER */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-sm space-y-4">
-          <h3 className="font-display font-extrabold text-xs text-[#3D405B] uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-2">
-            <Compass className="h-4 w-4 text-[#81B29A]" />
-            {LEARNING_PATH_TITLE_LABELS[lang] || LEARNING_PATH_TITLE_LABELS['en']}
-          </h3>
-
-          {!activePath ? (
-            // No active learning path -> Show List of Paths from our Local Database
-            <div className="space-y-3">
-              <p className="text-[11px] text-gray-500 font-sans leading-relaxed">
-                {LEARNING_PATH_INTRO_LABELS[lang] || LEARNING_PATH_INTRO_LABELS['en']}
-              </p>
-
-              <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1">
-                {LOCAL_LEARNING_PATHS.map((path) => {
-                  const title = path.title[lang] || path.title['en'];
-                  const desc = path.description[lang] || path.description['en'];
-                  return (
-                    <button
-                      key={path.id}
-                      onClick={() => handleStartLearningPath(path)}
-                      className="w-full p-3 rounded-xl border border-gray-100 hover:border-[#81B29A] hover:bg-[#81B29A]/5 text-left transition-all cursor-pointer group active:scale-98"
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="text-xs font-black text-[#3D405B] group-hover:text-[#81B29A] transition-colors">
-                          {title}
-                        </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600 uppercase tracking-wide">
-                          {path.subject}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-gray-500 line-clamp-2 font-sans leading-relaxed">
-                        {desc}
-                      </p>
-                      <div className="mt-2 flex items-center justify-between text-[9px] text-[#81B29A] font-extrabold">
-                        <span>{path.milestones.length} {STEPS_BADGE_LABELS[lang] || STEPS_BADGE_LABELS['en']}</span>
-                        <span className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {START_TOPIC_LABELS[lang] || START_TOPIC_LABELS['en']} <Play className="h-2 w-2 fill-current" />
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            // Active Learning Path details with checkbox milestones & auto prompts!
-            <div className="space-y-3">
-              <div className="bg-[#81B29A]/10 p-3 rounded-xl border border-[#81B29A]/20">
-                <div className="flex justify-between items-start mb-1">
-                  <span className="text-xs font-black text-[#2C5E43] uppercase tracking-wide">
-                    {activePath.subject} • Grade {activePath.grade}
-                  </span>
-                  <button
-                    onClick={() => setActivePathId(null)}
-                    className="text-[10px] text-gray-500 hover:text-red-500 font-bold flex items-center gap-0.5 transition-colors cursor-pointer"
-                    title="Change learning path"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                    {CHANGE_BUTTON_LABELS[lang] || CHANGE_BUTTON_LABELS['en']}
-                  </button>
-                </div>
-                <h4 className="text-sm font-extrabold text-[#3D405B]">
-                  {activePath.title[lang] || activePath.title['en']}
-                </h4>
-                <p className="text-[10px] text-gray-600 font-sans mt-1 leading-relaxed">
-                  {activePath.description[lang] || activePath.description['en']}
-                </p>
-              </div>
-
-              {/* Steps/Milestones Progress */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-[10px] font-sans font-bold text-gray-500">
-                  <span>{MILESTONE_TRACK_LABELS[lang] || MILESTONE_TRACK_LABELS['en']}</span>
-                  <span className="text-[#81B29A] font-extrabold">
-                    {activePath.milestones.filter(m => completedMilestones.includes(m.id)).length} {COMPLETED_RATIO_LABELS[lang]?.of || COMPLETED_RATIO_LABELS['en'].of} {activePath.milestones.length} {COMPLETED_RATIO_LABELS[lang]?.done || COMPLETED_RATIO_LABELS['en'].done}
-                  </span>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-gradient-to-r from-[#81B29A] to-[#3D405B] h-full transition-all duration-500"
-                    style={{ 
-                      width: `${(activePath.milestones.filter(m => completedMilestones.includes(m.id)).length / activePath.milestones.length) * 100}%` 
-                    }}
-                  />
-                </div>
-
-                {/* Checklist steps */}
-                <div className="space-y-2 pt-1 max-h-[190px] overflow-y-auto pr-1">
-                  {activePath.milestones.map((milestone, idx) => {
-                    const isDone = completedMilestones.includes(milestone.id);
-                    return (
-                      <div 
-                        key={milestone.id}
-                        className={`p-2.5 rounded-xl border transition-all flex gap-2.5 items-start ${
-                          isDone 
-                            ? 'bg-gray-50/50 border-gray-150 opacity-75' 
-                            : 'bg-white border-gray-100 hover:border-gray-200'
-                        }`}
-                      >
-                        <button
-                          onClick={() => toggleMilestone(milestone.id)}
-                          className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 cursor-pointer mt-0.5 transition-all ${
-                            isDone 
-                              ? 'bg-[#81B29A] border-transparent text-white' 
-                              : 'border-gray-300 hover:border-[#81B29A] bg-white'
-                          }`}
-                        >
-                          {isDone && <Check className="h-3 w-3 stroke-[3]" />}
-                        </button>
-                        <div className="space-y-1">
-                          <span className={`text-[11px] font-black block leading-none ${isDone ? 'line-through text-gray-400' : 'text-[#3D405B]'}`}>
-                            {(lang === 'hi' ? 'कदम' : lang === 'gu' ? 'પગલું' : lang === 'mr' ? 'टप्पा' : lang === 'ta' ? 'படி' : lang === 'te' ? 'మెట్టు' : 'Step')} {idx + 1}: {milestone.title[lang] || milestone.title['en']}
-                          </span>
-                          <span className={`text-[10px] font-sans block leading-relaxed ${isDone ? 'line-through text-gray-400' : 'text-gray-500'}`}>
-                            {milestone.description[lang] || milestone.description['en']}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Run Starter Prompt button */}
-              <button
-                onClick={() => handleStartLearningPath(activePath)}
-                className="w-full py-2 bg-[#81B29A] hover:bg-[#6FA38B] text-white rounded-xl text-xs font-black shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
-              >
-                <Play className="h-3.5 w-3.5 fill-current" />
-                <span>
-                  {RESTART_RESUME_LABELS[lang] || RESTART_RESUME_LABELS['en']}
-                </span>
-              </button>
-            </div>
-          )}
-        </div>
-
-      </div>
-
       {/* RIGHT: LIVE CHAT DIALOGUE BOX */}
-      <div className="lg:col-span-8 bg-white rounded-3xl border border-gray-150 shadow-sm flex flex-col h-[520px] overflow-hidden">
+      <div className="bg-white rounded-3xl border border-gray-150 shadow-sm flex flex-col h-[520px] overflow-hidden relative">
         
         {/* Chat Ribbon Header */}
         <div className="bg-[#3D405B] text-white p-3.5 px-5 flex justify-between items-center shrink-0">
@@ -885,16 +908,38 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
               </p>
             </div>
           </div>
-          
-          {isPlayingVoice && (
+
+          <div className="flex items-center gap-2">
+            {/* View History Button */}
             <button
-              onClick={() => { stopSpeaking(); setIsPlayingVoice(null); setMascotAction('idle'); }}
-              className="text-xs bg-red-500/20 text-rose-300 border border-red-500/40 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer animate-pulse"
+              onClick={() => setShowHistory(true)}
+              className="text-[11px] sm:text-xs bg-white/10 hover:bg-white/20 text-white border border-white/20 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              title={VIEW_HISTORY_LABELS[lang] || VIEW_HISTORY_LABELS['en']}
             >
-              <VolumeX className="h-3.5 w-3.5" />
-              <span>{STOP_ALOUD_LABELS[lang] || STOP_ALOUD_LABELS['en']}</span>
+              <BookOpen className="h-3.5 w-3.5 text-[#F2CC8F]" />
+              <span className="hidden sm:inline">{VIEW_HISTORY_LABELS[lang] || VIEW_HISTORY_LABELS['en']}</span>
             </button>
-          )}
+
+            {/* New Chat Button */}
+            <button
+              onClick={handleNewChat}
+              className="text-[11px] sm:text-xs bg-[#E07A5F] hover:bg-[#CE6B50] text-white border border-transparent px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              title={NEW_CHAT_LABELS[lang] || NEW_CHAT_LABELS['en']}
+            >
+              <Plus className="h-3.5 w-3.5 text-white" />
+              <span className="hidden sm:inline">{NEW_CHAT_LABELS[lang] || NEW_CHAT_LABELS['en']}</span>
+            </button>
+          
+            {isPlayingVoice && (
+              <button
+                onClick={() => { stopSpeaking(); setIsPlayingVoice(null); setMascotAction('idle'); }}
+                className="text-xs bg-red-500/20 text-rose-300 border border-red-500/40 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer animate-pulse"
+              >
+                <VolumeX className="h-3.5 w-3.5" />
+                <span>{STOP_ALOUD_LABELS[lang] || STOP_ALOUD_LABELS['en']}</span>
+              </button>
+            )}
+          </div>
         </div>
 
 
@@ -1090,6 +1135,66 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
             <Send className="h-4 w-4" />
           </button>
         </form>
+
+        {showHistory && (
+          <>
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-slate-900/40 z-30 transition-opacity duration-300" 
+              onClick={() => setShowHistory(false)}
+            />
+            
+            {/* History Sidebar */}
+            <div className="absolute left-0 top-0 bottom-0 w-72 bg-white border-r border-gray-150 z-40 shadow-2xl flex flex-col transition-all duration-300 ease-in-out">
+              <div className="bg-[#3D405B] text-white p-4 flex justify-between items-center shrink-0">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-[#81B29A]" />
+                  <span className="font-display font-extrabold text-sm">
+                    {HISTORY_TITLE_LABELS[lang] || HISTORY_TITLE_LABELS['en']}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setShowHistory(false)}
+                  className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[#FAF8F4]/30">
+                {chatSessions.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400 text-xs font-sans">
+                    {NO_HISTORY_LABELS[lang] || NO_HISTORY_LABELS['en']}
+                  </div>
+                ) : (
+                  chatSessions.map((session) => (
+                    <div
+                      key={session.id}
+                      onClick={() => handleLoadSession(session)}
+                      className="w-full p-3 rounded-xl border border-gray-100 hover:border-[#81B29A] hover:bg-[#81B29A]/5 text-left transition-all cursor-pointer group flex justify-between items-start gap-2 bg-white"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-bold text-[#3D405B] block truncate group-hover:text-[#81B29A] transition-colors">
+                          {session.title}
+                        </span>
+                        <span className="text-[10px] text-gray-400 block mt-0.5">
+                          {session.timestamp}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => handleDeleteSession(session.id, e)}
+                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 p-1 rounded transition-all cursor-pointer shrink-0"
+                        title="Delete chat"
+                      >
+                        <Trash className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
       </div>
 

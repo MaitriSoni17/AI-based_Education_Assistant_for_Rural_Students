@@ -1,0 +1,8 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{mobile} {
+      allow read, write: if true; // In the demo sandbox environment, allow all reads/writes or check if mobile is present
+    }
+  }
+}

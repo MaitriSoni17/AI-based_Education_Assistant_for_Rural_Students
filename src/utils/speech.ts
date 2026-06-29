@@ -49,7 +49,7 @@ export function stopSpeaking() {
  * Splits text into small chunks (< 150 characters) to ensure compatibility
  * with Google TTS translation query URL size constraints.
  */
-function splitTextIntoTTSChunks(text: string): string[] {
+export function splitTextIntoTTSChunks(text: string): string[] {
   const cleanText = text.replace(/\s+/g, ' ').trim();
   if (!cleanText) return [];
   

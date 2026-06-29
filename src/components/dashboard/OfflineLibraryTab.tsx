@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LanguageCode } from '../../types';
+import { LanguageCode, User } from '../../types';
 import { OFFLINE_CHAPTERS, OfflineChapter, ChapterSection } from '../../data/offlineChapters';
 import { 
   BookOpen, Download, CheckCircle2, ChevronRight, Award, 
@@ -9,10 +9,11 @@ import {
 import { offlineSyncManager } from '../../utils/offlineSync';
 
 interface OfflineLibraryTabProps {
+  user: User;
   lang: LanguageCode;
 }
 
-export default function OfflineLibraryTab({ lang }: OfflineLibraryTabProps) {
+export default function OfflineLibraryTab({ user, lang }: OfflineLibraryTabProps) {
   // Sync manager online status tracking
   const [appOnline, setAppOnline] = useState(offlineSyncManager.isOnline());
   
@@ -28,14 +29,20 @@ export default function OfflineLibraryTab({ lang }: OfflineLibraryTabProps) {
 
   // Track downloaded chapter IDs in localStorage
   const [downloadedIds, setDownloadedIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('offline_library_downloaded_ids');
+    const saved = localStorage.getItem(`${user.mobile}_offline_library_downloaded_ids`);
     // Pre-download the water cycle to give a starting point, others are downloadable
     return saved ? JSON.parse(saved) : ['ch-water-cycle'];
   });
 
   useEffect(() => {
-    localStorage.setItem('offline_library_downloaded_ids', JSON.stringify(downloadedIds));
-  }, [downloadedIds]);
+    localStorage.setItem(`${user.mobile}_offline_library_downloaded_ids`, JSON.stringify(downloadedIds));
+  }, [downloadedIds, user.mobile]);
+
+  // Sync when active user changes
+  useEffect(() => {
+    const saved = localStorage.getItem(`${user.mobile}_offline_library_downloaded_ids`);
+    setDownloadedIds(saved ? JSON.parse(saved) : ['ch-water-cycle']);
+  }, [user.mobile]);
 
   // Track download progress for individual chapters
   const [downloadProgress, setDownloadProgress] = useState<Record<string, { pct: number; stage: string }>>({});
@@ -102,6 +109,24 @@ export default function OfflineLibraryTab({ lang }: OfflineLibraryTabProps) {
       } else {
         clearInterval(interval);
         setDownloadedIds(prev => [...prev, chapterId]);
+        
+        const chapter = OFFLINE_CHAPTERS.find(ch => ch.id === chapterId);
+        if (chapter) {
+          offlineSyncManager.addLearningFeedEvent(user.mobile, {
+            type: 'download',
+            title: lang === 'hi' 
+              ? `ऑफ़लाइन अध्ययन पैक सिंक किया गया: ${chapter.title[lang] || chapter.title['en']}` 
+              : `Synced Offline Cache Pack: ${chapter.title[lang] || chapter.title['en']}`,
+            subtitle: lang === 'hi' 
+              ? `आज • सहेजा गया ${chapter.packageSize} स्थानीय मेमोरी` 
+              : `Today • Saved ${chapter.packageSize} offline local storage`,
+            icon: '📥',
+            bgClass: 'bg-indigo-50',
+            textClass: 'text-indigo-600',
+            timestamp: 'Today'
+          });
+        }
+
         setDownloadProgress(prev => {
           const updated = { ...prev };
           delete updated[chapterId];
@@ -154,10 +179,26 @@ export default function OfflineLibraryTab({ lang }: OfflineLibraryTabProps) {
     setQuizScore(score);
     setQuizCompleted(true);
 
+    if (selectedChapter) {
+      offlineSyncManager.addLearningFeedEvent(user.mobile, {
+        type: 'quiz',
+        title: lang === 'hi'
+          ? `प्रश्नोत्तरी उत्तीर्ण की: ${selectedChapter.title[lang] || selectedChapter.title['en']}`
+          : `Passed Quiz: ${selectedChapter.title[lang] || selectedChapter.title['en']}`,
+        subtitle: lang === 'hi'
+          ? `आज • परीक्षा में ${score}/${selectedChapter.practiceQuestions.length} अंक प्राप्त किए`
+          : `Today • Scored ${score}/${selectedChapter.practiceQuestions.length} in chapter review`,
+        icon: '🏆',
+        bgClass: 'bg-amber-50',
+        textClass: 'text-amber-600',
+        timestamp: 'Today'
+      });
+    }
+
     // Queue offline sync progress if offline
     if (!isCurrentOnline) {
       // Award 10 points per correct answer to sync to user stats
-      offlineSyncManager.queuePendingProgress('quiz_points', score * 10);
+      offlineSyncManager.queuePendingProgress('quiz_points', score * 10, user.mobile);
     }
   };
 

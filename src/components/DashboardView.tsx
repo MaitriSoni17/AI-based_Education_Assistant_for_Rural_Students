@@ -3,6 +3,8 @@ import { LanguageCode, User, OfflineResource } from '../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../data/translations';
 import { speakText, stopSpeaking } from '../utils/speech';
 import { offlineSyncManager } from '../utils/offlineSync';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
 // Modular Tab Components
 import ProfileTab from './dashboard/ProfileTab';
@@ -19,41 +21,42 @@ import CertificatesTab from './dashboard/CertificatesTab';
 import { 
   User as UserIcon, MessageSquare, BookOpen, GraduationCap, 
   HelpCircle, Sparkles, Award, Settings as SettingsIcon, LogOut, Download, Globe, Menu, X,
-  RefreshCw, Wifi, WifiOff
+  RefreshCw, Wifi, WifiOff, Flame, Clock
 } from 'lucide-react';
 
 interface DashboardViewProps {
   user: User;
   lang: LanguageCode;
+  onUpdateUser: (fields: Partial<User>) => void;
 }
 
-export default function DashboardView({ user, lang }: DashboardViewProps) {
+export default function DashboardView({ user, lang, onUpdateUser }: DashboardViewProps) {
   // Navigation active tab controller: default to 'profile' as requested for the overview
-  const [activeTab, setActiveTab] = useState<'profile' | 'ai-assistant' | 'tutor' | 'offline-library' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates'>('profile');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Sync Manager state tracking
   const [isOnline, setIsOnline] = useState(offlineSyncManager.isOnline());
-  const [pendingChatsCount, setPendingChatsCount] = useState(offlineSyncManager.getPendingChats().length);
-  const [pendingProgressCount, setPendingProgressCount] = useState(offlineSyncManager.getPendingProgress().length);
+  const [pendingChatsCount, setPendingChatsCount] = useState(() => offlineSyncManager.getPendingChats(user.mobile).length);
+  const [pendingProgressCount, setPendingProgressCount] = useState(() => offlineSyncManager.getPendingProgress(user.mobile).length);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState('');
 
   useEffect(() => {
     const handleSyncUpdate = () => {
       setIsOnline(offlineSyncManager.isOnline());
-      setPendingChatsCount(offlineSyncManager.getPendingChats().length);
-      setPendingProgressCount(offlineSyncManager.getPendingProgress().length);
+      setPendingChatsCount(offlineSyncManager.getPendingChats(user.mobile).length);
+      setPendingProgressCount(offlineSyncManager.getPendingProgress(user.mobile).length);
     };
 
     const unsubscribe = offlineSyncManager.subscribe(handleSyncUpdate);
     return () => unsubscribe();
-  }, []);
+  }, [user.mobile]);
 
   const handleManualSync = async () => {
     setIsSyncing(true);
     setSyncFeedback(lang === 'hi' ? "डेटा मिलाया जा रहा है..." : "Synchronizing offline database...");
-    const result = await offlineSyncManager.reconcileAllPending();
+    const result = await offlineSyncManager.reconcileAllPending(user.mobile);
     setIsSyncing(false);
     
     if (result.error) {
@@ -80,13 +83,30 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
 
   // Synced Global States for medals and resource counters to bridge tabs
   const [claimedMedals, setClaimedMedals] = useState<string[]>(() => {
-    const c = localStorage.getItem('profile_earned_medals');
-    return c ? JSON.parse(c) : [];
+    try {
+      const saved = user.claimedMedals;
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem('profile_earned_medals', JSON.stringify(claimedMedals));
+    const serialized = JSON.stringify(claimedMedals);
+    if (user.claimedMedals !== serialized) {
+      onUpdateUser({ claimedMedals: serialized });
+    }
   }, [claimedMedals]);
+
+  // Sync claimed medals when active user changes
+  useEffect(() => {
+    try {
+      const saved = user.claimedMedals;
+      setClaimedMedals(saved ? JSON.parse(saved) : []);
+    } catch {
+      setClaimedMedals([]);
+    }
+  }, [user]);
 
   const [offlineResources, setOfflineResources] = useState<OfflineResource[]>([
     { id: 'off-1', title: 'Rain & Clouds Lesson Pack', subject: 'Science', size: '12.4 MB', category: 'video', downloaded: true },
@@ -96,17 +116,52 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
 
   const offlineDownloadedCount = offlineResources.filter(r => r.downloaded).length;
 
-  // Sync user profile settings
+  // Sync user profile settings dynamically via real-time Firestore listener
   const [localUser, setLocalUser] = useState<User>(user);
   
   useEffect(() => {
     setLocalUser(user);
   }, [user]);
 
+  useEffect(() => {
+    if (!user.mobile) return;
+
+    const path = `users/${user.mobile}`;
+    const userDocRef = doc(db, 'users', user.mobile);
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as User;
+        
+        setLocalUser((prev) => {
+          // Merging keys and values safely
+          const merged = { ...prev, ...data };
+          return merged;
+        });
+
+        // Sync claimed medals if it has changed
+        if (data.claimedMedals) {
+          try {
+            const parsed = JSON.parse(data.claimedMedals) as string[];
+            setClaimedMedals((prev) => {
+              if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
+                return parsed;
+              }
+              return prev;
+            });
+          } catch (e) {
+            console.error("Failed to parse claimedMedals in Firestore real-time listener:", e);
+          }
+        }
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, path);
+    });
+
+    return () => unsubscribe();
+  }, [user.mobile]);
+
   const handleUpdateLocalUser = (updatedData: Partial<User>) => {
-    const nextUser = { ...localUser, ...updatedData };
-    setLocalUser(nextUser);
-    localStorage.setItem('gramin_student_session', JSON.stringify(nextUser));
+    onUpdateUser(updatedData);
   };
 
   // Stop synthesis when switching tabs
@@ -118,7 +173,6 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
     { id: 'profile', label: 'My Profile Overview', icon: UserIcon, color: 'text-blue-500 bg-blue-50' },
     { id: 'ai-assistant', label: 'AI Study Chatbot', icon: MessageSquare, color: 'text-emerald-500 bg-emerald-50' },
     { id: 'tutor', label: 'Mascot Class Tutor', icon: BookOpen, color: 'text-[#81B29A] bg-[#81B29A]/10' },
-    { id: 'offline-library', label: 'Offline Library', icon: Download, color: 'text-indigo-500 bg-indigo-50' },
     { id: 'quiz', label: 'Topic Play Quizzes', icon: HelpCircle, color: 'text-amber-500 bg-amber-50' },
     { id: 'certificates', label: 'My Certificates', icon: GraduationCap, color: 'text-amber-600 bg-amber-50' },
     { id: 'exam', label: 'Competitive Exams', icon: Award, color: 'text-rose-500 bg-rose-50' },
@@ -164,29 +218,56 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
 
         {/* Global summary stats indicators */}
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          <div className="bg-amber-50/50 border border-[#F2CC8F]/40 rounded-2xl px-4 py-2 flex items-center gap-2 shadow-3xs">
-            <Award className="h-5 w-5 text-amber-500 animate-pulse" />
+          {/* Real-time XP Gained Indicator */}
+          <div className="bg-emerald-50/50 border border-emerald-250 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs">
+            <Sparkles className="h-4.5 w-4.5 text-emerald-500 animate-pulse" />
             <div className="text-left font-mono">
-              <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider block">Completed Lessons</span>
-              <span className="text-xs font-black text-gray-900">{claimedMedals.length} medals earned</span>
+              <span className="text-[9px] text-emerald-800 font-bold uppercase tracking-wider block">XP Gained</span>
+              <span className="text-xs font-black text-gray-900">{localUser.totalPoints ?? 15} points</span>
             </div>
           </div>
 
-          <div className="bg-emerald-50/50 border border-emerald-250 rounded-2xl px-4 py-2 flex items-center gap-2 shadow-3xs">
-            <Download className="h-5 w-5 text-[#81B29A]" />
+          {/* Real-time Active Streak Indicator */}
+          <div className="bg-orange-50/50 border border-orange-250 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs">
+            <Flame className="h-4.5 w-4.5 text-orange-500 animate-bounce" />
             <div className="text-left font-mono">
-              <span className="text-[9px] text-emerald-800 font-bold uppercase tracking-wider block">Offline Cache</span>
-              <span className="text-xs font-black text-gray-900">{offlineDownloadedCount} items saved</span>
+              <span className="text-[9px] text-orange-800 font-bold uppercase tracking-wider block">Study Streak</span>
+              <span className="text-xs font-black text-gray-900">{localUser.streakDays ?? 1} Days</span>
+            </div>
+          </div>
+
+          {/* Real-time Time Studied Indicator */}
+          <div className="bg-indigo-50/50 border border-indigo-200 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs">
+            <Clock className="h-4.5 w-4.5 text-indigo-500" />
+            <div className="text-left font-mono">
+              <span className="text-[9px] text-indigo-800 font-bold uppercase tracking-wider block">Time Studied</span>
+              <span className="text-xs font-black text-gray-900">{localUser.studyMins ?? 30} Mins</span>
+            </div>
+          </div>
+
+          <div className="bg-amber-50/50 border border-[#F2CC8F]/40 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs">
+            <Award className="h-4.5 w-4.5 text-amber-500" />
+            <div className="text-left font-mono">
+              <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider block">Completed Lessons</span>
+              <span className="text-xs font-black text-gray-900">{claimedMedals.length} medals</span>
+            </div>
+          </div>
+
+          <div className="bg-teal-50/50 border border-teal-250 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs">
+            <Download className="h-4.5 w-4.5 text-teal-600" />
+            <div className="text-left font-mono">
+              <span className="text-[9px] text-teal-800 font-bold uppercase tracking-wider block">Offline Cache</span>
+              <span className="text-xs font-black text-gray-900">{offlineDownloadedCount} items</span>
             </div>
           </div>
 
           {/* New visual database sync status indicator */}
-          <div className={`border rounded-2xl px-4 py-2 flex items-center gap-2 shadow-3xs transition-all ${
+          <div className={`border rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs transition-all ${
             (pendingChatsCount > 0 || pendingProgressCount > 0)
               ? 'bg-amber-50/60 border-amber-250'
               : 'bg-emerald-50/40 border-emerald-200'
           }`}>
-            <RefreshCw className={`h-5 w-5 ${
+            <RefreshCw className={`h-4.5 w-4.5 ${
               (pendingChatsCount > 0 || pendingProgressCount > 0)
                 ? 'text-amber-600 animate-spin'
                 : 'text-emerald-600'
@@ -196,7 +277,7 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
               <span className="text-xs font-black text-gray-900">
                 {(pendingChatsCount > 0 || pendingProgressCount > 0) ? (
                   <span className="text-amber-800 font-bold">
-                    Pending ({pendingChatsCount + pendingProgressCount} items)
+                    Pending
                   </span>
                 ) : (
                   <span className="text-emerald-800 font-bold">Synced</span>
@@ -279,12 +360,15 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
                 onNavigateToTab={(tabId) => {
                   setActiveTab(tabId as any);
                 }}
+                onUpdateUser={handleUpdateLocalUser}
               />
             )}
 
             {activeTab === 'ai-assistant' && (
               <AIAssistantTab 
+                user={localUser}
                 lang={lang}
+                onUpdateUser={handleUpdateLocalUser}
               />
             )}
 
@@ -297,23 +381,21 @@ export default function DashboardView({ user, lang }: DashboardViewProps) {
               />
             )}
 
-            {activeTab === 'offline-library' && (
-              <OfflineLibraryTab 
-                lang={lang}
-              />
-            )}
-
             {activeTab === 'quiz' && (
               <QuizTab
+                user={localUser}
                 lang={lang}
                 onNavigateToTab={(tabId) => setActiveTab(tabId)}
+                onUpdateUser={handleUpdateLocalUser}
               />
             )}
 
             {activeTab === 'certificates' && (
               <CertificatesTab
+                user={localUser}
                 lang={lang}
                 onNavigateToTab={(tabId) => setActiveTab(tabId)}
+                onUpdateUser={handleUpdateLocalUser}
               />
             )}
 

@@ -3,6 +3,7 @@ import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
 import { LanguageCode, User } from '../types';
 import SpeakButton from './SpeakButton';
 import { Smartphone, Lock, UserCheck, Globe, RefreshCw, Send } from 'lucide-react';
+import { getFirebaseUser, setFirebaseUser } from '../lib/firebase';
 
 interface AuthViewProps {
   mode: 'login' | 'signup';
@@ -122,14 +123,40 @@ export default function AuthView({
       const data = await response.json();
 
       if (response.ok && data.success && data.verified) {
-        // Authenticate student using backend's verified user details
-        const matchedUser: User = {
-          mobile: data.user.mobile,
-          name: data.user.name,
-          defaultLanguage: lang,
-          signupDate: data.user.signupDate,
-        };
-        onSuccess(matchedUser);
+        if (mode === 'signup') {
+          // Register user profile in Firebase Firestore
+          await setFirebaseUser(mobile, {
+            name: name.trim(),
+            defaultLanguage: lang,
+            signupDate: data.user.signupDate || new Date().toLocaleDateString(),
+          });
+          
+          const dbUser = await getFirebaseUser(mobile);
+          if (dbUser) {
+            onSuccess(dbUser as User);
+          } else {
+            onSuccess({
+              mobile,
+              name: name.trim(),
+              defaultLanguage: lang,
+              signupDate: data.user.signupDate || new Date().toLocaleDateString(),
+            });
+          }
+        } else {
+          // Login: Fetch existing user profile from Firebase Firestore
+          const dbUser = await getFirebaseUser(mobile);
+          if (!dbUser) {
+            setErrorMessage(
+              lang === 'hi' 
+                ? 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। कृपया पहले पंजीकरण करें!'
+                : lang === 'gu'
+                ? 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. કૃપા કરીને પહેલા રજીસ્ટ્રેશન કરો!'
+                : 'Account not found for this mobile number. Please register first!'
+            );
+            return;
+          }
+          onSuccess(dbUser as User);
+        }
       } else {
         setErrorMessage(data.message || 'Invalid code. Please try again.');
       }

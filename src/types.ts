@@ -16,6 +16,21 @@ export interface User {
   village?: string;
   school?: string;
   standard?: string;
+  avatar?: string;
+  totalPoints?: number;
+  streakDays?: number;
+  lastCheckedInDate?: string;
+  certificateName?: string;
+  earnedCertificates?: string; // JSON string of certificates
+  chatSessions?: string; // JSON string of chat sessions
+  activePathId?: string;
+  completedMilestones?: string; // JSON string array of completed milestones
+  claimedMedals?: string; // JSON string array of claimed medals
+  speechRate?: number;
+  speechPitch?: number;
+  speechVolume?: number;
+  selectedVoiceName?: string;
+  studyMins?: number;
 }
 
 export interface QuizQuestion {

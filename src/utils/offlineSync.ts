@@ -1,5 +1,16 @@
 import { LanguageCode } from '../types';
 
+export interface LearningFeedEvent {
+  id: string;
+  type: 'chat' | 'quiz' | 'download' | 'register';
+  title: string;
+  subtitle: string;
+  icon: string;
+  bgClass: string;
+  textClass: string;
+  timestamp: string;
+}
+
 export interface PendingProgress {
   id: string;
   type: 'quiz_points' | 'medal_earned';
@@ -48,7 +59,17 @@ class OfflineSyncManager {
     this.isOnlineState = online;
     this.notifyUpdate();
     if (online) {
-      this.reconcileAllPending();
+      try {
+        const stored = localStorage.getItem('gramin_student_session');
+        if (stored) {
+          const u = JSON.parse(stored);
+          if (u && u.mobile) {
+            this.reconcileAllPending(u.mobile);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to auto-reconcile on network online event", err);
+      }
     }
   }
 
@@ -75,9 +96,9 @@ class OfflineSyncManager {
 
   // --- CHAT HISTORY CACHING ---
   
-  public getChatHistory(characterId: string): ChatMessage[] {
-    if (typeof localStorage === 'undefined') return [];
-    const raw = localStorage.getItem(`gramin_chat_history_${characterId}`);
+  public getChatHistory(characterId: string, userMobile: string): ChatMessage[] {
+    if (typeof localStorage === 'undefined' || !userMobile) return [];
+    const raw = localStorage.getItem(`gramin_chat_history_${userMobile}_${characterId}`);
     if (!raw) return [];
     try {
       return JSON.parse(raw);
@@ -86,23 +107,23 @@ class OfflineSyncManager {
     }
   }
 
-  public saveChatHistory(characterId: string, history: ChatMessage[]) {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(`gramin_chat_history_${characterId}`, JSON.stringify(history));
+  public saveChatHistory(characterId: string, history: ChatMessage[], userMobile: string) {
+    if (typeof localStorage === 'undefined' || !userMobile) return;
+    localStorage.setItem(`gramin_chat_history_${userMobile}_${characterId}`, JSON.stringify(history));
     this.notifyUpdate();
   }
 
-  public clearChatHistory(characterId: string) {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.removeItem(`gramin_chat_history_${characterId}`);
+  public clearChatHistory(characterId: string, userMobile: string) {
+    if (typeof localStorage === 'undefined' || !userMobile) return;
+    localStorage.removeItem(`gramin_chat_history_${userMobile}_${characterId}`);
     this.notifyUpdate();
   }
 
   // --- PENDING CHATS QUEUE ---
 
-  public getPendingChats(): PendingChat[] {
-    if (typeof localStorage === 'undefined') return [];
-    const raw = localStorage.getItem('gramin_pending_chats');
+  public getPendingChats(userMobile: string): PendingChat[] {
+    if (typeof localStorage === 'undefined' || !userMobile) return [];
+    const raw = localStorage.getItem(`gramin_pending_chats_${userMobile}`);
     if (!raw) return [];
     try {
       return JSON.parse(raw);
@@ -111,24 +132,24 @@ class OfflineSyncManager {
     }
   }
 
-  public queuePendingChat(chat: PendingChat) {
-    if (typeof localStorage === 'undefined') return;
-    const list = this.getPendingChats();
+  public queuePendingChat(chat: PendingChat, userMobile: string) {
+    if (typeof localStorage === 'undefined' || !userMobile) return;
+    const list = this.getPendingChats(userMobile);
     list.push(chat);
-    localStorage.setItem('gramin_pending_chats', JSON.stringify(list));
+    localStorage.setItem(`gramin_pending_chats_${userMobile}`, JSON.stringify(list));
     this.notifyUpdate();
 
     // Try automatic immediate reconciliation if online
     if (this.isOnline()) {
-      this.reconcileAllPending();
+      this.reconcileAllPending(userMobile);
     }
   }
 
   // --- PENDING PROGRESS QUEUE ---
 
-  public getPendingProgress(): PendingProgress[] {
-    if (typeof localStorage === 'undefined') return [];
-    const raw = localStorage.getItem('gramin_pending_progress');
+  public getPendingProgress(userMobile: string): PendingProgress[] {
+    if (typeof localStorage === 'undefined' || !userMobile) return [];
+    const raw = localStorage.getItem(`gramin_pending_progress_${userMobile}`);
     if (!raw) return [];
     try {
       return JSON.parse(raw);
@@ -137,21 +158,21 @@ class OfflineSyncManager {
     }
   }
 
-  public queuePendingProgress(type: 'quiz_points' | 'medal_earned', value: string | number) {
-    if (typeof localStorage === 'undefined') return;
-    const list = this.getPendingProgress();
+  public queuePendingProgress(type: 'quiz_points' | 'medal_earned', value: string | number, userMobile: string) {
+    if (typeof localStorage === 'undefined' || !userMobile) return;
+    const list = this.getPendingProgress(userMobile);
     list.push({
       id: 'prog-' + Math.random().toString(36).substring(2, 9),
       type,
       value,
       timestamp: Date.now()
     });
-    localStorage.setItem('gramin_pending_progress', JSON.stringify(list));
+    localStorage.setItem(`gramin_pending_progress_${userMobile}`, JSON.stringify(list));
     this.notifyUpdate();
 
     // Trigger reconciliation if online
     if (this.isOnline()) {
-      this.reconcileAllPending();
+      this.reconcileAllPending(userMobile);
     }
   }
 
@@ -159,7 +180,7 @@ class OfflineSyncManager {
 
   private isReconciling = false;
 
-  public async reconcileAllPending(): Promise<{ chatsSynced: number; progressSynced: number; error?: string }> {
+  public async reconcileAllPending(userMobile: string): Promise<{ chatsSynced: number; progressSynced: number; error?: string }> {
     if (this.isReconciling) return { chatsSynced: 0, progressSynced: 0 };
     if (!this.isOnline()) {
       return { chatsSynced: 0, progressSynced: 0, error: "Network offline. Cannot sync right now." };
@@ -171,30 +192,30 @@ class OfflineSyncManager {
 
     try {
       // 1. Reconcile Learning Progress
-      const pendingProgress = this.getPendingProgress();
+      const pendingProgress = this.getPendingProgress(userMobile);
       if (pendingProgress.length > 0) {
         // Submit each progress update to the backend or apply locally to confirmed states
         for (const prog of pendingProgress) {
           if (prog.type === 'quiz_points') {
-            const confirmedPoints = parseInt(localStorage.getItem('quizzes_total_points') || '0', 10);
+            const confirmedPoints = parseInt(localStorage.getItem(`${userMobile}_quizzes_total_points`) || '0', 10);
             const nextPoints = confirmedPoints + Number(prog.value);
-            localStorage.setItem('quizzes_total_points', String(nextPoints));
+            localStorage.setItem(`${userMobile}_quizzes_total_points`, String(nextPoints));
           } else if (prog.type === 'medal_earned') {
-            const rawMedals = localStorage.getItem('profile_earned_medals');
+            const rawMedals = localStorage.getItem(`${userMobile}_profile_earned_medals`);
             const medals: string[] = rawMedals ? JSON.parse(rawMedals) : [];
             if (!medals.includes(String(prog.value))) {
               medals.push(String(prog.value));
-              localStorage.setItem('profile_earned_medals', JSON.stringify(medals));
+              localStorage.setItem(`${userMobile}_profile_earned_medals`, JSON.stringify(medals));
             }
           }
           progressSynced++;
         }
         // Safely clear the progress queue
-        localStorage.setItem('gramin_pending_progress', JSON.stringify([]));
+        localStorage.setItem(`gramin_pending_progress_${userMobile}`, JSON.stringify([]));
       }
 
       // 2. Reconcile Pending Chats with live Gemini
-      const pendingChats = this.getPendingChats();
+      const pendingChats = this.getPendingChats(userMobile);
       if (pendingChats.length > 0) {
         const remainingChats: PendingChat[] = [];
 
@@ -225,7 +246,7 @@ class OfflineSyncManager {
 
             if (data.success) {
               // Append to character chat logs, removing the 'pending' tag from user message
-              const history = this.getChatHistory(chat.characterId);
+              const history = this.getChatHistory(chat.characterId, userMobile);
               
               // Find and un-pending the message
               const updatedHistory = history.map(item => {
@@ -244,7 +265,7 @@ class OfflineSyncManager {
               };
               
               updatedHistory.push(aiMsg);
-              this.saveChatHistory(chat.characterId, updatedHistory);
+              this.saveChatHistory(chat.characterId, updatedHistory, userMobile);
               chatsSynced++;
             } else {
               // Hold for next attempt
@@ -256,7 +277,7 @@ class OfflineSyncManager {
           }
         }
         
-        localStorage.setItem('gramin_pending_chats', JSON.stringify(remainingChats));
+        localStorage.setItem(`gramin_pending_chats_${userMobile}`, JSON.stringify(remainingChats));
       }
 
       this.notifyUpdate();
@@ -268,6 +289,59 @@ class OfflineSyncManager {
     } finally {
       this.isReconciling = false;
     }
+  }
+
+  // --- RECENT LEARNING FEED ---
+
+  public getLearningFeed(userMobile: string, signupDate?: string): LearningFeedEvent[] {
+    if (typeof localStorage === 'undefined' || !userMobile) return [];
+    const saved = localStorage.getItem(`gramin_learning_feed_${userMobile}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // Fallback
+      }
+    }
+    // Default feed for a brand-new user (only has the registration event, no yesterday/today study logs!)
+    const defaultFeed: LearningFeedEvent[] = [
+      {
+        id: 'evt-register',
+        type: 'register',
+        title: 'Registered GyaanBot Student Academic ID',
+        subtitle: `Joined Date: ${signupDate || new Date().toLocaleDateString()}`,
+        icon: '🔑',
+        bgClass: 'bg-purple-50',
+        textClass: 'text-purple-600',
+        timestamp: 'Joined'
+      }
+    ];
+    return defaultFeed;
+  }
+
+  public addLearningFeedEvent(userMobile: string, event: Omit<LearningFeedEvent, 'id'>) {
+    if (typeof localStorage === 'undefined' || !userMobile) return;
+    const feed = this.getLearningFeed(userMobile);
+    const newEvent: LearningFeedEvent = {
+      ...event,
+      id: `evt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`
+    };
+    
+    // Prevent exactly identical events from stacking up back-to-back
+    if (feed.length > 0 && feed[0].title === event.title && feed[0].type === event.type) {
+      return;
+    }
+
+    const updated = [newEvent, ...feed.filter(e => e.id !== 'evt-register')];
+    
+    // Keep registration event at the end
+    const regEvent = feed.find(e => e.id === 'evt-register');
+    if (regEvent && !updated.some(e => e.id === 'evt-register')) {
+      updated.push(regEvent);
+    }
+    
+    localStorage.setItem(`gramin_learning_feed_${userMobile}`, JSON.stringify(updated.slice(0, 15)));
+    this.notifyUpdate();
   }
 
   // Helper to fetch Mascot System Instructions

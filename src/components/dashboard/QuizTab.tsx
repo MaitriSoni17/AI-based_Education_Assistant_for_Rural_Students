@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LanguageCode } from '../../types';
+import { LanguageCode, User } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { Award, HelpCircle, BookOpen, Brain, Sparkles, AlertTriangle, CheckCircle, Flame, RefreshCw, Timer, ShieldCheck, Download, Printer, X } from 'lucide-react';
@@ -8,8 +8,10 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 interface QuizTabProps {
+  user: User;
   lang: LanguageCode;
-  onNavigateToTab?: (tabId: 'certificates') => void;
+  onNavigateToTab?: (tabId: any) => void;
+  onUpdateUser: (fields: Partial<User>) => void;
 }
 
 interface CustomQuizQuestion {
@@ -1506,10 +1508,10 @@ const getFilteredQuizQuestions = (
   return [...primaryMatch, ...remaining].slice(0, limit);
 };
 
-export default function QuizTab({ lang, onNavigateToTab }: QuizTabProps) {
+export default function QuizTab({ user, lang, onNavigateToTab, onUpdateUser }: QuizTabProps) {
   // Global cumulative states
   const [totalQuizPoints, setTotalQuizPoints] = useState(() => {
-    return Number(localStorage.getItem('quizzes_total_points')) || 40;
+    return user.totalPoints ?? 15;
   });
 
   // Current active quiz states
@@ -1519,14 +1521,29 @@ export default function QuizTab({ lang, onNavigateToTab }: QuizTabProps) {
   const [tempSelectedOpt, setTempSelectedOpt] = useState<number | null>(null);
   const [roundMinsScore, setRoundMinsScore] = useState(0);
   const [roundFinished, setRoundFinished] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(60);
   const [userAnswers, setUserAnswers] = useState<(number | -1)[]>([]);
+
+  // Dynamic question count state (5, 10, or 15)
+  const [quizLength, setQuizLength] = useState<number>(5);
+
+  // Dynamic question difficulty state ('easy', 'medium', or 'hard')
+  const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
+
+  // Dynamic timer limit state per question (15, 30, 60, 90, 120 seconds)
+  const [timerLimit, setTimerLimit] = useState<number>(60);
 
   // Certificate states
   const [showCertificateModal, setShowCertificateModal] = useState(false);
-  const [certificateName, setCertificateName] = useState(() => localStorage.getItem('quizzes_certificate_name') || '');
+  const [certificateName, setCertificateName] = useState(() => user.certificateName || user.name || '');
   const [certificateId, setCertificateId] = useState('');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  // Update state when user changes
+  useEffect(() => {
+    setTotalQuizPoints(user.totalPoints ?? 15);
+    setCertificateName(user.certificateName || user.name || '');
+  }, [user]);
 
   const handleDownloadCertificatePDF = async () => {
     if (!activeQuiz) return;
@@ -1806,16 +1823,7 @@ export default function QuizTab({ lang, onNavigateToTab }: QuizTabProps) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [activeQuiz, roundFinished, selectedOpt, currentQuestionIndex]);
-
-  // Dynamic question count state (5, 10, or 15)
-  const [quizLength, setQuizLength] = useState<number>(5);
-
-  // Dynamic question difficulty state ('easy', 'medium', or 'hard')
-  const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
-
-  // Dynamic timer limit state per question (15, 30, 60, 90, 120 seconds)
-  const [timerLimit, setTimerLimit] = useState<number>(30);
+  }, [activeQuiz, roundFinished, selectedOpt, currentQuestionIndex, timerLimit]);
 
   // Creative "Quiz Generator" states
   const [customTopic, setCustomTopic] = useState('');
@@ -2099,7 +2107,7 @@ JSON Schema:
         minute: '2-digit'
       });
 
-      const savedName = localStorage.getItem('quizzes_certificate_name') || 'GyaanBot Scholar';
+      const savedName = user.certificateName || user.name || 'GyaanBot Scholar';
 
       const certObj = {
         id: generatedCertId,
@@ -2113,25 +2121,30 @@ JSON Schema:
         chatLogs: currentChatLogs
       };
 
-      // Save to localStorage so they are displayable on the separate certificates page
+      // Save to user object in state/Firestore so they are displayable on the separate certificates page
+      let updatedCertificates = [];
       try {
-        const existingRaw = localStorage.getItem('quizzes_earned_certificates');
+        const existingRaw = user.earnedCertificates;
         const existingList = existingRaw ? JSON.parse(existingRaw) : [];
         existingList.unshift(certObj); // Prepend so newest is first
-        localStorage.setItem('quizzes_earned_certificates', JSON.stringify(existingList));
+        updatedCertificates = existingList;
       } catch (err) {
-        console.error("Error writing quiz certificate to localStorage", err);
+        console.error("Error writing quiz certificate", err);
       }
 
       // Update global quiz points: +15 points for passing!
       const pointsGain = roundMinsScore * 10 + (roundMinsScore === activeQuiz.questions.length ? 15 : 0);
       const updatedPoints = totalQuizPoints + pointsGain;
       setTotalQuizPoints(updatedPoints);
-      localStorage.setItem('quizzes_total_points', String(updatedPoints));
+
+      onUpdateUser({
+        earnedCertificates: JSON.stringify(updatedCertificates),
+        totalPoints: updatedPoints
+      });
 
       // Reconcile and buffer score records if in offline cache mode
       if (!offlineSyncManager.isOnline()) {
-        offlineSyncManager.queuePendingProgress('quiz_points', pointsGain);
+        offlineSyncManager.queuePendingProgress('quiz_points', pointsGain, user.mobile);
       }
     }
   };
@@ -2320,36 +2333,6 @@ JSON Schema:
               </div>
             </div>
 
-            {/* ⏱️ SELECT QUIZ TIMER LIMIT PANEL */}
-            <div className="bg-gradient-to-r from-blue-50/75 via-white to-sky-50/75 rounded-2xl border border-blue-200/40 p-4 shadow-3xs flex flex-col sm:flex-row justify-between items-center gap-4 text-left">
-              <div className="space-y-1">
-                <h3 className="font-sans font-extrabold text-xs sm:text-sm text-[#3D405B] flex items-center gap-1.5">
-                  <span className="text-base">⏱️</span>
-                  {TIMER_LIMIT_SELECTOR_LABELS[lang] || TIMER_LIMIT_SELECTOR_LABELS['en']}
-                </h3>
-                <p className="text-[10px] sm:text-[11px] text-gray-400">
-                  {TIMER_LIMIT_SUBTITLE_LABELS[lang] || TIMER_LIMIT_SUBTITLE_LABELS['en']}
-                </p>
-              </div>
-              <div className="flex gap-1.5 bg-gray-50 p-1.5 rounded-xl border border-gray-150 shadow-2xs shrink-0 w-full sm:w-auto justify-center">
-                {([15, 30, 60, 90, 120] as const).map((seconds) => (
-                  <button
-                    key={seconds}
-                    onClick={() => {
-                      setTimerLimit(seconds);
-                      setTimeLeft(seconds);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      timerLimit === seconds
-                        ? "bg-blue-600 text-white shadow-2xs scale-102"
-                        : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-                    }`}
-                  >
-                    {seconds}s
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -2477,7 +2460,7 @@ JSON Schema:
                       <span>
                         {timeLeft} {lang === 'gu' ? 'સેકન્ડ બાકી' : 
                          lang === 'hi' ? 'सेकंड बचे' : 
-                         lang === 'mr' ? 'सेकंद शिल्लक' : 
+                         lang === 'mr' ? 'सेकंड शिल्लक' : 
                          lang === 'ta' ? 'வினாடிகள் மீதமுள்ளன' : 
                          lang === 'te' ? 'సెకన్లు మిగిలి ఉన్నాయి' : 
                          'seconds remaining'}
@@ -2854,7 +2837,7 @@ JSON Schema:
                 value={certificateName}
                 onChange={(e) => {
                   setCertificateName(e.target.value);
-                  localStorage.setItem('quizzes_certificate_name', e.target.value);
+                  onUpdateUser({ certificateName: e.target.value });
                 }}
                 placeholder={lang === 'hi' ? "जैसे: राहुल कुमार" : "e.g., Jane Doe"}
                 className="w-full px-4 py-2 text-sm sm:text-base border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-gray-50/50"

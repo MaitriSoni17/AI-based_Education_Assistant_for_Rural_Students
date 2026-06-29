@@ -6,7 +6,7 @@ import SpeakButton from '../SpeakButton';
 import SpeechInputButton from '../SpeechInputButton';
 import InteractiveAITeacher from '../InteractiveAITeacher';
 import SlideVisualBoard from './SlideVisualBoard';
-import { speakText, stopSpeaking } from '../../utils/speech';
+import { speakText, stopSpeaking, cleanTextForTTS, detectLanguageOfText, splitTextIntoTTSChunks } from '../../utils/speech';
 import { 
   Play, BookOpen, Download, CheckCircle2, ChevronRight, Award, 
   HelpCircle, Volume2, Search, Sparkles, Smile, Video, ArrowLeft, RefreshCw,
@@ -308,10 +308,1033 @@ export default function TutorTab({
   claimedMedals,
   setClaimedMedals
 }: TutorTabProps) {
+  const DOWNLOAD_LABELS: Record<LanguageCode, string> = {
+    en: "DOWNLOAD VIDEO LECTURE",
+    hi: "लेक्चर वीडियो डाउनलोड करें",
+    gu: "લેક્ચર વિડીયો ડાઉનલોડ કરો",
+    mr: "लेक्चर व्हिडिओ डाउनलोड करा",
+    ta: "விரிவுரை வீடியோ பதிவிறக்கு",
+    te: "ఉపన్యాస వీడియో డౌన్లోడ్"
+  };
+
+  const DOWNLOAD_TOOLTIPS: Record<LanguageCode, string> = {
+    en: "Download complete interactive video lecture, slides and quiz pack for offline learning!",
+    hi: "ऑफ़लाइन पढ़ाई के लिए पूरा लेक्चर वीडियो, स्लाइड और क्विज़ पैक डाउनलोड करें!",
+    gu: "ઓફલાઇન અભ્યાસ માટે સંપૂર્ણ લેક્ચર વિડીયો, સ્લાઇડ્સ અને ક્વિઝ ડાઉનલોડ કરો!",
+    mr: "ऑफलाइन अभ्यासासाठी संपूर्ण लेक्चर व्हिडिओ, स्लाइड्स आणि क्विझ डाउनलोड करा!",
+    ta: "ஆஃப்லைன் கற்றலுக்கான முழு விரிவுரை வீடியோ, ஸ்லைடு மற்றும் வினாடி வினா பேக்கைப் பதிவிறக்கவும்!",
+    te: "ఆఫ్‌లైన్ అభ్యాసం కోసం పూర్తి ఉపన్యాస వీడియో, స్లయిడ్‌లు మరియు క్విజ్ ప్యాక్‌ను డౌన్‌లోడ్ చేసుకోండి!"
+  };
+
+  const downloadLessonVideoAndSlidesSpecific = (lesson: LessonQuery) => {
+    if (!lesson) return;
+    
+    const slides = getSlidesForLesson(lesson, lang);
+    const lessonTitle = lesson.query;
+    const subject = lesson.subject;
+    const avatarName = lesson.avatarName || "Swami AI";
+    const avatarChar = lesson.avatarChar || "🤖";
+    const quizzes = lesson.quiz || [];
+    
+    // Build JSON strings safely
+    const slidesJson = JSON.stringify(slides);
+    const quizJson = JSON.stringify(quizzes);
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline Lesson: ${lessonTitle.replace(/"/g, '&quot;')}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col p-4 sm:p-6 md:p-8">
+    <div class="max-w-4xl mx-auto w-full flex-1 flex flex-col gap-6">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-lg">
+            <div>
+                <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] uppercase font-black tracking-widest px-2.5 py-1 rounded-full">\${subject}</span>
+                <h1 class="text-xl sm:text-2xl font-black tracking-tight mt-2 text-slate-100">\${lessonTitle.replace(/"/g, '&quot;')}</h1>
+                <p class="text-xs text-slate-400 mt-1">Guided offline by <span class="font-bold text-[#E07A5F]">\${avatarName} \${avatarChar}</span></p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span class="text-[10px] font-mono text-emerald-400 uppercase font-black tracking-widest">OFFLINE PLAYBACK READY</span>
+            </div>
+        </div>
+
+        <!-- Dynamic Stage Canvas & Player -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-xl flex flex-col gap-5 relative overflow-hidden">
+            <!-- Slide Visual Panel -->
+            <div id="slide-stage" class="min-h-[220px] sm:min-h-[300px] bg-slate-950 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden">
+                <!-- Top Header -->
+                <div class="flex justify-between items-center border-b border-slate-800/60 pb-3">
+                    <span id="slide-step" class="text-[10px] font-mono font-bold text-amber-400 tracking-wider">STAGE 1</span>
+                    <span class="text-[10px] font-mono text-slate-500">Mascot Class Tutor</span>
+                </div>
+
+                <!-- Mascot & Speech Visualizer -->
+                <div class="flex items-center gap-4 my-4">
+                    <div id="mascot-avatar" class="w-16 h-16 sm:w-20 sm:h-20 bg-slate-900 rounded-full flex items-center justify-center text-3xl sm:text-4xl shadow-inner border border-slate-800 transition-all">
+                        \${avatarChar}
+                    </div>
+                    <div class="flex-1 bg-slate-900/60 p-3 sm:p-4 rounded-2xl border border-slate-800 relative">
+                        <p id="slide-content" class="text-sm sm:text-base leading-relaxed text-slate-200">Loading slide content...</p>
+                    </div>
+                </div>
+
+                <!-- Bullets & Details -->
+                <div id="slide-bullets" class="flex flex-wrap gap-2 my-2">
+                    <!-- Bullets injected dynamically -->
+                </div>
+
+                <!-- Bottom Fact Card -->
+                <div id="slide-fact" class="bg-slate-900/40 border border-slate-800/50 p-3 rounded-xl mt-3 flex items-start gap-2.5">
+                    <span class="text-sm">💡</span>
+                    <p id="slide-fact-text" class="text-xs text-slate-400 italic">Fact details...</p>
+                </div>
+            </div>
+
+            <!-- Speech Audio & Slide Controls -->
+            <div class="bg-slate-950 border border-slate-850 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <button id="btn-play-pause" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-md">
+                        <span id="play-icon">▶</span> <span id="play-text">PLAY NARRATION</span>
+                    </button>
+                    <button id="btn-prev" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-40" disabled>
+                        ◀ PREV
+                    </button>
+                    <button id="btn-next" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-40">
+                        NEXT ▶
+                    </button>
+                </div>
+                <div class="text-[11px] font-mono text-slate-500">
+                    SLIDE <span id="current-slide-num" class="font-bold text-slate-300">1</span> OF <span id="total-slides-num" class="font-bold text-slate-300">3</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz Section -->
+        <div id="quiz-card" class="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col gap-5">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-md font-bold tracking-tight text-slate-200">📝 Interactive Lesson Quiz</h3>
+                <span id="quiz-score-badge" class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono px-2.5 py-1 rounded-full">SCORE: 0</span>
+            </div>
+
+            <div id="quiz-content" class="flex flex-col gap-4">
+                <!-- Quiz content goes here -->
+                <p id="quiz-question" class="text-sm sm:text-base font-semibold text-slate-200">Question goes here</p>
+                <div id="quiz-options" class="grid grid-cols-1 gap-2.5">
+                    <!-- Options buttons go here -->
+                </div>
+                <div id="quiz-explanation" class="hidden bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs sm:text-sm text-slate-300">
+                    <!-- Explanation -->
+                </div>
+                <div class="flex justify-between items-center mt-2">
+                    <button id="btn-prev-quiz" class="text-xs bg-slate-800 text-slate-300 px-3.5 py-2 rounded-lg font-bold" disabled>Previous Question</button>
+                    <button id="btn-next-quiz" class="text-xs bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold disabled:opacity-40">Next Question</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Back to Top / Source credit -->
+        <div class="text-center py-4 border-t border-slate-800 text-slate-600 text-[10px] font-mono uppercase tracking-widest mt-4">
+            Generated by Mascot Class Tutor • Gramin Student Companion
+        </div>
+    </div>
+
+    <script>
+        const slides = \${slidesJson};
+        const quizzes = \${quizJson};
+        let currentSlideIdx = 0;
+        let isSpeaking = false;
+        let currentQuizIdx = 0;
+        let selectedAnswers = Array(quizzes.length).fill(null);
+        let score = 0;
+
+        // TTS reference
+        let synth = window.speechSynthesis;
+        let utterance = null;
+
+        // Slide view updater
+        function updateSlide() {
+            const slide = slides[currentSlideIdx];
+            if (!slide) return;
+
+            document.getElementById('slide-step').innerText = slide.title || ('STAGE ' + (currentSlideIdx + 1));
+            document.getElementById('slide-content').innerText = slide.content || '';
+            
+            // Render bullets
+            const bulletsContainer = document.getElementById('slide-bullets');
+            bulletsContainer.innerHTML = '';
+            if (slide.bullets && slide.bullets.length > 0) {
+                slide.bullets.forEach(bullet => {
+                    const span = document.createElement('span');
+                    span.className = 'text-[11px] bg-slate-800/80 text-amber-300 px-2 py-1 rounded-lg border border-slate-700/50';
+                    span.innerText = '• ' + bullet;
+                    bulletsContainer.appendChild(span);
+                });
+            }
+
+            // Render fact
+            const factText = document.getElementById('slide-fact-text');
+            if (slide.keyFact) {
+                document.getElementById('slide-fact').classList.remove('hidden');
+                factText.innerText = slide.keyFact;
+            } else {
+                document.getElementById('slide-fact').classList.add('hidden');
+            }
+
+            // Update indices
+            document.getElementById('current-slide-num').innerText = currentSlideIdx + 1;
+            document.getElementById('total-slides-num').innerText = slides.length;
+
+            // Update buttons
+            document.getElementById('btn-prev').disabled = currentSlideIdx === 0;
+            document.getElementById('btn-next').disabled = currentSlideIdx === slides.length - 1;
+
+            // Stop any ongoing speech when moving slides
+            stopVoice();
+        }
+
+        function speakVoice() {
+            if (!synth) return;
+            stopVoice();
+
+            const slide = slides[currentSlideIdx];
+            if (!slide) return;
+
+            utterance = new SpeechSynthesisUtterance(slide.content);
+            
+            // Match appropriate voices based on language code
+            const langCode = "${lang}";
+            if (langCode === 'hi') utterance.lang = 'hi-IN';
+            else if (langCode === 'gu') utterance.lang = 'gu-IN';
+            else if (langCode === 'mr') utterance.lang = 'mr-IN';
+            else if (langCode === 'ta') utterance.lang = 'ta-IN';
+            else if (langCode === 'te') utterance.lang = 'te-IN';
+            else utterance.lang = 'en-IN';
+
+            utterance.rate = 0.9;
+            utterance.onend = () => {
+                isSpeaking = false;
+                updateVoiceControls();
+            };
+
+            isSpeaking = true;
+            synth.speak(utterance);
+            updateVoiceControls();
+        }
+
+        function stopVoice() {
+            if (synth) {
+                synth.cancel();
+            }
+            isSpeaking = false;
+            updateVoiceControls();
+        }
+
+        function updateVoiceControls() {
+            const playIcon = document.getElementById('play-icon');
+            const playText = document.getElementById('play-text');
+            const btn = document.getElementById('btn-play-pause');
+
+            if (isSpeaking) {
+                playIcon.innerText = '⏸';
+                playText.innerText = 'PAUSE NARRATION';
+                btn.className = 'bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-md';
+                document.getElementById('mascot-avatar').classList.add('scale-105', 'border-amber-500');
+            } else {
+                playIcon.innerText = '▶';
+                playText.innerText = 'PLAY NARRATION';
+                btn.className = 'bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-full font-bold text-xs flex items-center gap-2 transition-all active:scale-95 shadow-md';
+                document.getElementById('mascot-avatar').className = 'w-16 h-16 sm:w-20 sm:h-20 bg-slate-900 rounded-full flex items-center justify-center text-3xl sm:text-4xl shadow-inner border border-slate-800 transition-all';
+            }
+        }
+
+        // Quiz Renderer
+        function updateQuiz() {
+            if (quizzes.length === 0) {
+                document.getElementById('quiz-card').classList.add('hidden');
+                return;
+            }
+
+            const quiz = quizzes[currentQuizIdx];
+            document.getElementById('quiz-question').innerText = (currentQuizIdx + 1) + '. ' + quiz.question;
+            
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+
+            const selectedAns = selectedAnswers[currentQuizIdx];
+
+            quiz.options.forEach((option, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left p-3.5 rounded-2xl border transition-all text-xs sm:text-sm flex justify-between items-center ';
+                
+                if (selectedAns === null) {
+                    btn.className += 'bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800/50 hover:border-slate-700';
+                    btn.onclick = () => selectQuizAnswer(idx);
+                } else {
+                    if (idx === quiz.answerIndex) {
+                        btn.className += 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 font-bold';
+                        btn.innerHTML = '<span>' + option + '</span><span class="text-xs">✓ Correct</span>';
+                    } else if (idx === selectedAns) {
+                        btn.className += 'bg-red-500/10 border-red-500/40 text-red-400 font-bold';
+                        btn.innerHTML = '<span>' + option + '</span><span class="text-xs">✗ Incorrect</span>';
+                    } else {
+                        btn.className += 'bg-slate-950/40 border-slate-850 text-slate-500 cursor-not-allowed';
+                        btn.innerHTML = '<span>' + option + '</span>';
+                    }
+                }
+                optionsContainer.appendChild(btn);
+            });
+
+            const explanationBox = document.getElementById('quiz-explanation');
+            if (selectedAns !== null && quiz.explanation) {
+                explanationBox.classList.remove('hidden');
+                explanationBox.innerHTML = '<strong>Guide Explanation:</strong> ' + quiz.explanation;
+            } else {
+                explanationBox.classList.add('hidden');
+            }
+
+            document.getElementById('btn-prev-quiz').disabled = currentQuizIdx === 0;
+            document.getElementById('btn-next-quiz').disabled = currentQuizIdx === quizzes.length - 1;
+
+            // Update scores
+            let calculatedScore = 0;
+            selectedAnswers.forEach((ans, qIdx) => {
+                if (ans !== null && ans === quizzes[qIdx].answerIndex) {
+                    calculatedScore++;
+                }
+            });
+            score = calculatedScore;
+            document.getElementById('quiz-score-badge').innerText = 'SCORE: ' + score + '/' + quizzes.length;
+        }
+
+        function selectQuizAnswer(ansIdx) {
+            if (selectedAnswers[currentQuizIdx] !== null) return;
+            selectedAnswers[currentQuizIdx] = ansIdx;
+            updateQuiz();
+        }
+
+        // Setup event handlers
+        document.getElementById('btn-play-pause').onclick = () => {
+            if (isSpeaking) {
+                stopVoice();
+            } else {
+                speakVoice();
+            }
+        };
+
+        document.getElementById('btn-prev').onclick = () => {
+            if (currentSlideIdx > 0) {
+                currentSlideIdx--;
+                updateSlide();
+            }
+        };
+
+        document.getElementById('btn-next').onclick = () => {
+            if (currentSlideIdx < slides.length - 1) {
+                currentSlideIdx++;
+                updateSlide();
+            }
+        };
+
+        document.getElementById('btn-prev-quiz').onclick = () => {
+            if (currentQuizIdx > 0) {
+                currentQuizIdx--;
+                updateQuiz();
+            }
+        };
+
+        document.getElementById('btn-next-quiz').onclick = () => {
+            if (currentQuizIdx < quizzes.length - 1) {
+                currentQuizIdx++;
+                updateQuiz();
+            }
+        };
+
+        // Initialize view
+        updateSlide();
+        updateQuiz();
+    </script>
+</body>
+</html>`;
+
+    // Download flow
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Generate clean filename
+    const sanitizedTitle = lessonTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .substring(0, 40);
+    link.download = `mascot_lesson_\${sanitizedTitle}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const currentLanguageLessons = SAMPLE_LESSONS[lang] || SAMPLE_LESSONS['en'];
   const [selectedLesson, setSelectedLesson] = useState<LessonQuery>(currentLanguageLessons[0]);
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
   const [customQuery, setCustomQuery] = useState('');
+
+  // --- VIDEO EXPORT GENERATOR STATES ---
+  const [showDownloadSelectionModal, setShowDownloadSelectionModal] = useState(false);
+  const [isRecordingVideoFile, setIsRecordingVideoFile] = useState(false);
+  const [videoRecordProgress, setVideoRecordProgress] = useState(0);
+  const [videoRecordStatus, setVideoRecordStatus] = useState('');
+  const exportCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const recordingActiveRef = React.useRef(false);
+  const animationFrameIdRef = React.useRef<number | null>(null);
+  const tutorAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const slideSwitchTimeoutRef = React.useRef<any>(null);
+
+  const playAmbientStudyBeat = (audioContext: AudioContext, destinationNode: AudioNode) => {
+    const chordProgression = [
+      [261.63, 329.63, 392.00, 493.88], // C major 7 (C, E, G, B)
+      [220.00, 261.63, 329.63, 392.00], // A minor 7 (A, C, E, G)
+      [349.23, 440.00, 523.25, 587.33], // F major 7/9 (F, A, C, E, G)
+      [392.00, 493.88, 587.33, 659.25]  // G major 7/9 (G, B, D, F#, A)
+    ];
+    let progressionIndex = 0;
+
+    const playNextChord = () => {
+      if (audioContext.state === 'closed') return;
+      const now = audioContext.currentTime;
+      const notes = chordProgression[progressionIndex];
+      
+      notes.forEach((freq) => {
+        const osc = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        
+        const filter = audioContext.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1200, now);
+        
+        osc.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(destinationNode);
+        
+        gainNode.gain.setValueAtTime(0, now);
+        gainNode.gain.linearRampToValueAtTime(0.04, now + 1.0);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 6.0);
+        
+        osc.start(now);
+        osc.stop(now + 6.0);
+      });
+      
+      // Kick beat
+      const kickOsc = audioContext.createOscillator();
+      const kickGain = audioContext.createGain();
+      kickOsc.type = 'sine';
+      kickOsc.frequency.setValueAtTime(100, now);
+      kickOsc.frequency.exponentialRampToValueAtTime(0.01, now + 0.3);
+      kickGain.gain.setValueAtTime(0.08, now);
+      kickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+      kickOsc.connect(kickGain);
+      kickGain.connect(destinationNode);
+      kickOsc.start(now);
+      kickOsc.stop(now + 0.3);
+
+      setTimeout(() => {
+        if (audioContext.state === 'closed') return;
+        const chimeNow = audioContext.currentTime;
+        const chimeOsc = audioContext.createOscillator();
+        const chimeGain = audioContext.createGain();
+        chimeOsc.type = 'sine';
+        chimeOsc.frequency.setValueAtTime(523.25, chimeNow);
+        chimeGain.gain.setValueAtTime(0.01, chimeNow);
+        chimeGain.gain.exponentialRampToValueAtTime(0.0001, chimeNow + 1.5);
+        chimeOsc.connect(chimeGain);
+        chimeGain.connect(destinationNode);
+        chimeOsc.start(chimeNow);
+        chimeOsc.stop(chimeNow + 1.5);
+      }, 1500);
+
+      progressionIndex = (progressionIndex + 1) % chordProgression.length;
+    };
+
+    playNextChord();
+    const intervalId = setInterval(playNextChord, 4000);
+    return intervalId;
+  };
+
+  const drawWrappedText = (
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    lineHeight: number
+  ) => {
+    const words = text.split(' ');
+    let line = '';
+    let currentY = y;
+
+    for (let n = 0; n < words.length; n++) {
+      let testLine = line + words[n] + ' ';
+      let metrics = ctx.measureText(testLine);
+      let testWidth = metrics.width;
+      if (testWidth > maxWidth && n > 0) {
+        ctx.fillText(line, x, currentY);
+        line = words[n] + ' ';
+        currentY += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, x, currentY);
+    return currentY + lineHeight;
+  };
+
+  const startVideoExport = async (lesson: LessonQuery) => {
+    if (!lesson) return;
+    setShowDownloadSelectionModal(false);
+    setIsRecordingVideoFile(true);
+    setVideoRecordProgress(0);
+    setVideoRecordStatus(lang === 'hi' ? 'ऑडियो और वीडियो इंजन शुरू किया जा रहा है...' : 'Initializing audio and video render engines...');
+    recordingActiveRef.current = true;
+
+    setTimeout(async () => {
+      const canvas = exportCanvasRef.current;
+      if (!canvas) {
+        console.error("Recording canvas not found");
+        setIsRecordingVideoFile(false);
+        return;
+      }
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error("Canvas context not supported");
+        setIsRecordingVideoFile(false);
+        return;
+      }
+
+      const slides = getSlidesForLesson(lesson, lang);
+      const avatarChar = lesson.avatarChar || "🤖";
+      const avatarName = lesson.avatarName || "Swami AI";
+      const subject = lesson.subject || "General 📚";
+      const query = lesson.query;
+
+      // 1. Build speech audio queue for all slides
+      interface AudioQueueItem {
+        slideIndex: number;
+        text: string;
+        url: string;
+      }
+      
+      const audioQueue: AudioQueueItem[] = [];
+      slides.forEach((slide, sIdx) => {
+        const cleanText = cleanTextForTTS(slide.content || '');
+        const detectedLang = detectLanguageOfText(slide.content || '', lang);
+        const chunks = splitTextIntoTTSChunks(cleanText);
+        if (chunks.length === 0) {
+          audioQueue.push({
+            slideIndex: sIdx,
+            text: '',
+            url: ''
+          });
+        } else {
+          chunks.forEach(chunk => {
+            audioQueue.push({
+              slideIndex: sIdx,
+              text: chunk,
+              url: `/api/tts?tl=${detectedLang}&q=${encodeURIComponent(chunk)}`
+            });
+          });
+        }
+      });
+
+      let audioCtx: AudioContext | null = null;
+      let audioDest: MediaStreamAudioDestinationNode | null = null;
+      let beatIntervalId: any = null;
+      let tutorAudio: HTMLAudioElement | null = null;
+      let tutorSource: MediaElementAudioSourceNode | null = null;
+
+      try {
+        const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+        audioCtx = new AudioCtxClass();
+        audioDest = audioCtx.createMediaStreamDestination();
+        beatIntervalId = playAmbientStudyBeat(audioCtx, audioDest);
+        
+        tutorAudio = new Audio();
+        tutorAudio.crossOrigin = "anonymous";
+        tutorAudioRef.current = tutorAudio;
+
+        tutorSource = audioCtx.createMediaElementSource(tutorAudio);
+        tutorSource.connect(audioDest);
+        tutorSource.connect(audioCtx.destination); // Let user hear the narration during encoding
+
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+      } catch (err) {
+        console.warn("Could not start Web Audio:", err);
+      }
+
+      let stream: MediaStream;
+      try {
+        stream = canvas.captureStream(30);
+      } catch (e) {
+        console.error("captureStream not supported:", e);
+        setIsRecordingVideoFile(false);
+        return;
+      }
+
+      if (audioDest && audioDest.stream.getAudioTracks().length > 0) {
+        const audioTrack = audioDest.stream.getAudioTracks()[0];
+        stream.addTrack(audioTrack);
+      }
+
+      let mimeType = 'video/webm;codecs=vp9';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/webm;codecs=vp8';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/webm';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/mp4';
+      }
+
+      let recordedChunks: Blob[] = [];
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            recordedChunks.push(event.data);
+          }
+        };
+        mediaRecorder.start(100);
+      } catch (err) {
+        console.error("Failed to create MediaRecorder:", err);
+        setIsRecordingVideoFile(false);
+        return;
+      }
+
+      const startTime = Date.now();
+      let lastTime = Date.now();
+
+      const bubbles = Array.from({ length: 15 }, () => ({
+        x: Math.random() * 1280,
+        y: Math.random() * 720,
+        r: Math.random() * 40 + 10,
+        alpha: Math.random() * 0.15 + 0.05,
+        dx: (Math.random() - 0.5) * 1.5,
+        dy: (Math.random() - 0.5) * 1.5
+      }));
+
+      // Active states driven by speech playback
+      let currentQueueIdx = 0;
+      let isAudioPlaying = false;
+      let currentSlideIdx = 0;
+      let exportCompleted = false;
+
+      const finishRecording = () => {
+        if (exportCompleted) return;
+        exportCompleted = true;
+        recordingActiveRef.current = false;
+        
+        setVideoRecordProgress(100);
+        setVideoRecordStatus(lang === 'hi' ? 'वीडियो फ़ाइल सहेज रहा है...' : 'Saving movie file to device...');
+        
+        if (slideSwitchTimeoutRef.current) {
+          clearTimeout(slideSwitchTimeoutRef.current);
+          slideSwitchTimeoutRef.current = null;
+        }
+        if (tutorAudioRef.current) {
+          try {
+            tutorAudioRef.current.pause();
+            tutorAudioRef.current.src = '';
+          } catch (e) {
+            // Safe ignore
+          }
+          tutorAudioRef.current = null;
+        }
+
+        setTimeout(() => {
+          try {
+            mediaRecorder.stop();
+            setTimeout(() => {
+              const blob = new Blob(recordedChunks, { type: mimeType });
+              const videoUrl = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = videoUrl;
+              
+              const sanitizedTitle = query
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '_')
+                .replace(/_+/g, '_')
+                .substring(0, 40);
+              const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+              a.download = `mascot_lecture_${sanitizedTitle}.${extension}`;
+              
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(videoUrl);
+
+              if (beatIntervalId) clearInterval(beatIntervalId);
+              if (audioCtx) audioCtx.close();
+
+              setIsRecordingVideoFile(false);
+            }, 500);
+          } catch (err) {
+            console.error("Error finalizing recording:", err);
+            setIsRecordingVideoFile(false);
+          }
+        }, 1000);
+      };
+
+      const playNextChunk = () => {
+        if (!recordingActiveRef.current || exportCompleted) return;
+
+        if (currentQueueIdx >= audioQueue.length) {
+          setVideoRecordStatus(lang === 'hi' ? 'व्याख्यान समाप्त हो रहा है...' : 'Wrapping up lecture...');
+          slideSwitchTimeoutRef.current = setTimeout(() => {
+            finishRecording();
+          }, 2000);
+          return;
+        }
+
+        const item = audioQueue[currentQueueIdx];
+        currentSlideIdx = item.slideIndex;
+
+        if (!item.url) {
+          isAudioPlaying = false;
+          setVideoRecordStatus(
+            lang === 'hi' 
+              ? `लेक्चर रिकॉर्ड किया जा रहा है: स्लाइड ${currentSlideIdx + 1}/${slides.length}`
+              : `Recording Lecture Movie: Slide ${currentSlideIdx + 1}/${slides.length}`
+          );
+          slideSwitchTimeoutRef.current = setTimeout(() => {
+            currentQueueIdx++;
+            playNextChunk();
+          }, 3000);
+          return;
+        }
+
+        if (tutorAudioRef.current) {
+          tutorAudioRef.current.src = item.url;
+          isAudioPlaying = true;
+
+          setVideoRecordStatus(
+            lang === 'hi' 
+              ? `लेक्चर रिकॉर्ड किया जा रहा है: स्लाइड ${currentSlideIdx + 1}/${slides.length}`
+              : `Recording Lecture Movie: Slide ${currentSlideIdx + 1}/${slides.length}`
+          );
+
+          tutorAudioRef.current.play().catch(err => {
+            console.warn("Failed to play tutor audio chunk, skipping:", err);
+            isAudioPlaying = false;
+            slideSwitchTimeoutRef.current = setTimeout(() => {
+              currentQueueIdx++;
+              playNextChunk();
+            }, 4000);
+          });
+        } else {
+          isAudioPlaying = false;
+          slideSwitchTimeoutRef.current = setTimeout(() => {
+            currentQueueIdx++;
+            playNextChunk();
+          }, 4000);
+        }
+      };
+
+      if (tutorAudioRef.current) {
+        tutorAudioRef.current.onended = () => {
+          isAudioPlaying = false;
+          currentQueueIdx++;
+          slideSwitchTimeoutRef.current = setTimeout(() => {
+            playNextChunk();
+          }, 600);
+        };
+        tutorAudioRef.current.onerror = (e) => {
+          console.warn("Tutor audio error, skipping to next chunk:", e);
+          isAudioPlaying = false;
+          currentQueueIdx++;
+          slideSwitchTimeoutRef.current = setTimeout(() => {
+            playNextChunk();
+          }, 600);
+        };
+      }
+
+      // Start sequential play of the narration queue
+      playNextChunk();
+
+      const renderFrame = () => {
+        if (!recordingActiveRef.current) return;
+
+        const now = Date.now();
+        const elapsed = now - startTime;
+        const dt = (now - lastTime) / 1000;
+        lastTime = now;
+
+        const progress = audioQueue.length > 0 ? Math.min((currentQueueIdx / audioQueue.length) * 100, 99) : 0;
+        setVideoRecordProgress(Math.floor(progress));
+        
+        const currentSlide = slides[currentSlideIdx];
+
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, 1280, 720);
+
+        const bgGrad = ctx.createLinearGradient(0, 0, 1280, 720);
+        bgGrad.addColorStop(0, '#0d1527');
+        bgGrad.addColorStop(1, '#1e1b4b');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, 1280, 720);
+
+        bubbles.forEach(b => {
+          b.x += b.dx;
+          b.y += b.dy;
+          if (b.x < -b.r) b.x = 1280 + b.r;
+          if (b.x > 1280 + b.r) b.x = -b.r;
+          if (b.y < -b.r) b.y = 720 + b.r;
+          if (b.y > 720 + b.r) b.y = -b.r;
+
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(129, 178, 154, ${b.alpha})`;
+          ctx.fill();
+        });
+
+        // 1. HEADER CARD
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(40, 30, 1200, 110, 24);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#81B29A';
+        ctx.font = '900 13px "JetBrains Mono", monospace';
+        ctx.fillText(subject.toUpperCase(), 70, 68);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px "Inter", sans-serif';
+        const displayQuery = query.length > 70 ? query.substring(0, 67) + '...' : query;
+        ctx.fillText(displayQuery, 70, 105);
+        
+        ctx.fillStyle = '#e07a5f';
+        ctx.font = '900 11px "JetBrains Mono", monospace';
+        ctx.fillText("🔴 RECORDING HD LECTURE", 1040, 68);
+        ctx.restore();
+
+        // 2. TUTOR PANEL
+        ctx.save();
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.4)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        ctx.beginPath();
+        ctx.roundRect(40, 170, 320, 480, 32);
+        ctx.fill();
+        ctx.stroke();
+
+        const avatarPulse = 1 + Math.sin(now * 0.005) * 0.04;
+        const avatarX = 40 + 160;
+        const avatarY = 170 + 160;
+        ctx.beginPath();
+        ctx.arc(avatarX, avatarY, 90 * avatarPulse, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(224, 122, 95, 0.08)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(224, 122, 95, 0.2)';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(avatarX, avatarY, 75, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f172a';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.stroke();
+
+        ctx.font = '90px "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        ctx.save();
+        ctx.translate(avatarX, avatarY);
+        const talkBounce = isAudioPlaying ? Math.sin(now * 0.015) * 5 : 0;
+        ctx.translate(0, talkBounce);
+        ctx.fillText(avatarChar.split(' ')[0], 0, 0);
+        ctx.restore();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 18px "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(avatarName, avatarX, 170 + 295);
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.font = '12px "JetBrains Mono", monospace';
+        ctx.fillText("YOUR CLASSROOM NARRATOR", avatarX, 170 + 320);
+
+        ctx.fillStyle = 'rgba(129, 178, 154, 0.7)';
+        const barWidth = 6;
+        const barGap = 4;
+        const startBarX = avatarX - 70;
+        for (let idx = 0; idx < 15; idx++) {
+          const heightFactor = isAudioPlaying ? Math.sin(now * 0.01 + idx * 0.3) * 0.5 + 0.5 : 0;
+          const barHeight = 15 + heightFactor * 25;
+          const barX = startBarX + idx * (barWidth + barGap);
+          ctx.beginPath();
+          ctx.roundRect(barX, 170 + 380 - barHeight / 2, barWidth, barHeight, 3);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // 3. SLIDE PANEL
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        ctx.beginPath();
+        ctx.roundRect(390, 170, 850, 480, 32);
+        ctx.fill();
+        ctx.stroke();
+
+        if (currentSlide) {
+          ctx.fillStyle = '#f59e0b';
+          ctx.font = 'bold 22px "Inter", sans-serif';
+          ctx.fillText(currentSlide.title || `STAGE ${currentSlideIdx + 1}`, 430, 220);
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(430, 245);
+          ctx.lineTo(1200, 245);
+          ctx.stroke();
+
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = '18px/1.6 "Inter", sans-serif';
+          const slideTextY = drawWrappedText(
+            ctx,
+            currentSlide.content || '',
+            430,
+            285,
+            770,
+            30
+          );
+
+          if (currentSlide.bullets && currentSlide.bullets.length > 0) {
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '15px "Inter", sans-serif';
+            let bulletY = slideTextY + 15;
+            
+            currentSlide.bullets.slice(0, 3).forEach((bullet: string) => {
+              if (bulletY < 170 + 370) {
+                ctx.fillStyle = '#81B29A';
+                ctx.fillText("⚡", 430, bulletY);
+                ctx.fillStyle = '#cbd5e1';
+                ctx.fillText(bullet, 455, bulletY);
+                bulletY += 26;
+              }
+            });
+          }
+
+          if (currentSlide.keyFact) {
+            ctx.fillStyle = 'rgba(30, 41, 59, 0.6)';
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.15)';
+            ctx.beginPath();
+            ctx.roundRect(430, 170 + 380, 770, 65, 16);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 13px "Inter", sans-serif';
+            drawWrappedText(
+              ctx,
+              currentSlide.keyFact,
+              455,
+              170 + 418,
+              720,
+              20
+            );
+          }
+        }
+        ctx.restore();
+
+        // 4. FOOTER TIMELINE
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.fillRect(40, 680, 1200, 6);
+
+        ctx.fillStyle = '#e07a5f';
+        ctx.fillRect(40, 680, 1200 * (progress / 100), 6);
+
+        for (let i = 1; i < slides.length; i++) {
+          const dotX = 40 + (1200 * (i / slides.length));
+          ctx.beginPath();
+          ctx.arc(dotX, 683, 4, 0, Math.PI * 2);
+          ctx.fillStyle = progress >= (i / slides.length) * 100 ? '#e07a5f' : '#334155';
+          ctx.fill();
+        }
+
+        const secondsElapsed = Math.floor(elapsed / 1000);
+        const secondsTotal = Math.max(secondsElapsed + 2, audioQueue.length * 5);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 11px "JetBrains Mono", monospace';
+        ctx.fillText(
+          `SLIDE ${currentSlideIdx + 1} OF ${slides.length}  |  ${secondsElapsed}s / ${secondsTotal}s`,
+          40,
+          708
+        );
+
+        ctx.textAlign = 'right';
+        ctx.fillText(
+          "MASCOT CLASS TUTOR • HIGH DEFINITION OFFLINE MOVIE",
+          1240,
+          708
+        );
+        ctx.restore();
+
+        animationFrameIdRef.current = requestAnimationFrame(renderFrame);
+      };
+
+      renderFrame();
+    }, 100);
+  };
+
+  const cancelVideoExport = () => {
+    recordingActiveRef.current = false;
+    if (animationFrameIdRef.current) {
+      cancelAnimationFrame(animationFrameIdRef.current);
+    }
+    if (slideSwitchTimeoutRef.current) {
+      clearTimeout(slideSwitchTimeoutRef.current);
+      slideSwitchTimeoutRef.current = null;
+    }
+    if (tutorAudioRef.current) {
+      try {
+        tutorAudioRef.current.pause();
+        tutorAudioRef.current.src = '';
+      } catch (err) {
+        console.warn("Error pausing tutor audio:", err);
+      }
+      tutorAudioRef.current = null;
+    }
+    setIsRecordingVideoFile(false);
+  };
 
   // File upload state for custom queries
   const [attachedFile, setAttachedFile] = useState<{
@@ -366,17 +1389,28 @@ export default function TutorTab({
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isAutoplayEnabled, setIsAutoplayEnabled] = useState(true);
 
-  const [activeDeckTab, setActiveDeckTab] = useState<'curriculum' | 'history'>('curriculum');
+  const [activeDeckTab, setActiveDeckTab] = useState<'curriculum' | 'history'>('history');
   const [customHistory, setCustomHistory] = useState<LessonQuery[]>(() => {
     try {
-      const saved = localStorage.getItem('mascot_lessons_history');
+      const saved = localStorage.getItem(`${user.mobile}_mascot_lessons_history`);
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
       console.error("Failed to parse mascot lessons history:", e);
       return [];
     }
   });
-  const [isNewLecture, setIsNewLecture] = useState(false);
+
+  // Load customHistory when user.mobile changes
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`${user.mobile}_mascot_lessons_history`);
+      setCustomHistory(saved ? JSON.parse(saved) : []);
+    } catch (e) {
+      console.error("Failed to parse mascot lessons history:", e);
+      setCustomHistory([]);
+    }
+  }, [user.mobile]);
+  const [isNewLecture, setIsNewLecture] = useState(true);
   const [showPlayGesturePrompt, setShowPlayGesturePrompt] = useState(false);
 
   const isAutoplayEnabledRef = React.useRef(isAutoplayEnabled);
@@ -1017,6 +2051,14 @@ export default function TutorTab({
     
     const mascotName = selectedLesson.avatarName || "Swami AI";
     const targetLangName = LANGUAGE_NAMES[lang] || "English";
+
+    // Retrieve customized student context
+    const studentName = user.name || 'Student';
+    const gradeLevel = user.standard || localStorage.getItem(`${user.mobile}_profile_standard`) || 'Grade 6 Science';
+    const studentVillage = user.village || localStorage.getItem(`${user.mobile}_profile_village`) || 'Rampur Vilas';
+    const studentSchool = user.school || localStorage.getItem(`${user.mobile}_profile_school`) || 'Rampur Primary Public School';
+    const studentPoints = user.totalPoints ?? Number(localStorage.getItem(`${user.mobile}_quizzes_total_points`)) ?? 15;
+    const currentProgress = studentPoints < 100 ? "Beginner" : studentPoints < 300 ? "Intermediate" : "Reviewing & Advanced";
     
     setGenerationStage(
       lang === 'hi' ? `🧠 एआई शिक्षक आपके विषय "${queryText}" पर शोध कर रहे हैं...` :
@@ -1028,7 +2070,19 @@ export default function TutorTab({
     );
 
     try {
-      const systemInstruction = `You are ${mascotName}, a brilliant, creative, and enthusiastic school tutor. You explain difficult concepts to children in highly visual, exciting, and step-by-step ways.
+      const systemInstruction = `You are ${mascotName}, an empathetic, highly adaptive school tutor designed specifically for rural Indian students. You explain difficult concepts in highly visual, exciting, and step-by-step ways.
+
+[EMPATHETIC ADAPTIVE TUTOR PROFILE]
+- Target Student Name: ${studentName} (Address them personally by their name "${studentName}" occasionally in slide content, key facts, or question explanations to build rapport).
+- Student Grade/Class Level: ${gradeLevel} (Scale the complexity, vocabulary, and logic of your explanations to match exactly this grade level).
+- Student Home Village: ${studentVillage} (Incorporate or refer to their local village "${studentVillage}" or village school "${studentSchool}" if relevant).
+- Student Progress Level: ${currentProgress} (Tailor slide details for this progress level: beginners get extra step-by-step guidance, intermediate gets active application prompts, and advanced gets reviewing concepts).
+- Target Language: ${targetLangName} (All slide content, quiz questions, options, and explanations MUST be written in ${targetLangName} using its native alphabet/script. Use simple, local, and culturally relevant analogies like farming, local markets, village festivals, crops, or animals to explain complex topics).
+
+[BEHAVIOR & PEDAGOGICAL GUIDELINES]
+- Do not give wall-of-text answers. Use short paragraphs and bullet points in the slides.
+- In explanations of quiz answers, Socratic guidance is key. Instead of just giving the correct answer flatly, write explanations that guide the student to understand the underlying concept step-by-step.
+
 CRITICAL REQUIREMENTS:
 1. Generate a structured lesson presentation with exactly 3 sequential slides explaining the requested topic: "${queryText}".
 2. All lesson title, content, bullet points, key facts, quiz questions, options, and explanations MUST be written in ${targetLangName} using its native alphabet/script.
@@ -1180,7 +2234,7 @@ JSON Schema:
         // Add to history list and persist
         setCustomHistory(prev => {
           const updated = [newLesson, ...prev];
-          localStorage.setItem('mascot_lessons_history', JSON.stringify(updated));
+          localStorage.setItem(`${user.mobile}_mascot_lessons_history`, JSON.stringify(updated));
           return updated;
         });
         setActiveDeckTab('history');
@@ -1364,8 +2418,23 @@ JSON Schema:
       if (quizScore + 1 >= selectedLesson.quiz.length) {
         if (!claimedMedals.includes(selectedLesson.id)) {
           setClaimedMedals((prev) => [...prev, selectedLesson.id]);
+          
+          offlineSyncManager.addLearningFeedEvent(user.mobile, {
+            type: 'quiz',
+            title: lang === 'hi' 
+              ? `चैंपियन पदक अर्जित किया: ${selectedLesson.subject}` 
+              : `Earned Academic Medal: ${selectedLesson.subject}`,
+            subtitle: lang === 'hi'
+              ? `आज • पूर्णतः उत्तीर्ण ${selectedLesson.query}`
+              : `Today • Fully passed lesson quiz on ${selectedLesson.query}`,
+            icon: '🏆',
+            bgClass: 'bg-amber-50',
+            textClass: 'text-amber-600',
+            timestamp: 'Today'
+          });
+
           if (!offlineSyncManager.isOnline()) {
-            offlineSyncManager.queuePendingProgress('medal_earned', selectedLesson.id);
+            offlineSyncManager.queuePendingProgress('medal_earned', selectedLesson.id, user.mobile);
           }
         }
       }
@@ -1502,128 +2571,89 @@ JSON Schema:
           <div className="flex items-center gap-1.5">
             <Video className="h-4 w-4 text-[#81B29A]" />
             <h3 className="font-display font-bold text-xs text-[#3D405B] uppercase tracking-widest text-left">
-              {lang === 'hi' ? "स्कॉलैस्टिक लेसन डेक" : "Scholastic Lesson Deck"}
+              {lang === 'hi' ? "मेरा लेक्चर इतिहास" : "My Lecture History"}
             </h3>
-          </div>
-          
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-xl self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setActiveDeckTab('curriculum')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-sans transition-all cursor-pointer ${
-                activeDeckTab === 'curriculum'
-                  ? 'bg-white text-[#3D405B] shadow-xs'
-                  : 'text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              {lang === 'hi' ? "पाठ्यचर्या पाठ" : "Curriculum Lessons"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveDeckTab('history')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-sans transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeDeckTab === 'history'
-                  ? 'bg-white text-[#3D405B] shadow-xs'
-                  : 'text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              <span>{lang === 'hi' ? "मेरा इतिहास" : "My Lecture History"}</span>
-              {customHistory.length > 0 && (
-                <span className="bg-[#E07A5F]/10 text-[#E07A5F] text-[10px] font-mono font-black px-1.5 py-0.5 rounded-full">
-                  {customHistory.length}
-                </span>
-              )}
-            </button>
           </div>
         </div>
 
-        {activeDeckTab === 'curriculum' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {currentLanguageLessons.map((item) => (
+        <div className="space-y-3">
+          {customHistory.length > 0 && (
+            <div className="flex justify-end">
               <button
-                key={item.id}
-                id={`lesson-selector-${item.id}`}
-                onClick={() => handleLessonSelect(item)}
-                className={`w-full p-3 rounded-xl border text-left transition-all hover:bg-[#FAF8F4] cursor-pointer flex items-center gap-3 ${
-                  !isNewLecture && selectedLesson.id === item.id
-                    ? 'border-[#81B29A] bg-[#81B29A]/10 ring-1 ring-[#81B29A]'
-                    : 'border-gray-200'
-                }`}
+                type="button"
+                onClick={() => {
+                  if (confirm(lang === 'hi' ? "क्या आप पूरा इतिहास हटाना चाहते हैं?" : "Are you sure you want to clear your lecture history?")) {
+                    setCustomHistory([]);
+                    localStorage.removeItem(`${user.mobile}_mascot_lessons_history`);
+                  }
+                }}
+                className="text-[10px] font-mono text-gray-400 hover:text-red-500 underline flex items-center gap-1 cursor-pointer transition-all"
               >
-                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.videoThumbColor} flex items-center justify-center shrink-0 text-white font-bold text-sm`}>
-                  {item.avatarChar.split(' ')[0]}
-                </div>
-                <div className="flex-1 min-w-0 font-sans">
-                  <span className="text-[9px] font-mono font-bold text-[#E07A5F] block uppercase tracking-wide">
-                    {item.subject}
-                  </span>
-                  <span className="font-semibold text-xs text-gray-900 block truncate mt-0.5">
-                    {item.query}
-                  </span>
-                </div>
-                <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                {lang === 'hi' ? "इतिहास साफ़ करें" : "Clear History"}
               </button>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {customHistory.length > 0 && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (confirm(lang === 'hi' ? "क्या आप पूरा इतिहास हटाना चाहते हैं?" : "Are you sure you want to clear your lecture history?")) {
-                      setCustomHistory([]);
-                      localStorage.removeItem('mascot_lessons_history');
-                    }
-                  }}
-                  className="text-[10px] font-mono text-gray-400 hover:text-red-500 underline flex items-center gap-1 cursor-pointer transition-all"
-                >
-                  {lang === 'hi' ? "इतिहास साफ़ करें" : "Clear History"}
-                </button>
-              </div>
-            )}
+            </div>
+          )}
 
-            {customHistory.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {customHistory.map((item) => (
-                  <button
+          {customHistory.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {customHistory.map((item) => {
+                const isActive = !isNewLecture && selectedLesson.id === item.id;
+                return (
+                  <div
                     key={item.id}
-                    id={`lesson-selector-${item.id}`}
-                    onClick={() => handleLessonSelect(item)}
-                    className={`w-full p-3 rounded-xl border text-left transition-all hover:bg-[#FAF8F4] cursor-pointer flex items-center gap-3 ${
-                      !isNewLecture && selectedLesson.id === item.id
+                    className={`w-full p-3 rounded-xl border text-left transition-all hover:bg-[#FAF8F4] flex items-center justify-between gap-3 ${
+                      isActive
                         ? 'border-[#E07A5F] bg-[#E07A5F]/5 ring-1 ring-[#E07A5F]'
                         : 'border-gray-200'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-fuchsia-400 to-indigo-600 flex items-center justify-center shrink-0 text-white font-bold text-sm">
-                      ✨
+                    <button
+                      type="button"
+                      id={`lesson-selector-${item.id}`}
+                      onClick={() => handleLessonSelect(item)}
+                      className="flex-1 flex items-center gap-3 cursor-pointer text-left focus:outline-none min-w-0"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-fuchsia-400 to-indigo-600 flex items-center justify-center shrink-0 text-white font-bold text-sm">
+                        ✨
+                      </div>
+                      <div className="flex-1 min-w-0 font-sans">
+                        <span className="text-[9px] font-mono font-bold text-[#81B29A] block uppercase tracking-wide">
+                          {item.subject}
+                        </span>
+                        <span className="font-semibold text-xs text-gray-900 block truncate mt-0.5">
+                          {item.query}
+                        </span>
+                      </div>
+                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadLessonVideoAndSlidesSpecific(item);
+                        }}
+                        className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all cursor-pointer"
+                        title={lang === 'hi' ? "इस लेक्चर को ऑफ़लाइन के लिए डाउनलोड करें" : "Download this lecture for offline use"}
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
                     </div>
-                    <div className="flex-1 min-w-0 font-sans">
-                      <span className="text-[9px] font-mono font-bold text-[#81B29A] block uppercase tracking-wide">
-                        {item.subject}
-                      </span>
-                      <span className="font-semibold text-xs text-gray-900 block truncate mt-0.5">
-                        {item.query}
-                      </span>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 px-4 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                <p className="text-xs text-gray-500 font-sans mb-1">
-                  {lang === 'hi' ? "कोई उत्पन्न व्याख्यान नहीं मिला!" : "No custom generated lectures found!"}
-                </p>
-                <p className="text-[10px] text-gray-400 font-sans">
-                  {lang === 'hi' ? "ऊपर दिए गए बार में कोई प्रश्न पूछें और अपना पहला अनुकूलित व्याख्यान उत्पन्न करें।" : "Type a question in the ask bar above and click Generate to build your first live lecture."}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 px-4 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+              <p className="text-xs text-gray-500 font-sans mb-1">
+                {lang === 'hi' ? "कोई उत्पन्न व्याख्यान नहीं मिला!" : "No custom generated lectures found!"}
+              </p>
+              <p className="text-[10px] text-gray-400 font-sans">
+                {lang === 'hi' ? "ऊपर दिए गए बार में कोई प्रश्न पूछें और अपना पहला अनुकूलित व्याख्यान उत्पन्न करें।" : "Type a question in the ask bar above and click Generate to build your first live lecture."}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 3. Visual active AI character video box (Lecture section - Full width) */}
@@ -1833,6 +2863,16 @@ JSON Schema:
                                 <span>PLAY LECTURE</span>
                               </>
                             )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setShowDownloadSelectionModal(true)}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-mono text-[10px] sm:text-xs font-black flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+                            title={DOWNLOAD_TOOLTIPS[lang] || DOWNLOAD_TOOLTIPS['en']}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            <span>{DOWNLOAD_LABELS[lang] || DOWNLOAD_LABELS['en']}</span>
                           </button>
 
                           <div className="flex items-center gap-1.5">
@@ -2144,6 +3184,157 @@ JSON Schema:
 
           </div>
         )}
+
+      {/* 📥 DOWNLOAD OPTIONS SELECTION MODAL */}
+      {showDownloadSelectionModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setShowDownloadSelectionModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 p-2 rounded-full transition-all cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-3 text-xl">
+                📥
+              </div>
+              <h3 className="text-xl font-black font-display tracking-tight text-slate-100">
+                {lang === 'hi' ? 'पाठ सहेजें और डाउनलोड करें' : 'Save & Download Lesson'}
+              </h3>
+              <p className="text-xs text-slate-400 mt-1 font-sans">
+                {lang === 'hi' 
+                  ? 'अपनी पसंद के अनुसार ऑफ़लाइन पढ़ने का प्रारूप चुनें' 
+                  : 'Choose your preferred format for offline learning'}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Option 1: Direct Video File */}
+              <button
+                type="button"
+                onClick={() => startVideoExport(selectedLesson)}
+                className="w-full text-left bg-slate-800/40 hover:bg-slate-800/70 border border-slate-800 hover:border-indigo-500/30 p-4 rounded-2xl transition-all flex items-start gap-4 active:scale-98 cursor-pointer animate-none"
+              >
+                <div className="bg-[#E07A5F]/10 text-[#E07A5F] border border-[#E07A5F]/20 p-2.5 rounded-xl text-lg shrink-0 mt-0.5">
+                  🎥
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-sm text-slate-100 flex items-center gap-2">
+                    {lang === 'hi' ? 'एचडी वीडियो लेक्चर (.mp4 / .webm)' : 'HD Video Lecture (.mp4 / .webm)'}
+                    <span className="bg-[#E07A5F]/10 text-[#E07A5F] border border-[#E07A5F]/20 text-[9px] font-mono px-2 py-0.5 rounded-full font-black">
+                      RECOMMENDED
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-1 font-sans leading-relaxed">
+                    {lang === 'hi' 
+                      ? 'अपने फ़ोन, टैबलेट या टीवी पर सीधे चलाने के लिए संगीत के साथ पूरा वीडियो डाउनलोड करें।' 
+                      : 'Download a standalone movie file with slide-by-slide transitions and ambient study background music.'}
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Interactive Slides & Quiz HTML Package */}
+              <button
+                type="button"
+                onClick={() => {
+                  downloadLessonVideoAndSlidesSpecific(selectedLesson);
+                  setShowDownloadSelectionModal(false);
+                }}
+                className="w-full text-left bg-slate-800/40 hover:bg-slate-800/70 border border-slate-800 hover:border-emerald-500/30 p-4 rounded-2xl transition-all flex items-start gap-4 active:scale-98 cursor-pointer animate-none"
+              >
+                <div className="bg-[#81B29A]/10 text-[#81B29A] border border-[#81B29A]/20 p-2.5 rounded-xl text-lg shrink-0 mt-0.5">
+                  📚
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-sm text-slate-100">
+                    {lang === 'hi' ? 'इंटरएक्टिव स्लाइड और स्व-मूल्यांकन पैक (.html)' : 'Interactive Slide & Quiz Pack (.html)'}
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-1 font-sans leading-relaxed">
+                    {lang === 'hi' 
+                      ? 'स्लाइड प्लेयर, वॉयस-ओवर और स्व-जांच क्विज़ के साथ संपूर्ण इंटरएक्टिव ऑफ़लाइन पैकेज डाउनलोड करें।' 
+                      : 'Download the complete slide presentation, interactive self-test quiz game, and voice-over narration as an offline app.'}
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <div className="text-center mt-6 text-[10px] font-mono text-slate-500 uppercase tracking-widest border-t border-slate-800/60 pt-4">
+              Mascot Class Tutor • Offline Classroom
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🎥 ACTIVE HD VIDEO RECORDING / RENDERING MODAL */}
+      {isRecordingVideoFile && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full text-white shadow-2xl relative text-center">
+            
+            <div className="mb-4">
+              <span className="inline-flex h-3 w-3 rounded-full bg-red-500 animate-ping mr-2"></span>
+              <span className="text-[11px] font-mono text-red-400 uppercase font-extrabold tracking-widest">
+                {lang === 'hi' ? 'लाइव रेंडरिंग और रिकॉर्डिंग' : 'LIVE RENDERING & RECORDING'}
+              </span>
+            </div>
+
+            <h3 className="text-lg sm:text-xl font-black font-display tracking-tight text-slate-100">
+              {lang === 'hi' ? 'वीडियो व्याख्यान रेंडर किया जा रहा है...' : 'Generating Video Lecture...'}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto leading-relaxed font-sans">
+              {lang === 'hi' 
+                ? 'हम आपके लिए सभी स्लाइड्स और पृष्ठभूमि संगीत को उच्च-गुणवत्ता वाली वीडियो फ़ाइल में संयोजित कर रहे हैं। कृपया इस टैब को चालू रखें!' 
+                : 'We are blending your customized tutor, animated slides, subtitles, and cozy ambient lofi music into a playable movie. Please do not close this tab!'}
+            </p>
+
+            {/* LIVE PREVIEW CANVAS */}
+            <div className="my-5 relative rounded-2xl overflow-hidden border border-slate-800 shadow-inner bg-slate-950 aspect-video w-full max-w-md mx-auto">
+              <canvas
+                ref={exportCanvasRef}
+                width={1280}
+                height={720}
+                className="w-full h-full object-contain"
+              />
+              <div className="absolute top-3 left-3 bg-red-600/90 text-white font-mono text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md">
+                REC 720P
+              </div>
+            </div>
+
+            {/* STATUS & PROGRESS */}
+            <div className="space-y-3 max-w-md mx-auto">
+              <div className="flex justify-between items-center text-xs font-mono text-slate-400">
+                <span className="truncate max-w-[80%] text-left font-sans italic">{videoRecordStatus}</span>
+                <span className="font-bold text-indigo-400 shrink-0">{videoRecordProgress}%</span>
+              </div>
+
+              {/* Progress track */}
+              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-[#E07A5F] rounded-full transition-all duration-300"
+                  style={{ width: `${videoRecordProgress}%` }}
+                />
+              </div>
+            </div>
+
+            {/* CANCEL EXPORT */}
+            <div className="mt-6 flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={cancelVideoExport}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 hover:text-white rounded-xl font-semibold text-xs transition-all active:scale-95 cursor-pointer"
+              >
+                {lang === 'hi' ? 'रेंडरिंग रद्द करें' : 'Cancel Rendering'}
+              </button>
+            </div>
+
+            <div className="text-[9px] font-mono text-slate-600 uppercase tracking-widest mt-6 pt-4 border-t border-slate-800/60">
+              Direct Hardware Accel Canvas Encoder
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

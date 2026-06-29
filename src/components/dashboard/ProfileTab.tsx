@@ -14,7 +14,8 @@ interface ProfileTabProps {
   lang: LanguageCode;
   claimedMedals: string[];
   offlineCount: number;
-  onNavigateToTab: (tab: 'ai-assistant' | 'tutor' | 'offline-library' | 'quiz' | 'exam' | 'career' | 'settings' | 'profile') => void;
+  onNavigateToTab: (tab: 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'profile' | 'certificates') => void;
+  onUpdateUser: (fields: Partial<User>) => void;
 }
 
 const AVATARS = [
@@ -25,69 +26,119 @@ const AVATARS = [
   { id: 'lion', emoji: '🦁', name: 'Royal Lion' },
 ];
 
-export default function ProfileTab({ user, lang, claimedMedals, offlineCount, onNavigateToTab }: ProfileTabProps) {
+export default function ProfileTab({ user, lang, claimedMedals, offlineCount, onNavigateToTab, onUpdateUser }: ProfileTabProps) {
   const t = TRANSLATIONS[lang];
 
-  // Load custom student attributes from local storage for offline continuity
-  const [village, setVillage] = useState(() => localStorage.getItem('profile_village') || 'Rampur Vilas');
-  const [school, setSchool] = useState(() => localStorage.getItem('profile_school') || 'Rampur Primary Public School');
-  const [standard, setStandard] = useState(() => localStorage.getItem('profile_standard') || 'Grade 6 Science');
-  const [selectedAvatar, setSelectedAvatar] = useState(() => localStorage.getItem('profile_avatar') || '🦊');
+  // Load custom student attributes from the user prop for Firebase dynamics
+  const [village, setVillage] = useState(() => user.village || 'Rampur Vilas');
+  const [school, setSchool] = useState(() => user.school || 'Rampur Primary Public School');
+  const [standard, setStandard] = useState(() => user.standard || 'Grade 6 Science');
+  const [selectedAvatar, setSelectedAvatar] = useState(() => user.avatar || '🦊');
   const [isEditing, setIsEditing] = useState(false);
 
-  // Gamified statistics from localStorage
-  const [userPoints, setUserPoints] = useState(() => Number(localStorage.getItem('quizzes_total_points')) || 40);
-  const [streakDays, setStreakDays] = useState(() => Number(localStorage.getItem('profile_streak_days')) || 5);
-  const [hasCheckedInToday, setHasCheckedInToday] = useState(() => localStorage.getItem('profile_checked_in_today') === 'true');
+  // Gamified statistics from user prop
+  const [userPoints, setUserPoints] = useState(() => user.totalPoints ?? 15);
+  const [streakDays, setStreakDays] = useState(() => user.streakDays ?? 1);
+  const [hasCheckedInToday, setHasCheckedInToday] = useState(() => user.lastCheckedInDate === new Date().toLocaleDateString());
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'unlocked' | 'locked' | 'science' | 'math'>('all');
   const [streakCelebration, setStreakCelebration] = useState(false);
 
-  // Sync state points change on local storage updates (for instance from quizzes passed)
+  // Synchronize student data when logged-in student session changes
   useEffect(() => {
-    const handleStorageChange = () => {
-      setUserPoints(Number(localStorage.getItem('quizzes_total_points')) || 40);
-    };
-    window.addEventListener('storage', handleStorageChange);
-    // Poll to keep in sync if tabs are operated
-    const interval = setInterval(handleStorageChange, 2000);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, []);
+    setVillage(user.village || 'Rampur Vilas');
+    setSchool(user.school || 'Rampur Primary Public School');
+    setStandard(user.standard || 'Grade 6 Science');
+    setSelectedAvatar(user.avatar || '🦊');
+    setUserPoints(user.totalPoints ?? 15);
+    setStreakDays(user.streakDays ?? 1);
+    setHasCheckedInToday(user.lastCheckedInDate === new Date().toLocaleDateString());
+  }, [user]);
 
   // Generate mock but consistent weekly analytics data based on user
-  const weeklyData = [
-    { day: 'Mon', mins: 35, quizzes: 1 },
-    { day: 'Tue', mins: 45, quizzes: 2 },
-    { day: 'Wed', mins: 20, quizzes: 0 },
-    { day: 'Thu', mins: 55, quizzes: 3 },
-    { day: 'Fri', mins: 40, quizzes: 1 },
-    { day: 'Sat', mins: 60, quizzes: 2 },
-    { day: 'Sun', mins: loggedMinutesToday(), quizzes: claimedMedals.length > 0 ? 1 : 0 },
-  ];
+  const daysOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  
+  // Convert current day (0=Sun, 1=Mon, ..., 6=Sat) to index in Mon-Sun order (Mon=0, Tue=1, ..., Sun=6)
+  const rawDay = new Date().getDay();
+  const todayIdx = rawDay === 0 ? 6 : rawDay - 1;
+
+  const weeklyData = daysOrder.map((dayName, idx) => {
+    if (idx === todayIdx) {
+      return { day: dayName, mins: loggedMinutesToday(), quizzes: claimedMedals.length > 0 ? 1 : 0 };
+    }
+    if (idx > todayIdx) {
+      return { day: dayName, mins: 0, quizzes: 0 };
+    }
+    // Past days:
+    const isNewUser = (user.streakDays ?? 1) <= 1;
+    if (isNewUser) {
+      return { day: dayName, mins: 0, quizzes: 0 };
+    } else {
+      // Returning user: show realistic mock data
+      const mockValues = [
+        { mins: 35, quizzes: 1 },
+        { mins: 45, quizzes: 2 },
+        { mins: 20, quizzes: 0 },
+        { mins: 55, quizzes: 3 },
+        { mins: 40, quizzes: 1 },
+        { mins: 60, quizzes: 2 },
+        { mins: 15, quizzes: 0 }
+      ];
+      return { day: dayName, mins: mockValues[idx].mins, quizzes: mockValues[idx].quizzes };
+    }
+  });
 
   function loggedMinutesToday() {
-    return 30 + claimedMedals.length * 10;
+    return user.studyMins ?? 30;
   }
 
   const saveProfileDetails = () => {
-    localStorage.setItem('profile_village', village);
-    localStorage.setItem('profile_school', school);
-    localStorage.setItem('profile_standard', standard);
-    localStorage.setItem('profile_avatar', selectedAvatar);
+    onUpdateUser({
+      village,
+      school,
+      standard,
+      avatar: selectedAvatar
+    });
     setIsEditing(false);
   };
 
   const totalWeeklyMins = weeklyData.reduce((acc, curr) => acc + curr.mins, 0);
 
-  // Hardcoded but consistent curriculum stats
+  // Dynamic curriculum stats based on actual claimedMedals and activities
+  const completedScience = (claimedMedals.includes('rain') ? 1 : 0) + (claimedMedals.includes('photo') || claimedMedals.includes('ch-photosynthesis') ? 1 : 0);
+  const completedMath = (claimedMedals.includes('math') || claimedMedals.includes('ch-multiplication') ? 1 : 0);
+  const completedLanguages = claimedMedals.includes('lang') ? 1 : 0;
+  const completedGK = claimedMedals.includes('gk') ? 1 : 0;
+
   const subjects = [
-    { name: 'Science 🔬', completed: 3, total: 5, color: '#81B29A', accuracy: '85%' },
-    { name: 'Mathematics 📐', completed: 2, total: 4, color: '#F2CC8F', accuracy: '75%' },
-    { name: 'Languages 🗣️', completed: 4, total: 4, color: '#E07A5F', accuracy: '95%' },
-    { name: 'General Knowledge 🧠', completed: 1, total: 3, color: '#3D405B', accuracy: '80%' },
+    { 
+      name: lang === 'hi' ? 'विज्ञान 🔬' : 'Science 🔬', 
+      completed: completedScience, 
+      total: 2, 
+      color: '#81B29A', 
+      accuracy: completedScience > 0 ? '85%' : '-' 
+    },
+    { 
+      name: lang === 'hi' ? 'गणित 📐' : 'Mathematics 📐', 
+      completed: completedMath, 
+      total: 1, 
+      color: '#F2CC8F', 
+      accuracy: completedMath > 0 ? '75%' : '-' 
+    },
+    { 
+      name: lang === 'hi' ? 'भाषाएँ 🗣️' : 'Languages 🗣️', 
+      completed: completedLanguages, 
+      total: 1, 
+      color: '#E07A5F', 
+      accuracy: completedLanguages > 0 ? '95%' : '-' 
+    },
+    { 
+      name: lang === 'hi' ? 'सामान्य ज्ञान 🧠' : 'General Knowledge 🧠', 
+      completed: completedGK, 
+      total: 1, 
+      color: '#3D405B', 
+      accuracy: completedGK > 0 ? '80%' : '-' 
+    },
   ];
 
   const handleDailyCheckIn = () => {
@@ -95,11 +146,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
 
     const newStreak = streakDays + 1;
     const newPoints = userPoints + 15;
-
-    // Save to local storage
-    localStorage.setItem('profile_streak_days', String(newStreak));
-    localStorage.setItem('quizzes_total_points', String(newPoints));
-    localStorage.setItem('profile_checked_in_today', 'true');
+    const todayStr = new Date().toLocaleDateString();
 
     // Update state
     setStreakDays(newStreak);
@@ -107,8 +154,15 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
     setHasCheckedInToday(true);
     setStreakCelebration(true);
 
+    // Call onUpdateUser to sync up to Firebase
+    onUpdateUser({
+      streakDays: newStreak,
+      totalPoints: newPoints,
+      lastCheckedInDate: todayStr
+    });
+
     // Queue offline sync progress to user stats
-    offlineSyncManager.queuePendingProgress('quiz_points', 15);
+    offlineSyncManager.queuePendingProgress('quiz_points', 15, user.mobile);
 
     // Auto-clear celebration banner
     setTimeout(() => {
@@ -180,7 +234,9 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
       color: 'bg-teal-50 border-teal-200 text-teal-700',
       desc: lang === 'hi' ? 'शुभम भैया और दादी माँ एआई के साथ बातचीत का सिलसिला शुरू करने पर।' : 'Earned by engaging in a science-storytelling dialog with our village mentors.',
       required: lang === 'hi' ? 'दादी माँ एआई से पहली बातचीत' : 'First chat with grandmother AI tutor',
-      unlocked: true,
+      unlocked: offlineSyncManager.getChatHistory('swami', user.mobile).some(msg => msg.sender === 'user') ||
+                offlineSyncManager.getChatHistory('dadi', user.mobile).some(msg => msg.sender === 'user') ||
+                offlineSyncManager.getChatHistory('shubham', user.mobile).some(msg => msg.sender === 'user'),
       category: 'general'
     }
   ];
@@ -539,26 +595,27 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
 
         {/* 7-Day sequence map */}
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 text-center pt-2">
-          {[
-            { num: 1, label: lang === 'hi' ? 'दिन 1' : 'Day 1' },
-            { num: 2, label: lang === 'hi' ? 'दिन 2' : 'Day 2' },
-            { num: 3, label: lang === 'hi' ? 'दिन 3' : 'Day 3' },
-            { num: 4, label: lang === 'hi' ? 'दिन 4' : 'Day 4' },
-            { num: 5, label: lang === 'hi' ? 'दिन 5' : 'Day 5' },
-            { num: 6, label: lang === 'hi' ? 'आज' : 'Today' },
-            { num: 7, label: lang === 'hi' ? 'दिन 7' : 'Day 7' }
-          ].map((d) => {
-            // Unlocked if <= streakDays. If streakDays is 5, days 1 to 5 are checked. 
-            // If hasCheckedInToday is true, Day 6 is checked as well!
-            let isDayCompleted = d.num < streakDays || (d.num === streakDays && hasCheckedInToday) || (d.num < 6);
-            if (streakDays > 5) {
-              isDayCompleted = d.num <= streakDays || (d.num === 6 && hasCheckedInToday);
-            }
-            const isToday = d.num === 6;
+          {[1, 2, 3, 4, 5, 6, 7].map((dayNum) => {
+            // Determine active day of the current 7-day streak cycle
+            // If the user's streak is N, and they checked in today, N is the active checked-in day.
+            // If they haven't checked in today, the active day they can check in on is N + 1.
+            const currentActiveDay = hasCheckedInToday ? Math.max(1, streakDays) : streakDays + 1;
+            
+            // A day in the streak is completed if:
+            // 1. It is less than the current active day (e.g. past checked-in days in this cycle)
+            // 2. It is equal to the current active day AND they checked in today
+            const isDayCompleted = dayNum < currentActiveDay || (dayNum === currentActiveDay && hasCheckedInToday);
+            
+            // A day is "Today" if it is the current active day
+            const isToday = dayNum === currentActiveDay;
+
+            const dayLabel = isToday 
+              ? (lang === 'hi' ? 'आज' : 'Today') 
+              : (lang === 'hi' ? `दिन ${dayNum}` : `Day ${dayNum}`);
 
             return (
               <div 
-                key={d.num} 
+                key={dayNum} 
                 className={`p-2.5 rounded-xl border flex flex-col items-center justify-between transition-all duration-300 ${
                   isDayCompleted 
                     ? 'bg-amber-50/50 border-amber-200 text-amber-950' 
@@ -568,7 +625,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                 }`}
               >
                 <span className="text-[9px] font-mono font-bold uppercase tracking-wider block">
-                  {d.label}
+                  {dayLabel}
                 </span>
                 <div className="text-2xl my-2 select-none">
                   {isDayCompleted ? '🔥' : isToday ? '⭐' : '🔒'}
@@ -578,7 +635,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 bg-white rounded-full shadow-3xs" />
                   ) : (
                     <span className="text-[9px] font-mono font-bold text-gray-400">
-                      {isToday ? '+15 XP' : 'Day ' + d.num}
+                      {isToday ? '+15 XP' : `Day ${dayNum}`}
                     </span>
                   )}
                 </div>
@@ -695,41 +752,15 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
           </div>
 
           <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-            
-            <div className="flex gap-3 text-xs leading-relaxed border-b border-gray-50 pb-2.5">
-              <span className="p-1 rounded-sm bg-blue-50 text-blue-600 block h-max">🗣️</span>
-              <div>
-                <p className="font-sans font-bold text-gray-800">Assisted voice-reading with Dadi AI</p>
-                <span className="text-[10px] font-mono text-gray-400 font-extrabold block">Today • 15 minutes of audio synthesis</span>
+            {offlineSyncManager.getLearningFeed(user.mobile, user.signupDate).map((event) => (
+              <div key={event.id} className="flex gap-3 text-xs leading-relaxed border-b border-gray-50 pb-2.5 last:border-0 last:pb-0">
+                <span className={`p-1 rounded-sm ${event.bgClass} ${event.textClass} block h-max`}>{event.icon}</span>
+                <div>
+                  <p className="font-sans font-bold text-gray-800">{event.title}</p>
+                  <span className="text-[10px] font-mono text-gray-400 font-extrabold block">{event.subtitle}</span>
+                </div>
               </div>
-            </div>
-
-            <div className="flex gap-3 text-xs leading-relaxed border-b border-gray-50 pb-2.5">
-              <span className="p-1 rounded-sm bg-amber-50 text-amber-600 block h-max">🏆</span>
-              <div>
-                <p className="font-sans font-bold text-gray-800">
-                  Passed Quiz with 100% scores
-                </p>
-                <span className="text-[10px] font-mono text-gray-400 font-extrabold block">Today • Earned academic medal</span>
-              </div>
-            </div>
-
-            <div className="flex gap-3 text-xs leading-relaxed border-b border-gray-50 pb-2.5">
-              <span className="p-1 rounded-sm bg-indigo-50 text-indigo-600 block h-max">📥</span>
-              <div>
-                <p className="font-sans font-bold text-gray-800">Synced Offline Video Files Cache Pack</p>
-                <span className="text-[10px] font-mono text-gray-400 font-extrabold block">Yesterday • Saved 4.2 MB memory</span>
-              </div>
-            </div>
-
-            <div className="flex gap-3 text-xs leading-relaxed">
-              <span className="p-1 rounded-sm bg-purple-50 text-purple-600 block h-max">🔑</span>
-              <div>
-                <p className="font-sans font-bold text-gray-800">Registered GyaanBot Student Academic ID</p>
-                <span className="text-[10px] font-mono text-gray-400 font-extrabold block">Joined Date: {user.signupDate || "June 2026"}</span>
-              </div>
-            </div>
-
+            ))}
           </div>
         </div>
 

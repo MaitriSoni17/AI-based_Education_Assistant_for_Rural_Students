@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import HomeView from './components/HomeView';
 import AboutView from './components/AboutView';
@@ -8,6 +8,7 @@ import DashboardView from './components/DashboardView';
 import { CurrentView, LanguageCode, User } from './types';
 import { TRANSLATIONS } from './data/translations';
 import { GraduationCap } from 'lucide-react';
+import { updateFirebaseUserFields } from './lib/firebase';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<CurrentView>('home');
@@ -17,7 +18,11 @@ export default function App() {
       const stored = localStorage.getItem('gramin_student_session');
       if (stored) {
         try {
-          return JSON.parse(stored) as User;
+          const parsed = JSON.parse(stored) as User;
+          if (parsed.streakDays === 5) parsed.streakDays = 1;
+          if (parsed.totalPoints === 40) parsed.totalPoints = 15;
+          if (parsed.studyMins === undefined) parsed.studyMins = 30;
+          return parsed;
         } catch (e) {
           return null;
         }
@@ -25,6 +30,67 @@ export default function App() {
     }
     return null;
   });
+
+  // Ensure any existing user session with stale defaults is automatically migrated
+  useEffect(() => {
+    if (user) {
+      let needsUpdate = false;
+      const updated = { ...user };
+      if (user.streakDays === 5) {
+        updated.streakDays = 1;
+        needsUpdate = true;
+      }
+      if (user.totalPoints === 40) {
+        updated.totalPoints = 15;
+        needsUpdate = true;
+      }
+      if (user.studyMins === undefined) {
+        updated.studyMins = 30;
+        needsUpdate = true;
+      }
+      if (needsUpdate) {
+        setUser(updated);
+        localStorage.setItem('gramin_student_session', JSON.stringify(updated));
+        updateFirebaseUserFields(user.mobile, {
+          streakDays: updated.streakDays,
+          totalPoints: updated.totalPoints,
+          studyMins: updated.studyMins
+        }).catch(err => console.error(err));
+      }
+    }
+  }, []);
+
+  // Background study timer: tracks actual active dashboard time in real-time
+  useEffect(() => {
+    if (!user) return;
+
+    let activeSecs = 0;
+    const interval = setInterval(() => {
+      activeSecs += 10; // Add 10 seconds of active browsing time
+
+      // Every 60 seconds (1 minute), we increment user's total study minutes
+      if (activeSecs >= 60) {
+        activeSecs = 0;
+        setUser((current) => {
+          if (!current) return null;
+          const currentMins = current.studyMins ?? 30;
+          const updatedMins = currentMins + 1;
+          const updatedUser = { ...current, studyMins: updatedMins };
+
+          // Persist to local storage
+          localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
+
+          // Sync to Firebase Firestore
+          updateFirebaseUserFields(current.mobile, { studyMins: updatedMins })
+            .catch(err => console.error("[Timer] Failed to sync studyMins to Firebase:", err));
+
+          return updatedUser;
+        });
+      }
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(interval);
+  }, [user?.mobile]);
 
   // Default language is 'en' (English), as requested by user
   const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>(() => {
@@ -34,12 +100,30 @@ export default function App() {
 
   const [isOfflineSimulated, setIsOfflineSimulated] = useState(false);
 
+  const handleUpdateUser = async (fields: Partial<User>) => {
+    if (!user) return;
+
+    // Check if fields actually changed to prevent redundant writes and infinite loops
+    const hasChanges = Object.keys(fields).some(
+      (key) => fields[key as keyof User] !== user[key as keyof User]
+    );
+    if (!hasChanges) return;
+
+    const updatedUser = { ...user, ...fields };
+    setUser(updatedUser);
+    localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
+
+    try {
+      await updateFirebaseUserFields(user.mobile, fields);
+    } catch (e) {
+      console.error("Failed to sync user updates to Firestore", e);
+    }
+  };
+
   const handleLanguageChange = (lang: LanguageCode) => {
     setCurrentLanguage(lang);
     if (user) {
-      const updatedUser = { ...user, defaultLanguage: lang };
-      setUser(updatedUser);
-      localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
+      handleUpdateUser({ defaultLanguage: lang });
     }
   };
 
@@ -112,6 +196,7 @@ export default function App() {
             <DashboardView
               user={user}
               lang={currentLanguage}
+              onUpdateUser={handleUpdateUser}
             />
           )}
         </div>

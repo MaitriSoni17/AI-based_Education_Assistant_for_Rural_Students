@@ -412,9 +412,9 @@ async function startServer() {
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
+        "gemini-3.1-flash-lite",
         "gemini-2.5-flash",
         "gemini-3.5-flash",
-        "gemini-3.1-flash-lite",
         "gemini-3.1-pro-preview"
       ];
 
@@ -437,7 +437,7 @@ async function startServer() {
           } catch (err: any) {
              lastError = err;
              const { message: errText, status: errStatus, code: errCode } = getErrorInfo(err);
-             console.warn(`[GEMINI CHAT ATTEMPT ${attempt} FAILED for model ${modelName}]:`, { message: errText, status: errStatus, code: errCode });
+             console.log(`[GEMINI CHAT] Attempt ${attempt} for model ${modelName} returned status:`, { message: errText, status: errStatus, code: errCode });
              
              const errMsg = errText.toLowerCase();
              const isRetryable = 
