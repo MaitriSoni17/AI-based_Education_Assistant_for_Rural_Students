@@ -189,25 +189,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
       
       {/* 1. GREETING HEADER BANNER */}
       <header className="bg-white rounded-3xl p-4 sm:p-5 border border-gray-150 flex flex-col md:flex-row justify-between items-center gap-4 text-left shadow-2xs">
-        <div className="space-y-1.5 w-full md:w-auto">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 text-[9px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase border ${
-              isOnline 
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-150' 
-                : 'bg-amber-50 text-amber-700 border-amber-150 animate-pulse'
-            }`}>
-              {isOnline ? <Wifi className="h-2.5 w-2.5" /> : <WifiOff className="h-2.5 w-2.5" />}
-              {isOnline ? 'Active Online Connection' : 'Offline Cached Mode'}
-            </span>
-            <span className={`inline-flex items-center gap-1.5 text-[9px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase border ${
-              (pendingChatsCount > 0 || pendingProgressCount > 0)
-                ? 'bg-amber-50 text-amber-800 border-amber-150 animate-pulse'
-                : 'bg-emerald-50 text-emerald-800 border-emerald-150'
-            }`}>
-              <RefreshCw className={`h-2.5 w-2.5 ${(pendingChatsCount > 0 || pendingProgressCount > 0) ? 'animate-spin' : ''}`} />
-              {(pendingChatsCount > 0 || pendingProgressCount > 0) ? 'Sync: Pending' : 'Sync: Synced'}
-            </span>
-          </div>
+        <div className="space-y-1 w-full md:w-auto">
           <h1 className="font-display font-extrabold text-lg sm:text-xl text-[#3D405B]">
             Namaste, {localUser.name}! 👋
           </h1>
@@ -252,39 +234,6 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
             <div className="text-left font-mono">
               <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider block">Completed Lessons</span>
               <span className="text-xs font-black text-gray-900">{claimedMedals.length} medals</span>
-            </div>
-          </div>
-
-          <div className="bg-teal-50/50 border border-teal-250 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs">
-            <Download className="h-4.5 w-4.5 text-teal-600" />
-            <div className="text-left font-mono">
-              <span className="text-[9px] text-teal-800 font-bold uppercase tracking-wider block">Offline Cache</span>
-              <span className="text-xs font-black text-gray-900">{offlineDownloadedCount} items</span>
-            </div>
-          </div>
-
-          {/* New visual database sync status indicator */}
-          <div className={`border rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs transition-all ${
-            (pendingChatsCount > 0 || pendingProgressCount > 0)
-              ? 'bg-amber-50/60 border-amber-250'
-              : 'bg-emerald-50/40 border-emerald-200'
-          }`}>
-            <RefreshCw className={`h-4.5 w-4.5 ${
-              (pendingChatsCount > 0 || pendingProgressCount > 0)
-                ? 'text-amber-600 animate-spin'
-                : 'text-emerald-600'
-            }`} />
-            <div className="text-left font-mono">
-              <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Database Sync</span>
-              <span className="text-xs font-black text-gray-900">
-                {(pendingChatsCount > 0 || pendingProgressCount > 0) ? (
-                  <span className="text-amber-800 font-bold">
-                    Pending
-                  </span>
-                ) : (
-                  <span className="text-emerald-800 font-bold">Synced</span>
-                )}
-              </span>
             </div>
           </div>
         </div>

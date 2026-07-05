@@ -10,7 +10,8 @@ import { speakText, stopSpeaking, cleanTextForTTS, detectLanguageOfText, splitTe
 import { 
   Play, BookOpen, Download, CheckCircle2, ChevronRight, Award, 
   HelpCircle, Volume2, Search, Sparkles, Smile, Video, ArrowLeft, RefreshCw,
-  ChevronLeft, Pause, Eye, MonitorPlay, Paperclip, FileText, X, FileUp
+  ChevronLeft, Pause, Eye, MonitorPlay, Paperclip, FileText, X, FileUp,
+  Trash2, Clock, History, ExternalLink
 } from 'lucide-react';
 
 interface LessonQuery {
@@ -1411,6 +1412,7 @@ export default function TutorTab({
     }
   }, [user.mobile]);
   const [isNewLecture, setIsNewLecture] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
   const [showPlayGesturePrompt, setShowPlayGesturePrompt] = useState(false);
 
   const isAutoplayEnabledRef = React.useRef(isAutoplayEnabled);
@@ -2037,8 +2039,31 @@ export default function TutorTab({
     setShowQuiz(false);
     setOtpResetQuiz();
     setIsNewLecture(false);
+    setShowHistory(false);
     setShowPlayGesturePrompt(false);
     simulateVideoGeneration(lesson, false);
+  };
+
+  const handleDeleteLesson = (lessonId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(lang === 'hi' ? "क्या आप सचमुच इस लेक्चर को इतिहास से हटाना चाहते हैं?" : "Are you sure you want to delete this lecture from your history?")) {
+      setCustomHistory(prev => {
+        const updated = prev.filter(item => item.id !== lessonId);
+        localStorage.setItem(`${user.mobile}_mascot_lessons_history`, JSON.stringify(updated));
+        return updated;
+      });
+      if (selectedLesson.id === lessonId) {
+        setIsNewLecture(true);
+      }
+    }
+  };
+
+  const handleClearAllHistory = () => {
+    if (confirm(lang === 'hi' ? "क्या आप पूरा इतिहास हटाना चाहते हैं?" : "Are you sure you want to permanently clear your lecture history?")) {
+      setCustomHistory([]);
+      localStorage.removeItem(`${user.mobile}_mascot_lessons_history`);
+      setIsNewLecture(true);
+    }
   };
 
   const handleAskCustomQuery = async (e: FormEvent) => {
@@ -2239,6 +2264,7 @@ JSON Schema:
         });
         setActiveDeckTab('history');
         setIsNewLecture(false);
+        setShowHistory(false);
 
         setSelectedLesson(newLesson);
         setCurrentSlideIndex(0);
@@ -2565,109 +2591,41 @@ JSON Schema:
         )}
       </form>
 
-      {/* 2. Classroom Lessons Quick Deck (Below input, Full width) */}
-      <div className="w-full bg-white p-5 rounded-2xl border border-gray-150 shadow-2xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-2.5 gap-3">
-          <div className="flex items-center gap-1.5">
-            <Video className="h-4 w-4 text-[#81B29A]" />
-            <h3 className="font-display font-bold text-xs text-[#3D405B] uppercase tracking-widest text-left">
-              {lang === 'hi' ? "मेरा लेक्चर इतिहास" : "My Lecture History"}
-            </h3>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {customHistory.length > 0 && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm(lang === 'hi' ? "क्या आप पूरा इतिहास हटाना चाहते हैं?" : "Are you sure you want to clear your lecture history?")) {
-                    setCustomHistory([]);
-                    localStorage.removeItem(`${user.mobile}_mascot_lessons_history`);
-                  }
-                }}
-                className="text-[10px] font-mono text-gray-400 hover:text-red-500 underline flex items-center gap-1 cursor-pointer transition-all"
-              >
-                {lang === 'hi' ? "इतिहास साफ़ करें" : "Clear History"}
-              </button>
-            </div>
-          )}
-
-          {customHistory.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {customHistory.map((item) => {
-                const isActive = !isNewLecture && selectedLesson.id === item.id;
-                return (
-                  <div
-                    key={item.id}
-                    className={`w-full p-3 rounded-xl border text-left transition-all hover:bg-[#FAF8F4] flex items-center justify-between gap-3 ${
-                      isActive
-                        ? 'border-[#E07A5F] bg-[#E07A5F]/5 ring-1 ring-[#E07A5F]'
-                        : 'border-gray-200'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      id={`lesson-selector-${item.id}`}
-                      onClick={() => handleLessonSelect(item)}
-                      className="flex-1 flex items-center gap-3 cursor-pointer text-left focus:outline-none min-w-0"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-fuchsia-400 to-indigo-600 flex items-center justify-center shrink-0 text-white font-bold text-sm">
-                        ✨
-                      </div>
-                      <div className="flex-1 min-w-0 font-sans">
-                        <span className="text-[9px] font-mono font-bold text-[#81B29A] block uppercase tracking-wide">
-                          {item.subject}
-                        </span>
-                        <span className="font-semibold text-xs text-gray-900 block truncate mt-0.5">
-                          {item.query}
-                        </span>
-                      </div>
-                    </button>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          downloadLessonVideoAndSlidesSpecific(item);
-                        }}
-                        className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all cursor-pointer"
-                        title={lang === 'hi' ? "इस लेक्चर को ऑफ़लाइन के लिए डाउनलोड करें" : "Download this lecture for offline use"}
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                      <ChevronRight className="h-4 w-4 text-gray-400" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-8 px-4 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-              <p className="text-xs text-gray-500 font-sans mb-1">
-                {lang === 'hi' ? "कोई उत्पन्न व्याख्यान नहीं मिला!" : "No custom generated lectures found!"}
-              </p>
-              <p className="text-[10px] text-gray-400 font-sans">
-                {lang === 'hi' ? "ऊपर दिए गए बार में कोई प्रश्न पूछें और अपना पहला अनुकूलित व्याख्यान उत्पन्न करें।" : "Type a question in the ask bar above and click Generate to build your first live lecture."}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* 3. Visual active AI character video box (Lecture section - Full width) */}
       <div className="w-full bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-md">
           
-          <div className="bg-gradient-to-r from-gray-900 to-gray-800 py-3 px-4 flex justify-between items-center text-white">
+          <div className="bg-gradient-to-r from-gray-900 to-gray-800 py-3 px-4 flex flex-col sm:flex-row justify-between sm:items-center text-white gap-2.5">
             <div className="flex items-center space-x-2">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />
-              <span className="text-[10px] font-mono font-bold tracking-widest text-gray-350 uppercase">
+              <span className="text-[10px] font-mono font-bold tracking-widest text-gray-300 uppercase">
                 Interactive Lecture Module
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              {!isNewLecture && (
+            <div className="flex items-center flex-wrap gap-2">
+              {/* View History Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowHistory(!showHistory);
+                }}
+                className={`text-[10px] border px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                  showHistory 
+                    ? 'bg-[#FAF8F4] text-[#3D405B] border-[#F2CC8F]' 
+                    : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                }`}
+                title={showHistory 
+                  ? (lang === 'hi' ? 'सक्रिय लेक्चर पर वापस जाएं' : 'Back to Active Lecture') 
+                  : (lang === 'hi' ? 'लेक्चर इतिहास' : 'Lecture History')}
+              >
+                <BookOpen className={`h-3.5 w-3.5 ${showHistory ? 'text-[#E07A5F]' : 'text-[#F2CC8F]'}`} />
+                <span>
+                  {showHistory 
+                    ? (lang === 'hi' ? 'सक्रिय लेक्चर' : 'Active Lecture') 
+                    : (lang === 'hi' ? 'मेरा इतिहास' : 'My History')}
+                </span>
+              </button>
+
+              {!isNewLecture && !showHistory && (
                 <button
                   type="button"
                   onClick={() => {
@@ -2675,7 +2633,7 @@ JSON Schema:
                     setCustomQuery('');
                     setAttachedFile(null);
                   }}
-                  className="text-[10px] bg-[#E07A5F] hover:bg-[#D56B4E] text-white font-sans font-bold px-2.5 py-1 rounded flex items-center gap-1 transition-all cursor-pointer border-none"
+                  className="text-[10px] bg-[#E07A5F] hover:bg-[#D56B4E] text-white font-sans font-bold px-2.5 py-1.5 rounded flex items-center gap-1 transition-all cursor-pointer border-none"
                   title={lang === 'hi' ? "नया लेक्चर शुरू करें" : "Start New Lecture"}
                 >
                   <span>{lang === 'hi' ? "नया लेक्चर ＋" : "New Lecture ＋"}</span>
@@ -2737,6 +2695,130 @@ JSON Schema:
                   <p className="text-[10px] sm:text-xs font-sans font-extrabold text-[#F2CC8F] leading-tight px-2 min-h-8 flex items-center justify-center animate-pulse">
                     {generationStage}
                   </p>
+                </div>
+              </div>
+            ) : showHistory ? (
+              /* MY LECTURE HISTORY PANEL */
+              <div className="relative w-full flex flex-col gap-5 py-6 px-4 sm:px-6 text-left text-white bg-slate-950/40 rounded-2xl min-h-[350px]">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-white/10 pb-4">
+                  <div>
+                    <h3 className="font-display font-extrabold text-sm text-[#F2CC8F] flex items-center gap-2">
+                      <History className="h-4.5 w-4.5 text-[#E07A5F]" />
+                      <span>{lang === 'hi' ? 'मेरा लेक्चर इतिहास' : 'My Entire Lecture & Study History'}</span>
+                    </h3>
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      {lang === 'hi' 
+                        ? 'आपके द्वारा पहले पूछे गए सभी प्रश्न और उत्पन्न लेक्चर यहाँ सहेजे गए हैं।' 
+                        : 'All your previously generated customized lectures and studied topics are saved below.'}
+                    </p>
+                  </div>
+                  {customHistory.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAllHistory}
+                      className="text-[10px] bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 self-end sm:self-auto"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      <span>{lang === 'hi' ? 'इतिहास साफ़ करें' : 'Clear All History'}</span>
+                    </button>
+                  )}
+                </div>
+
+                {customHistory.length === 0 ? (
+                  <div className="text-center py-16 text-gray-400 text-xs font-sans bg-white/[0.02] rounded-2xl border border-white/5 p-6 flex flex-col items-center justify-center gap-2.5 my-4">
+                    <span className="text-3xl">📚</span>
+                    <p className="font-bold text-gray-300">{lang === 'hi' ? 'कोई लेक्चर इतिहास नहीं मिला।' : 'No lecture history found.'}</p>
+                    <p className="text-[10px] text-gray-500 max-w-xs mx-auto">
+                      {lang === 'hi' 
+                        ? 'ऊपर दिए गए खोज बार में कोई प्रश्न पूछें और अपना पहला एआई लेक्चर उत्पन्न करें!' 
+                        : 'Type any science or math question in the bar above and click Generate to start learning!'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3.5 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+                    {customHistory.map((item) => {
+                      const isActive = !isNewLecture && selectedLesson.id === item.id;
+                      return (
+                        <div
+                          key={item.id}
+                          className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 hover:bg-slate-900/95 ${
+                            isActive
+                              ? 'border-[#E07A5F] bg-[#E07A5F]/5 shadow-md shadow-[#E07A5F]/5'
+                              : 'border-white/5 hover:border-white/10'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 min-w-0 flex-1">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border border-indigo-500/20 flex items-center justify-center shrink-0 text-lg shadow-inner">
+                              📚
+                            </div>
+                            <div className="min-w-0 flex-1 font-sans">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[9px] font-mono font-black text-[#81B29A] uppercase tracking-wider bg-[#81B29A]/10 px-2 py-0.5 rounded border border-[#81B29A]/20">
+                                  {item.subject}
+                                </span>
+                                {isActive && (
+                                  <span className="text-[9px] font-mono font-black text-[#E07A5F] uppercase tracking-wider bg-[#E07A5F]/15 px-2 py-0.5 rounded border border-[#E07A5F]/25 animate-pulse">
+                                    ACTIVE VIEW
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="font-bold text-xs sm:text-sm text-slate-100 leading-snug mt-1.5 break-words">
+                                "{item.query}"
+                              </h4>
+                              <p className="text-[10px] text-gray-500 flex items-center gap-1.5 mt-1 font-mono">
+                                <Clock className="h-3 w-3 text-gray-500 shrink-0" />
+                                <span>Guided by {item.avatarName}</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 shrink-0 self-end md:self-auto border-t md:border-t-0 pt-3.5 md:pt-0 border-white/5 w-full md:w-auto justify-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleLessonSelect(item);
+                                setShowHistory(false);
+                              }}
+                              className="px-3.5 py-2 bg-[#81B29A] hover:bg-[#6FA38B] text-[#1E293B] hover:text-white rounded-xl text-xs font-sans font-black flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md"
+                              title="Restore and play this lecture"
+                            >
+                              <Play className="h-3 w-3 fill-current" />
+                              <span>{lang === 'hi' ? 'लेक्चर चलाएं' : 'Restore & Play'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => downloadLessonVideoAndSlidesSpecific(item)}
+                              className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                              title="Download complete lesson package"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline">Download</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteLesson(item.id, e)}
+                              className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl hover:text-rose-200 transition-all cursor-pointer flex items-center justify-center border border-rose-500/20"
+                              title="Delete lecture"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                
+                <div className="flex justify-end pt-2 border-t border-white/5 mt-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowHistory(false)}
+                    className="text-xs bg-white/10 hover:bg-white/15 text-white px-4 py-2 rounded-xl font-bold cursor-pointer transition-all active:scale-95"
+                  >
+                    {lang === 'hi' ? 'लेक्चर पर वापस जाएं' : 'Close History'}
+                  </button>
                 </div>
               </div>
             ) : isNewLecture ? (
@@ -2987,62 +3069,66 @@ JSON Schema:
           </div>
 
           {/* Live Reactions Panel */}
-          <div className="px-4 py-2.5 bg-slate-900 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3 select-none">
-            <span className="text-[10px] font-mono font-bold text-[#F2CC8F] uppercase tracking-widest flex items-center gap-1.5 shrink-0">
-              <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping" />
-              Audience Reaction Burst:
-            </span>
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {['wave', 'idea', 'thumbsup', 'celebrate', 'think'].map((act) => {
-                const mapEmoji = { wave: '👋 Wave', idea: '💡 Idea', thumbsup: '👍 Praise', celebrate: '🎉 Victory', think: '🤔 Think' };
-                return (
-                  <button
-                    key={act}
-                    onClick={() => triggerLiveAction(act as any)}
-                    className="px-2.5 py-1 bg-white/10 hover:bg-white/15 active:scale-95 text-white rounded-lg text-[10px] sm:text-xs font-sans font-bold flex items-center gap-1 cursor-pointer transition-all border border-white/5"
-                  >
-                    <span>{mapEmoji[act as keyof typeof mapEmoji]}</span>
-                  </button>
-                );
-              })}
+          {!isGeneratingVideo && !showHistory && !isNewLecture && (
+            <div className="px-4 py-2.5 bg-slate-900 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3 select-none">
+              <span className="text-[10px] font-mono font-bold text-[#F2CC8F] uppercase tracking-widest flex items-center gap-1.5 shrink-0">
+                <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping" />
+                Audience Reaction Burst:
+              </span>
+              <div className="flex flex-wrap gap-1.5 justify-center">
+                {['wave', 'idea', 'thumbsup', 'celebrate', 'think'].map((act) => {
+                  const mapEmoji = { wave: '👋 Wave', idea: '💡 Idea', thumbsup: '👍 Praise', celebrate: '🎉 Victory', think: '🤔 Think' };
+                  return (
+                    <button
+                      key={act}
+                      onClick={() => triggerLiveAction(act as any)}
+                      className="px-2.5 py-1 bg-white/10 hover:bg-white/15 active:scale-95 text-white rounded-lg text-[10px] sm:text-xs font-sans font-bold flex items-center gap-1 cursor-pointer transition-all border border-white/5"
+                    >
+                      <span>{mapEmoji[act as keyof typeof mapEmoji]}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Player Media Bar */}
-          <div className="p-4 bg-gray-50 border-t border-gray-150 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div className="flex gap-2">
-              {isPlayingVideo ? (
-                <button
-                  id="stop-lesson-speech"
-                  onClick={handleStopVoiceResponse}
-                  className="px-4 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-sans font-bold cursor-pointer"
-                >
-                  ⏹️ Stop Speaking
-                </button>
-              ) : (
-                <button
-                  id="start-lesson-speech"
-                  onClick={handlePlayVoiceResponse}
-                  className="px-4 py-1.5 bg-[#81B29A]/15 text-[#3D405B] border border-[#81B29A]/20 hover:bg-[#81B29A]/25 rounded-xl text-xs font-sans font-bold cursor-pointer flex items-center gap-1.5"
-                >
-                  <Volume2 className="h-4 w-4 text-[#81B29A]" />
-                  <span>Listen Aloud</span>
-                </button>
-              )}
-            </div>
+          {!isGeneratingVideo && !showHistory && !isNewLecture && (
+            <div className="p-4 bg-gray-50 border-t border-gray-150 flex flex-col sm:flex-row justify-between items-center gap-3">
+              <div className="flex gap-2">
+                {isPlayingVideo ? (
+                  <button
+                    id="stop-lesson-speech"
+                    onClick={handleStopVoiceResponse}
+                    className="px-4 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-sans font-bold cursor-pointer"
+                  >
+                    ⏹️ Stop Speaking
+                  </button>
+                ) : (
+                  <button
+                    id="start-lesson-speech"
+                    onClick={handlePlayVoiceResponse}
+                    className="px-4 py-1.5 bg-[#81B29A]/15 text-[#3D405B] border border-[#81B29A]/20 hover:bg-[#81B29A]/25 rounded-xl text-xs font-sans font-bold cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Volume2 className="h-4 w-4 text-[#81B29A]" />
+                    <span>Listen Aloud</span>
+                  </button>
+                )}
+              </div>
 
-            <button
-              id="classroom-take-quiz-btn"
-              onClick={() => {
-                setShowQuiz(true);
-                setOtpResetQuiz();
-              }}
-              className="w-full sm:w-auto px-5 py-2 bg-amber-500 hover:bg-amber-650 active:bg-amber-700 text-white font-sans font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all hover:scale-102"
-            >
-              <HelpCircle className="h-4 w-4" />
-              <span>📝 Take Lesson Quiz</span>
-            </button>
-          </div>
+              <button
+                id="classroom-take-quiz-btn"
+                onClick={() => {
+                  setShowQuiz(true);
+                  setOtpResetQuiz();
+                }}
+                className="w-full sm:w-auto px-5 py-2 bg-amber-500 hover:bg-amber-650 active:bg-amber-700 text-white font-sans font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all hover:scale-102"
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span>📝 Take Lesson Quiz</span>
+              </button>
+            </div>
+          )}
 
         </div>
 
