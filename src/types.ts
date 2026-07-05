@@ -31,6 +31,7 @@ export interface User {
   speechVolume?: number;
   selectedVoiceName?: string;
   studyMins?: number;
+  updatedAt?: number; // Epoch timestamp for Last-Write-Wins conflict resolution
 }
 
 export interface QuizQuestion {

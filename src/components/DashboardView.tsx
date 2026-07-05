@@ -16,12 +16,13 @@ import CareerGuidanceTab from './dashboard/CareerGuidanceTab';
 import SettingsTab from './dashboard/SettingsTab';
 import OfflineLibraryTab from './dashboard/OfflineLibraryTab';
 import CertificatesTab from './dashboard/CertificatesTab';
+import EquationsTab from './dashboard/EquationsTab';
 
 // Icons
 import { 
   User as UserIcon, MessageSquare, BookOpen, GraduationCap, 
   HelpCircle, Sparkles, Award, Settings as SettingsIcon, LogOut, Download, Globe, Menu, X,
-  RefreshCw, Wifi, WifiOff, Flame, Clock
+  RefreshCw, Wifi, WifiOff, Flame, Clock, Binary
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -32,7 +33,7 @@ interface DashboardViewProps {
 
 export default function DashboardView({ user, lang, onUpdateUser }: DashboardViewProps) {
   // Navigation active tab controller: default to 'profile' as requested for the overview
-  const [activeTab, setActiveTab] = useState<'profile' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations'>('profile');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Sync Manager state tracking
@@ -173,6 +174,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
     { id: 'profile', label: 'My Profile Overview', icon: UserIcon, color: 'text-blue-500 bg-blue-50' },
     { id: 'ai-assistant', label: 'AI Study Chatbot', icon: MessageSquare, color: 'text-emerald-500 bg-emerald-50' },
     { id: 'tutor', label: 'Mascot Class Tutor', icon: BookOpen, color: 'text-[#81B29A] bg-[#81B29A]/10' },
+    { id: 'equations', label: 'Smart Equation Hub', icon: Binary, color: 'text-orange-500 bg-orange-55' },
     { id: 'quiz', label: 'Topic Play Quizzes', icon: HelpCircle, color: 'text-amber-500 bg-amber-50' },
     { id: 'certificates', label: 'My Certificates', icon: GraduationCap, color: 'text-amber-600 bg-amber-50' },
     { id: 'exam', label: 'Competitive Exams', icon: Award, color: 'text-rose-500 bg-rose-50' },
@@ -419,6 +421,14 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
                 onChangeLanguage={(newCode) => {
                   handleUpdateLocalUser({ defaultLanguage: newCode });
                 }}
+              />
+            )}
+
+            {activeTab === 'equations' && (
+              <EquationsTab
+                user={localUser}
+                lang={lang}
+                onUpdateUser={handleUpdateLocalUser}
               />
             )}
           </div>

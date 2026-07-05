@@ -47,12 +47,58 @@ export interface ChatMessage {
 class OfflineSyncManager {
   private listeners: Set<() => void> = new Set();
   private isOnlineState: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  private isPersistedState: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => this.handleNetworkChange(true));
       window.addEventListener('offline', () => this.handleNetworkChange(false));
+      
+      // Auto request/check storage persistence to shield cheap smartphones from data eviction
+      this.initPersistentStorage();
     }
+  }
+
+  private async initPersistentStorage() {
+    try {
+      this.isPersistedState = await this.checkStoragePersistence();
+      if (!this.isPersistedState) {
+        this.isPersistedState = await this.requestPersistentStorage();
+      }
+    } catch (err) {
+      console.warn("Storage persistence initialization bypassed:", err);
+    }
+  }
+
+  public async checkStoragePersistence(): Promise<boolean> {
+    if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persisted) {
+      try {
+        return await navigator.storage.persisted();
+      } catch (err) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  public async requestPersistentStorage(): Promise<boolean> {
+    if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+      try {
+        const result = await navigator.storage.persist();
+        console.log(`[Storage Persistence] Enabled: ${result}`);
+        this.isPersistedState = result;
+        this.notifyUpdate();
+        return result;
+      } catch (err) {
+        console.warn("[Storage Persistence] Permission request failed:", err);
+        return false;
+      }
+    }
+    return false;
+  }
+
+  public isStoragePersisted(): boolean {
+    return this.isPersistedState;
   }
 
   private handleNetworkChange(online: boolean) {
@@ -191,6 +237,24 @@ class OfflineSyncManager {
     let progressSynced = 0;
 
     try {
+      // 0. Reconcile user session itself using Last-Write-Wins (LWW) conflict resolution based on timestamps
+      const stored = localStorage.getItem('gramin_student_session');
+      if (stored) {
+        try {
+          const localUser = JSON.parse(stored);
+          if (localUser && localUser.mobile === userMobile) {
+            const { syncFirebaseUserWithLWW } = await import('../lib/firebase');
+            const { resolvedUser, conflictResolved, source } = await syncFirebaseUserWithLWW(userMobile, localUser);
+            if (conflictResolved && source === 'remote') {
+              localStorage.setItem('gramin_student_session', JSON.stringify(resolvedUser));
+              console.log(`[LWW Reconciler] Conflict resolved. Remote user profile is newer than local. Applied remote changes locally.`);
+            }
+          }
+        } catch (sessionErr) {
+          console.warn("[LWW Reconciler] User session LWW reconciliation skipped or failed:", sessionErr);
+        }
+      }
+
       // 1. Reconcile Learning Progress
       const pendingProgress = this.getPendingProgress(userMobile);
       if (pendingProgress.length > 0) {

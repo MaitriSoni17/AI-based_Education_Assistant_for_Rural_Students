@@ -1832,6 +1832,8 @@ export default function QuizTab({ user, lang, onNavigateToTab, onUpdateUser }: Q
   // Translation cache and state
   const [translatedQuizzesCache, setTranslatedQuizzesCache] = useState<Record<string, any>>({});
   const [isTranslating, setIsTranslating] = useState(false);
+  const [quizLoadingMessage, setQuizLoadingMessage] = useState<string | null>(null);
+  const [quizLoadingSubtitle, setQuizLoadingSubtitle] = useState<string | null>(null);
 
   const languageNames: Record<string, string> = {
     en: "English",
@@ -2009,35 +2011,81 @@ JSON Schema:
   };
 
   const startQuizDeck = async (quiz: typeof GENERAL_QUIZZES[0]) => {
-    const tailoredQuestions = getFilteredQuizQuestions(quiz.questions, quizDifficulty, quizLength);
-    const initialQuizDeck = {
-      ...quiz,
-      difficulty: quizDifficulty.charAt(0).toUpperCase() + quizDifficulty.slice(1),
-      questions: tailoredQuestions
-    };
+    setIsTranslating(true);
+    
+    // Clean up typical suffixes and emojis to make it a great subject topic prompt for Gemini
+    let topicToGenerate = QUIZ_TITLE_TRANSLATIONS['en']?.[quiz.id] || quiz.title;
+    topicToGenerate = topicToGenerate
+      .replace(/[🌍📐🗣️🐘🏰🌾🪙🧠]/g, '')
+      .replace(/\s+Quiz$/i, '')
+      .replace(/\s+Puzzles$/i, '')
+      .trim();
 
-    if (lang !== 'en') {
-      setIsTranslating(true);
-      try {
-        const translated = await translateQuizUsingGemini(initialQuizDeck, lang);
-        setActiveQuiz(translated);
-      } catch (err) {
-        console.error("Quiz translation failed, falling back to English:", err);
-        setActiveQuiz(initialQuizDeck);
-      } finally {
-        setIsTranslating(false);
+    const localizedTitle = QUIZ_TITLE_TRANSLATIONS[lang]?.[quiz.id] || quiz.title;
+
+    setQuizLoadingMessage(
+      lang === 'hi' ? `स्वामी एआई आपके लिए "${localizedTitle}" पर नए प्रश्न तैयार कर रहा है...` :
+      lang === 'gu' ? `સ્વામી એઆઈ તમારા માટે "${localizedTitle}" પર નવા પ્રશ્નો તૈયાર કરી રહ્યું છે...` :
+      lang === 'mr' ? `स्वामी एआय तुमच्यासाठी "${localizedTitle}" वर नवीन प्रश्न तयार करत आहे...` :
+      lang === 'ta' ? `சுவாமி ஏஐ உங்களுக்காக "${localizedTitle}" இல் புதிய கேள்விகளைத் தயாரிக்கிறது...` :
+      lang === 'te' ? `స్వామి ఏఐ మీ కోసం "${localizedTitle}" లో కొత్త ప్రశ్నలను సిద్ధం చేస్తోంది...` :
+      `Swami AI is crafting fresh questions on "${localizedTitle}" for you...`
+    );
+    setQuizLoadingSubtitle(
+      lang === 'hi' ? 'हर बार एक नया और अनोखा अनुभव!' :
+      lang === 'gu' ? 'દરેક વખતે એક નવો અને અનોખો અનુભવ!' :
+      lang === 'mr' ? 'प्रत्येक वेळी नवीन आणि अनोखा अनुभव!' :
+      lang === 'ta' ? 'ஒவ்வொரு முறையும் ஒரு புதிய மற்றும் தனித்துவமான अनुभवं!' :
+      lang === 'te' ? 'ప్రతిసారీ కొత్త మరియు ప్రత్యేకమైన అనుభవం!' :
+      'A fresh and unique learning experience every single time!'
+    );
+
+    let finalQuiz: any = null;
+
+    try {
+      // 1. Try real-time fresh quiz generation using Gemini
+      finalQuiz = await generateQuizWithGemini(topicToGenerate, quizLength, quizDifficulty, lang);
+      // Retain the original ID so we can match translations/banners if needed
+      if (finalQuiz) {
+        finalQuiz.id = quiz.id;
       }
-    } else {
-      setActiveQuiz(initialQuizDeck);
+    } catch (err) {
+      console.warn("Dynamic preset quiz generation failed, falling back to static questions:", err);
+      
+      // 2. Fallback to predefined questions if offline or failed
+      const tailoredQuestions = getFilteredQuizQuestions(quiz.questions, quizDifficulty, quizLength);
+      const initialQuizDeck = {
+        ...quiz,
+        difficulty: quizDifficulty.charAt(0).toUpperCase() + quizDifficulty.slice(1),
+        questions: tailoredQuestions
+      };
+
+      if (lang !== 'en') {
+        try {
+          finalQuiz = await translateQuizUsingGemini(initialQuizDeck, lang);
+        } catch (transErr) {
+          console.error("Static quiz translation failed:", transErr);
+          finalQuiz = initialQuizDeck;
+        }
+      } else {
+        finalQuiz = initialQuizDeck;
+      }
+    } finally {
+      setIsTranslating(false);
+      setQuizLoadingMessage(null);
+      setQuizLoadingSubtitle(null);
     }
 
-    setCurrentQuestionIndex(0);
-    setSelectedOpt(null);
-    setTempSelectedOpt(null);
-    setRoundMinsScore(0);
-    setRoundFinished(false);
-    setTimeLeft(timerLimit);
-    setUserAnswers([]);
+    if (finalQuiz) {
+      setActiveQuiz(finalQuiz);
+      setCurrentQuestionIndex(0);
+      setSelectedOpt(null);
+      setTempSelectedOpt(null);
+      setRoundMinsScore(0);
+      setRoundFinished(false);
+      setTimeLeft(timerLimit);
+      setUserAnswers([]);
+    }
   };
 
   const handleOptSelect = (optIdx: number) => {
@@ -2252,20 +2300,24 @@ JSON Schema:
           </div>
           <div className="space-y-2">
             <h4 className="font-display font-extrabold text-base text-[#3D405B]">
-              {lang === 'gu' ? 'ક્વિઝનું ભાષાંતર થઈ રહ્યું છે...' : 
-               lang === 'hi' ? 'क्विज़ का अनुवाद किया जा रहा है...' : 
-               lang === 'mr' ? 'प्रश्नमंजुषा भाषांतरित केली जात आहे...' : 
-               lang === 'ta' ? 'வினாடி வினா மொழிபெயர்க்கப்படுகிறது...' : 
-               lang === 'te' ? 'క్విజ్ అనువదించబడుతోంది...' : 
-               'Translating quiz questions...'}
+              {quizLoadingMessage || (
+                lang === 'gu' ? 'ક્વિઝનું ભાષાંતર થઈ રહ્યું છે...' : 
+                lang === 'hi' ? 'क्विज़ का अनुवाद किया जा रहा है...' : 
+                lang === 'mr' ? 'प्रश्नमंजुषा भाषांतरित केली जात आहे...' : 
+                lang === 'ta' ? 'வினாடி வினா மொழிபெயர்க்கப்படுகிறது...' : 
+                lang === 'te' ? 'క్విజ్ అనువదించబడుతోంది...' : 
+                'Translating quiz questions...'
+              )}
             </h4>
             <p className="text-xs text-gray-400">
-              {lang === 'gu' ? 'તમારા માટે ગુજરાતીમાં પ્રશ્નો અને જવાબો તૈયાર કરી રહ્યા છીએ.' :
-               lang === 'hi' ? 'आपके लिए हिंदी में प्रश्न और उत्तर तैयार किए जा रहे हैं।' :
-               lang === 'mr' ? 'तुमच्यासाठी मराठीत प्रश्न आणि उत्तरे तयार केली जात आहेत.' :
-               lang === 'ta' ? 'உங்களுக்காக தமிழில் கேள்விகள் மற்றும் பதில்கள் தயார் செய்யப்படுகின்றன.' :
-               lang === 'te' ? 'మీ కోసం తెలుగులో ప్రశ్నలు మరియు సమాధానాలు సిద్ధం చేయబడుతున్నాయి.' :
-               'Preparing customized questions and answers in your selected language.'}
+              {quizLoadingSubtitle || (
+                lang === 'gu' ? 'તમારા માટે ગુજરાતીમાં પ્રશ્નો અને જવાબો તૈયાર કરી રહ્યા છીએ.' :
+                lang === 'hi' ? 'आपके लिए हिंदी में प्रश्न और उत्तर तैयार किए जा रहे हैं।' :
+                lang === 'mr' ? 'तुमच्यासाठी मराठीत प्रश्न आणि उत्तरे तयार केली जात आहेत.' :
+                lang === 'ta' ? 'உங்களுக்காக தமிழில் கேள்விகள் மற்றும் பதில்கள் தயார் செய்யப்படுகின்றன.' :
+                lang === 'te' ? 'మీ కోసం తెలుగులో ప్రశ్నలు మరియు సమాధానాలు సిద్ధం చేయబడుతున్నాయి.' :
+                'Preparing customized questions and answers in your selected language.'
+              )}
             </p>
           </div>
         </div>

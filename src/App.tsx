@@ -8,7 +8,7 @@ import DashboardView from './components/DashboardView';
 import { CurrentView, LanguageCode, User } from './types';
 import { TRANSLATIONS } from './data/translations';
 import { GraduationCap } from 'lucide-react';
-import { updateFirebaseUserFields } from './lib/firebase';
+import { updateFirebaseUserFields, syncFirebaseUserWithLWW } from './lib/firebase';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<CurrentView>('home');
@@ -105,16 +105,28 @@ export default function App() {
 
     // Check if fields actually changed to prevent redundant writes and infinite loops
     const hasChanges = Object.keys(fields).some(
-      (key) => fields[key as keyof User] !== user[key as keyof User]
+      (key) => fields[key as keyof User] !== user[key as keyof User] && key !== 'updatedAt'
     );
     if (!hasChanges) return;
 
-    const updatedUser = { ...user, ...fields };
+    // Attach high-precision timestamp for Last-Write-Wins (LWW) conflict resolution
+    const currentTimestamp = Date.now();
+    const updatedUser = { ...user, ...fields, updatedAt: currentTimestamp };
     setUser(updatedUser);
     localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
 
     try {
-      await updateFirebaseUserFields(user.mobile, fields);
+      if (navigator.onLine && !isOfflineSimulated) {
+        const { resolvedUser, conflictResolved, source } = await syncFirebaseUserWithLWW(user.mobile, updatedUser);
+        if (conflictResolved && source === 'remote') {
+          // A newer remote update was found (e.g. from another shared device). Remote wins.
+          setUser(resolvedUser as User);
+          localStorage.setItem('gramin_student_session', JSON.stringify(resolvedUser));
+          console.log("[LWW Sync] Resolved conflict: remote data was newer and has overwritten local changes.");
+        }
+      } else {
+        console.log("[LWW Sync] Saved update locally while offline. Sync will reconcile via LWW once online.");
+      }
     } catch (e) {
       console.error("Failed to sync user updates to Firestore", e);
     }

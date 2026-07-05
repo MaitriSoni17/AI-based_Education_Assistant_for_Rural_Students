@@ -1,0 +1,23 @@
+{
+  "name": "Swami AI - Academic Companion",
+  "short_name": "Swami AI",
+  "description": "An AI study companion for rural students with offline sync capability.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDFCFB",
+  "theme_color": "#3D405B",
+  "icons": [
+    {
+      "src": "/swami_ai_icon.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/swami_ai_icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -95,6 +95,7 @@ export interface FirestoreUser {
   chatHistoryChanda?: string; // Stringified array
   chatHistorySwami?: string; // Stringified array
   studyMins?: number;
+  updatedAt?: number; // Epoch timestamp for Last-Write-Wins conflict resolution
 }
 
 /**
@@ -111,6 +112,64 @@ export async function getFirebaseUser(mobile: string): Promise<FirestoreUser | n
     return null;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
+  }
+}
+
+/**
+ * Synchronize the user data with Firebase using a Last-Write-Wins (LWW) conflict resolution strategy.
+ * If a student modified data on another device, the device with the higher (most recent) 'updatedAt' timestamp wins.
+ */
+export async function syncFirebaseUserWithLWW(
+  mobile: string,
+  localUser: Partial<FirestoreUser> & { updatedAt?: number }
+): Promise<{ resolvedUser: FirestoreUser; conflictResolved: boolean; source: 'local' | 'remote' }> {
+  const path = `users/${mobile}`;
+  try {
+    const userDocRef = doc(db, "users", mobile);
+    const docSnap = await getDoc(userDocRef);
+    
+    if (!docSnap.exists()) {
+      // No remote user exists yet. Initialize with local user data and current timestamp.
+      const initialUser: FirestoreUser = {
+        mobile,
+        name: localUser.name || "Student",
+        defaultLanguage: localUser.defaultLanguage || "en",
+        signupDate: localUser.signupDate || new Date().toLocaleDateString(),
+        avatar: "🦊",
+        streakDays: 1,
+        totalPoints: 15,
+        studyMins: 30,
+        village: "",
+        school: "",
+        standard: "",
+        lastCheckedInDate: new Date().toLocaleDateString(),
+        ...localUser,
+        updatedAt: localUser.updatedAt || Date.now()
+      };
+      await setDoc(userDocRef, initialUser);
+      return { resolvedUser: initialUser, conflictResolved: false, source: 'local' };
+    }
+
+    const remoteUser = docSnap.data() as FirestoreUser;
+    const remoteUpdatedAt = remoteUser.updatedAt || 0;
+    const localUpdatedAt = localUser.updatedAt || 0;
+
+    // Last-Write-Wins comparison
+    if (remoteUpdatedAt > localUpdatedAt) {
+      console.log(`[LWW Conflict Resolution] Remote version is newer (${remoteUpdatedAt} > ${localUpdatedAt}). Remote wins.`);
+      return { resolvedUser: remoteUser, conflictResolved: true, source: 'remote' };
+    } else {
+      console.log(`[LWW Conflict Resolution] Local version is newer (${localUpdatedAt} >= ${remoteUpdatedAt}). Local wins. Updating remote.`);
+      const updatedUser: FirestoreUser = {
+        ...remoteUser,
+        ...localUser,
+        updatedAt: localUpdatedAt || Date.now() // Use latest timestamp
+      };
+      await setDoc(userDocRef, updatedUser);
+      return { resolvedUser: updatedUser, conflictResolved: localUpdatedAt > remoteUpdatedAt, source: 'local' };
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
 
