@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Menu, X, Globe, LogIn, UserPlus, LogOut, BookOpen, GraduationCap, Wifi } from 'lucide-react';
 import { CurrentView, LanguageCode, User } from '../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../data/translations';
+import { getDeterministicAvatar } from '../utils/avatar';
 
 interface NavbarProps {
   currentView: CurrentView;
@@ -103,8 +104,9 @@ export default function Navbar({
                   <span>{t.navDashboard}</span>
                 </button>
                 <div className="h-4 w-[1px] bg-gray-200 mx-2" />
-                <span className="text-xs font-mono bg-[#E07A5F]/10 text-[#E07A5F] px-3 py-1.5 rounded-full font-bold border border-[#E07A5F]/20">
-                  👋 {user.name}
+                <span className="text-xs font-mono bg-[#E07A5F]/10 text-[#E07A5F] px-3 py-1.5 rounded-full font-bold border border-[#E07A5F]/20 flex items-center gap-1">
+                  <span>{user.avatar || getDeterministicAvatar(user.name, user.mobile)}</span>
+                  <span>{user.name}</span>
                 </span>
                 <button
                   id="nav-desktop-logout"
@@ -240,8 +242,9 @@ export default function Navbar({
             <div className="border-t border-gray-100 pt-2 mt-2 space-y-2">
               <div className="px-3.5 py-2">
                 <span className="text-xs text-gray-500 block">Logged in student:</span>
-                <span className="font-display font-semibold text-[#E07A5F] text-sm">
-                  👋 {user.name} ({user.mobile})
+                <span className="font-display font-semibold text-[#E07A5F] text-sm flex items-center gap-1.5">
+                  <span>{user.avatar || getDeterministicAvatar(user.name, user.mobile)}</span>
+                  <span>{user.name} ({user.mobile})</span>
                 </span>
               </div>
               <button

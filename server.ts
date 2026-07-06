@@ -339,12 +339,12 @@ async function startServer() {
   // API ROUTE: MULTI-MODAL GEMINI CHAT
   app.post("/api/gemini/chat", async (req, res) => {
     try {
-      const { message, image, systemInstruction } = req.body;
+      const { message, image, file, systemInstruction } = req.body;
 
-      if (!message && !image) {
+      if (!message && !image && !file) {
         return res.status(400).json({
           success: false,
-          message: "Please provide a query message or an image attachment."
+          message: "Please provide a query message, an image, or a file attachment."
         });
       }
 
@@ -370,16 +370,18 @@ async function startServer() {
       // Prepare parts for the query
       const parts: any[] = [];
 
-      if (image && image.data && image.mimeType) {
-        // Strip out the data:image/...;base64, prefix if present
-        let base64Data = image.data;
+      // Handle general file or legacy image attachment
+      const activeAttachment = file || image;
+      if (activeAttachment && activeAttachment.data && activeAttachment.mimeType) {
+        // Strip out the data:...;base64, prefix if present
+        let base64Data = activeAttachment.data;
         if (base64Data.includes(";base64,")) {
           base64Data = base64Data.split(";base64,").pop();
         }
         parts.push({
           inlineData: {
             data: base64Data,
-            mimeType: image.mimeType
+            mimeType: activeAttachment.mimeType
           }
         });
       }

@@ -66,6 +66,22 @@ export default function AuthView({
 
     setSendingOtp(true);
     try {
+      if (mode === 'login') {
+        const dbUser = await getFirebaseUser(mobile);
+        if (!dbUser) {
+          onSwitchMode('signup');
+          setErrorMessage(
+            lang === 'hi'
+              ? 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया जारी रखने के लिए अपना पूरा नाम दर्ज करें।'
+              : lang === 'gu'
+              ? 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને આગળ વધવા માટે તમારું નામ લખો.'
+              : 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your full name to continue!'
+          );
+          setSendingOtp(false);
+          return;
+        }
+      }
+
       const response = await fetch('/api/otp/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -146,12 +162,14 @@ export default function AuthView({
           // Login: Fetch existing user profile from Firebase Firestore
           const dbUser = await getFirebaseUser(mobile);
           if (!dbUser) {
+            onSwitchMode('signup');
+            handleResetForm();
             setErrorMessage(
               lang === 'hi' 
-                ? 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। कृपया पहले पंजीकरण करें!'
+                ? 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया अपना नाम दर्ज करें और नया कोड प्राप्त करें।'
                 : lang === 'gu'
-                ? 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. કૃપા કરીને પહેલા રજીસ્ટ્રેશન કરો!'
-                : 'Account not found for this mobile number. Please register first!'
+                ? 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને તમારું નામ લખો અને નવો કોડ મેળવો.'
+                : 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your name and request a code to register.'
             );
             return;
           }

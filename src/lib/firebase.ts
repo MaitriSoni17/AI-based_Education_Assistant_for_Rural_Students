@@ -11,6 +11,7 @@ import {
   getDocs 
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getDeterministicAvatar } from "../utils/avatar";
 
 // Read configuration from the provisioned firebase applet config
 const firebaseConfig = {
@@ -89,6 +90,7 @@ export interface FirestoreUser {
   certificateName?: string;
   earnedCertificates?: string; // Stringified array
   claimedMedals?: string; // Stringified array
+  mascotLessonsHistory?: string; // Stringified array
   activePathId?: string | null;
   completedMilestones?: string; // Stringified array
   chatHistoryDadi?: string; // Stringified array
@@ -135,7 +137,7 @@ export async function syncFirebaseUserWithLWW(
         name: localUser.name || "Student",
         defaultLanguage: localUser.defaultLanguage || "en",
         signupDate: localUser.signupDate || new Date().toLocaleDateString(),
-        avatar: "🦊",
+        avatar: getDeterministicAvatar(localUser.name || "Student", mobile),
         streakDays: 1,
         totalPoints: 15,
         studyMins: 30,
@@ -190,7 +192,7 @@ export async function setFirebaseUser(mobile: string, userData: Partial<Firestor
         name: userData.name || "Student",
         defaultLanguage: userData.defaultLanguage || "en",
         signupDate: userData.signupDate || new Date().toLocaleDateString(),
-        avatar: "🦊",
+        avatar: getDeterministicAvatar(userData.name || "Student", mobile),
         streakDays: 1,
         totalPoints: 15,
         studyMins: 30,

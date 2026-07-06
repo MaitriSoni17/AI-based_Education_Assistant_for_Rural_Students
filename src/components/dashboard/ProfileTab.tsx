@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, LanguageCode } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
+import { AVATARS, getDeterministicAvatar } from '../../utils/avatar';
 import { 
   Award, Flame, Clock, BookOpen, Database, MapPin, School, Phone, Calendar, 
   Sparkles, Settings, Globe, ShieldCheck, Edit3, Save, CheckCircle,
@@ -18,14 +19,6 @@ interface ProfileTabProps {
   onUpdateUser: (fields: Partial<User>) => void;
 }
 
-const AVATARS = [
-  { id: 'fox', emoji: '🦊', name: 'Smart Fox' },
-  { id: 'owl', emoji: '🦉', name: 'Wise Owl' },
-  { id: 'tiger', emoji: '🐯', name: 'Brave Tiger' },
-  { id: 'elephant', emoji: '🐘', name: 'Kind Elephant' },
-  { id: 'lion', emoji: '🦁', name: 'Royal Lion' },
-];
-
 export default function ProfileTab({ user, lang, claimedMedals, offlineCount, onNavigateToTab, onUpdateUser }: ProfileTabProps) {
   const t = TRANSLATIONS[lang];
 
@@ -33,7 +26,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
   const [village, setVillage] = useState(() => user.village || 'Rampur Vilas');
   const [school, setSchool] = useState(() => user.school || 'Rampur Primary Public School');
   const [standard, setStandard] = useState(() => user.standard || 'Grade 6 Science');
-  const [selectedAvatar, setSelectedAvatar] = useState(() => user.avatar || '🦊');
+  const [selectedAvatar, setSelectedAvatar] = useState(() => user.avatar || getDeterministicAvatar(user.name, user.mobile));
   const [isEditing, setIsEditing] = useState(false);
 
   // Gamified statistics from user prop
@@ -43,13 +36,22 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'unlocked' | 'locked' | 'science' | 'math'>('all');
   const [streakCelebration, setStreakCelebration] = useState(false);
+  const [chartReady, setChartReady] = useState(false);
+
+  // Set chartReady to true after mount to avoid Recharts 0/negative dimension warnings
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setChartReady(true);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Synchronize student data when logged-in student session changes
   useEffect(() => {
     setVillage(user.village || 'Rampur Vilas');
     setSchool(user.school || 'Rampur Primary Public School');
     setStandard(user.standard || 'Grade 6 Science');
-    setSelectedAvatar(user.avatar || '🦊');
+    setSelectedAvatar(user.avatar || getDeterministicAvatar(user.name, user.mobile));
     setUserPoints(user.totalPoints ?? 15);
     setStreakDays(user.streakDays ?? 1);
     setHasCheckedInToday(user.lastCheckedInDate === new Date().toLocaleDateString());
@@ -381,7 +383,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         {isEditing && (
           <div className="mt-5 p-4 bg-gray-50/60 rounded-2xl border border-gray-150 text-left space-y-2 animate-fade-in">
             <h4 className="font-display font-black text-xs text-[#3D405B] uppercase tracking-wider">
-              Choose your Learning Mascot Mascot:
+              Choose your AI Animal Character:
             </h4>
             <div className="flex flex-wrap gap-3">
               {AVATARS.map(av => (
@@ -499,24 +501,30 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
           </div>
 
           <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={weeklyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorMins" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#E07A5F" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#E07A5F" stopOpacity={0.0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
-                <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#64748b' }} stroke="#cbd5e1" />
-                <YAxis tick={{ fontSize: 10, fill: '#64748b' }} stroke="#cbd5e1" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px', padding: '10px' }}
-                  labelStyle={{ fontWeight: 'bold', color: '#3d405b' }}
-                />
-                <Area type="monotone" dataKey="mins" name="Study Time (Mins)" stroke="#E07A5F" strokeWidth={2.5} fillOpacity={1} fill="url(#colorMins)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {chartReady ? (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <AreaChart data={weeklyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorMins" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#E07A5F" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#E07A5F" stopOpacity={0.0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                  <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#64748b' }} stroke="#cbd5e1" />
+                  <YAxis tick={{ fontSize: 10, fill: '#64748b' }} stroke="#cbd5e1" />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px', padding: '10px' }}
+                    labelStyle={{ fontWeight: 'bold', color: '#3d405b' }}
+                  />
+                  <Area type="monotone" dataKey="mins" name="Study Time (Mins)" stroke="#E07A5F" strokeWidth={2.5} fillOpacity={1} fill="url(#colorMins)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-gray-55 rounded-2xl border border-dashed border-gray-200">
+                <span className="text-xs text-gray-400 font-mono">Loading study analytics...</span>
+              </div>
+            )}
           </div>
         </div>
 

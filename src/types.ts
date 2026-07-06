@@ -23,6 +23,8 @@ export interface User {
   certificateName?: string;
   earnedCertificates?: string; // JSON string of certificates
   chatSessions?: string; // JSON string of chat sessions
+  solverSessions?: string; // JSON string of solver sessions
+  mascotLessonsHistory?: string; // JSON string of mascot lessons history
   activePathId?: string;
   completedMilestones?: string; // JSON string array of completed milestones
   claimedMedals?: string; // JSON string array of claimed medals

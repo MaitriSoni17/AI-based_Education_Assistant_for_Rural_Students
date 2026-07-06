@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LanguageCode, User, OfflineResource } from '../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../data/translations';
+import { getDeterministicAvatar } from '../utils/avatar';
 import { speakText, stopSpeaking } from '../utils/speech';
 import { offlineSyncManager } from '../utils/offlineSync';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -190,8 +191,9 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
       {/* 1. GREETING HEADER BANNER */}
       <header className="bg-white rounded-3xl p-4 sm:p-5 border border-gray-150 flex flex-col md:flex-row justify-between items-center gap-4 text-left shadow-2xs">
         <div className="space-y-1 w-full md:w-auto">
-          <h1 className="font-display font-extrabold text-lg sm:text-xl text-[#3D405B]">
-            Namaste, {localUser.name}! 👋
+          <h1 className="font-display font-extrabold text-lg sm:text-xl text-[#3D405B] flex items-center gap-1.5">
+            <span className="text-2xl sm:text-3xl animate-bounce duration-1000">{localUser.avatar || getDeterministicAvatar(localUser.name, localUser.mobile)}</span>
+            <span>Namaste, {localUser.name}!</span>
           </h1>
           <p className="text-xs text-gray-500 font-sans">
             Curriculum Medium: <span className="font-bold underline text-[#E07A5F] capitalize">
@@ -329,6 +331,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
                 lang={lang}
                 claimedMedals={claimedMedals}
                 setClaimedMedals={setClaimedMedals}
+                onUpdateUser={handleUpdateLocalUser}
               />
             )}
 

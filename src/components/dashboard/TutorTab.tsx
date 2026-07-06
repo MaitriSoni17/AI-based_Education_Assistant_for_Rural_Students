@@ -301,13 +301,15 @@ interface TutorTabProps {
   lang: LanguageCode;
   claimedMedals: string[];
   setClaimedMedals: React.Dispatch<React.SetStateAction<string[]>>;
+  onUpdateUser?: (fields: Partial<User>) => void;
 }
 
 export default function TutorTab({
   user,
   lang,
   claimedMedals,
-  setClaimedMedals
+  setClaimedMedals,
+  onUpdateUser
 }: TutorTabProps) {
   const DOWNLOAD_LABELS: Record<LanguageCode, string> = {
     en: "DOWNLOAD VIDEO LECTURE",
@@ -1393,6 +1395,9 @@ export default function TutorTab({
   const [activeDeckTab, setActiveDeckTab] = useState<'curriculum' | 'history'>('history');
   const [customHistory, setCustomHistory] = useState<LessonQuery[]>(() => {
     try {
+      if (user.mascotLessonsHistory) {
+        return JSON.parse(user.mascotLessonsHistory);
+      }
       const saved = localStorage.getItem(`${user.mobile}_mascot_lessons_history`);
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
@@ -1401,16 +1406,38 @@ export default function TutorTab({
     }
   });
 
-  // Load customHistory when user.mobile changes
+  // Synchronize local storage and Firebase database when customHistory changes
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(`${user.mobile}_mascot_lessons_history`);
-      setCustomHistory(saved ? JSON.parse(saved) : []);
+      const serialized = JSON.stringify(customHistory);
+      localStorage.setItem(`${user.mobile}_mascot_lessons_history`, serialized);
+      if (onUpdateUser && user.mascotLessonsHistory !== serialized) {
+        onUpdateUser({ mascotLessonsHistory: serialized });
+      }
+    } catch (e) {
+      console.error("Failed to sync custom history to storage:", e);
+    }
+  }, [customHistory]);
+
+  // Load and update customHistory when user.mobile or user.mascotLessonsHistory changes
+  useEffect(() => {
+    try {
+      if (user.mascotLessonsHistory) {
+        const parsed = JSON.parse(user.mascotLessonsHistory);
+        if (JSON.stringify(customHistory) !== user.mascotLessonsHistory) {
+          setCustomHistory(parsed);
+        }
+      } else {
+        const saved = localStorage.getItem(`${user.mobile}_mascot_lessons_history`);
+        const parsed = saved ? JSON.parse(saved) : [];
+        if (JSON.stringify(customHistory) !== JSON.stringify(parsed)) {
+          setCustomHistory(parsed);
+        }
+      }
     } catch (e) {
       console.error("Failed to parse mascot lessons history:", e);
-      setCustomHistory([]);
     }
-  }, [user.mobile]);
+  }, [user.mobile, user.mascotLessonsHistory]);
   const [isNewLecture, setIsNewLecture] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [showPlayGesturePrompt, setShowPlayGesturePrompt] = useState(false);
