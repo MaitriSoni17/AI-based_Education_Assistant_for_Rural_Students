@@ -2226,7 +2226,9 @@ JSON Schema:
         message: attachedFile 
           ? `Generate a structured 3-slide lesson presentation with quiz questions in ${targetLangName} about "${queryText}". Please analyze the attached document or image (${attachedFile.file.name}) and incorporate its teachings, context, formulas, or diagrams directly into the slides and quiz questions.`
           : `Generate a structured 3-slide lesson presentation with quiz questions in ${targetLangName} about "${queryText}".`,
-        systemInstruction
+        systemInstruction,
+        board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
+        lang: lang
       };
 
       if (attachedFile) {

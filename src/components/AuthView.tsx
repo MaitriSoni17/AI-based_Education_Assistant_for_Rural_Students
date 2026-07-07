@@ -70,13 +70,15 @@ export default function AuthView({
         const dbUser = await getFirebaseUser(mobile);
         if (!dbUser) {
           onSwitchMode('signup');
-          setErrorMessage(
-            lang === 'hi'
-              ? 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया जारी रखने के लिए अपना पूरा नाम दर्ज करें।'
-              : lang === 'gu'
-              ? 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને આગળ વધવા માટે તમારું નામ લખો.'
-              : 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your full name to continue!'
-          );
+          const msgs = {
+            hi: 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया जारी रखने के लिए अपना पूरा नाम दर्ज करें।',
+            gu: 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને આગળ વધવા માટે તમારું નામ લખો.',
+            mr: 'या मोबाईल नंबरवर कोणतेही खाते आढळले नाही. आम्ही तुम्हाला नोंदणी पृष्ठावर पाठवले आहे. कृपया पुढे जाण्यासाठी तुमचे पूर्ण नाव प्रविष्ट करा.',
+            ta: 'இந்த மொபைல் எண்ணில் கணக்கு எதுவும் இல்லை. நாங்கள் உங்களை பதிவுப் பக்கத்திற்கு அனுப்பியுள்ளோம். தயவுசெய்து தொடர உங்கள் முழு பெயரை உள்ளிடவும்.',
+            te: 'ఈ మొబైల్ నంబర్‌తో ఎటువంటి ఖాతా కనుగొనబడలేదు. మేము మిమ్మల్ని రిజిస్ట్రేషన్ పేజీకి మళ్లించాము. దయచేసి కొనసాగించడానికి మీ పూర్తి పేరును నమోదు చేయండి.',
+            en: 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your full name to continue!'
+          };
+          setErrorMessage(msgs[lang as keyof typeof msgs] || msgs.en);
           setSendingOtp(false);
           return;
         }
@@ -164,13 +166,15 @@ export default function AuthView({
           if (!dbUser) {
             onSwitchMode('signup');
             handleResetForm();
-            setErrorMessage(
-              lang === 'hi' 
-                ? 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया अपना नाम दर्ज करें और नया कोड प्राप्त करें।'
-                : lang === 'gu'
-                ? 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને તમારું નામ લખો અને નવો કોડ મેળવો.'
-                : 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your name and request a code to register.'
-            );
+            const verifyFailMsgs = {
+              hi: 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया अपना नाम दर्ज करें और नया कोड प्राप्त करें।',
+              gu: 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને તમારું નામ લખો અને નવો કોડ મેળવો.',
+              mr: 'या मोबाईल नंबरवर कोणतेही खाते आढळले नाही. आम्ही तुम्हाला नोंदणी पृष्ठावर पाठवले आहे. कृपया तुमचे नाव प्रविष्ट करा आणि नवीन कोड मिळवा.',
+              ta: 'இந்த மொபைல் எண்ணில் கணக்கு எதுவும் இல்லை. நாங்கள் உங்களை பதிவுப் பக்கத்திற்கு அனுப்பியுள்ளோம். தயవుசெய்து உங்கள் பெயரை உள்ளிட்டு புதிய குறியீட்டைப் பெறவும்.',
+              te: 'ఈ మొబైల్ నంబర్‌తో ఎటువంటి ఖాతా కనుగొనబడలేదు. మేము మిమ్మల్ని రిజిస్ట్రేషన్ పేజీకి మళ్లించాము. దయచేసి మీ పేరును నమోదు చేసి, కొత్త కోడ్‌ని పొందండి.',
+              en: 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your name and request a code to register.'
+            };
+            setErrorMessage(verifyFailMsgs[lang as keyof typeof verifyFailMsgs] || verifyFailMsgs.en);
             return;
           }
           onSuccess(dbUser as User);

@@ -355,7 +355,9 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
 
             {activeTab === 'exam' && (
               <ExamPrepTab
+                user={localUser}
                 lang={lang}
+                onUpdateUser={handleUpdateLocalUser}
               />
             )}
 

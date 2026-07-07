@@ -16,6 +16,7 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
   const [village, setVillage] = useState(user.village || '');
   const [school, setSchool] = useState(user.school || '');
   const [standard, setStandard] = useState(user.standard || '6th Standard');
+  const [board, setBoard] = useState(user.board || 'CBSE');
 
   // Local speech test state
   const [speechRate, setSpeechRate] = useState(() => {
@@ -32,8 +33,14 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
     onUpdateUser({
       village,
       school,
-      standard
+      standard,
+      board
     });
+
+    localStorage.setItem(`${user.mobile}_profile_village`, village);
+    localStorage.setItem(`${user.mobile}_profile_school`, school);
+    localStorage.setItem(`${user.mobile}_profile_standard`, standard);
+    localStorage.setItem(`${user.mobile}_profile_board`, board);
 
     setTimeout(() => {
       setSavingKey(false);
@@ -161,6 +168,54 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
                 <option value="8th Standard">Class 8 (8th Standard)</option>
                 <option value="9th Standard">Class 9 (9th Standard)</option>
               </select>
+            </div>
+
+            <div className="space-y-1.5 text-left">
+              <label className="text-[10px] font-mono uppercase text-gray-400 font-bold block">
+                Academic Board / Syllabus
+              </label>
+              <select
+                value={board}
+                onChange={(e) => setBoard(e.target.value)}
+                className="w-full p-2.5 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans focus:outline-none focus:ring-1 focus:ring-[#81B29A] cursor-pointer font-bold text-[#3D405B]"
+              >
+                <optgroup label="National Boards">
+                  <option value="CBSE">CBSE (NCERT Standards)</option>
+                  <option value="ICSE">ICSE (CISCE Standards)</option>
+                </optgroup>
+                <optgroup label="State Boards">
+                  <option value="Andhra Pradesh: BIEAP & BSEAP">Andhra Pradesh: BIEAP & BSEAP</option>
+                  <option value="Assam: AHSEC & SEBA">Assam: AHSEC & SEBA</option>
+                  <option value="Bihar: BSEB">Bihar: BSEB</option>
+                  <option value="Chhattisgarh: CGBSE">Chhattisgarh: CGBSE</option>
+                  <option value="Goa: GBSHSE">Goa: GBSHSE</option>
+                  <option value="Gujarat: GSEB">Gujarat: GSEB</option>
+                  <option value="Haryana: HBSE">Haryana: HBSE</option>
+                  <option value="Himachal Pradesh: HPBOSE">Himachal Pradesh: HPBOSE</option>
+                  <option value="Jammu & Kashmir: JKBOSE">Jammu & Kashmir: JKBOSE</option>
+                  <option value="Jharkhand: JAC">Jharkhand: JAC</option>
+                  <option value="Karnataka: KSEAB">Karnataka: KSEAB</option>
+                  <option value="Kerala: DHSE & Pareeksha Bhavan">Kerala: DHSE & Pareeksha Bhavan</option>
+                  <option value="Madhya Pradesh: MPBSE">Madhya Pradesh: MPBSE</option>
+                  <option value="Maharashtra: MSBSHSE">Maharashtra: MSBSHSE</option>
+                  <option value="Manipur: BSEM & COHSEM">Manipur: BSEM & COHSEM</option>
+                  <option value="Meghalaya: MBOSE">Meghalaya: MBOSE</option>
+                  <option value="Mizoram: MBSE">Mizoram: MBSE</option>
+                  <option value="Nagaland: NBSE">Nagaland: NBSE</option>
+                  <option value="Odisha: BSE Odisha & CHSE Odisha">Odisha: BSE Odisha & CHSE Odisha</option>
+                  <option value="Punjab: PSEB">Punjab: PSEB</option>
+                  <option value="Rajasthan: RBSE">Rajasthan: RBSE</option>
+                  <option value="Tamil Nadu: DGE TN">Tamil Nadu: DGE TN</option>
+                  <option value="Telangana: TSBIE">Telangana: TSBIE</option>
+                  <option value="Tripura: TBSE">Tripura: TBSE</option>
+                  <option value="Uttar Pradesh: UPMSP">Uttar Pradesh: UPMSP</option>
+                  <option value="Uttarakhand: UBSE">Uttarakhand: UBSE</option>
+                  <option value="West Bengal: WBBSE & WBCHSE">West Bengal: WBBSE & WBCHSE</option>
+                </optgroup>
+              </select>
+              <p className="text-[9px] text-gray-400 font-sans leading-normal">
+                This setting routes learning prompts dynamically, fine-tuning step-by-step solutions to your chosen national or regional SCERT syllabus format.
+              </p>
             </div>
 
             {feedbackMsg && (

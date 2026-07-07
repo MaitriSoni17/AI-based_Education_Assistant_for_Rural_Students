@@ -1887,7 +1887,9 @@ CRITICAL REQUIREMENTS:
           subject: quiz.subject,
           questions: quiz.questions
         }),
-        systemInstruction
+        systemInstruction,
+        board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
+        lang: targetLang
       })
     });
 
@@ -1969,7 +1971,9 @@ JSON Schema:
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: `Generate a high-quality academic school quiz about "${topic}" containing exactly ${count} questions at ${difficultyLabel} level, fully written in ${targetLangName}.`,
-        systemInstruction
+        systemInstruction,
+        board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
+        lang: targetLang
       })
     });
 

@@ -16,6 +16,7 @@ export interface User {
   village?: string;
   school?: string;
   standard?: string;
+  board?: string;
   avatar?: string;
   totalPoints?: number;
   streakDays?: number;

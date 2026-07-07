@@ -83,6 +83,7 @@ export interface FirestoreUser {
   village?: string;
   school?: string;
   standard?: string;
+  board?: string;
   avatar?: string;
   streakDays?: number;
   lastCheckedInDate?: string;

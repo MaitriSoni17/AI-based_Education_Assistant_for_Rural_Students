@@ -502,7 +502,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
 
           <div className="h-64 w-full">
             {chartReady ? (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+              <ResponsiveContainer width="100%" height={256}>
                 <AreaChart data={weeklyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorMins" x1="0" y1="0" x2="0" y2="1">

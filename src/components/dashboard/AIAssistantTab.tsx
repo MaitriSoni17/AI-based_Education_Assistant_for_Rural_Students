@@ -763,7 +763,9 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     try {
       const bodyPayload: any = {
         message: queryText,
-        systemInstruction: getSystemInstructionForMascot()
+        systemInstruction: getSystemInstructionForMascot(),
+        board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
+        lang: lang
       };
 
       if (imagePayload) {

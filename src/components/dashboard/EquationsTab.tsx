@@ -9,6 +9,8 @@ import {
   ChevronUp, ChevronDown, BookOpen, Plus, MessageSquare, Calendar
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import SpeechInputButton from '../SpeechInputButton';
+import SpeakButton from '../SpeakButton';
 
 interface EquationsTabProps {
   user: User;
@@ -572,6 +574,974 @@ export const CHATBOT_TRANSLATIONS: Record<string, {
   }
 };
 
+export const EQ_TAB_LABELS: Record<string, Record<string, string>> = {
+  en: {
+    adjustParameters: "Adjust Parameters",
+    massLabel: "Mass (m):",
+    accelerationLabel: "Acceleration (a):",
+    currentLabel: "Current (I):",
+    resistanceLabel: "Resistance (R):",
+    einsteinMassLabel: "Mass (m in mg):",
+    baseLabel: "Base (Side a):",
+    heightLabel: "Height (Side b):",
+    distanceLabel: "Distance from Base (d):",
+    angleLabel: "Angle of Elevation (θ):",
+    coeffALabel: "Coefficient a (≠ 0):",
+    coeffBLabel: "Coefficient b:",
+    coeffCLabel: "Constant c:",
+    liveOutput: "Live Calculation Output",
+    forceFormulaText: "Force = Mass × Acceleration",
+    voltageFormulaText: "Voltage = Current × Resistance",
+    energyFormulaText: "Energy (E) = Mass (m) × c²",
+    hypotenuseFormulaText: "Hypotenuse (c) = √(a² + b²)",
+    computedRoots: "Computed Roots:",
+    pushVectorTitle: "Push Vector Visualization",
+    pushLabel: "Push",
+    interactiveBulbTitle: "Interactive Bulb Circuit",
+    equivalentPowerScale: "Equivalent Power Scale",
+    villageSchoolPowerPre: "Can run village primary school for",
+    villageSchoolPowerPost: "months!",
+    liveTriangleRender: "Live SVG Right-Triangle Render",
+    angleElevationTitle: "Angle of Elevation Visualized",
+    parabolaPlotter: "Parabola Graph Plotter",
+    academicInsight: "Academic Concept Insight",
+    interactiveLab: "Interactive Lab Activity",
+    balanceChemical: "Balance the Chemical Equation",
+    earnPoints: "Earn Study Points",
+    validateEquation: "Validate Equation",
+    reset: "Reset",
+    helpBalancing: "Need Help Balancing?",
+    downloadPDF: "Download Solution PDF",
+    copyText: "Copy Plain Text",
+    copied: "Copied!",
+    quickSolves: "Quick Solves",
+    formulaSheet: "Formula Sheet",
+    tryQuickSolves: "Try Quick Solves",
+    physicsEquations: "Physics Equations",
+    chemistryFormulae: "Chemistry Formulae",
+    mathEquations: "Math Equations",
+    explainFormulaDetail: "Please explain this formula in detail",
+    explainChemicalFormulaDetail: "Please explain this chemical formula",
+    explainMathFormulaDetail: "Please explain this mathematical formula and show derivation",
+    useFormula: "Use Formula",
+    aiSolve: "AI Solve",
+    multiModalSolve: "Multi-Modal Solve Engine",
+    mathAndScienceFormulae: "Math & Science Formula Sheet"
+  },
+  hi: {
+    adjustParameters: "पैरामीटर बदलें",
+    massLabel: "द्रव्यमान (Mass m):",
+    accelerationLabel: "त्वरण (Acceleration a):",
+    currentLabel: "विद्युत धारा (Current I):",
+    resistanceLabel: "प्रतिरोध (Resistance R):",
+    einsteinMassLabel: "द्रव्यमान (Mass m in mg):",
+    baseLabel: "आधार (Base side a):",
+    heightLabel: "लंब (Height side b):",
+    distanceLabel: "जमीनी दूरी (Distance d):",
+    angleLabel: "उन्नयन कोण (Angle θ):",
+    coeffALabel: "गुणांक a (शून्य नहीं):",
+    coeffBLabel: "गुणांक b:",
+    coeffCLabel: "अचर पद c:",
+    liveOutput: "सक्रिय गणना परिणाम",
+    forceFormulaText: "बल = द्रव्यमान × त्वरण",
+    voltageFormulaText: "वोल्टेज = विद्युत धारा × प्रतिरोध",
+    energyFormulaText: "ऊर्जा (E) = द्रव्यमान (m) × c²",
+    hypotenuseFormulaText: "कर्ण (c) = √(a² + b²)",
+    computedRoots: "मूल (Roots):",
+    pushVectorTitle: "गति की दिशा और बल सदिश",
+    pushLabel: "धक्का",
+    interactiveBulbTitle: "विद्युत परिपथ और बल्ब की चमक",
+    equivalentPowerScale: "ऊर्जा रूपांतरण तुलना",
+    villageSchoolPowerPre: "यह ग्रामीण स्कूल को",
+    villageSchoolPowerPost: "महीने तक बिजली देगा!",
+    liveTriangleRender: "समकोण त्रिभुज SVG दृश्य",
+    angleElevationTitle: "उन्नयन कोण और ऊँचाई प्रोजेक्शन",
+    parabolaPlotter: "परवलय आरेख (Parabola curve) SVG",
+    academicInsight: "अवधारणा की समझ (Physical Insight)",
+    interactiveLab: "इंटरैक्टिव गतिविधि",
+    balanceChemical: "रासायनिक समीकरण संतुलित करें",
+    earnPoints: "बोनस: अंक अर्जित करें",
+    validateEquation: "समीकरण जांचें",
+    reset: "रीसेट",
+    helpBalancing: "समीकरण संतुलित कैसे करें?",
+    downloadPDF: "समाधान PDF डाउनलोड करें",
+    copyText: "प्लेन टेक्स्ट कॉपी करें",
+    copied: "कॉपी हो गया!",
+    quickSolves: "त्वरित हल",
+    formulaSheet: "सम्पूर्ण सूत्र",
+    tryQuickSolves: "त्वरित गणना संकेत",
+    physicsEquations: "भौतिक विज्ञान",
+    chemistryFormulae: "रसायन विज्ञान",
+    mathEquations: "गणित सूत्र",
+    explainFormulaDetail: "कृपया इस सूत्र को विस्तार से समझाएं",
+    explainChemicalFormulaDetail: "कृपया इस रसायन सूत्र को समझाएं",
+    explainMathFormulaDetail: "कृपया इस गणितीय सूत्र को समझाएं और सूत्रपात दिखाएं",
+    useFormula: "चैट में डालें",
+    aiSolve: "एआई से हल करें",
+    multiModalSolve: "चित्र और पीडीएफ सॉल्वर",
+    mathAndScienceFormulae: "गणित और विज्ञान सूत्र"
+  },
+  gu: {
+    adjustParameters: "પરિમાણો બદલો",
+    massLabel: "દ્રવ્યમાન (Mass m):",
+    accelerationLabel: "પ્રવેગ (Acceleration a):",
+    currentLabel: "વિદ્યુત પ્રવાહ (Current I):",
+    resistanceLabel: "અવરોધ (Resistance R):",
+    einsteinMassLabel: "દ્રવ્યમાન (Mass m in mg):",
+    baseLabel: "આધાર (Base side a):",
+    heightLabel: "લંબ (Height side b):",
+    distanceLabel: "જમીનનું અંતર (Distance d):",
+    angleLabel: "ઉન્નયન કોણ (Angle θ):",
+    coeffALabel: "સહગુણક a (શૂન્ય નહીં):",
+    coeffBLabel: "સહગુણક b:",
+    coeffCLabel: "અચળ પદ c:",
+    liveOutput: "લાઇવ ગણતરી પરિણામ",
+    forceFormulaText: "બળ = દ્રવ્યમાન × પ્રવેગ",
+    voltageFormulaText: "વોલ્ટેજ = વિદ્યુત પ્રવાહ × અવરોધ",
+    energyFormulaText: "ઊર્જા (E) = દ્રવ્યમાન (m) × c²",
+    hypotenuseFormulaText: "કર્ણ (c) = √(a² + b²)",
+    computedRoots: "ગણતરી કરેલ ઉકેલો (મૂળો):",
+    pushVectorTitle: "બળ સદિશ ચિત્રણ",
+    pushLabel: "ધક્કો",
+    interactiveBulbTitle: "ઇન્ટરેક્ટિવ બલ્બ સર્કિટ",
+    equivalentPowerScale: "ઊર્જા રૂપાંતરણ સરખામણી",
+    villageSchoolPowerPre: "આ ગામની પ્રાથમિક શાળાને",
+    villageSchoolPowerPost: "મહિના સુધી વીજળી આપશે!",
+    liveTriangleRender: "કાટકોણ ત્રિકોણ રેન્ડર",
+    angleElevationTitle: "ઉન્નયન કોણ રેન્ડર",
+    parabolaPlotter: "પેરાબોલા આલેખ પ્લોટર",
+    academicInsight: "શૈક્ષણિક ખ્યાલ સમજ",
+    interactiveLab: "ઇન્ટરેક્ટિવ પ્રયોગશાળા પ્રવૃત્તિ",
+    balanceChemical: "રાસાયણિક સમીકરણ સંતુલિત કરો",
+    earnPoints: "બોનસ: અભ્યાસ પોઇન્ટ્સ મેળવો",
+    validateEquation: "સમીકરણ ચકાસો",
+    reset: "રીસેટ",
+    helpBalancing: "સંતુલન કરવામાં મદદ જોઈએ છે?",
+    downloadPDF: "ઉકેલ PDF ડાઉનલોડ કરો",
+    copyText: "ટેક્સ્ટ કોપી કરો",
+    copied: "કોપી થયું!",
+    quickSolves: "ઝડપી ઉકેલો",
+    formulaSheet: "સૂત્ર પત્રક",
+    tryQuickSolves: "ઝડપી ઉકેલોનો પ્રયાસ કરો",
+    physicsEquations: "ભૌતિક વિજ્ઞાન સમીકરણો",
+    chemistryFormulae: "રસાયણ વિજ્ઞાન સૂત્રો",
+    mathEquations: "ગણિતના સમીકરણો",
+    explainFormulaDetail: "કૃપા કરીને આ સૂત્ર વિગતવાર સમજાવો",
+    explainChemicalFormulaDetail: "કૃપા કરીને આ રાસાયણિક સૂત્ર સમજાવો",
+    explainMathFormulaDetail: "કૃપા કરીને આ ગણિતના સૂત્રને સમજાવો અને તેની સાબિતી આપો",
+    useFormula: "સૂત્ર વાપરો",
+    aiSolve: "AI ઉકેલ મેળવો",
+    multiModalSolve: "ચિત્ર અને PDF સોલ્વર",
+    mathAndScienceFormulae: "ગણિત અને વિજ્ઞાન સૂત્ર પત્રક"
+  },
+  mr: {
+    adjustParameters: "पॅरामीटर्स बदला",
+    massLabel: "वस्तुमान (Mass m):",
+    accelerationLabel: "त्वरण (Acceleration a):",
+    currentLabel: "विद्युत धारा (Current I):",
+    resistanceLabel: "रोध (Resistance R):",
+    einsteinMassLabel: "वस्तुमान (Mass m in mg):",
+    baseLabel: "पाया (Base side a):",
+    heightLabel: "उंची (Height side b):",
+    distanceLabel: "जमिनीचे अंतर (Distance d):",
+    angleLabel: "उन्नत कोन (Angle θ):",
+    coeffALabel: "सहगुणक a (शून्य नाही):",
+    coeffBLabel: "सहगुणक b:",
+    coeffCLabel: "स्थिर पद c:",
+    liveOutput: "थेट गणना निकाल",
+    forceFormulaText: "बल = वस्तुमान × त्वरण",
+    voltageFormulaText: "विभवांतर = विद्युत धारा × रोध",
+    energyFormulaText: "ऊर्जा (E) = वस्तुमान (m) × c²",
+    hypotenuseFormulaText: "कर्ण (c) = √(a² + b²)",
+    computedRoots: "शोधलेली मुळे:",
+    pushVectorTitle: "बल दिशा आणि सदिश रेखाचित्र",
+    pushLabel: "धक्का",
+    interactiveBulbTitle: "परिपथ आणि बल्बची चमक",
+    equivalentPowerScale: "ऊर्जा रूपांतरण तुलना",
+    villageSchoolPowerPre: "हे ग्रामीण शाळेला",
+    villageSchoolPowerPost: "महिन्यांपर्यंत वीज पुरवेल!",
+    liveTriangleRender: "काटकोण त्रिकोण चित्र रेखाटन",
+    angleElevationTitle: "उन्नत कोन आणि उंचीचे चित्र",
+    parabolaPlotter: "परवलय आलेख चित्र",
+    academicInsight: "शैक्षणिक संकल्पना समज",
+    interactiveLab: "परस्परसंवादी प्रयोगशाळा कृती",
+    balanceChemical: "रासायनिक समीकरण संतुलित करा",
+    earnPoints: "बोनस: अभ्यास गुण मिळवा",
+    validateEquation: "समीकरण तपासा",
+    reset: "पुन्हा सुरू करा (रीसेट)",
+    helpBalancing: "संतुलन करण्यासाठी मदत हवी आहे?",
+    downloadPDF: "उत्तर PDF डाउनलोड करा",
+    copyText: "मजकूर कॉपी करा",
+    copied: "copy झाले!",
+    quickSolves: "त्वरित सोडवणूक",
+    formulaSheet: "सूत्र पत्रक",
+    tryQuickSolves: "त्वरित सोडवणूक वापरून पहा",
+    physicsEquations: "भौतिकशास्त्र समीकरणे",
+    chemistryFormulae: "रसायनशास्त्र सूत्रे",
+    mathEquations: "गणित सूत्रे",
+    explainFormulaDetail: "कृपया हे सूत्र सविस्तर स्पष्ट करा",
+    explainChemicalFormulaDetail: "कृपया हे रासायनिक सूत्र स्पष्ट करा",
+    explainMathFormulaDetail: "कृपया हे गणितीय सूत्र स्पष्ट करा आणि सिद्धता दाखवा",
+    useFormula: "सूत्र वापरा",
+    aiSolve: "एआय द्वारे सोडवा",
+    multiModalSolve: "चित्र आणि पीडीएफ सॉल्वर",
+    mathAndScienceFormulae: "गणित आणि विज्ञान सूत्रे"
+  },
+  ta: {
+    adjustParameters: "அளவுகோல்களை மாற்று",
+    massLabel: "நிறை (Mass m):",
+    accelerationLabel: "முடுக்கம் (Acceleration a):",
+    currentLabel: "மின்னோட்டம் (Current I):",
+    resistanceLabel: "மின்தடை (Resistance R):",
+    einsteinMassLabel: "நிறை (Mass m in mg):",
+    baseLabel: "அடிபாகம் (Base side a):",
+    heightLabel: "உயரம் (Height side b):",
+    distanceLabel: "தரைத் தூரம் (Distance d):",
+    angleLabel: "ஏற்றக் கோணம் (Angle θ):",
+    coeffALabel: "கெழு a (பூஜ்ஜியம் அல்ல):",
+    coeffBLabel: "கெழு b:",
+    coeffCLabel: "மாறிலி c:",
+    liveOutput: "நேரடி கணக்கீட்டு வெளியீடு",
+    forceFormulaText: "விசை = நிறை × முடுக்கம்",
+    voltageFormulaText: "மின்னழுத்தம் = மின்னோட்டம் × மின்தடை",
+    energyFormulaText: "ஆற்றல் (E) = நிறை (m) × c²",
+    hypotenuseFormulaText: "கர்ணம் (c) = √(a² + b²)",
+    computedRoots: "கணக்கிடப்பட்ட மூலங்கள்:",
+    pushVectorTitle: "விசை வெக்டார் காட்சிப்படுத்தல்",
+    pushLabel: "தள்ளு",
+    interactiveBulbTitle: "மின்சுற்று மற்றும் விளக்கின் ஒளி",
+    equivalentPowerScale: "ஆற்றல் மாற்ற ஒப்பீடு",
+    villageSchoolPowerPre: "இது கிராமத்து தொடக்கப் பள்ளிக்கு",
+    villageSchoolPowerPost: "மாதங்கள் மின்சாரம் வழங்கும்!",
+    liveTriangleRender: "செங்கோண முக்கோண காட்சி",
+    angleElevationTitle: "ஏற்றக்கோண காட்சிப்படுத்தல்",
+    parabolaPlotter: "பரவளைய வரைபடம்",
+    academicInsight: "பாடக் கருத்துப் புரிதல்",
+    interactiveLab: "ஊடாடும் ஆய்வகச் செயல்பாடு",
+    balanceChemical: "வேதியியல் சமன்பாட்டைச் சமன்படுத்துக",
+    earnPoints: "போனஸ்: படிப்பு புள்ளிகளைப் பெறுங்கள்",
+    validateEquation: "சமன்பாட்டைச் சரிபார்",
+    reset: "மீட்டமை",
+    helpBalancing: "சமன்படுத்த உதவி வேண்டுமா?",
+    downloadPDF: "தீர்வு PDF பதிவிறக்கு",
+    copyText: "உரையை நகலெடு",
+    copied: "நகலெடுக்கப்பட்டது!",
+    quickSolves: "விரைவுத் தீர்வுகள்",
+    formulaSheet: "சூத்திரத்தாள்",
+    tryQuickSolves: "விரைவு தீர்வுகளை முயற்சிக்கவும்",
+    physicsEquations: "இயற்பியல் சமன்பாடுகள்",
+    chemistryFormulae: "வேதியியல் சூத்திரங்கள்",
+    mathEquations: "கணித சமன்பாடுகள்",
+    explainFormulaDetail: "தயவுசெய்து இந்த சூத்திரத்தை விரிவாக விளக்குங்கள்",
+    explainChemicalFormulaDetail: "தயவுசெய்து இந்த வேதியியல் சூத்திரத்தை விளக்குங்கள்",
+    explainMathFormulaDetail: "தயவுசெய்து இந்தக் கணித சூத்திரத்தை விளக்கி அதன் வழிமுறையைக் காட்டுங்கள்",
+    useFormula: "சூத்திரத்தைப் பயன்படுத்து",
+    aiSolve: "AI தீர்வு",
+    multiModalSolve: "படம் மற்றும் PDF தீர்வு இயந்திரம்",
+    mathAndScienceFormulae: "கணிதம் மற்றும் அறிவியல் சூத்திரத் தாள்"
+  },
+  te: {
+    adjustParameters: "పారామితులను సర్దుబాటు చేయి",
+    massLabel: "ద్రవ్యరాశి (Mass m):",
+    accelerationLabel: "త్వరణం (Acceleration a):",
+    currentLabel: "విద్యుత్ ప్రవాహం (Current I):",
+    resistanceLabel: "నిరోధం (Resistance R):",
+    einsteinMassLabel: "ద్రవ్యరాశి (Mass m in mg):",
+    baseLabel: "ఆధారం (Base side a):",
+    heightLabel: "ఎత్తు (Height side b):",
+    distanceLabel: "నేల దూరం (Distance d):",
+    angleLabel: "ఉన్నత కోణం (Angle θ):",
+    coeffALabel: "గుణకం a (సున్నా కాదు):",
+    coeffBLabel: "గుణకం b:",
+    coeffCLabel: "స్థిర పదం c:",
+    liveOutput: "లైవ్ లెక్కింపు అవుట్‌పుట్",
+    forceFormulaText: "బలం = ద్రవ్యరాశి × త్వరణం",
+    voltageFormulaText: "వోల్టేజ్ = విద్యుత్ ప్రవాహం × నిరోధకత",
+    energyFormulaText: "శక్తి (E) = ద్రవ్యరాశి (m) × c²",
+    hypotenuseFormulaText: "కర్ణం (c) = √(a² + b²)",
+    computedRoots: "లెక్కించబడిన మూలాలు:",
+    pushVectorTitle: "పుష్ వెక్టర్ విజువలైజేషన్",
+    pushLabel: "నెట్టు",
+    interactiveBulbTitle: "ఇంటరాక్టివ్ బల్బ్ సర్క్యూట్",
+    equivalentPowerScale: "శక్తి పరివర్తన పోలిక",
+    villageSchoolPowerPre: "ఇది గ్రామీణ ప్రాథమిక పాఠశాలకు",
+    villageSchoolPowerPost: "నెలల పాటు విద్యుత్ అందిస్తుంది!",
+    liveTriangleRender: "లైవ్ లంబకోణ త్రిభుజం రెండర్",
+    angleElevationTitle: "ఉన్నత కోణం విజువలైజేషన్",
+    parabolaPlotter: "పారాబోలా గ్రాఫ్ ప్లాటర్",
+    academicInsight: "విద్యా భావన అవగాహన",
+    interactiveLab: "ఇంటరాక్టివ్ ల్యాబ్ కార్యాచరణ",
+    balanceChemical: "రసాయన సమీకరణాన్ని సమతుల్యం చేయి",
+    earnPoints: "బోనస్: స్టడీ పాయింట్లు సంపాదించండి",
+    validateEquation: "సమీకరణాన్ని సరిచూడు",
+    reset: "రీసెట్",
+    helpBalancing: "సమతుల్యం చేయడంలో సహాయం కావాలా?",
+    downloadPDF: "పరిష్కారం PDF డౌన్‌లోడ్ చేయి",
+    copyText: "టెక్స్ట్ కాపీ చేయి",
+    copied: "కాపీ చేయబడింది!",
+    quickSolves: "త్వరిక పరిష్కారాలు",
+    formulaSheet: "ఫార్ములా షీట్",
+    tryQuickSolves: "త్వరిత పరిష్కారాలను ప్రయత్నించండి",
+    physicsEquations: "భౌతికశాస్త్ర సమీకరణాలు",
+    chemistryFormulae: "రసాయనశాస్త్ర ఫార్ములాలు",
+    mathEquations: "గణిత సమీకరణాలు",
+    explainFormulaDetail: "దయచేసి ఈ ఫార్ములాను వివరంగా వివరించండి",
+    explainChemicalFormulaDetail: "దయచేసి ఈ రసాయన ఫార్ములాను వివరించండి",
+    explainMathFormulaDetail: "దయచేసి ఈ గణిత ఫార్ములాను వివరించి, దాని ఉత్పాదనను చూపండి",
+    useFormula: "ఫార్ములా ఉపయోగించు",
+    aiSolve: "AI పరిష్కారం",
+    multiModalSolve: "చిత్రం మరియు PDF సాల్వర్ ఇంజిన్",
+    mathAndScienceFormulae: "గణితం మరియు సైన్స్ ఫార్ములా షీట్"
+  }
+};
+
+export function getEqLabel(key: string, langCode: string): string {
+  const dict = EQ_TAB_LABELS[langCode] || EQ_TAB_LABELS.en;
+  return dict[key] || EQ_TAB_LABELS.en[key] || key;
+}
+
+export function getFormulaLocalized(f: any, lang: string) {
+  const translations: Record<string, Record<string, { name: string; description: string }>> = {
+    hi: {
+      "Newton's Second Law": { name: "न्यूटन का दूसरा नियम", description: "बल द्रव्यमान और त्वरण के गुणनफल के बराबर होता है।" },
+      "Ohm's Law": { name: "ओम का नियम", description: "विद्युत विभवान्तर धारा और प्रतिरोध के गुणनफल के बराबर होता है।" },
+      "Einstein's Mass-Energy": { name: "आइंस्टीन का द्रव्यमान-ऊर्जा समीकरण", description: "ऊर्जा द्रव्यमान और प्रकाश की गति के वर्ग के गुणनफल के बराबर होती है।" },
+      "Gravitational Potential Energy": { name: "गुरुत्वीय स्थितिज ऊर्जा", description: "स्थितिज ऊर्जा द्रव्यमान, गुरुत्वाकर्षण बल और ऊंचाई पर निर्भर करती है।" },
+      "Kinetic Energy": { name: "गतिज ऊर्जा", description: "गतिमान वस्तु की ऊर्जा।" },
+      "Density Formula": { name: "घनत्व का सूत्र", description: "घनत्व द्रव्यमान को आयतन से विभाजित करने पर प्राप्त होता है।" },
+      "Ideal Gas Law": { name: "आदर्श गैस नियम", description: "दाब, आयतन, मोल, गैस नियतांक और तापमान को जोड़ता है।" },
+      "Molarity": { name: "मोलरता", description: "विलेय के मोलों की संख्या को विलयन के लीटर आयतन से विभाजित किया जाता है।" },
+      "pH Formula": { name: "pH मान सूत्र", description: "विलयन की अम्लता या क्षारीयता की गणना करता है।" },
+      "Pythagorean Theorem": { name: "पाइथागोरस प्रमेय", description: "एक समकोण त्रिभुज में, कर्ण का वर्ग अन्य दो भुजाओं के वर्गों के योग के बराबर होता है।" },
+      "Quadratic Formula": { name: "द्विघात सूत्र", description: "द्विघात समीकरण ax² + bx + c = 0 के मूल निकालता है।" },
+      "Area of a Circle": { name: "वृत्त का क्षेत्रफल", description: "त्रिज्या r वाले वृत्त के क्षेत्रफल की गणना करता है।" },
+      "Volume of a Sphere": { name: "गोले का आयतन", description: "त्रिज्या r वाले गोले के आयतन की गणना करता है।" },
+      "Euler's Identity": { name: "यूलर की पहचान", description: "पांच गणितीय स्थिरांकों को जोड़ने वाला सबसे सुंदर समीकरण।" }
+    },
+    gu: {
+      "Newton's Second Law": {
+        name: "ન્યૂટનનો બીજો નિયમ",
+        description: "બળ એ દ્રવ્યમાન અને પ્રવેગના ગુણાકાર બરાબર છે."
+      },
+      "Ohm's Law": {
+        name: "ઓહ્મનો નિયમ",
+        description: "વોલ્ટેજ એ વિદ્યુત પ્રવાહ અને અવરોધના ગુણાકાર બરાબર છે."
+      },
+      "Einstein's Mass-Energy": {
+        name: "આઇન્સ્ટાઇનનું દ્રવ્યમાન-ઊર્જા સમીકરણ",
+        description: "ઊર્જા એ દ્રવ્યમાન અને પ્રકાશની ગતિના વર્ગના ગુણાકાર બરાબર છે."
+      },
+      "Gravitational Potential Energy": {
+        name: "ગુરુત્વાકર્ષણ સ્થિતિજ ઊર્જા",
+        description: "સ્થિતિજ ઊર્જા દ્રવ્યમાન, ગુરુત્વાકર્ષણ બળ અને ઊંચાઈ પર આધાર રાખે છે."
+      },
+      "Kinetic Energy": {
+        name: "ગતિજ ઊર્જા",
+        description: "ગતિમાન પદાર્થની ઊર્જા."
+      },
+      "Density Formula": {
+        name: "ઘનતાનું સૂત્ર",
+        description: "ઘનતા એ દ્રવ્યમાનને કદ વડે ભાગવાથી મળે છે."
+      },
+      "Ideal Gas Law": {
+        name: "આદર્શ વાયુ નિયમ",
+        description: "દબાણ, કદ, મોલ, ગેસ અચળાંક અને તાપમાન વચ્ચેનો સંબંધ દર્શાવે છે."
+      },
+      "Molarity": {
+        name: "મોલારિટી",
+        description: "દ્રાવકના મોલ સંખ્યાને દ્રાવણના લિટર કદ વડે ભાગવામાં આવે છે."
+      },
+      "pH Formula": {
+        name: "pH સૂત્ર",
+        description: "દ્રાવણની એસિડિટી અથવા બેસિસિટીની ગણતરી કરે છે."
+      },
+      "Pythagorean Theorem": {
+        name: "પાયથાગોરસ પ્રમેય",
+        description: "કાટકોણ ત્રિકોણમાં, કર્ણનો વર્ગ અન્ય બે બાજુઓના વર્ગોના સરવાળા સમાન હોય છે."
+      },
+      "Quadratic Formula": {
+        name: "દ્વિઘાત સૂત્ર",
+        description: "દ્વિઘાત સમીકરણ ax² + bx + c = 0 ના ઉકેલો શોધે છે."
+      },
+      "Area of a Circle": {
+        name: "વર્તુળનું ક્ષેત્રફળ",
+        description: "ત્રિજ્યા r ધરાવતા વર્તુળના ક્ષેત્રફળની ગણતરી કરે છે."
+      },
+      "Volume of a Sphere": {
+        name: "ગોળાનું ઘનફળ",
+        description: "ત્રિજ્યા r ધરાવતા ગોળાના ઘનફળની ગણતરી કરે છે."
+      },
+      "Euler's Identity": {
+        name: "યુલરની ઓળખ",
+        description: "પાંચ ગણિત અચળાંકોને જોડતું સૌથી સુંદર સમીકરણ."
+      }
+    },
+    mr: {
+      "Newton's Second Law": {
+        name: "न्यूटनचा दुसरा नियम",
+        description: "बल हे वस्तुमान आणि प्रवेगाच्या गुणाकाराच्या बरोबर असते."
+      },
+      "Ohm's Law": {
+        name: "ओहमचा नियम",
+        description: "विद्युत विभवांतर हे विद्युत धारा आणि रोध यांच्या गुणाकाराच्या बरोबर असते."
+      },
+      "Einstein's Mass-Energy": {
+        name: "आईन्स्टाईनचे वस्तुमान-ऊर्जा समीकरण",
+        description: "ऊर्जा ही वस्तुमान आणि प्रकाश वेगाच्या वर्गाच्या गुणाकाराच्या बरोबर असते."
+      },
+      "Gravitational Potential Energy": {
+        name: "गुरुत्वीय स्थितिज ऊर्जा",
+        description: "स्थितिज ऊर्जा वस्तुमान, गुरुत्वाकर्षण आणि उंचीवर अवलंबून असते."
+      },
+      "Kinetic Energy": {
+        name: "गतिज ऊर्जा",
+        description: "गतिमान वस्तूची ऊर्जा."
+      },
+      "Density Formula": {
+        name: "घनतेचे सूत्र",
+        description: "घनता म्हणजे वस्तुमान भागिले आयतन."
+      },
+      "Ideal Gas Law": {
+        name: "आदर्श वायू नियम",
+        description: "दाब, आयतन, moल्स, वायू स्थिरांक आणि तापमान यांना जोडतो."
+      },
+      "Molarity": {
+        name: "मोलरता",
+        description: "विद्राव्याच्या moल्सची संख्या भागिले द्रावणाचे लिटरमधील आयतन."
+      },
+      "pH Formula": {
+        name: "pH सूत्र",
+        description: "द्रावणाची आम्लता किंवा क्षारता मोजते."
+      },
+      "Pythagorean Theorem": {
+        name: "पायथागोरसचा सिद्धांत",
+        description: "काटकोन त्रिकोणात, कर्णाचा वर्ग हा इतर दोन बाजूंच्या वर्गांच्या बेरजेइतका असतो."
+      },
+      "Quadratic Formula": {
+        name: "द्विघात सूत्र",
+        description: "द्विघात समीकरण ax² + bx + c = 0 ची मुळे शोधते."
+      },
+      "Area of a Circle": {
+        name: "वर्तुळाचे क्षेत्रफळ",
+        description: "त्रिज्या r असलेल्या वर्तुळाच्या क्षेत्रफळाची गणना करते."
+      },
+      "Volume of a Sphere": {
+        name: "गोलाचे घनफळ",
+        description: "त्रिज्या r असलेल्या गोलाच्या घनफळाची गणना करते."
+      },
+      "Euler's Identity": {
+        name: "युलरचे समीकरण",
+        description: "पाच गणितीय स्थिरांक जोडणारे सर्वात सुंदर समीकरण."
+      }
+    },
+    ta: {
+      "Newton's Second Law": {
+        name: "நியூட்டனின் இரண்டாம் விதி",
+        description: "விசையானது நிறை மற்றும் முடுக்கத்தின் பெருக்கற்பலனுக்கு சமம்."
+      },
+      "Ohm's Law": {
+        name: "ஓம் விதி",
+        description: "மின்னழுத்தம் மின்னோட்டம் மற்றும் மின்தடையின் பெருக்கற்பலனுக்கு சமம்."
+      },
+      "Einstein's Mass-Energy": {
+        name: "ஐன்ஸ்டீனின் நிறை-ஆற்றல் சமன்பாடு",
+        description: "ஆற்றல் நிறை மற்றும் ஒளியின் வேகத்தின் வர்க்கத்தின் பெருக்கற்பலனுக்கு சமம்."
+      },
+      "Gravitational Potential Energy": {
+        name: "ஈர்ப்பு நிலை ஆற்றல்",
+        description: "நிலை ஆற்றல் நிறை, ஈர்ப்பு மற்றும் உயரத்தைச் சார்ந்தது."
+      },
+      "Kinetic Energy": {
+        name: "இயக்க ஆற்றல்",
+        description: "இயங்கும் பொருளின் ஆற்றல்."
+      },
+      "Density Formula": {
+        name: "அடர்த்தி சூத்திரம்",
+        description: "அடர்த்தி என்பது நிறை வகுத்தல் கனஅளவு ஆகும்."
+      },
+      "Ideal Gas Law": {
+        name: "நல்லியல்பு வாயு விதி",
+        description: "அழுத்தம், கனஅளவு, மோல்கள், வாயு மாறிலி மற்றும் வெப்பநிலையைத் தொடர்புபடுத்துகிறது."
+      },
+      "Molarity": {
+        name: "மொலாரிட்டி",
+        description: "கரைபொருளின் மோல்கள் வகுத்தல் கரைசலின் லிட்டர் அளவு."
+      },
+      "pH Formula": {
+        name: "pH சூத்திரம்",
+        description: "ஒரு கரைசலின் அமிலத்தன்மை அல்லது காரத்தன்மையைக் கணக்கிடுகிறது."
+      },
+      "Pythagorean Theorem": {
+        name: "பித்தகோரஸ் தேற்றம்",
+        description: "ஒரு செங்கோண முக்கோணத்தில், கர்ணத்தின் வர்க்கம் மற்ற இரு பக்கங்களின் வர்க்கங்களின் கூடுதலுக்குச் சமம்."
+      },
+      "Quadratic Formula": {
+        name: "இருபடிச் சூத்திரம்",
+        description: "ax² + bx + c = 0 இருபடிச் சமன்பாட்டின் மூலங்களைத் தீர்க்கிறது."
+      },
+      "Area of a Circle": {
+        name: "வட்டத்தின் பரப்பளவு",
+        description: "ஆரம் r கொண்ட வட்டத்தின் பரப்பளவைக் கணக்கிடுகிறது."
+      },
+      "Volume of a Sphere": {
+        name: "கோளத்தின் கனஅளவு",
+        description: "ஆரம் r கொண்ட கோளத்தின் கனஅளவைக் கணக்கிடுகிறது."
+      },
+      "Euler's Identity": {
+        name: "ஆய்லரின் சமன்பாடு",
+        description: "ஐந்து கணித மாறிலிகளை இணைக்கும் மிக அழகான சமன்பாடு."
+      }
+    },
+    te: {
+      "Newton's Second Law": {
+        name: "న్యూటన్ రెండవ నియమం",
+        description: "బలము ద్రవ్యరాశి మరియు త్వరణం యొక్క లబ్దానికి సమానం."
+      },
+      "Ohm's Law": {
+        name: "ఓమ్ నియమం",
+        description: "వోల్టేజ్ విద్యుత్ ప్రవాహం మరియు నిరోధకత యొక్క లబ్దానికి సమానం."
+      },
+      "Einstein's Mass-Energy": {
+        name: "ఐన్‌స్టీన్ ద్రవ్యరాశి-శక్తి సమీకరణం",
+        description: "శక్తి ద్రవ్యరాశి మరియు కాంతి వేగం యొక్క వర్గం యొక్క లబ్దానికి సమానం."
+      },
+      "Gravitational Potential Energy": {
+        name: "గురుత్వాకర్షణ శక్తి",
+        description: "స్థితిజ శక్తి ద్రవ్యరాశి, గురుత్వాకర్షణ మరియు ఎత్తుపై ఆధారపడి ఉంటుంది."
+      },
+      "Kinetic Energy": {
+        name: "గతి శక్తి",
+        description: "చలనంలో ఉన్న వస్తువు యొక్క శక్తి."
+      },
+      "Density Formula": {
+        name: "సాంద్రత ఫార్ములా",
+        description: "సాంద్రత అనగా ద్రవ్యరాశి భాగాహారం ఘనపరిమాణం."
+      },
+      "Ideal Gas Law": {
+        name: "ఆదర్శ వాయు నియమం",
+        description: "పీడనం, ఘనపరిమాణం, మోల్స్, వాయు స్థిరాంకం మరియు ఉష్ణోగ్రతను సంబంధిస్తుంది."
+      },
+      "Molarity": {
+        name: "మొలారిటీ",
+        description: "ద్రావితం యొక్క మోల్స్ భాగాహారం ద్రావణం యొక్క లీటర్ల పరిమాణం."
+      },
+      "pH Formula": {
+        name: "pH ఫార్ములా",
+        description: "ద్రావణం యొక్క ఆమ్లత్వం లేదా క్షారత్వాన్ని లెక్కిస్తుంది."
+      },
+      "Pythagorean Theorem": {
+        name: "పైథాగరస్ సిద్ధాంతం",
+        description: "లంబకోణ త్రిభుజంలో, కర్ణం యొక్క వర్గం ఇతర రెండు భుజాల వర్గాల మొత్తానికి సమానం."
+      },
+      "Quadratic Formula": {
+        name: "వర్గ సమీకరణ సూత్రం",
+        description: "ax² + bx + c = 0 వర్గ సమీకరణం యొక్క మూలాలను సాధిస్తుంది."
+      },
+      "Area of a Circle": {
+        name: "వృత్త వైశాల్యం",
+        description: "వ్యాసార్థం r కలిగిన వృత్తం యొక్క వైశాల్యాన్ని లెక్కిస్తుంది."
+      },
+      "Volume of a Sphere": {
+        name: "గోళం ఘనపరిమాణం",
+        description: "వ్యాసార్థం r కలిగిన గోళం యొక్క ఘనపరిమాణాన్ని లెక్కిస్తుంది."
+      },
+      "Euler's Identity": {
+        name: "ఆయిలర్ గుర్తింపు",
+        description: "ఆయిలర్ గుర్తింపు ఐదు గణిత స్థిరాంకాలను అనుసంధానించే అత్యంత అందమైన సమీకరణం."
+      }
+    }
+  };
+
+  const entry = translations[lang]?.[f.name];
+  if (entry) {
+    return entry;
+  }
+  return { name: f.name, description: f.description };
+}
+
+function getScienceExplanations(lang: string, { mass, accel, force, current, resistance, voltage, milligrams, energyMWh }: any) {
+  const defaultNewton = {
+    title: "Newton's Second Law of Motion",
+    formula: 'F = m × a',
+    variables: 'F = Force (Newtons), m = Mass (kilograms), a = Acceleration (m/s²)',
+    explanation: 'This law states that the force applied to an object is equal to its mass multiplied by its acceleration. Simply put, pushing a heavier object faster requires much more physical force!',
+    intuition: `Current calculation: Pushing a ${mass} kg wagon at an acceleration of ${accel} m/s² requires ${force.toFixed(1)} Newtons of force. In practical terms, this is about the force needed to pump water or lift deep buckets from a well!`,
+    speechText: `Newton's Second Law of Motion. The formula is: Force equals Mass times Acceleration. Here, with a mass of ${mass} kilograms and an acceleration of ${accel} meters per second squared, the total force is ${force.toFixed(1)} Newtons.`
+  };
+  const defaultOhms = {
+    title: "Ohm's Law of Electricity",
+    formula: 'V = I × R',
+    variables: 'V = Voltage (Volts), I = Current (Amperes), R = Resistance (Ohms Ω)',
+    explanation: "Ohm's Law states that the electric current flowing through a conductor is directly proportional to the voltage across its ends, and inversely proportional to the electrical resistance.",
+    intuition: `Current calculation: If a bulb has a resistance of ${resistance} Ohms and a current of ${current} Amperes flows through it, the required Voltage is ${voltage.toFixed(1)} Volts. Standard home outlets in India supply about 220 Volts!`,
+    speechText: `Ohm's Law. The formula is: Voltage equals Current times Resistance. Currently, with a current of ${current} Amperes and a resistance of ${resistance} Ohms, the calculated voltage is ${voltage.toFixed(1)} Volts.`
+  };
+  const defaultEinstein = {
+    title: "Einstein's Mass-Energy Equivalence",
+    formula: 'E = m × c²',
+    variables: 'E = Energy (Joules), m = Mass (kilograms), c = Speed of light (~300,000 km/s)',
+    explanation: 'This historic equation demonstrates that mass and energy are interchangeable. An incredibly tiny amount of matter can be converted into an immense, overwhelming quantity of pure energy!',
+    intuition: `Current scale: Converting just ${milligrams} milligrams of salt or sugar completely into energy yields ${energyMWh.toLocaleString()} Megawatt-hours of electricity. This is enough to power an entire village primary school for over ${((energyMWh) / 10).toFixed(0)} months!`,
+    speechText: `Einstein's mass energy equivalence. E equals m c squared. Converting just ${milligrams} milligrams of matter releases ${energyMWh} megawatt hours of energy, capable of powering a rural school for many months.`
+  };
+  const defaultChemistry = {
+    title: 'Chemical Equation Balancing Lab',
+    formula: 'a Reactants ➔ b Products',
+    variables: 'Conservation of Mass & Atoms',
+    explanation: 'During a chemical reaction, atoms are neither created nor destroyed. The total count of each element must remain exactly equal on both the reactant side and the product side.',
+    intuition: 'Learn by practice! Try entering the correct integers for each reactant and product, then check if they balance perfectly.',
+    speechText: 'Chemical balancing lab. Balance the reactant and product atoms.'
+  };
+
+  const data: Record<string, any> = {
+    hi: {
+      newton: {
+        title: 'न्यूटन का गति का दूसरा नियम',
+        formula: 'F = m × a',
+        variables: 'F = बल (Force, न्यूटन में), m = द्रव्यमान (Mass, kg में), a = त्वरण (Acceleration, m/s² में)',
+        explanation: `यह नियम बताता है कि किसी वस्तु पर लगाया गया बल उसके द्रव्यमान और त्वरण के गुणनफल के बराबर होता है। सरल शब्दों में, भारी वस्तु को तेजी से धकेलने के लिए अधिक बल की आवश्यकता होती है!`,
+        intuition: `वर्तमान मान: ${mass} किलोग्राम की गाड़ी को ${accel} m/s² से धकेलने के लिए ${force.toFixed(1)} न्यूटन बल चाहिए। गाँव में कुएँ से पानी की 2 भारी बाल्टियाँ उठाने में लगभग इतना ही बल लगता है!`,
+        speechText: `न्यूटन का दूसरा नियम। सूत्र है: बल बराबर द्रव्यमान गुना त्वरण। यहाँ द्रव्यमान है ${mass} किलोग्राम और त्वरण है ${accel} मीटर प्रति सेकंड वर्ग। कुल बल ${force.toFixed(1)} न्यूटन बनता है।`
+      },
+      ohms: {
+        title: 'ओम का नियम (विद्युत धारा)',
+        formula: 'V = I × R',
+        variables: 'V = विभवांतर (Voltage, वोल्ट में), I = विद्युत धारा (Current, एम्पियर में), R = प्रतिरोध (Resistance, ओम Ω में)',
+        explanation: `ओम का नियम बताता है कि किसी विद्युत चालक में बहने वाली धारा उसके दोनों सिरों के विभवांतर के सीधे आनुपातिक होती है और प्रतिरोध के विपरीत आनुपातिक होती है।`,
+        intuition: `वर्तमान मान: यदि बल्ब का प्रतिरोध ${resistance} ओम है और इसमें ${current} एम्पियर की धारा प्रवाहित होती है, तो वोल्टेज ${voltage.toFixed(1)} वोल्ट होगा। घरेलू बिजली का सॉकेट 220 वोल्ट का होता है!`,
+        speechText: `ओम का नियम। सूत्र है: वोल्टेज बराबर करंट गुना प्रतिरोध। वर्तमान में करंट ${current} एम्पियर और प्रतिरोध ${resistance} ओम है। इसका परिणाम ${voltage.toFixed(1)} वोल्ट वोल्टेज है।`
+      },
+      einstein: {
+        title: 'आइंस्टीन का द्रव्यमान-ऊर्जा समीकरण',
+        formula: 'E = m × c²',
+        variables: 'E = ऊर्जा (Energy, जूल में), m = द्रव्यमान (Mass, kg में), c = प्रकाश की गति (3 × 10⁸ m/s)',
+        explanation: `यह प्रसिद्ध समीकरण दिखाता है कि द्रव्यमान और ऊर्जा एक ही सिक्के के दो पहलू हैं। बहुत कम मात्रा में द्रव्यमान को भी नष्ट करके विशाल मात्रा में ऊर्जा प्राप्त की जा सकती है!`,
+        intuition: `वर्तमान मान: केवल ${milligrams} मिलीग्राम पदार्थ को पूरी तरह ऊर्जा में बदलने पर ${energyMWh.toLocaleString()} मेगावाट-घंटा ऊर्जा मिलेगी। यह आपके पूरे गाँव के सरकारी स्कूल को लगातार ${((energyMWh) / 10).toFixed(0)} महीनों तक बिजली दे सकता है!`,
+        speechText: `आइंस्टीन का समीकरण। ई बराबर एम सी वर्ग। केवल ${milligrams} मिलीग्राम पदार्थ को बदलने पर ${energyMWh} मेगावाट घंटा ऊर्जा मिलेगी, जो गाँव के स्कूल को कई महीनों तक रोशन रख सकती है।`
+      },
+      chemistry: {
+        title: 'रासायनिक समीकरण संतुलन',
+        formula: 'a Reactants ➔ b Products',
+        variables: 'परमाणुओं का संरक्षण (Conservation of Atoms)',
+        explanation: 'रासायनिक क्रिया में कोई नया परमाणु बनता या नष्ट नहीं होता। समीकरण के दोनों ओर प्रत्येक तत्व के कुल परमाणुओं की संख्या बिल्कुल समान होनी चाहिए।',
+        intuition: 'अभ्यास द्वारा सीखें! गुणांकों को समायोजित करें और "जांचें" बटन दबाकर अपने उत्तर का परीक्षण करें।',
+        speechText: 'रासायनिक समीकरण संतुलन लैब। अभिकारकों और उत्पादों को संतुलित करें।'
+      }
+    },
+    gu: {
+      newton: {
+        title: "ન્યૂટનનો ગતિનો બીજો નિયમ",
+        formula: 'F = m × a',
+        variables: "F = બળ (ન્યૂટન), m = દ્રવ્યમાન (કિલોગ્રામ), a = પ્રવેગ (m/s²)",
+        explanation: "આ નિયમ દર્શાવે છે કે કોઈપણ વસ્તુ પર લગાડવામાં આવેલું બળ તેના દ્રવ્યમાન અને પ્રવેગના ગુણાકાર બરાબર હોય છે. સરળ શબ્દોમાં, ભારે વસ્તુને વધુ ઝડપથી ધકેલવા માટે વધારે બળની જરૂર પડે છે!",
+        intuition: `હાલની ગણતરી: ${mass} કિલોગ્રામની ગાડીને ${accel} m/s² થી ધકેલવા માટે ${force.toFixed(1)} ન્યૂટન બળ જોઈએ. ગામમાં કૂવામાંથી પાણીની ૨ ભારે ડોલ ઉપાડવામાં પણ આટલું જ બળ લાગે છે!`,
+        speechText: `ન્યૂટનનો બીજો નિયમ. બળ બરાબર દ્રવ્યમાન ગુણ્યા પ્રવેગ. દ્રવ્યમાન છે ${mass} કિલોગ્રામ અને પ્રવેગ છે ${accel} મીટર પ્રતિ સેકન્ડ વર્ગ. કુલ બળ ${force.toFixed(1)} ન્યૂટન થાય છે.`
+      },
+      ohms: {
+        title: "ઓહ્મનો નિયમ (વિદ્યુત પ્રવાહ)",
+        formula: 'V = I × R',
+        variables: "V = વોલ્ટેજ (વોલ્ટ), I = વિદ્યુત પ્રવાહ (એમ્પીયર), R = અવરોધ (ઓહ્મ Ω)",
+        explanation: "ઓહ્મનો નિયમ દર્શાવે છે કે વાહકમાંથી વહેતો વિદ્યુત પ્રવાહ તેના બે છેડા વચ્ચેના વોલ્ટેજના સમપ્રમાણમાં અને અવરોધના વ્યસ્ત પ્રમાણમાં હોય છે.",
+        intuition: `હાલની ગણતરી: જો બલ્બનો અવરોધ ${resistance} ઓહ્મ હોય અને તેમાં ${current} એમ્પીયર પ્રવાહ વહેતો હોય, તો વોલ્ટેજ ${voltage.toFixed(1)} વોલ્ટ થશે. ભારતમાં ઘરેલુ સોકેટ ૨૨૦ વોલ્ટના હોય છે!`,
+        speechText: `ઓહ્મનો નિયમ. વોલ્ટેજ બરાબર વિદ્યુત પ્રવાહ ગુણ્યા અવરોધ. પ્રવાહ છે ${current} એમ્પીયર અને અવરોધ છે ${resistance} ઓહ્મ. વોલ્ટેજ ${voltage.toFixed(1)} વોલ્ટ થાય છે.`
+      },
+      einstein: {
+        title: "આઇન્સ્ટાઇનનું દ્રવ્યમાન-ઊર્જા સમીકરણ",
+        formula: 'E = m × c²',
+        variables: "E = ઊર્જા (જૂલ), m = દ્રવ્યમાન (કિલોગ્રામ), c = પ્રકાશની ગતિ (~૩,૦૦,૦૦૦ કિમી/સેકન્ડ)",
+        explanation: "આ પ્રખ્યાત સમીકરણ દર્શાવે છે કે દ્રવ્યમાન અને ઊર્જા એક જ સિક્કાની બે બાજુ છે. અતિ અલ્પ દ્રવ્યમાનનો નાશ કરીને પણ વિશાળ માત્રામાં ઊર્જા મેળવી શકાય છે!",
+        intuition: `હાલની ગણતરી: માત્ર ${milligrams} મિલીગ્રામ પદાર્થને સંપૂર્ણ ઊર્જામાં રૂપાંતરિત કરવાથી ${energyMWh.toLocaleString()} મેગાવોટ-કલાક ઊર્જા મળશે. આ તમારા આખા ગામની પ્રાથમિક શાળાને સતત ${((energyMWh) / 10).toFixed(0)} મહિના સુધી વીજળી પૂરી પાડી શકે છે!`,
+        speechText: `આઇન્સ્ટાઇનનું સમીકરણ. ઈ બરાબર એમ સી વર્ગ. માત્ર ${milligrams} મિલીગ્રામ પદાર્થને રૂપાંતરિત કરવાથી ${energyMWh} મેગાવોટ કલાક ઊર્જા મળશે.`
+      },
+      chemistry: {
+        title: "રાસાયણિક સમીકરણ સંતુલન પ્રયોગશાળા",
+        formula: 'a Reactants ➔ b Products',
+        variables: "પરમાણુઓનું સંરક્ષણ (દ્રવ્યમાન સંરક્ષણનો નિયમ)",
+        explanation: "રાસાયણિક પ્રક્રિયા દરમિયાન કોઈપણ પરમાણુ નવો ઉત્પન્ન થતો નથી કે તેનો નાશ થતો નથી. સમીકરણની બંને બાજુએ દરેક તત્વના પરમાણુઓની કુલ સંખ્યા બરાબર હોવી જોઈએ.",
+        intuition: "પ્રયોગ દ્વારા શીખો! પ્રક્રિયકો અને નીપજોના ગુણાંક બદલો અને 'સમીકરણ ચકાસો' બટન દબાવો.",
+        speechText: "રાસાયણિક સમીકરણ સંતુલન પ્રયોગશાળા. પ્રક્રિયકો અને નીપજોને સંતુલિત કરો."
+      }
+    },
+    mr: {
+      newton: {
+        title: "न्यूटनचा गतीचा दुसरा नियम",
+        formula: 'F = m × a',
+        variables: "F = बल (न्यूटन), m = वस्तुमान (किलोग्रॅम), a = त्वरण (m/s²)",
+        explanation: "हा नियम सांगतो की एखाद्या वस्तूवर लावलेले बल हे तिच्या वस्तुमान आणि त्वरणाच्या गुणाकाराच्या बरोबर असते. सोप्या भाषेत सांगायचे तर, जड वस्तूला वेगाने ढकलण्यासाठी जास्त बल लागते!",
+        intuition: `सध्याची गणना: ${mass} किलोग्रॅमची गाडी ${accel} m/s² त्वरणाने ढकलण्यासाठी ${force.toFixed(1)} न्यूटन बल आवश्यक आहे. विहिरीतून पाण्याच्या २ बादल्या ओढण्यासाठी साधारण इतकेच बल लागते!`,
+        speechText: `न्यूटनचा दुसरा नियम. बल बरोबर वस्तुमान गुणिले त्वरण. वस्तुमान ${mass} किलोग्रॅम आणि त्वरण ${accel} मीटर प्रति सेकंद वर्ग आहे. एकूण बल ${force.toFixed(1)} न्यूटन आहे.`
+      },
+      ohms: {
+        title: "ओहमचा नियम (विद्युत धारा)",
+        formula: 'V = I × R',
+        variables: "V = व्होल्टेज (व्होल्ट), I = विद्युत धारा (अँपिअर), R = रोध (ओहम Ω)",
+        explanation: "ओहमचा नियम सांगतो की एखाद्या वाहकामधून वाहणारी विद्युत धारा ही त्याच्या दोन टोकांमधील विभवांतराच्या थेट प्रमाणात आणि रोधाच्या व्यस्त प्रमाणात असते.",
+        intuition: `सध्याची गणना: जर बल्बचा रोध ${resistance} ओहम असेल आणि त्यातून ${current} अँपिअर विद्युत धारा वाहत असेल, तर व्होल्टेज ${voltage.toFixed(1)} व्होल्ट असेल. घरगुती वीज सॉकेट २२० व्होल्टचे असते!`,
+        speechText: `ओहमचा नियम. व्होल्टेज बरोबर विद्युत धारा गुणिले रोध. विद्युत धारा ${current} अँपिअर आणि रोध ${resistance} ओहम आहे. याचे उत्तर ${voltage.toFixed(1)} व्होल्ट आहे.`
+      },
+      einstein: {
+        title: "आईन्स्टाईनचे द्रव्यमान-ऊर्जा समीकरण",
+        formula: 'E = m × c²',
+        variables: "E = ऊर्जा (ज्यूल), m = वस्तुमान (किलोग्रॅम), c = प्रकाश वेग (~३,००,००० किमी/सेकंद)",
+        explanation: "हे प्रसिद्ध समीकरण दर्शवते की वस्तुमान आणि ऊर्जा हे एकाच नाण्याच्या दोन बाजू आहेत. अगदी कमी वस्तुमान नष्ट करूनही प्रचंड ऊर्जा मिळवता येते!",
+        intuition: `सध्याची गणना: फक्त ${milligrams} मिग्रॅ पदार्थाचे पूर्ण ऊर्जेत रूपांतर केल्यास ${energyMWh.toLocaleString()} मेगावॅट-तास ऊर्जा मिळेल. ही ऊर्जा संपूर्ण गावातील शाळेला ${((energyMWh) / 10).toFixed(0)} महिन्यांसाठी पुरेशी आहे!`,
+        speechText: `आईन्स्टाईनचे समीकरण. ई बरोबर एम सी वर्ग. फक्त ${milligrams} मिग्रॅ पदार्थाचे रूपांतर केल्यास ${energyMWh} मेगावॅट तास ऊर्जा मिळेल.`
+      },
+      chemistry: {
+        title: "रासायनिक समीकरण संतुलन प्रयोगशाळा",
+        formula: 'a Reactants ➔ b Products',
+        variables: "परमाणूंचे संवर्धन (वस्तुमान संवर्धनाचा नियम)",
+        explanation: "रासायनिक अभिक्रियेदरम्यान कोणतेही परमाणू नवीन तयार होत नाहीत किंवा नष्ट होत नाहीत. समीकरणाच्या दोन्ही बाजूला प्रत्येक मूलद्रव्याच्या एकूण परमाणूंची संख्या समान असली पाहिजे.",
+        intuition: "सराव करून शिका! सहगुणक बदला आणि 'समीकरण तपासा' बटन दाबून आपले उत्तर तपासा.",
+        speechText: "रासायनिक समीकरण संतुलन प्रयोगशाळा. अभिकारक आणि उत्पादने संतुलित करा."
+      }
+    },
+    ta: {
+      newton: {
+        title: "நியூட்டனின் இரண்டாம் இயக்க விதி",
+        formula: 'F = m × a',
+        variables: "F = விசை (நியூட்டன்), m = நிறை (கிலோகிராம்), a = முடுக்கம் (m/s²)",
+        explanation: "ஒரு பொருளின் மீது செயல்படும் விசையானது அப்பொருளின் நிறை மற்றும் முடுக்கத்தின் பெருக்கற்பலனுக்குச் சமம் என்று இந்த விதி கூறுகிறது. எளிமையாகச் சொன்னால், கனமான பொருளை வேகமாகத் தள்ள அதிக விசை தேவைப்படும்!",
+        intuition: `தற்போதைய கணக்கீடு: ${mass} கிலோகிராம் வண்டியை ${accel} m/s² முடுக்கத்தில் தள்ள ${force.toFixed(1)} நியூட்டன் விசை தேவைப்படுகிறது. இது கிணற்றிலிருந்து தண்ணீர் வாலியை மேலே தூக்குவதற்குத் தேவையான விசைக்கு ஒப்பானது!`,
+        speechText: `நியூட்டனின் இரண்டாம் விதி. விசை என்பது நிறை மற்றும் முடுக்கத்தின் பெருக்கல் ஆகும். நிறை ${mass} கிலோகிராம், முடுக்கம் ${accel} m/s², மொத்த விசை ${force.toFixed(1)} நியூட்டன் ஆகும்.`
+      },
+      ohms: {
+        title: "ஓம் விதி (மின்னோட்டம்)",
+        formula: 'V = I × R',
+        variables: "V = மின்னழுத்தம் (வோல்ட்), I = மின்னோட்டம் (ஆம்பியர்), R = மின்தடை (ஓம் Ω)",
+        explanation: "ஒரு கடத்தியின் வழியே பாயும் மின்னோட்டம் அதன் இரு முனைகளுக்கிடையே உள்ள மின்னழுத்த வேறுபாட்டிற்கு நேர்த்தகவிலும், மின்தடைக்கு எதிர்த்தகவிலும் இருக்கும் என்று ஓம் விதி கூறுகிறது.",
+        intuition: `தற்போதைய கணக்கீடு: விளக்கின் மின்தடை ${resistance} ஓம் மற்றும் மின்னோட்டம் ${current} ஆம்பியராக இருந்தால், தேவையான மின்னழுத்தம் ${voltage.toFixed(1)} வோல்ட் ஆகும். வீடுகளில் பயன்படுத்தப்படும் மின்சாரம் சுமார் 220 வோல்ட் ஆகும்!`,
+        speechText: `ஓம் விதி. மின்னழுத்தம் என்பது மின்னோட்டம் மற்றும் மின்தடையின் பெருக்கல் ஆகும். தற்போதைய மின்னோட்டம் ${current} ஆம்பியர், மின்தடை ${resistance} ஓம், மின்னழுத்தம் ${voltage.toFixed(1)} வோல்ட் ஆகும்.`
+      },
+      einstein: {
+        title: "ஐன்ஸ்டீனின் நிறை-ஆற்றல் சமன்பாடு",
+        formula: 'E = m × c²',
+        variables: "E = ஆற்றல் (ஜூல்), m = நிறை (கிலோகிராம்), c = ஒளியின் வேகம் (~300,000 கிமீ/விநாடி)",
+        explanation: "இந்த புகழ்பெற்ற சமன்பாடு நிறையும் ஆற்றலும் ஒன்றோடொன்று மாற்றப்படக்கூடியவை என்பதைக் காட்டுகிறது. மிகக் குறைந்த அளவு நிறையைக் கூட ஆற்றலாக மாற்றும்போது பிரம்மாண்டமான ஆற்றலைப் பெற முடியும்!",
+        intuition: `தற்போதைய கணக்கீடு: வெறும் ${milligrams} மில்லிகிராம் பொருளை முழுமையாக ஆற்றலாக மாற்றினால் ${energyMWh.toLocaleString()} மெகாவாட்-மணிநேர மின்சாரம் கிடைக்கும். இது உங்கள் கிராமத்தின் தொடக்கப் பள்ளிக்கு தொடர்ந்து ${((energyMWh) / 10).toFixed(0)} மாதங்கள் மின்சாரம் வழங்க போதுமானது!`,
+        speechText: `ஐன்ஸ்டீனின் சமன்பாடு. ஈ என்பது எம் சி ஸ்கொயர். வெறும் ${milligrams} மில்லிகிராம் பொருள் ${energyMWh} மெகாவாட் மணிநேர ஆற்றலை வெளியிடுகிறது.`
+      },
+      chemistry: {
+        title: "வேதியியல் சமன்பாடு சமன்படுத்தும் ஆய்வகம்",
+        formula: 'a Reactants ➔ b Products',
+        variables: "பொருண்மை அழியா விதி மற்றும் அணுக்களின் பாதுகாப்பு",
+        explanation: "ஒரு வேதிவினையின் போது, அணுக்கள் உருவாக்கப்படுவதோ அல்லது அழிக்கப்படுவதோ இல்லை. வினைபடு பொருட்கள் மற்றும் வினைவிளை பொருட்கள் ஆகிய இருபுறமும் உள்ள அணுக்களின் எண்ணிக்கை சமமாக இருக்க வேண்டும்.",
+        intuition: "பயிற்சி மூலம் கற்றுக்கொள்ளுங்கள்! எண்களை மாற்றி அமைத்து, 'சமன்பாட்டைச் சரிபார்' பொத்தானை அழுத்திப் பார்க்கவும்.",
+        speechText: "வேதியியல் சமன்பாடு சமன்படுத்தும் ஆய்வகம். வினைபடு மற்றும் வினைவிளை பொருட்களைச் சமன்படுத்தவும்."
+      }
+    },
+    te: {
+      newton: {
+        title: "న్యూటన్ రెండవ గమన నియమం",
+        formula: 'F = m × a',
+        variables: "F = బలము (న్యూటన్లు), m = ద్రవ్యరాశి (కిలోగ్రాములు), a = త్వరణం (m/s²)",
+        explanation: "ఈ నియమం ప్రకారం ఏదైనా వస్తువుపై ప్రయోగించిన బలం, దాని ద్రవ్యరాశి మరియు త్వరణం యొక్క లబ్దానికి సమానంగా ఉంటుంది. సరళంగా చెప్పాలంటే, బరువైన వస్తువును వేగంగా నెట్టడానికి ఎక్కువ బలం కావాలి!",
+        intuition: `ప్రస్తుత లెక్కింపు: ${mass} కిలోగ్రాముల బండిని ${accel} m/s² త్వరణంతో నెట్టడానికి ${force.toFixed(1)} న్యూటన్ల బలం అవసరం. బావి నుండి నీటి బకెట్లను పైకి లాగడానికి దాదాపు ఇంతే బలం అవసరమవుతుంది!`,
+        speechText: `న్యూటన్ రెండవ నియమం. బలము ద్రవ్యరాశి మరియు త్వరణం యొక్క లబ్దం. ద్రవ్యరాశి ${mass} కిలోగ్రాములు, త్వరణం ${accel} m/s², మొత్తం బలము ${force.toFixed(1)} న్యూటన్లు.`
+      },
+      ohms: {
+        title: "ఓమ్ నియమం (విద్యుత్ ప్రవాహం)",
+        formula: 'V = I × R',
+        variables: "V = వోల్టేజ్ (వోల్ట్), I = విద్యుత్ ప్రవాహం (ఆంపియర్లు), R = నిరోధం (ఓమ్ Ω)",
+        explanation: "స్థిర ఉష్ణోగ్రత వద్ద వాహకం గుండా ప్రవహించే విద్యుత్ ప్రవాహం దాని చివరల మధ్య ఉన్న వోల్టేజ్ భేదానికి నేరుగా అనుపాతంలో ఉంటుంది మరియు నిరోధానికి విలోమానుపాతంలో ఉంటుంది.",
+        intuition: `ప్రస్తుత లెక్కింపు: ఒక బల్బ్ యొక్క నిరోధం ${resistance} ఓమ్ మరియు విద్యుత్ ప్రవాహం ${current} ఆంపియర్లు అయితే, కావలసిన వోల్టేజ్ ${voltage.toFixed(1)} వోల్టులు అవుతుంది. మన ఇళ్లలో వాడే వోల్టేజ్ దాదాపు 220 వోల్టులు ఉంటుంది!`,
+        speechText: `ఓమ్ నియమం. వోల్టేజ్ విద్యుత్ ప్రవాహం మరియు నిరోధం యొక్క లబ్దం. కరెంట్ ${current} ఆంపియర్లు, నిరోధం ${resistance} ఓమ్స్, వోల్టేజ్ ${voltage.toFixed(1)} వోల్టులు.`
+      },
+      einstein: {
+        title: "ఐన్‌స్టీన్ ద్రవ్యరాశి-శక్తి సమీకరణం",
+        formula: 'E = m × c²',
+        variables: "E = శక్తి (జౌల్స్), m = ద్రవ్యరాశి (కిలోగ్రాములు), c = కాంతి వేగం (~3,00,000 కిమీ/సెకను)",
+        explanation: "ద్రవ్యరాశి మరియు శక్తి పరస్పరం మార్చుకోగలవని ఈ ప్రసిద్ధ సమీకరణం నిరూపిస్తుంది. అత్యంత స్వల్ప పరిమాణంలో ఉన్న పదార్థాన్ని కూడా అపారమైన శక్తిగా మార్చవచ్చు!",
+        intuition: `ప్రస్తుత లెక్కింపు: కేవలం ${milligrams} మిల్లీగ్రాముల పదార్థాన్ని పూర్తిగా శక్తిగా మార్చడం వల్ల ${energyMWh.toLocaleString()} మెగావాట్-అవర్ల శక్తి లభిస్తుంది. ఇది మీ ఊరి ప్రాథమిక పాఠశాలకు నిరంతరం ${((energyMWh) / 10).toFixed(0)} నెలల పాటు విద్యుత్ అందించడానికి సరిపోతుంది!`,
+        speechText: `ఐన్‌స్టీన్ సమీకరణం. ఈ ఈక్వల్స్ ఎమ్ సి స్క్వేర్. కేవలం ${milligrams} మిల్లీగ్రాముల పదార్థాన్ని మార్చడం వల్ల ${energyMWh} మెగావాట్ అవర్ల శక్తి లభిస్తుంది.`
+      },
+      chemistry: {
+        title: "రసాయన సమీకరణ సమతుల్యత ల్యాబ్",
+        formula: 'a Reactants ➔ b Products',
+        variables: "ద్రవ్య నిత్యత్వ నియమం మరియు పరమాణువుల సంరక్షణ",
+        explanation: "ఒక రసాయన చర్యలో పరమాణువులు సృష్టించబడవు లేదా నాశనం చేయబడవు. సమీకరణానికి ఇరువైపులా ఉన్న ప్రతి మూలకం యొక్క పరమాణువుల సంఖ్య సమానంగా ఉండాలి.",
+        intuition: "సాధన ద్వారా నేర్చుకోండి! గుణకాలను మార్చి, 'సమీకరణాన్ని సరిచూడు' బటన్‌ను నొక్కి మీ సమాధానాన్ని పరీక్షించుకోండి.",
+        speechText: "రసాయన సమీకరణ సమతుల్యత ల్యాబ్. రియాక్టెంట్లు మరియు ప్రొడక్ట్ పరమాణువులను సమతుల్యం చేయండి."
+      }
+    }
+  };
+
+  const selectedSet = data[lang] || {};
+  return {
+    newton: selectedSet.newton || defaultNewton,
+    ohms: selectedSet.ohms || defaultOhms,
+    einstein: selectedSet.einstein || defaultEinstein,
+    chemistry: selectedSet.chemistry || defaultChemistry
+  };
+}
+
+function getMathExplanations(lang: string, { sideA, sideB, hypotenuse, distance, elevationAngle, computedHeight, lineOfSight, coeffA, coeffB, coeffC, discriminant, rootsInfo, angleRad }: any) {
+  const defaultPythagoras = {
+    title: "Pythagoras Theorem of Geometry",
+    formula: 'a² + b² = c²',
+    variables: 'a = Base, b = Height, c = Hypotenuse (diagonal)',
+    explanation: `In a right-angled triangle, the square of the hypotenuse is equal to the sum of squares of the other two sides. Masons in India use this as the 3-4-5 'Guniya' rule to establish perfect brick corners!`,
+    intuition: `Current calculation: Base = ${sideA} cm, Height = ${sideB} cm. The diagonal hypotenuse length is ${hypotenuse.toFixed(2)} cm! (Because ${sideA}² + ${sideB}² = ${sideA*sideA + sideB*sideB})`,
+    speechText: `Pythagoras theorem. For right triangles, a squared plus b squared equals c squared.`
+  };
+  const defaultTrigonometry = {
+    title: "Trigonometry: Heights & Distances",
+    formula: 'h = d × tan(θ)',
+    variables: 'h = Height, d = Horizontal Distance, θ = Angle of elevation (degrees)',
+    explanation: `Using trigonometry, we can discover the precise height of tall structures (like mobile towers, trees, or local temples) purely by standing on the ground and measuring distance and angle!`,
+    intuition: `Current calculation: Standing ${distance} meters away with an elevation angle of ${elevationAngle}°, the projected height of the tower is ${computedHeight.toFixed(1)} meters! (The total line-of-sight distance is ${lineOfSight.toFixed(1)} meters)`,
+    speechText: `Trigonometry heights and distances. The formula is Height equals Distance times tangent of theta. The projected height is ${computedHeight.toFixed(1)} meters.`
+  };
+  const defaultQuadratic = {
+    title: "Quadratic Equations Lab",
+    formula: 'ax² + bx + c = 0',
+    variables: 'a, b, c = Coefficients, D = Discriminant',
+    explanation: `A quadratic equation is a core algebraic equation. Its graph is a 'Parabola' (U-shape curve). The physical path of a thrown cricket ball or water fountain jets trace this exact geometric shape!`,
+    intuition: `Current Equation: ${coeffA}x² ${coeffB >= 0 ? `+ ${coeffB}` : `${coeffB}`}x ${coeffC >= 0 ? `+ ${coeffC}` : `${coeffC}`} = 0. Discriminant D = ${discriminant}. Roots: ${rootsInfo.nature}. Root 1 = ${rootsInfo.r1}, Root 2 = ${rootsInfo.r2}`,
+    speechText: `Quadratic equation lab. The discriminant is ${discriminant}. The nature of roots is ${rootsInfo.nature}.`
+  };
+
+  const data: Record<string, any> = {
+    hi: {
+      pythagoras: {
+        title: 'पाइथागोरस प्रमेय (ज्यामिति)',
+        formula: 'a² + b² = c²',
+        variables: 'a = आधार (Base side), b = लंब (Height side), c = कर्ण (Hypotenuse)',
+        explanation: `समकोण त्रिभुज में, कर्ण का वर्ग अन्य दो भुजाओं के वर्गों के योग के बराबर होता है। भारत में राजमिस्त्री सही समकोण कोना जांचने के लिए ३-४-५ की रस्सी मापते हैं, जिसे 'गुनिया' कहा जाता है!`,
+        intuition: `वर्तमान मान: आधार = ${sideA} cm, लंब = ${sideB} cm। कर्ण (c) की लंबाई ${hypotenuse.toFixed(2)} cm होगी। (${sideA}² + ${sideB}² = ${sideA*sideA + sideB*sideB})`,
+        speechText: `पाइथागोरस प्रमेय। समकोण त्रिभुज के लिए सूत्र है ए वर्ग जमा बी वर्ग बराबर सी वर्ग।`
+      },
+      trigonometry: {
+        title: 'त्रिकोणमिति: ऊँचाई और दूरी',
+        formula: 'h = d × tan(θ)',
+        variables: 'h = ऊँचाई (Height), d = दूरी (Distance), θ = उन्नयन कोण (Angle of Elevation)',
+        explanation: `त्रिकोणमिति के सिद्धांतों का उपयोग करके हम बहुत ऊँचे मोबाइल टावर, नारियल के पेड़ या मंदिर के शिखर की ऊँचाई बिना ऊपर चढ़े निकाल सकते हैं! बस जमीन की दूरी और देखने का कोण चाहिए।`,
+        intuition: `वर्तमान मान: यदि आप टावर से ${distance} मीटर दूर हैं और उन्नयन कोण ${elevationAngle}° है, तो टावर की ऊँचाई ${computedHeight.toFixed(1)} मीटर है! (दृष्टि रेखा की कुल दूरी ${lineOfSight.toFixed(1)} मीटर है)`,
+        speechText: `त्रिकोणमिति ऊँचाई और दूरी। सूत्र है: ऊँचाई बराबर दूरी गुना टेन थीटा। यहाँ ऊँचाई ${computedHeight.toFixed(1)} मीटर है।`
+      },
+      quadratic: {
+        title: 'द्विघात समीकरण प्रयोगशाला',
+        formula: 'ax² + bx + c = 0',
+        variables: 'a, b, c = गुणांक (Coefficients), D = b² - 4ac (विविक्तकर / Discriminant)',
+        explanation: `यह एक अत्यंत महत्वपूर्ण बीजीय सूत्र है। इसका ग्राफ़ एक 'परवलय' (Parabola) यानी यू-शेप बनाता है। हवा में फेंकी गई क्रिकेट गेंद का रास्ता बिल्कुल इसी वक्र पर चलता है!`,
+        intuition: `वर्तमान मान: समीकरण ${coeffA}x² + ${coeffB >= 0 ? `+${coeffB}` : coeffB}x + ${coeffC >= 0 ? `+${coeffC}` : coeffC} = 0. विविक्तकर D = ${discriminant}। मूल प्रकार: ${rootsInfo.nature}। मूल १ = ${rootsInfo.r1}, मूल २ = ${rootsInfo.r2}`,
+        speechText: `द्विघात समीकरण लैब। वर्तमान समीकरण का विविक्तकर ${discriminant} है। मूलों का प्रकार है ${rootsInfo.nature}।`
+      }
+    },
+    gu: {
+      pythagoras: {
+        title: "પાયથાગોરસ પ્રમેય (ભૂમિતિ)",
+        formula: 'a² + b² = c²',
+        variables: "a = આધાર, b = લંબ, c = કર્ણ",
+        explanation: "કાટકોણ ત્રિકોણમાં કર્ણનો વર્ગ અન્ય બે બાજુઓના વર્ગોના સરવાળા સમાન હોય છે. ભારતીય કડીયાઓ ખૂણાની ચોકસાઈ તપાસવા માટે ૩-૪-૫ ની માપણી પદ્ધતિ વાપરે છે, જેને 'ગુનિયા' કહેવાય છે!",
+        intuition: `હાલની ગણતરી: આધાર = ${sideA} સેમી, લંબ = ${sideB} સેમી. કર્ણ (c) ની લંબાઈ ${hypotenuse.toFixed(2)} સેમી થશે. (${sideA}² + ${sideB}² = ${sideA*sideA + sideB*sideB})`,
+        speechText: "પાયથાગોરસ પ્રમેય. સમકોણ ત્રિકોણ માટેનું સૂત્ર એ વર્ગ વત્તા બી વર્ગ બરાબર સી વર્ગ છે."
+      },
+      trigonometry: {
+        title: "ત્રિકોણમિતિ: ઊંચાઈ અને અંતર",
+        formula: 'h = d × tan(θ)',
+        variables: "h = ઊંચાઈ, d = અંતર, θ = ઉન્નયન કોણ",
+        explanation: "ત્રિકોણમિતિના નિયમોનો ઉપયોગ કરીને આપણે ઊંચા ટાવર, નાળિયેરીના ઝાડ કે મંદિરના શિખરની ઊંચાઈ તેના પર ચઢ્યા વિના જ શોધી શકીએ છીએ! માત્ર જમીનથી અંતર અને ખૂણો માપવો પડે છે.",
+        intuition: `હાલની ગણતરી: જો તમે ટાવરથી ${distance} મીટર દૂર ઊભા છો અને ખૂણો ${elevationAngle}° છે, તો ટાવરની ઊંચાઈ ${computedHeight.toFixed(1)} મીટર છે! (દ્રષ્ટિ રેખાની લંબાઈ ${lineOfSight.toFixed(1)} મીટર છે)`,
+        speechText: "ત્રિકોણમિતિ ઊંચાઈ અને અંતર. ઊંચાઈ બરાબર અંતર ગુણ્યા ટેન થીટા."
+      },
+      quadratic: {
+        title: "દ્વિઘાત સમીકરણ પ્રયોગશાળા",
+        formula: 'ax² + bx + c = 0',
+        variables: "a, b, c = સહગુણકો, D = વિવેચક",
+        explanation: "આ એક અત્યંત મહત્વનું બીજગણિતીય સૂત્ર છે. તેનો આલેખ એક પેરાબોલા (પરવલય - U આકાર) બનાવે છે. હવામાં ફેંકવામાં આવેલી ક્રિકેટ બોલનો માર્ગ બરાબર આ જ આકાર પર ચાલે છે!",
+        intuition: `હાલની ગણતરી: સમીકરણ ${coeffA}x² + ${coeffB >= 0 ? `+${coeffB}` : coeffB}x + ${coeffC >= 0 ? `+${coeffC}` : coeffC} = 0. વિવેચક D = ${discriminant}. ઉકેલનો પ્રકાર: ${rootsInfo.nature}. ઉકેલ ૧ = ${rootsInfo.r1}, ઉકેલ ૨ = ${rootsInfo.r2}`,
+        speechText: `દ્વિઘાત સમીકરણ લેબ. વિવેચક છે ${discriminant}.`
+      }
+    },
+    mr: {
+      pythagoras: {
+        title: "पायथागोरसचा सिद्धांत (भूमिती)",
+        formula: 'a² + b² = c²',
+        variables: "a = पाया, b = उंची (लंब), c = कर्ण",
+        explanation: "काटकोन त्रिकोणात कर्णाचा वर्ग हा इतर दोन बाजूंच्या वर्गांच्या बेरजेइतका असतो. भारतात गवंडी काम करताना अचूक कोन तपासण्यासाठी ३-४-५ ची फूटपट्टी मोजतात, ज्याला 'गुनिया' म्हटले जाते!",
+        intuition: `सध्याची गणना: पाया = ${sideA} सेमी, उंची = ${sideB} सेमी. कर्ण (c) ची लांबी ${hypotenuse.toFixed(2)} सेमी असेल. (${sideA}² + ${sideB}² = ${sideA*sideA + sideB*sideB})`,
+        speechText: "पायथागोरसचा सिद्धांत. काटकोन त्रिकोणाचे सूत्र ए वर्ग अधिक बी वर्ग बरोबर सी वर्ग आहे."
+      },
+      trigonometry: {
+        title: "त्रिकोणमिती: उंची आणि अंतर",
+        formula: 'h = d × tan(θ)',
+        variables: "h = उंची, d = अंतर, θ = उन्नत कोन",
+        explanation: "त्रिकोणमितीचा वापर करून आपण उंच मोबाईल टॉवर, नारळाचे झाड किंवा मंदिराचे शिखर यांची उंची त्यावर न चढता मोजू शकतो! फक्त जमिनीचे अंतर आणि पाहण्याचा कोन आवश्यक आहे.",
+        intuition: `सध्याची गणना: जर आपण टॉवरपासून ${distance} मीटर दूर असू आणि पाहण्याचा कोन ${elevationAngle}° असेल, तर टॉवरची उंची ${computedHeight.toFixed(1)} मीटर आहे! (एकूण दृष्टीरेषेचे अंतर ${lineOfSight.toFixed(1)} मीटर आहे)`,
+        speechText: "त्रिकोणमिती उंची आणि अंतर. सूत्रानुसार उंची बरोबर अंतर गुणिले टॅन थिटा."
+      },
+      quadratic: {
+        title: "द्विघात समीकरण प्रयोगशाळा",
+        formula: 'ax² + bx + c = 0',
+        variables: "a, b, c = सहगुणक, D = विविक्तकर",
+        explanation: "हे एक अत्यंत महत्त्वाचे बीजगणितीय सूत्र आहे. त्याचा आलेख 'परवलय' (Parabola - U आकार) बनवतो. हवेत फेकलेल्या क्रिकेट बॉलचा मार्ग याच आकाराचा असतो!",
+        intuition: `सध्याची गणना: समीकरण ${coeffA}x² + ${coeffB >= 0 ? `+${coeffB}` : coeffB}x + ${coeffC >= 0 ? `+${coeffC}` : coeffC} = 0. विविक्तकर D = ${discriminant}. मुळांचे स्वरूप: ${rootsInfo.nature}. मूळ १ = ${rootsInfo.r1}, मूळ २ = ${rootsInfo.r2}`,
+        speechText: "द्विघात समीकरण प्रयोगशाळा. विविक्तकर " + discriminant + " आहे."
+      }
+    },
+    ta: {
+      pythagoras: {
+        title: "பித்தகோரஸ் தேற்றம் (வடிவியல்)",
+        formula: 'a² + b² = c²',
+        variables: "a = அடிபக்கம், b = உயரம், c = கர்ணம்",
+        explanation: "ஒரு செங்கோண முக்கோணத்தில் கர்ணத்தின் வர்க்கம் மற்ற இரு பக்கங்களின் வர்க்கங்களின் கூடுதலுக்கு சமம். கட்டுமான வேலை செய்பவர்கள் சரியான செங்கோணத்தை சரிபார்க்க 3-4-5 அளவீட்டைப் பயன்படுத்துகின்றனர்!",
+        intuition: `தற்போதைய கணக்கீடு: அடிபக்கம் = ${sideA} செமீ, உயரம் = ${sideB} செமீ. கர்ணத்தின் (c) நீளம் ${hypotenuse.toFixed(2)} செமீ ஆகும்! (${sideA}² + ${sideB}² = ${sideA*sideA + sideB*sideB})`,
+        speechText: "பித்தகோரஸ் தேற்றம். செங்கோண முக்கோணத்திற்கான சூத்திரம் ஏ ஸ்கொயர் பிளஸ் பி ஸ்கொயர் ஈக்குவல் டூ சி ஸ்கொயர் ஆகும்."
+      },
+      trigonometry: {
+        title: "முக்கோணவியல்: உயரங்களும் தொலைவுகளும்",
+        formula: 'h = d × tan(θ)',
+        variables: "h = உயரம், d = கிடைமட்டத் தூரம், θ = ஏற்றக்கோணம்",
+        explanation: "முக்கோணவியலின் கோட்பாடுகளைப் பயன்படுத்தி, உயரமான அலைபேசிக் கோபுரங்கள், தென்னை மரங்கள் அல்லது உள்ளூர் கோயில்களின் உயரங்களை நாம் மேலே ஏறாமலேயே துல்லியமாகக் கணக்கிட முடியும்!",
+        intuition: `தற்போதைய கணக்கீடு: கோபுரத்திலிருந்து ${distance} மீட்டர் தொலைவில் ${elevationAngle}° ஏற்றக்கோணத்தில் நின்றால், கோபுரத்தின் உயரம் ${computedHeight.toFixed(1)} மீட்டர் ஆகும்! (பார்வைக்கோட்டின் நீளம் ${lineOfSight.toFixed(1)} மீட்டர் ஆகும்)`,
+        speechText: "முக்கோணவியல் உயரங்களும் தொலைவுகளும். உயரம் என்பது தூரம் மற்றும் டான் தீட்டாவின் பெருக்கல் ஆகும்."
+      },
+      quadratic: {
+        title: "இருபடிச் சமன்பாடுகள் ஆய்வகம்",
+        formula: 'ax² + bx + c = 0',
+        variables: "a, b, c = கெழுக்கள், D = தன்மைகாட்டி",
+        explanation: "இது ஒரு முக்கியமான இயற்கணிதச் சூத்திரம் ஆகும். இதன் வரைபடம் ஒரு பரவளையத்தை (Parabola - U வடிவம்) உருவாக்குகிறது. காற்றில் எறியப்படும் கிரிக்கெட் பந்தின் பாதை இந்த வடிவத்தையே பின்பற்றும்!",
+        intuition: `தற்போதைய சமன்பாடு: ${coeffA}x² + ${coeffB >= 0 ? `+${coeffB}` : coeffB}x + ${coeffC >= 0 ? `+${coeffC}` : coeffC} = 0. தன்மைகாட்டி D = ${discriminant}. மூலங்களின் தன்மை: ${rootsInfo.nature}. மூலம் 1 = ${rootsInfo.r1}, மூலம் 2 = ${rootsInfo.r2}`,
+        speechText: `இருபடிச் சமன்பாடு ஆய்வகம். தன்மைகாட்டி ${discriminant} ஆகும்.`
+      }
+    },
+    te: {
+      pythagoras: {
+        title: "పైథాగరస్ సిద్ధాంతం (రేఖాగణితం)",
+        formula: 'a² + b² = c²',
+        variables: "a = ఆధారం, b = లంబం (ఎత్తు), c = కర్ణం",
+        explanation: "లంబకోణ త్రిభుజంలో, కర్ణం యొక్క వర్గం మిగిలిన రెండు భుజాల వర్గాల మొత్తానికి సమానంగా ఉంటుంది. తాపీ పని చేసేవారు ఖచ్చితమైన మూలలను నిర్ధారించడానికి 3-4-5 నియమాన్ని ఉపయోగిస్తారు!",
+        intuition: `ప్రస్తుత లెక్కింపు: ఆధారం = ${sideA} సెం.మీ, లంబం = ${sideB} సెం.మీ. కర్ణం (c) పొడవు ${hypotenuse.toFixed(2)} సెం.మీ అవుతుంది! (${sideA}² + ${sideB}² = ${sideA*sideA + sideB*sideB})`,
+        speechText: "పైథాగరస్ సిద్ధาంతం. లంబకోణ త్రిభుజానికి ఫార్ములా ఏ స్క్వేర్ ప్లస్ బి స్క్వేర్ ఈక్వల్స్ సి స్క్వేర్."
+      },
+      trigonometry: {
+        title: "త్రికోణమితి: ఎత్తులు మరియు దూరాలు",
+        formula: 'h = d × tan(θ)',
+        variables: "h = ఎత్తు, d = దూరం, θ = ఉన్నత కోణం",
+        explanation: "త్రికోణమితి సిద్ధాంతాలను ఉపయోగించి, మనం మొబైల్ టవర్లు, కొబ్బరి చెట్లు లేదా గుడి శిఖరం పైకి ఎక్కకుండానే వాటి ఖచ్చితమైన ఎత్తును కనుగొనవచ్చు!",
+        intuition: `ప్రస్తుత లెక్కింపు: మీరు టవర్ నుండి ${distance} మీటర్ల దూరంలో ఉండి ఉన్నత కోణం ${elevationAngle}° ఉంటే, టవర్ ఎత్తు ${computedHeight.toFixed(1)} మీటర్లు! (దృష్టి రేఖ పొడవు ${lineOfSight.toFixed(1)} మీటర్లు)`,
+        speechText: "త్రికోణమితి ఎత్తులు మరియు దూరాలు. ఎత్తు ఈక్వల్స్ దూరం ఇంటు టాన్ తీటా."
+      },
+      quadratic: {
+        title: "వర్గ సమీకరణాల ల్యాబ్",
+        formula: 'ax² + bx + c = 0',
+        variables: "a, b, c = గుణకాలు, D = విచక్షణ",
+        explanation: "ఇది ఒక ముఖ్యమైన బీజగణిత సూత్రం. దీని గ్రాఫ్ ఒక పారాబోలా (U-ఆకారం) ను ఏర్పరుస్తుంది. గాల్లోకి విసిరిన క్రికెట్ బంతి ప్రయాణించే మార్గం ఈ ఆకారాన్నే కలిగి ఉంటుంది!",
+        intuition: `ప్రస్తుత సమీకరణం: ${coeffA}x² + ${coeffB >= 0 ? `+${coeffB}` : coeffB}x + ${coeffC >= 0 ? `+${coeffC}` : coeffC} = 0. విచక్షణ D = ${discriminant}. మూలాల స్వభావం: ${rootsInfo.nature}. మూలం 1 = ${rootsInfo.r1}, మూలం 2 = ${rootsInfo.r2}`,
+        speechText: "వర్గ సమీకరణాల ల్యాబ్. విచక్షణ విలువ " + discriminant + "."
+      }
+    }
+  };
+
+  const selectedSet = data[lang] || {};
+  return {
+    pythagoras: selectedSet.pythagoras || defaultPythagoras,
+    trigonometry: selectedSet.trigonometry || defaultTrigonometry,
+    quadratic: selectedSet.quadratic || defaultQuadratic
+  };
+}
+
 export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabProps) {
   // Main Category state: 'science' or 'math' or 'chatbot'
   const [activeCategory, setActiveCategory] = useState<'science' | 'math' | 'chatbot'>('science');
@@ -580,6 +1550,7 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
   const [chatbotLang, setChatbotLang] = useState<string>(() => {
     return CHATBOT_TRANSLATIONS[lang] ? lang : 'en';
   });
+
 
   const translations = CHATBOT_TRANSLATIONS[chatbotLang] || CHATBOT_TRANSLATIONS.en;
 
@@ -927,7 +1898,9 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
         body: JSON.stringify({
           message: userMsg.text,
           file: tempFile ? { data: tempFile.data, mimeType: tempFile.mimeType } : undefined,
-          systemInstruction
+          systemInstruction,
+          board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
+          lang: chatbotLang
         })
       });
 
@@ -1454,119 +2427,8 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
   // ----------------------------------------------------
   // EXPLANATIONS DICTIONARY
   // ----------------------------------------------------
-  const scienceExplanations = {
-    newton: {
-      title: lang === 'hi' ? 'न्यूटन का गति का दूसरा नियम' : "Newton's Second Law of Motion",
-      formula: 'F = m × a',
-      variables: lang === 'hi' 
-        ? 'F = बल (Force, न्यूटन में), m = द्रव्यमान (Mass, kg में), a = त्वरण (Acceleration, m/s² में)'
-        : 'F = Force (Newtons), m = Mass (kilograms), a = Acceleration (m/s²)',
-      explanation: lang === 'hi'
-        ? `यह नियम बताता है कि किसी वस्तु पर लगाया गया बल उसके द्रव्यमान और त्वरण के गुणनफल के बराबर होता है। सरल शब्दों में, भारी वस्तु को तेजी से धकेलने के लिए अधिक बल की आवश्यकता होती है!`
-        : `This law states that the force applied to an object is equal to its mass multiplied by its acceleration. Simply put, pushing a heavier object faster requires much more physical force!`,
-      intuition: lang === 'hi'
-        ? `वर्तमान मान: ${mass} किलोग्राम की गाड़ी को ${accel} m/s² से धकेलने के लिए ${force.toFixed(1)} न्यूटन बल चाहिए। गाँव में कुएँ से पानी की 2 भारी बाल्टियाँ उठाने में लगभग इतना ही बल लगता है!`
-        : `Current calculation: Pushing a ${mass} kg wagon at an acceleration of ${accel} m/s² requires ${force.toFixed(1)} Newtons of force. In practical terms, this is about the force needed to pump water or lift deep buckets from a well!`,
-      speechText: lang === 'hi'
-        ? `न्यूटन का दूसरा नियम। सूत्र है: बल बराबर द्रव्यमान गुना त्वरण। यहाँ द्रव्यमान है ${mass} किलोग्राम और त्वरण है ${accel} मीटर प्रति सेकंड वर्ग। कुल बल ${force.toFixed(1)} न्यूटन बनता है।`
-        : `Newton's Second Law of Motion. The formula is: Force equals Mass times Acceleration. Here, with a mass of ${mass} kilograms and an acceleration of ${accel} meters per second squared, the total force is ${force.toFixed(1)} Newtons.`
-    },
-    ohms: {
-      title: lang === 'hi' ? 'ओम का नियम (विद्युत धारा)' : "Ohm's Law of Electricity",
-      formula: 'V = I × R',
-      variables: lang === 'hi'
-        ? 'V = विभवांतर (Voltage, वोल्ट में), I = विद्युत धारा (Current, एम्पियर में), R = प्रतिरोध (Resistance, ओम Ω में)'
-        : 'V = Voltage (Volts), I = Current (Amperes), R = Resistance (Ohms Ω)',
-      explanation: lang === 'hi'
-        ? `ओम का नियम बताता है कि किसी विद्युत चालक में बहने वाली धारा उसके दोनों सिरों के विभवांतर के सीधे आनुपातिक होती है और प्रतिरोध के विपरीत आनुपातिक होती है।`
-        : `Ohm's Law states that the electric current flowing through a conductor is directly proportional to the voltage across its ends, and inversely proportional to the electrical resistance.`,
-      intuition: lang === 'hi'
-        ? `वर्तमान मान: यदि बल्ब का प्रतिरोध ${resistance} ओम है और इसमें ${current} एम्पियर की धारा प्रवाहित होती है, तो वोल्टेज ${voltage.toFixed(1)} वोल्ट होगा। घरेलू बिजली का सॉकेट 220 वोल्ट का होता है!`
-        : `Current calculation: If a bulb has a resistance of ${resistance} Ohms and a current of ${current} Amperes flows through it, the required Voltage is ${voltage.toFixed(1)} Volts. Standard home outlets in India supply about 220 Volts!`,
-      speechText: lang === 'hi'
-        ? `ओम का नियम। सूत्र है: वोल्टेज बराबर करंट गुना प्रतिरोध। वर्तमान में करंट ${current} एम्पियर और प्रतिरोध ${resistance} ओम है। इसका परिणाम ${voltage.toFixed(1)} वोल्ट वोल्टेज है।`
-        : `Ohm's Law. The formula is: Voltage equals Current times Resistance. Currently, with a current of ${current} Amperes and a resistance of ${resistance} Ohms, the calculated voltage is ${voltage.toFixed(1)} Volts.`
-    },
-    einstein: {
-      title: lang === 'hi' ? 'आइंस्टीन का द्रव्यमान-ऊर्जा समीकरण' : "Einstein's Mass-Energy Equivalence",
-      formula: 'E = m × c²',
-      variables: lang === 'hi'
-        ? 'E = ऊर्जा (Energy, जूल में), m = द्रव्यमान (Mass, kg में), c = प्रकाश की गति (3 × 10⁸ m/s)'
-        : 'E = Energy (Joules), m = Mass (kilograms), c = Speed of light (~300,000 km/s)',
-      explanation: lang === 'hi'
-        ? `यह प्रसिद्ध समीकरण दिखाता है कि द्रव्यमान और ऊर्जा एक ही सिक्के के दो पहलू हैं। बहुत कम मात्रा में द्रव्यमान को भी नष्ट करके विशाल मात्रा में ऊर्जा प्राप्त की जा सकती है!`
-        : `This historic equation demonstrates that mass and energy are interchangeable. An incredibly tiny amount of matter can be converted into an immense, overwhelming quantity of pure energy!`,
-      intuition: lang === 'hi'
-        ? `वर्तमान मान: केवल ${milligrams} मिलीग्राम पदार्थ को पूरी तरह ऊर्जा में बदलने पर ${energyMWh.toLocaleString()} मेगावाट-घंटा ऊर्जा मिलेगी। यह आपके पूरे गाँव के सरकारी स्कूल को लगातार ${((energyMWh) / 10).toFixed(0)} महीनों तक बिजली दे सकता है!`
-        : `Current scale: Converting just ${milligrams} milligrams of salt or sugar completely into energy yields ${energyMWh.toLocaleString()} Megawatt-hours of electricity. This is enough to power an entire village primary school for over ${((energyMWh) / 10).toFixed(0)} months!`,
-      speechText: lang === 'hi'
-        ? `आइंस्टीन का समीकरण। ई बराबर एम सी वर्ग। केवल ${milligrams} मिलीग्राम पदार्थ को बदलने पर ${energyMWh} मेगावाट घंटा ऊर्जा मिलेगी, जो गाँव के स्कूल को कई महीनों तक रोशन रख सकती है।`
-        : `Einstein's mass energy equivalence. E equals m c squared. Converting just ${milligrams} milligrams of matter releases ${energyMWh} megawatt hours of energy, capable of powering a rural school for many months.`
-    },
-    chemistry: {
-      title: lang === 'hi' ? 'रासायनिक समीकरण संतुलन' : 'Chemical Equation Balancing Lab',
-      formula: 'a Reactants ➔ b Products',
-      variables: lang === 'hi' ? 'परमाणुओं का संरक्षण (Conservation of Atoms)' : 'Conservation of Mass & Atoms',
-      explanation: lang === 'hi'
-        ? 'रासायनिक क्रिया में कोई नया परमाणु बनता या नष्ट नहीं होता। समीकरण के दोनों ओर प्रत्येक तत्व के कुल परमाणुओं की संख्या बिल्कुल समान होनी चाहिए।'
-        : 'During a chemical reaction, atoms are neither created nor destroyed. The total count of each element must remain exactly equal on both the reactant side and the product side.',
-      intuition: lang === 'hi'
-        ? 'अभ्यास द्वारा सीखें! गुणांकों को समायोजित करें और "जांचें" बटन दबाकर अपने उत्तर का परीक्षण करें।'
-        : 'Learn by practice! Try entering the correct integers for each reactant and product, then check if they balance perfectly.',
-      speechText: lang === 'hi' ? 'रासायनिक समीकरण संतुलन लैब। अभिकारकों और उत्पादों को संतुलित करें।' : 'Chemical balancing lab. Balance the reactant and product atoms.'
-    }
-  };
-
-  const mathExplanations = {
-    pythagoras: {
-      title: lang === 'hi' ? 'पाइथागोरस प्रमेय (ज्यामिति)' : "Pythagoras Theorem of Geometry",
-      formula: 'a² + b² = c²',
-      variables: lang === 'hi'
-        ? 'a = आधार (Base side), b = लंब (Height side), c = कर्ण (Hypotenuse)'
-        : 'a = Base, b = Height, c = Hypotenuse (diagonal)',
-      explanation: lang === 'hi'
-        ? `समकोण त्रिभुज में, कर्ण का वर्ग अन्य दो भुजाओं के वर्गों के योग के बराबर होता है। भारत में राजमिस्त्री सही समकोण कोना जांचने के लिए ३-४-५ की रस्सी मापते हैं, जिसे 'गुनिया' कहा जाता है!`
-        : `In a right-angled triangle, the square of the hypotenuse is equal to the sum of squares of the other two sides. Masons in India use this as the 3-4-5 'Guniya' rule to establish perfect brick corners!`,
-      intuition: lang === 'hi'
-        ? `वर्तमान मान: आधार = ${sideA} cm, लंब = ${sideB} cm। कर्ण (c) की लंबाई ${hypotenuse.toFixed(2)} cm होगी। (${sideA}² + ${sideB}² = ${sideA*sideA + sideB*sideB})`
-        : `Current calculation: Base = ${sideA} cm, Height = ${sideB} cm. The diagonal hypotenuse length is ${hypotenuse.toFixed(2)} cm! (Because ${sideA}² + ${sideB}² = ${sideA*sideA + sideB*sideB})`,
-      speechText: lang === 'hi'
-        ? `पाइथागोरस प्रमेय। समकोण त्रिभुज के लिए सूत्र है ए वर्ग जमा बी वर्ग बराबर सी वर्ग।`
-        : `Pythagoras theorem. For right triangles, a squared plus b squared equals c squared.`
-    },
-    trigonometry: {
-      title: lang === 'hi' ? 'त्रिकोणमिति: ऊँचाई और दूरी' : "Trigonometry: Heights & Distances",
-      formula: 'h = d × tan(θ)',
-      variables: lang === 'hi'
-        ? 'h = ऊँचाई (Height), d = दूरी (Distance), θ = उन्नयन कोण (Angle of Elevation)'
-        : 'h = Height, d = Horizontal Distance, θ = Angle of elevation (degrees)',
-      explanation: lang === 'hi'
-        ? `त्रिकोणमिति के सिद्धांतों का उपयोग करके हम बहुत ऊँचे मोबाइल टावर, नारियल के पेड़ या मंदिर के शिखर की ऊँचाई बिना ऊपर चढ़े निकाल सकते हैं! बस जमीन की दूरी और देखने का कोण चाहिए।`
-        : `Using trigonometry, we can discover the precise height of tall structures (like mobile towers, trees, or local temples) purely by standing on the ground and measuring distance and angle!`,
-      intuition: lang === 'hi'
-        ? `वर्तमान मान: यदि आप टावर से ${distance} मीटर दूर हैं और उन्नयन कोण ${elevationAngle}° है, तो टावर की ऊँचाई ${computedHeight.toFixed(1)} मीटर है! (दृष्टि रेखा की कुल दूरी ${lineOfSight.toFixed(1)} मीटर है)`
-        : `Current calculation: Standing ${distance} meters away with an elevation angle of ${elevationAngle}°, the projected height of the tower is ${computedHeight.toFixed(1)} meters! (The total line-of-sight distance is ${lineOfSight.toFixed(1)} meters)`,
-      speechText: lang === 'hi'
-        ? `त्रिकोणमिति ऊँचाई और दूरी। सूत्र है: ऊँचाई बराबर दूरी गुना टेन थीटा। यहाँ ऊँचाई ${computedHeight.toFixed(1)} मीटर है।`
-        : `Trigonometry heights and distances. The formula is Height equals Distance times tangent of theta. The projected height is ${computedHeight.toFixed(1)} meters.`
-    },
-    quadratic: {
-      title: lang === 'hi' ? 'द्विघात समीकरण प्रयोगशाला' : "Quadratic Equations Lab",
-      formula: 'ax² + bx + c = 0',
-      variables: lang === 'hi'
-        ? 'a, b, c = गुणांक (Coefficients), D = b² - 4ac (विविक्तकर / Discriminant)'
-        : 'a, b, c = Coefficients, D = Discriminant',
-      explanation: lang === 'hi'
-        ? `यह एक अत्यंत महत्वपूर्ण बीजीय सूत्र है। इसका ग्राफ़ एक 'परवलय' (Parabola) यानी यू-शेप बनाता है। हवा में फेंकी गई क्रिकेट गेंद का रास्ता बिल्कुल इसी वक्र पर चलता है!`
-        : `A quadratic equation is a core algebraic equation. Its graph is a 'Parabola' (U-shape curve). The physical path of a thrown cricket ball or water fountain jets trace this exact geometric shape!`,
-      intuition: lang === 'hi'
-        ? `वर्तमान मान: समीकरण ${coeffA}x² + ${coeffB >= 0 ? `+${coeffB}` : coeffB}x + ${coeffC >= 0 ? `+${coeffC}` : coeffC} = 0. विविक्तकर D = ${discriminant}। मूल प्रकार: ${rootsInfo.nature}। मूल १ = ${rootsInfo.r1}, मूल २ = ${rootsInfo.r2}`
-        : `Current Equation: ${coeffA}x² ${coeffB >= 0 ? `+ ${coeffB}` : `${coeffB}`}x ${coeffC >= 0 ? `+ ${coeffC}` : `${coeffC}`} = 0. Discriminant D = ${discriminant}. Roots: ${rootsInfo.nature}. Root 1 = ${rootsInfo.r1}, Root 2 = ${rootsInfo.r2}`,
-      speechText: lang === 'hi'
-        ? `द्विघात समीकरण लैब। वर्तमान समीकरण का विविक्तकर ${discriminant} है। मूलों का प्रकार है ${rootsInfo.nature}।`
-        : `Quadratic equation lab. The discriminant is ${discriminant}. The nature of roots is ${rootsInfo.nature}.`
-    }
-  };
+  const scienceExplanations = getScienceExplanations(lang, { mass, accel, force, current, resistance, voltage, milligrams, energyMWh });
+  const mathExplanations = getMathExplanations(lang, { sideA, sideB, hypotenuse, distance, elevationAngle, computedHeight, lineOfSight, coeffA, coeffB, coeffC, discriminant, rootsInfo, angleRad });
 
   // Select active equation info based on current category tab
   const activeEqInfo = activeCategory === 'science' 
@@ -3532,6 +4394,13 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
                       {/* Action buttons (Download PDF, Copy Plain Text) inside bot box */}
                       {msg.sender === 'bot' && (
                         <div className="absolute -bottom-3 -right-1 flex items-center gap-1 bg-white p-0.5 rounded-full border border-gray-150 shadow-xs z-10">
+                          <SpeakButton
+                            text={msg.text}
+                            lang={chatbotLang as LanguageCode}
+                            size="sm"
+                            className="!bg-transparent !border-0 !shadow-none hover:!bg-slate-50 text-emerald-600"
+                          />
+
                           <button
                             type="button"
                             onClick={() => exportMessageToPDF(msg)}
@@ -3571,7 +4440,7 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
                   <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl rounded-tl-none text-left shadow-3xs flex items-center gap-3">
                     <span className="animate-spin text-[#E07A5F] text-sm">⏳</span>
                     <span className="text-xs font-mono font-bold text-gray-500">
-                      {lang === 'hi' ? 'गणना कर रहा हूँ और समस्या का समाधान ढूंढ रहा हूँ...' : 'Solving calculation and processing worksheet...'}
+                      {translations.solvingText || (lang === 'hi' ? 'गणना कर रहा हूँ और समस्या का समाधान ढूंढ रहा हूँ...' : 'Solving calculation and processing worksheet...')}
                     </span>
                   </div>
                 </div>
@@ -3630,17 +4499,25 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
                     <Paperclip className="h-5 w-5" />
                   </label>
 
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder={
-                      selectedFile
-                        ? (lang === 'hi' ? "इस फ़ाइल के बारे में पूछें..." : "Ask a query about this file...")
-                        : (lang === 'hi' ? "बीजीय समीकरण, भौतिकी प्रश्न लिखें या फ़ाइल डालें..." : "Type math equations, balance formulas, or select files...")
-                    }
-                    className="flex-1 bg-white border border-gray-200 focus:border-[#E07A5F] focus:ring-1 focus:ring-[#E07A5F] rounded-2xl px-4 py-3.5 text-xs sm:text-sm focus:outline-none transition-all placeholder-gray-450"
-                  />
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder={
+                        selectedFile
+                          ? (translations.placeholderFile || "Ask a query about this file...")
+                          : (translations.placeholder || "Type math equations, balance formulas, or select files...")
+                      }
+                      className="w-full bg-white border border-gray-200 focus:border-[#E07A5F] focus:ring-1 focus:ring-[#E07A5F] rounded-2xl pl-4 pr-12 py-3.5 text-xs sm:text-sm focus:outline-none transition-all placeholder-gray-450 shadow-3xs"
+                    />
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
+                      <SpeechInputButton
+                        lang={chatbotLang as LanguageCode}
+                        onTranscript={(text) => setChatInput(prev => prev ? prev + ' ' + text : text)}
+                      />
+                    </div>
+                  </div>
 
                   <button
                     type="submit"
@@ -3669,7 +4546,7 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
                     : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                {lang === 'hi' ? 'त्वरित हल' : 'Quick Solves'}
+                {getEqLabel('quickSolves', lang)}
               </button>
               <button
                 type="button"
@@ -3680,7 +4557,7 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
                     : 'text-gray-500 hover:text-gray-800'
                 }`}
               >
-                {lang === 'hi' ? 'सम्पूर्ण सूत्र' : 'Formula Sheet'}
+                {getEqLabel('formulaSheet', lang)}
               </button>
             </div>
 
@@ -3688,11 +4565,19 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
               <div className="space-y-4 flex-1 flex flex-col min-h-0">
                 <div className="text-left border-b border-gray-100 pb-3">
                   <h4 className="text-xs font-mono uppercase font-black text-gray-400 tracking-wider">
-                    {lang === 'hi' ? 'त्वरित गणना संकेत' : 'Try Quick Solves'}
+                    {getEqLabel('tryQuickSolves', lang)}
                   </h4>
                   <p className="text-[11px] text-gray-550 mt-1 leading-normal">
                     {lang === 'hi'
                       ? 'इन कठिन विषयों और समीकरणों को तुरंत हल करने के लिए किसी भी प्रॉम्प्ट पर क्लिक करें:'
+                      : lang === 'gu'
+                      ? 'આ મુશ્કેલ વિષયો અને સમીકરણોને ઝડપથી હલ કરવા માટે કોઈપણ પ્રોમ્પ્ટ પર ક્લિક કરો:'
+                      : lang === 'mr'
+                      ? 'या कठीण विषयांचे आणि समीकरणांचे त्वरित निराकरण करण्यासाठी कोणत्याही प्रॉमप्टवर क्लिक करा:'
+                      : lang === 'ta'
+                      ? 'இந்த கடினமான தலைப்புகள் மற்றும் சமன்பாடுகளை விரைவாக தீர்க்க ஏதேனும் ஒரு உரையாடலை கிளிக் செய்யவும்:'
+                      : lang === 'te'
+                      ? 'ఈ కష్టమైన అంశాలు మరియు సమీకరణాలను త్వరగా పరిష్కరించడానికి ఏదైనా ప్రాంప్ట్‌ను క్లిક చేయండి:'
                       : 'Click any interactive prompt to query the calculation engine instantly:'}
                   </p>
                 </div>
@@ -3702,7 +4587,7 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
                   {/* MATHEMATICS PROMPTS */}
                   <div>
                     <span className="text-[10px] font-mono font-black text-[#E07A5F] uppercase block tracking-wider mb-2">
-                      📐 {lang === 'hi' ? 'गणित के सवाल' : 'Mathematics Problems'}
+                      📐 {getEqLabel('mathEquations', lang)}
                     </span>
                     <div className="space-y-1.5">
                       {[
@@ -3711,7 +4596,7 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
                         "Find hypotenuse c if base a = 12 and height b = 5"
                       ].map((q, idx) => (
                         <button
-                          key={idx}
+                           key={idx}
                           type="button"
                           onClick={() => handleSuggestionClick(q)}
                           disabled={isSending}
@@ -3726,7 +4611,7 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
                   {/* SCIENCE PROMPTS */}
                   <div>
                     <span className="text-[10px] font-mono font-black text-[#E07A5F] uppercase block tracking-wider mb-2">
-                      🧪 {lang === 'hi' ? 'विज्ञान के सवाल' : 'Science Calculations'}
+                      🧪 {getEqLabel('physicsEquations', lang)}
                     </span>
                     <div className="space-y-1.5">
                       {[
@@ -3753,11 +4638,19 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
               <div className="space-y-4 flex-1 flex flex-col min-h-0">
                 <div className="border-b border-gray-100 pb-2.5">
                   <h4 className="text-xs font-mono uppercase font-black text-gray-400 tracking-wider">
-                    {lang === 'hi' ? 'गणित और विज्ञान सूत्र' : 'Math & Science Formula Sheet'}
+                    {getEqLabel('mathAndScienceFormulae', lang)}
                   </h4>
                   <p className="text-[11px] text-gray-550 mt-1 leading-normal">
                     {lang === 'hi'
                       ? 'नीचे दिए गए किसी भी महत्वपूर्ण समीकरण को चैट में डालने या एआई से तुरंत हल कराने के लिए चुनें:'
+                      : lang === 'gu'
+                      ? 'ચેટમાં દાખલ કરવા અથવા AI દ્વારા તરત જ હલ કરવા માટે નીચે આપેલા કોઈપણ મહત્વપૂર્ણ સમીકરણો પસંદ કરો:'
+                      : lang === 'mr'
+                      ? 'खालीलपैकी कोणतेही महत्त्वाचे समीकरण चॅटमध्ये टाकण्यासाठी किंवा एआय द्वारे त्वरित सोडवण्यासाठी निवडा:'
+                      : lang === 'ta'
+                      ? 'சாட்டில் நுழைக்க அல்லது AI மூலம் உடனடியாக தீர்க்க கீழே உள்ள ஏதேனும் முக்கிய சமன்பாட்டைத் தேர்ந்தெடுக்கவும்:'
+                      : lang === 'te'
+                      ? 'చాట్‌లో చేర్చడానికి లేదా AI ద్వారా తక్షణమే పరిష్కరించడానికి దిగువ పేర్కొన్న ఏదైనా ముఖ్యమైన సమీకరణాన్ని ఎంచుకోండి:'
                       : 'Choose any complete key formula to auto-insert or solve instantly with AI:'}
                   </p>
                 </div>
@@ -3766,159 +4659,192 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
                   {/* Category physics */}
                   <div>
                     <span className="text-[10px] font-mono font-black text-rose-500 uppercase block tracking-wider mb-2">
-                      ⚡ {lang === 'hi' ? 'भौतिक विज्ञान' : 'Physics Equations'}
+                      ⚡ {getEqLabel('physicsEquations', lang)}
                     </span>
                     <div className="space-y-2">
-                      {formulasCatalog.filter(f => f.category === 'physics').map((f, i) => (
-                        <div key={i} className="p-3 bg-white border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
-                          <div className="flex justify-between items-start gap-1">
-                            <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
-                              {lang === 'hi' ? f.nameHi : f.name}
-                            </span>
-                            <span className="px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
-                              Physics
-                            </span>
-                          </div>
-                          
-                          <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
-                            {f.equation}
-                          </div>
+                      {formulasCatalog.filter(f => f.category === 'physics').map((f, i) => {
+                        const loc = getFormulaLocalized(f, lang);
+                        return (
+                          <div key={i} className="p-3 bg-white border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
+                            <div className="flex justify-between items-start gap-1">
+                              <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
+                                {loc.name}
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
+                                Physics
+                              </span>
+                            </div>
+                            
+                            <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
+                              {f.equation}
+                            </div>
 
-                          <p className="text-[10px] text-gray-500 mt-1.5 font-sans leading-normal">
-                            {lang === 'hi' ? f.descriptionHi : f.description}
-                          </p>
+                            <p className="text-[10px] text-gray-500 mt-1.5 font-sans leading-normal">
+                              {loc.description}
+                            </p>
 
-                          <div className="flex gap-1.5 mt-2.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setChatInput(`${lang === 'hi' ? 'कृपया इस सूत्र को विस्तार से समझाएं' : 'Please explain this formula in detail'}: ${f.name} (${f.equation})`);
-                              }}
-                              className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
-                            >
-                              {lang === 'hi' ? 'चैट में डालें' : 'Use Formula'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleSendMessage(lang === 'hi' 
-                                  ? `कृपया मुझे सूत्र ${f.nameHi} (${f.equation}) का उपयोग करके चरण-दर-चरण गणना का एक अभ्यास प्रश्न और उसका हल दिखाएं।`
-                                  : `Please generate a step-by-step example calculation and solution using the formula: ${f.name} (${f.equation}).`);
-                              }}
-                              disabled={isSending}
-                              className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
-                            >
-                              {lang === 'hi' ? 'एआई से हल करें' : 'AI Solve'}
-                            </button>
+                            <div className="flex gap-1.5 mt-2.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setChatInput(`${getEqLabel('explainFormulaDetail', lang)}: ${loc.name} (${f.equation})`);
+                                }}
+                                className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
+                              >
+                                {getEqLabel('useFormula', lang)}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleSendMessage(lang === 'hi' 
+                                    ? `कृपया मुझे सूत्र ${loc.name} (${f.equation}) का उपयोग करके चरण-दर-चरण गणना का एक अभ्यास प्रश्न और उसका हल दिखाएं।`
+                                    : lang === 'gu'
+                                    ? `કૃપા કરીને મને સૂત્ર ${loc.name} (${f.equation}) નો ઉપયોગ કરીને વિગતવાર ગણતરી બતાવો.`
+                                    : lang === 'mr'
+                                    ? `कृपया मला सूत्र ${loc.name} (${f.equation}) चा वापर करून पायरी-पायरीने सोडवलेले उदाहरण दाखवा.`
+                                    : lang === 'ta'
+                                    ? `தயவுசெய்து சூத்திரம் ${loc.name} (${f.equation}) ஐப் பயன்படுத்தி படிப்படியான தீர்வைக் காட்டுங்கள்.`
+                                    : lang === 'te'
+                                    ? `దయచేసి ఫార్ములా ${loc.name} (${f.equation}) ఉపయోగించి దశలవారీగా పరిష్కారం చూపించండి.`
+                                    : `Please generate a step-by-step example calculation and solution using the formula: ${f.name} (${f.equation}).`);
+                                }}
+                                disabled={isSending}
+                                className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
+                              >
+                                {getEqLabel('aiSolve', lang)}
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
                   {/* Category chemistry */}
                   <div>
                     <span className="text-[10px] font-mono font-black text-blue-500 uppercase block tracking-wider mb-2">
-                      🧪 {lang === 'hi' ? 'रसायन विज्ञान' : 'Chemistry Formulae'}
+                      🧪 {getEqLabel('chemistryFormulae', lang)}
                     </span>
                     <div className="space-y-2">
-                      {formulasCatalog.filter(f => f.category === 'chemistry').map((f, i) => (
-                        <div key={i} className="p-3 bg-white border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
-                          <div className="flex justify-between items-start gap-1">
-                            <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
-                              {lang === 'hi' ? f.nameHi : f.name}
-                            </span>
-                            <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
-                              Chem
-                            </span>
-                          </div>
-                          
-                          <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
-                            {f.equation}
-                          </div>
+                      {formulasCatalog.filter(f => f.category === 'chemistry').map((f, i) => {
+                        const loc = getFormulaLocalized(f, lang);
+                        return (
+                          <div key={i} className="p-3 bg-white border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
+                            <div className="flex justify-between items-start gap-1">
+                              <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
+                                {loc.name}
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
+                                Chem
+                              </span>
+                            </div>
+                            
+                            <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
+                              {f.equation}
+                            </div>
 
-                          <p className="text-[10px] text-gray-500 mt-1.5 font-sans leading-normal">
-                            {lang === 'hi' ? f.descriptionHi : f.description}
-                          </p>
+                            <p className="text-[10px] text-gray-500 mt-1.5 font-sans leading-normal">
+                              {loc.description}
+                            </p>
 
-                          <div className="flex gap-1.5 mt-2.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setChatInput(`${lang === 'hi' ? 'कृपया इस रसायन सूत्र को समझाएं' : 'Please explain this chemical formula'}: ${f.name} (${f.equation})`);
-                              }}
-                              className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
-                            >
-                              {lang === 'hi' ? 'चैट में डालें' : 'Use Formula'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleSendMessage(lang === 'hi'
-                                  ? `कृपया मुझे सूत्र ${f.nameHi} (${f.equation}) का उपयोग करके चरण-दर-चरण रासायनिक गणना का एक अभ्यास प्रश्न हल करके दिखाएं।`
-                                  : `Please generate a step-by-step example chemistry calculation and solution using the formula: ${f.name} (${f.equation}).`);
-                              }}
-                              disabled={isSending}
-                              className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
-                            >
-                              {lang === 'hi' ? 'एआई से हल करें' : 'AI Solve'}
-                            </button>
+                            <div className="flex gap-1.5 mt-2.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setChatInput(`${getEqLabel('explainChemicalFormulaDetail', lang)}: ${loc.name} (${f.equation})`);
+                                }}
+                                className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
+                              >
+                                {getEqLabel('useFormula', lang)}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleSendMessage(lang === 'hi'
+                                    ? `कृपया मुझे सूत्र ${loc.name} (${f.equation}) का उपयोग करके चरण-दर-चरण रासायनिक गणना का एक अभ्यास प्रश्न हल करके दिखाएं।`
+                                    : lang === 'gu'
+                                    ? `કૃપા કરીને મને સૂત્ર ${loc.name} (${f.equation}) નો ઉપયોગ કરીને વિગતવાર રાસાયણિક ઉકેલ બતાવો.`
+                                    : lang === 'mr'
+                                    ? `कृपया मला रासायनिक सूत्र ${loc.name} (${f.equation}) चा वापर करून सोडवलेले उदाहरण दाखवा.`
+                                    : lang === 'ta'
+                                    ? `தயவுசெய்து வேதியியல் சூத்திரம் ${loc.name} (${f.equation}) ஐப் பயன்படுத்தி படிப்படியான தீர்வைக் காட்டுங்கள்.`
+                                    : lang === 'te'
+                                    ? `దయచేసి రసాయన ఫార్ములా ${loc.name} (${f.equation}) ఉపయోగించి దశలవారీగా పరిష్కారం చూపించండి.`
+                                    : `Please generate a step-by-step example chemistry calculation and solution using the formula: ${f.name} (${f.equation}).`);
+                                }}
+                                disabled={isSending}
+                                className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
+                              >
+                                {getEqLabel('aiSolve', lang)}
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
                   {/* Category math */}
                   <div>
                     <span className="text-[10px] font-mono font-black text-emerald-500 uppercase block tracking-wider mb-2">
-                      📐 {lang === 'hi' ? 'गणित सूत्र' : 'Math Equations'}
+                      📐 {getEqLabel('mathEquations', lang)}
                     </span>
                     <div className="space-y-2">
-                      {formulasCatalog.filter(f => f.category === 'math').map((f, i) => (
-                        <div key={i} className="p-3 bg-white border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
-                          <div className="flex justify-between items-start gap-1">
-                            <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
-                              {lang === 'hi' ? f.nameHi : f.name}
-                            </span>
-                            <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
-                              Math
-                            </span>
-                          </div>
-                          
-                          <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
-                            {f.equation}
-                          </div>
+                      {formulasCatalog.filter(f => f.category === 'math').map((f, i) => {
+                        const loc = getFormulaLocalized(f, lang);
+                        return (
+                          <div key={i} className="p-3 bg-white border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
+                            <div className="flex justify-between items-start gap-1">
+                              <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
+                                {loc.name}
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
+                                Math
+                              </span>
+                            </div>
+                            
+                            <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
+                              {f.equation}
+                            </div>
 
-                          <p className="text-[10px] text-gray-500 mt-1.5 font-sans leading-normal">
-                            {lang === 'hi' ? f.descriptionHi : f.description}
-                          </p>
+                            <p className="text-[10px] text-gray-500 mt-1.5 font-sans leading-normal">
+                              {loc.description}
+                            </p>
 
-                          <div className="flex gap-1.5 mt-2.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setChatInput(`${lang === 'hi' ? 'कृपया इस गणितीय सूत्र को समझाएं और सूत्रपात दिखाएं' : 'Please explain this mathematical formula'}: ${f.name} (${f.equation})`);
-                              }}
-                              className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
-                            >
-                              {lang === 'hi' ? 'चैट में डालें' : 'Use Formula'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleSendMessage(lang === 'hi'
-                                  ? `कृपया मुझे सूत्र ${f.nameHi} (${f.equation}) का उपयोग करके चरण-दर-चरण गणितीय हल का एक उदाहरण दें।`
-                                  : `Please generate a step-by-step math problem and solution using the formula: ${f.name} (${f.equation}).`);
-                              }}
-                              disabled={isSending}
-                              className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
-                            >
-                              {lang === 'hi' ? 'एआई से हल करें' : 'AI Solve'}
-                            </button>
+                            <div className="flex gap-1.5 mt-2.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setChatInput(`${getEqLabel('explainMathFormulaDetail', lang)}: ${loc.name} (${f.equation})`);
+                                }}
+                                className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
+                              >
+                                {getEqLabel('useFormula', lang)}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleSendMessage(lang === 'hi'
+                                    ? `कृपया मुझे सूत्र ${loc.name} (${f.equation}) का उपयोग करके चरण-दर-चरण गणितीय हल का एक उदाहरण दें।`
+                                    : lang === 'gu'
+                                    ? `કૃપા કરીને મને ગણિત સૂત્ર ${loc.name} (${f.equation}) નો ઉપયોગ કરીને વિગતવાર ઉકેલ આપો.`
+                                    : lang === 'mr'
+                                    ? `कृपया मला गणितीय सूत्र ${loc.name} (${f.equation}) चा वापर करून पायरी-पायरीने सोडवलेले उदाहरण दाखवा.`
+                                    : lang === 'ta'
+                                    ? `தயவுசெய்து கணிதச் சூத்திரம் ${loc.name} (${f.equation}) ஐப் பயன்படுத்தி படிப்படியான தீர்வைக் காட்டுங்கள்.`
+                                    : lang === 'te'
+                                    ? `దయచేసి గణిత ఫార్ములా ${loc.name} (${f.equation}) ఉపయోగించి దశలవారీగా పరిష్కారం చూపించండి.`
+                                    : `Please generate a step-by-step math problem and solution using the formula: ${f.name} (${f.equation}).`);
+                                }}
+                                disabled={isSending}
+                                className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
+                              >
+                                {getEqLabel('aiSolve', lang)}
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -3928,10 +4854,18 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
             {/* CONTEXT MATTERS NOTICE */}
             <div className="mt-auto p-4 bg-amber-50/70 border border-amber-100 rounded-2xl text-left text-[11px] text-amber-900 font-sans leading-relaxed shrink-0">
               <span className="font-bold block text-amber-800 mb-0.5">
-                📄 {lang === 'hi' ? 'चित्र और पीडीएफ सॉल्वर' : 'Multi-Modal Solve Engine'}
+                📄 {getEqLabel('multiModalSolve', lang)}
               </span>
               {lang === 'hi'
                 ? 'आप गृहकार्य, सूत्रों या चित्रों की तस्वीरें खींचकर या अपनी वर्कशीट की पीडीएफ अपलोड करके सीधे सवाल पूछ सकते हैं। एआई उन्हें डिकोड कर पूरा समाधान देगा।'
+                : lang === 'gu'
+                ? 'તમે હોમવર્ક, સૂત્રો અથવા ચિત્રોના ફોટા પાડીને અથવા તમારી વર્કશીટની પીડીએફ અપલોડ કરીને સીધા પ્રશ્નો પૂછી શકો છો. એઆઈ તેનો ઉકેલ આપશે.'
+                : lang === 'mr'
+                ? 'तुम्ही गृहपाठ, सूत्रे किंवा चित्रांचे फोटो काढून किंवा तुमच्या वर्कशीटची पीडीएफ अपलोड करून थेट प्रश्न विचारू शकता. एआय पूर्ण उत्तर देईल.'
+                : lang === 'ta'
+                ? 'வீட்டுப்பாடம், சூத்திரங்கள் அல்லது படங்களின் புகைப்படங்களை எடுப்பதன் மூலம் அல்லது உங்கள் பணித்தாளின் PDF ஐ பதிவேற்றுவதன் மூலம் நீங்கள் நேரடியாக கேள்விகளைக் கேட்கலாம். AI அவற்றுக்கான முழுமையான தீர்வை வழங்கும்.'
+                : lang === 'te'
+                ? 'మీరు హోంవర్క్, ఫార్ములాలు లేదా చిత్రాల ఫోటోలు తీయడం ద్వారా లేదా మీ వర్క్‌షీట్ పిడిఎఫ్‌ను అప్‌లోడ్ చేయడం ద్వారా నేరుగా ప్రశ్నలు అడగవచ్చు. AI పూర్తి పరిష్కారాన్ని అందిస్తుంది.'
                 : 'Upload images of science diagrams, hand-written formulas, or complete PDF worksheets. The AI will parse details and provide step-by-step guidance.'}
             </div>
 
