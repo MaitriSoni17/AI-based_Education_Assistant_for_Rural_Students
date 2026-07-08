@@ -23,9 +23,9 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
   const t = TRANSLATIONS[lang];
 
   // Load custom student attributes from the user prop for Firebase dynamics
-  const [village, setVillage] = useState(() => user.village || 'Rampur Vilas');
-  const [school, setSchool] = useState(() => user.school || 'Rampur Primary Public School');
-  const [standard, setStandard] = useState(() => user.standard || 'Grade 6 Science');
+  const [village, setVillage] = useState(() => user.village || '');
+  const [school, setSchool] = useState(() => user.school || '');
+  const [standard, setStandard] = useState(() => user.standard || '');
   const [selectedAvatar, setSelectedAvatar] = useState(() => user.avatar || getDeterministicAvatar(user.name, user.mobile));
   const [isEditing, setIsEditing] = useState(false);
 
@@ -48,9 +48,9 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
 
   // Synchronize student data when logged-in student session changes
   useEffect(() => {
-    setVillage(user.village || 'Rampur Vilas');
-    setSchool(user.school || 'Rampur Primary Public School');
-    setStandard(user.standard || 'Grade 6 Science');
+    setVillage(user.village || '');
+    setSchool(user.school || '');
+    setStandard(user.standard || '');
     setSelectedAvatar(user.avatar || getDeterministicAvatar(user.name, user.mobile));
     setUserPoints(user.totalPoints ?? 15);
     setStreakDays(user.streakDays ?? 1);
@@ -290,7 +290,11 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                 {!isEditing ? (
                   <p className="font-sans text-sm text-gray-500 flex items-center justify-center sm:justify-start gap-1 mt-1">
                     <School className="h-4 w-4 text-[#81B29A]" />
-                    <span>{standard} • {school}</span>
+                    <span>
+                      {standard && school 
+                        ? `${standard} • ${school}` 
+                        : standard || school || (lang === 'hi' ? 'कोई स्कूल/कक्षा निर्दिष्ट नहीं' : 'No school/class specified')}
+                    </span>
                   </p>
                 ) : (
                   <div className="mt-2 space-y-2">
@@ -316,7 +320,11 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
               {!isEditing ? (
                 <p className="font-sans text-xs text-gray-400 flex items-center justify-center sm:justify-start gap-1">
                   <MapPin className="h-3.5 w-3.5 text-[#E07A5F]" />
-                  <span>{village}, India</span>
+                  <span>
+                    {village 
+                      ? `${village}, India` 
+                      : (lang === 'hi' ? 'कोई स्थान निर्दिष्ट नहीं' : 'No location specified')}
+                  </span>
                 </p>
               ) : (
                 <div className="flex gap-2">

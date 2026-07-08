@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LanguageCode, User } from '../../types';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { 
@@ -45,6 +45,45 @@ interface ChatSession {
   timestamp: string;
   messages: ChatMessage[];
 }
+
+const SUPERSCRIPTS: Record<string, string> = {
+  '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+  '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', 'n': 'ⁿ', 'i': 'ⁱ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ',
+  'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ', 'f': 'ᶠ', 'g': 'ᵍ', 'h': 'ʰ', 'j': 'ʲ', 'k': 'ᵏ',
+  'l': 'ˡ', 'm': 'ᵐ', 'o': 'ᵒ', 'p': 'ᵖ', 'r': 'ʳ', 's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ', 'v': 'ᵛ', 'w': 'ʷ'
+};
+
+const SUBSCRIPTS: Record<string, string> = {
+  '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+  '+': '₊', '-': '₋', '=': '₌', '(': '₍', ')': '₎', 'a': 'ₐ', 'e': 'ₑ', 'h': 'ₕ', 'i': 'ᵢ', 'j': 'ⱼ',
+  'k': 'ₖ', 'l': 'ₗ', 'm': 'ₘ', 'n': 'ₙ', 'o': 'ₒ', 'p': 'ₚ', 'r': 'ᵣ', 's': 'ₛ', 't': 'ₜ', 'u': 'ᵤ',
+  'v': 'ᵥ', 'x': 'ₓ'
+};
+
+const toSuperscript = (str: string) => {
+  return str.split('').map(char => SUPERSCRIPTS[char] || SUPERSCRIPTS[char.toLowerCase()] || char).join('');
+};
+
+const toSubscript = (str: string) => {
+  return str.split('').map(char => SUBSCRIPTS[char] || SUBSCRIPTS[char.toLowerCase()] || char).join('');
+};
+
+const FORMULA_SYMBOLS = [
+  { char: '²', label: 'x²', desc: 'Superscript / सुपरस्क्रिप्ट (e.g. select "2" to make it ²)', type: 'super' },
+  { char: '₂', label: 'x₂', desc: 'Subscript / सबस्क्रिप्ट (e.g. select "2" to make it ₂)', type: 'sub' },
+  { char: '√', label: '√', desc: 'Square Root (वर्गमूल)' },
+  { char: 'π', label: 'π', desc: 'Pi' },
+  { char: 'θ', label: 'θ', desc: 'Theta (कोण)' },
+  { char: 'α', label: 'α', desc: 'Alpha' },
+  { char: 'β', label: 'β', desc: 'Beta' },
+  { char: 'Δ', label: 'Δ', desc: 'Delta / Change' },
+  { char: '→', label: '→', desc: 'Reaction Arrow' },
+  { char: '°', label: '°', desc: 'Degree (डिग्री)' },
+  { char: '±', label: '±', desc: 'Plus-Minus' },
+  { char: '÷', label: '÷', desc: 'Divide' },
+  { char: '×', label: '×', desc: 'Multiply' },
+  { char: '≠', label: '≠', desc: 'Not Equal' },
+];
 
 export const CHATBOT_LANGUAGES = [
   { code: 'en', name: 'English', nativeName: 'English' },
@@ -1544,7 +1583,7 @@ function getMathExplanations(lang: string, { sideA, sideB, hypotenuse, distance,
 
 export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabProps) {
   // Main Category state: 'science' or 'math' or 'chatbot'
-  const [activeCategory, setActiveCategory] = useState<'science' | 'math' | 'chatbot'>('science');
+  const [activeCategory, setActiveCategory] = useState<'science' | 'math' | 'chatbot'>('chatbot');
   
   // AI Chatbot States
   const [chatbotLang, setChatbotLang] = useState<string>(() => {
@@ -1663,6 +1702,44 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
   };
 
   const [chatInput, setChatInput] = useState<string>('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const applyFormatting = (type: 'super' | 'sub' | 'symbol', symbolValue?: string) => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    const start = input.selectionStart ?? 0;
+    const end = input.selectionEnd ?? 0;
+    const text = chatInput;
+    const selectedText = text.substring(start, end);
+
+    let replacement = '';
+    if (type === 'symbol' && symbolValue) {
+      replacement = symbolValue;
+    } else if (type === 'super') {
+      if (selectedText) {
+        replacement = toSuperscript(selectedText);
+      } else {
+        replacement = '²';
+      }
+    } else if (type === 'sub') {
+      if (selectedText) {
+        replacement = toSubscript(selectedText);
+      } else {
+        replacement = '₂';
+      }
+    }
+
+    const newValue = text.substring(0, start) + replacement + text.substring(end);
+    setChatInput(newValue);
+
+    setTimeout(() => {
+      input.focus();
+      const newCursorPos = start + replacement.length;
+      input.setSelectionRange(newCursorPos, newCursorPos);
+    }, 50);
+  };
+
   const [isSending, setIsSending] = useState<boolean>(false);
   const [selectedFile, setSelectedFile] = useState<{
     data: string; // base64 representation
@@ -2512,68 +2589,22 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase font-mono font-bold text-[#F2CC8F] tracking-widest bg-white/10 px-2 py-0.5 rounded-full">
-                {lang === 'hi' ? 'पाठ्यपुस्तक क्रियाकलाप' : 'Interactive Lab Activities'}
+                {lang === 'hi' ? 'स्मार्ट एआई' : 'Smart AI'}
               </span>
               <span className="text-[10px] uppercase font-mono font-bold bg-[#E07A5F]/20 text-[#E07A5F] px-2 py-0.5 rounded-full border border-[#E07A5F]/30">
                 {lang === 'hi' ? 'ऑफ़लाइन सक्षम' : '100% Offline-Ready'}
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-display font-extrabold mt-1">
-              {lang === 'hi' ? 'स्मार्ट समीकरण हब' : 'Smart Equation & Sandbox Hub'}
+              {lang === 'hi' ? 'स्मार्ट समीकरण एआई सॉल्वर' : 'Smart Equation AI Solver'}
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 font-sans mt-1 max-w-xl">
               {lang === 'hi' 
-                ? 'विज्ञान (भौतिकी, रसायन शास्त्र) और गणित के कठिन सूत्रों को लाइव एनिमेशन, स्लाइडर्स और सिमुलेशन के साथ आसान भाषा में सीखें।'
-                : 'Master complex Science & Mathematics concepts from Indian boards with responsive visual models, sliders, and audio explanations.'}
+                ? 'गणित और विज्ञान के कठिन सूत्रों और समीकरणों को स्टेप-बाय-स्टेप एआई सॉल्वर के साथ हल करें।'
+                : 'Solve complex Science & Mathematics problems, balance equations, and get step-by-step calculations with our advanced AI Solver.'}
             </p>
           </div>
         </div>
-      </div>
-
-      {/* CATEGORY SELECTOR SWITCHES */}
-      <div className="flex flex-col sm:flex-row bg-gray-100 p-1.5 rounded-2xl border border-gray-200/80 max-w-2xl mx-auto gap-1">
-        <button
-          onClick={() => {
-            setActiveCategory('science');
-            stopSpeaking();
-          }}
-          className={`flex-1 py-3 px-4 rounded-xl font-sans text-sm font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-            activeCategory === 'science'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          <span className="text-base">🧪</span>
-          <span>{lang === 'hi' ? 'विज्ञान लैब (Science)' : 'Science Lab'}</span>
-        </button>
-        <button
-          onClick={() => {
-            setActiveCategory('math');
-            stopSpeaking();
-          }}
-          className={`flex-1 py-3 px-4 rounded-xl font-sans text-sm font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-            activeCategory === 'math'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          <span className="text-base">📐</span>
-          <span>{lang === 'hi' ? 'गणित लैब (Maths)' : 'Mathematics Lab'}</span>
-        </button>
-        <button
-          onClick={() => {
-            setActiveCategory('chatbot');
-            stopSpeaking();
-          }}
-          className={`flex-1 py-3 px-4 rounded-xl font-sans text-sm font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-            activeCategory === 'chatbot'
-              ? 'bg-white text-gray-900 shadow-sm font-black text-[#E07A5F]'
-              : 'text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          <span className="text-base">🤖</span>
-          <span>{lang === 'hi' ? 'एआई सॉल्वर (AI Solver)' : 'AI Solver Chatbot'}</span>
-        </button>
       </div>
 
       {/* TWO COLUMN GRID FOR VISUAL PLAYGROUND */}
@@ -4061,7 +4092,7 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
       </div>
       ) : (
         /* AI SOLVER CHATBOT WORKSPACE */
-        <div className="bg-white rounded-3xl border border-gray-150 shadow-2xs overflow-hidden flex flex-col lg:flex-row min-h-[580px] animate-fade-in">
+        <div className="bg-white rounded-3xl border border-gray-150 shadow-2xs overflow-hidden flex flex-col lg:flex-row h-[620px] sm:h-[650px] animate-fade-in">
           
           {/* MAIN CHAT WORKSPACE (LHS) */}
           <div className="flex-1 flex flex-col border-b lg:border-b-0 lg:border-r border-gray-100">
@@ -4084,22 +4115,6 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
               </div>
               
               <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
-                {/* Language Select Dropdown */}
-                <div className="flex items-center gap-1 bg-white border border-gray-200 px-2 py-1 rounded-lg shadow-3xs">
-                  <span className="text-[10px] text-gray-450 font-bold uppercase tracking-wider pl-1">{translations.langLabel || "Language"}:</span>
-                  <select
-                    value={chatbotLang}
-                    onChange={(e) => setChatbotLang(e.target.value)}
-                    className="text-xs font-bold text-gray-750 bg-transparent border-none outline-none focus:ring-0 cursor-pointer py-0.5 pr-1"
-                  >
-                    {CHATBOT_LANGUAGES.map((l) => (
-                      <option key={l.code} value={l.code}>
-                        {l.nativeName} ({l.name})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Search History Toggle button */}
                 <button
                   type="button"
@@ -4138,7 +4153,7 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
             </div>
 
             {/* CHAT MESSAGES STREAM OR HISTORY PANEL */}
-            <div className="flex-1 p-5 overflow-y-auto space-y-4 max-h-[420px] bg-white/50">
+            <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-white/50 min-h-0">
               {showHistory ? (
                 /* INLINE FULL SEARCH HISTORY VIEW WITH NATIVE CHAT BUBBLES */
                 <div className="space-y-6 animate-fade-in text-left">
@@ -4481,52 +4496,88 @@ If a user uploads an image or PDF, carefully analyze the visual/document problem
                     : "You are currently viewing history. Click 'Active Chat' above to message the AI Solver."}
                 </div>
               ) : (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  {/* Hidden File Picker and Custom Label */}
-                  <label className="p-3 bg-white border border-gray-200 hover:border-[#E07A5F] hover:bg-rose-50/30 text-gray-500 hover:text-[#E07A5F] rounded-2xl transition-all shadow-3xs cursor-pointer flex items-center justify-center shrink-0">
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <Paperclip className="h-5 w-5" />
-                  </label>
-
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      placeholder={
-                        selectedFile
-                          ? (translations.placeholderFile || "Ask a query about this file...")
-                          : (translations.placeholder || "Type math equations, balance formulas, or select files...")
-                      }
-                      className="w-full bg-white border border-gray-200 focus:border-[#E07A5F] focus:ring-1 focus:ring-[#E07A5F] rounded-2xl pl-4 pr-12 py-3.5 text-xs sm:text-sm focus:outline-none transition-all placeholder-gray-450 shadow-3xs"
-                    />
-                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
-                      <SpeechInputButton
-                        lang={chatbotLang as LanguageCode}
-                        onTranscript={(text) => setChatInput(prev => prev ? prev + ' ' + text : text)}
-                      />
+                <div className="space-y-2">
+                  {/* Formatting Toolbar */}
+                  <div className="flex flex-col gap-1 text-left select-none bg-white p-2 rounded-xl border border-gray-150 shadow-3xs">
+                    <div className="flex items-center justify-between text-[9px] font-mono text-gray-400 font-bold uppercase tracking-wider select-none pb-1 border-b border-gray-100 mb-1">
+                      <span className="flex items-center gap-1 text-gray-500">
+                        <span>📝</span> Formatting Helper:
+                      </span>
+                      <span className="text-[8px] text-gray-400 font-normal italic lowercase hidden sm:inline">
+                        scroll vertically to see all symbols
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-1 max-h-[44px] overflow-y-auto pr-1">
+                      {FORMULA_SYMBOLS.map((sym, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            if (sym.type === 'super') {
+                              applyFormatting('super');
+                            } else if (sym.type === 'sub') {
+                              applyFormatting('sub');
+                            } else {
+                              applyFormatting('symbol', sym.char);
+                            }
+                          }}
+                          title={sym.desc}
+                          className="py-1 bg-gray-50 hover:bg-[#FAF8F4] active:bg-amber-50 border border-gray-200 hover:border-[#F2CC8F]/60 text-[11px] text-gray-700 font-bold rounded transition-all cursor-pointer text-center"
+                        >
+                          {sym.label || sym.char}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={isSending || (!chatInput.trim() && !selectedFile)}
-                    className="p-3 bg-[#E07A5F] hover:bg-[#c25f44] text-white rounded-2xl transition-all shadow-xs disabled:opacity-40 disabled:hover:bg-[#E07A5F] cursor-pointer flex items-center justify-center shrink-0"
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }}
+                    className="flex items-center gap-2"
                   >
-                    <Send className="h-5 w-5" />
-                  </button>
-                </form>
+                    {/* Hidden File Picker and Custom Label */}
+                    <label className="p-3 bg-white border border-gray-200 hover:border-[#E07A5F] hover:bg-rose-50/30 text-gray-500 hover:text-[#E07A5F] rounded-2xl transition-all shadow-3xs cursor-pointer flex items-center justify-center shrink-0">
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <Paperclip className="h-5 w-5" />
+                    </label>
+
+                    <div className="relative flex-1">
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        placeholder={
+                          selectedFile
+                            ? (translations.placeholderFile || "Ask a query about this file...")
+                            : (translations.placeholder || "Type math equations, balance formulas, or select files...")
+                        }
+                        className="w-full bg-white border border-gray-200 focus:border-[#E07A5F] focus:ring-1 focus:ring-[#E07A5F] rounded-2xl pl-4 pr-12 py-3.5 text-xs sm:text-sm focus:outline-none transition-all placeholder-gray-450 shadow-3xs"
+                      />
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
+                        <SpeechInputButton
+                          lang={chatbotLang as LanguageCode}
+                          onTranscript={(text) => setChatInput(prev => prev ? prev + ' ' + text : text)}
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSending || (!chatInput.trim() && !selectedFile)}
+                      className="p-3 bg-[#E07A5F] hover:bg-[#c25f44] text-white rounded-2xl transition-all shadow-xs disabled:opacity-40 disabled:hover:bg-[#E07A5F] cursor-pointer flex items-center justify-center shrink-0"
+                    >
+                      <Send className="h-5 w-5" />
+                    </button>
+                  </form>
+                </div>
               )}
             </div>
 

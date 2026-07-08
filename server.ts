@@ -748,6 +748,288 @@ Format your entire response strictly using the exact markers below to allow the 
     }
   });
 
+  // API ROUTE: PERSONALIZED CAREER GUIDANCE & COLLEGE COURSE RECOMMENDATIONS
+  app.post("/api/gemini/career-courses", async (req, res) => {
+    try {
+      const {
+        favoriteSubject,
+        interests,
+        hobbies,
+        skills,
+        personality,
+        academicLevel,
+        currentEducation,
+        careerGoal,
+        lang
+      } = req.body;
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({
+          success: false,
+          message: "Gemini API key is not configured. Please ensure GEMINI_API_KEY is defined in your secrets."
+        });
+      }
+
+      const { GoogleGenAI, Type } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const studentLevel = academicLevel || currentEducation || "Grade 10";
+      const userLang = lang || "en";
+
+      const prompt = `You are an expert career counsellor and academic advisor for students.
+Your task is to recommend the top 3 career options and the best college courses based on the following student profile:
+- Favorite Subject: ${favoriteSubject || "Not specified"}
+- Interests: ${interests || "Not specified"}
+- Hobbies: ${hobbies || "Not specified"}
+- Skills: ${skills || "Not specified"}
+- Personality: ${personality || "Not specified"}
+- Current Academic/Education Level: ${studentLevel}
+- Specific Career Goal: ${careerGoal || "Not specified"}
+
+Instructions:
+1. Recommend exactly 3 tailored career options. For each, describe clearly why it fits their favorite subject, interests, hobbies, skills, and personality.
+2. Recommend the best college courses (e.g. B.Tech, B.Sc, BCA, B.Voc, Diploma, or specific specialization courses) that align with their specific career goal and are appropriate starting from their current education level (${studentLevel}).
+3. For each college course, provide its typical duration, top Indian universities/institutions or online learning channels, and a brief description of how it aligns with their target career.
+4. For both careers and college courses, explicitly recommend the entrance exams required. For each exam, detail:
+   a) Eligibility Criteria
+   b) Required Subjects (subjects the student must have studied in school/college)
+   c) Minimum Qualifications (e.g. Class 10th pass, Class 12th with 50%, etc.)
+   d) Age Limits (minimum and maximum age, or specify 'No age limit')
+   e) Preparation Tips (practical preparation strategies and study advice)
+5. For each recommended career, provide the average beginner, mid-level, and experienced salary in India (expressed clearly in Indian Rupees / localized terms).
+6. For each recommended career, provide clear, descriptive guidance on the career's:
+   a) Future Scope (evolving trends, technology impact)
+   b) Job Opportunities (sectors, organizations, or roles)
+   c) Demand (current/emerging market demand)
+   d) Career Growth (career progression and promotion path)
+7. For each recommended career, list essential skills:
+   a) Technical Skills (specific technical abilities, tools, platforms, programming, hardware or laboratory expertise)
+   b) Soft Skills (critical communication, leadership, critical thinking, or life skills)
+8. Keep the tone encouraging, clear, and highly supportive, catering to rural as well as urban student contexts.
+9. For each recommended career, provide a short summary of major scholarship options available in India for this career as 'scholarship' AND a list of 2-3 detailed real scholarships or financial aid schemes available in India for students pursuing that field or course as 'scholarshipsList'. For each scholarship, include the Scholarship Name, typical Amount/Benefits, exact Eligibility criteria, and a brief description.
+10. Suggest the most suitable academic stream (Science, Commerce, or Arts) based on their interests, skills, and career goals, with an explanation of why it is suitable. Detail future study options after 10th (such as specific streams or diploma courses) and high-potential career pathways after 12th based on this recommended stream.
+11. Create a personalized step-by-step learning roadmap/timeline from their current class (${studentLevel}) to their desired career goal (${careerGoal || "their chosen career"}). The roadmap must consist of 3 to 5 clear chronological phases or steps. For each phase, specify a phase name, milestone, skills to acquire, exams to prepare for, and a detailed description.
+12. Provide the output strictly in the language corresponding to language code: '${userLang}' (where 'en' is English, 'hi' is Hindi, 'gu' is Gujarati, 'mr' is Marathi, 'ta' is Tamil, 'te' is Telugu). You MUST translate ALL response fields, including titles, descriptions, course names, reasons, scholarship names, amounts, eligibility criteria, prep tips, roadmap phases, milestones, streams, advice, and reasons, into '${userLang}' completely. Do not mix English and '${userLang}' in the translated fields unless referring to a highly specific technical term or exam name, which may be kept in transliterated form. Every single JSON string must be translated to '${userLang}'.`;
+
+      let response: any = null;
+      let lastError: any = null;
+      let success = false;
+      const modelsToTry = [
+        "gemini-3.1-flash-lite",
+        "gemini-2.5-flash",
+        "gemini-3.5-flash",
+        "gemini-3.1-pro-preview"
+      ];
+
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`[CAREER RECOMMENDATIONS] Querying model ${modelName}...`);
+          response = await ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+            config: {
+              temperature: 0.7,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  careers: {
+                    type: Type.ARRAY,
+                    description: "List of exactly 3 suggested career options",
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        title: { type: Type.STRING, description: "The title of the suggested career" },
+                        suitability: { type: Type.STRING, description: "Suitability percentage or match rate (e.g. 95%)" },
+                        reason: { type: Type.STRING, description: "Detailed explanation of why this career is suitable based on the student's background" },
+                        exams: {
+                          type: Type.ARRAY,
+                          description: "Key entrance exams for this career, including eligibility and prep tips",
+                          items: {
+                            type: Type.OBJECT,
+                            properties: {
+                              name: { type: Type.STRING, description: "Name of the entrance exam" },
+                              eligibility: { type: Type.STRING, description: "General eligibility criteria for the exam" },
+                              requiredSubjects: { type: Type.STRING, description: "Required school or college subjects for this exam" },
+                              minQualifications: { type: Type.STRING, description: "Minimum qualifications needed to appear (e.g. 10+2 Science, 12th Board appearing, etc.)" },
+                              ageLimit: { type: Type.STRING, description: "Minimum and maximum age limits, or state 'No age limit'" },
+                              tips: { type: Type.STRING, description: "Preparation tips for the exam" }
+                            },
+                            required: ["name", "eligibility", "requiredSubjects", "minQualifications", "ageLimit", "tips"]
+                          }
+                        },
+                        salary: {
+                          type: Type.OBJECT,
+                          description: "Average beginner, mid-level, and experienced salary for the career in India",
+                          properties: {
+                            beginner: { type: Type.STRING, description: "Beginner salary range (e.g. ₹3,50,000 - ₹5,00,000 per annum)" },
+                            midLevel: { type: Type.STRING, description: "Mid-level salary range (e.g. ₹6,00,000 - ₹10,00,000 per annum)" },
+                            experienced: { type: Type.STRING, description: "Experienced salary range (e.g. ₹12,00,000 - ₹20,00,000+ per annum)" }
+                          },
+                          required: ["beginner", "midLevel", "experienced"]
+                        },
+                        growth: {
+                          type: Type.OBJECT,
+                          description: "Insights on future scope, job opportunities, demand, and career growth for the career",
+                          properties: {
+                            futureScope: { type: Type.STRING, description: "Future scope and evolving trends for this career in India" },
+                            jobOpportunities: { type: Type.STRING, description: "Sectors, organizations, or roles where one can find jobs in India" },
+                            demand: { type: Type.STRING, description: "Current and emerging market demand in India" },
+                            careerGrowth: { type: Type.STRING, description: "Career progression ladder and promotion trajectory" }
+                          },
+                          required: ["futureScope", "jobOpportunities", "demand", "careerGrowth"]
+                        },
+                        skills: {
+                          type: Type.OBJECT,
+                          description: "Essential technical and soft skills required for success in the career",
+                          properties: {
+                            technical: {
+                              type: Type.ARRAY,
+                              items: { type: Type.STRING },
+                              description: "List of 4-6 essential technical skills, tools, or domain-specific abilities"
+                            },
+                            soft: {
+                              type: Type.ARRAY,
+                              items: { type: Type.STRING },
+                              description: "List of 3-5 critical soft skills, communication, or emotional intelligence traits"
+                            }
+                          },
+                          required: ["technical", "soft"]
+                        },
+                        scholarship: {
+                          type: Type.STRING,
+                          description: "Short summary of major scholarship options available in India for this career"
+                        },
+                        scholarshipsList: {
+                          type: Type.ARRAY,
+                          description: "List of 2-3 detailed real scholarships or financial aid schemes available in India for this career",
+                          items: {
+                            type: Type.OBJECT,
+                            properties: {
+                              name: { type: Type.STRING, description: "Official name of the scholarship/financial aid scheme in India" },
+                              amount: { type: Type.STRING, description: "Typical amount of financial assistance or benefits provided" },
+                              eligibility: { type: Type.STRING, description: "Detailed eligibility criteria (academic, income, gender, etc.)" },
+                              description: { type: Type.STRING, description: "A brief description of what it covers and how/when to apply" }
+                            },
+                            required: ["name", "amount", "eligibility", "description"]
+                          }
+                        }
+                      },
+                      required: ["title", "suitability", "reason", "exams", "salary", "growth", "skills", "scholarship", "scholarshipsList"]
+                    }
+                  },
+                  courses: {
+                    type: Type.ARRAY,
+                    description: "List of recommended college courses aligning with the career goal and academic level",
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        name: { type: Type.STRING, description: "Name of the recommended college course" },
+                        duration: { type: Type.STRING, description: "Typical duration of the course (e.g. 3 Years, 4 Years)" },
+                        institutions: { type: Type.STRING, description: "Top institutions, universities, or online platforms offering this course in India" },
+                        alignment: { type: Type.STRING, description: "How this course aligns with their current education and career goal" },
+                        exams: {
+                          type: Type.ARRAY,
+                          description: "Entrance exams required for this course, including eligibility and prep tips",
+                          items: {
+                            type: Type.OBJECT,
+                            properties: {
+                              name: { type: Type.STRING, description: "Name of the entrance exam" },
+                              eligibility: { type: Type.STRING, description: "General eligibility criteria for the exam" },
+                              requiredSubjects: { type: Type.STRING, description: "Required school or college subjects for this exam" },
+                              minQualifications: { type: Type.STRING, description: "Minimum qualifications needed to appear (e.g. 10+2, 12th Science, etc.)" },
+                              ageLimit: { type: Type.STRING, description: "Minimum and maximum age limits, or state 'No age limit'" },
+                              tips: { type: Type.STRING, description: "Preparation tips for the exam" }
+                            },
+                            required: ["name", "eligibility", "requiredSubjects", "minQualifications", "ageLimit", "tips"]
+                          }
+                        }
+                      },
+                      required: ["name", "duration", "institutions", "alignment", "exams"]
+                    }
+                  },
+                  advice: {
+                    type: Type.STRING,
+                    description: "A short, inspiring piece of custom career advice or next step action."
+                  },
+                  recommendedStream: {
+                    type: Type.OBJECT,
+                    description: "Details about the most suitable academic stream (Science, Commerce, or Arts) recommended for this student",
+                    properties: {
+                      streamName: { type: Type.STRING, description: "Name of the recommended stream (e.g. Science - PCM, Science - PCB, Commerce, Arts/Humanities)" },
+                      reason: { type: Type.STRING, description: "Detailed explanation of why this stream is the most suitable based on their interests, skills, and goals" },
+                      subjectsToFocus: { type: Type.STRING, description: "List of key subjects the student should focus on (e.g. Physics, Chemistry, Biology)" },
+                      after10thOptions: { type: Type.STRING, description: "Recommended study options, streams, or diploma paths immediately after 10th standard" },
+                      after12thCareers: { type: Type.STRING, description: "Promising career and professional degree paths starting immediately after 12th standard" }
+                    },
+                    required: ["streamName", "reason", "subjectsToFocus", "after10thOptions", "after12thCareers"]
+                  },
+                  learningRoadmap: {
+                    type: Type.ARRAY,
+                    description: "Chronological step-by-step phases/milestones to reach the target career",
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        phaseName: { type: Type.STRING, description: "Title of the chronological phase (e.g. Phase 1: High School & Board Preparation)" },
+                        milestone: { type: Type.STRING, description: "Target milestone to achieve in this phase (e.g. Clear NEET exam with a top 10000 rank)" },
+                        skills: {
+                          type: Type.ARRAY,
+                          items: { type: Type.STRING },
+                          description: "3-4 specific technical or soft skills to focus on during this phase"
+                        },
+                        exams: {
+                          type: Type.ARRAY,
+                          items: { type: Type.STRING },
+                          description: "Competitive or school exams to focus on in this phase"
+                        },
+                        description: { type: Type.STRING, description: "Detailed instruction, learning path, or action steps for this phase" }
+                      },
+                      required: ["phaseName", "milestone", "skills", "exams", "description"]
+                    }
+                  }
+                },
+                required: ["careers", "courses", "advice", "recommendedStream", "learningRoadmap"]
+              }
+            }
+          });
+          success = true;
+          console.log(`[CAREER RECOMMENDATIONS] Successfully generated career courses using model: ${modelName}`);
+          break;
+        } catch (err: any) {
+          lastError = err;
+          console.log(`[CAREER RECOMMENDATIONS] Model ${modelName} failed:`, err.message || err);
+        }
+      }
+
+      if (!success && lastError) {
+        throw lastError;
+      }
+
+      const responseText = response?.text || "{}";
+      const resultData = JSON.parse(responseText);
+
+      return res.json({
+        success: true,
+        data: resultData
+      });
+
+    } catch (error: any) {
+      console.error("[GLOBAL SERVER ERROR IN /api/gemini/career-courses]:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "An error occurred while generating career and course recommendations."
+      });
+    }
+  });
+
   // API ROUTE: MULTI-MODAL GEMINI CHAT
   app.post("/api/gemini/chat", async (req, res) => {
     try {

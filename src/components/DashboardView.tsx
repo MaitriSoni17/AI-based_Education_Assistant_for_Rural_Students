@@ -364,6 +364,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
             {activeTab === 'career' && (
               <CareerGuidanceTab
                 lang={lang}
+                user={localUser}
               />
             )}
 

@@ -2267,7 +2267,7 @@ JSON Schema:
     <div className="space-y-6">
       
       {/* 1. QUIZ HIGHLIGHTS HEADER PANEL */}
-      <div className="bg-white rounded-3xl border border-gray-150 p-5 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 text-left">
+      <div className="bg-white rounded-3xl border border-gray-150 p-5 shadow-sm flex flex-col gap-4 text-left">
         <div className="space-y-1">
           <h2 className="font-display font-extrabold text-lg text-[#3D405B] flex items-center gap-2">
             <Brain className="h-5 w-5 text-amber-500 animate-pulse" />
@@ -2276,7 +2276,7 @@ JSON Schema:
           <p className="text-xs text-gray-400">{HEADER_SUBTITLE_LABELS[lang] || HEADER_SUBTITLE_LABELS['en']}</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
           {onNavigateToTab && (
             <button
               onClick={() => onNavigateToTab('certificates')}
@@ -2328,7 +2328,7 @@ JSON Schema:
       ) : activeQuiz === null ? (
         <div className="space-y-6">
           {/* 🎯 CONFIGURATION CONTROLS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+          <div className="grid grid-cols-1 gap-4 animate-fade-in">
             {/* 🎯 SELECT QUIZ LENGTH PANEL */}
             <div className="bg-gradient-to-r from-orange-50/75 via-white to-amber-50/75 rounded-2xl border border-[#F2CC8F]/30 p-4 shadow-3xs flex flex-col sm:flex-row justify-between items-center gap-4 text-left">
               <div className="space-y-1">
@@ -2391,15 +2391,61 @@ JSON Schema:
 
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="space-y-6">
             
-            {/* STATIC SUBJECT DECKS (Left) */}
-            <div className="lg:col-span-8 space-y-4">
+            {/* AI QUIZ GENERATOR BLOCK (Full Width, Above) */}
+            <div className="space-y-4 text-left">
+              <h3 className="font-display font-extrabold text-xs text-gray-500 uppercase tracking-widest">
+                {AI_QUIZ_SYNTHESIZER_LABELS[lang] || AI_QUIZ_SYNTHESIZER_LABELS['en']}
+              </h3>
+
+              <div className="bg-white rounded-3xl border border-[#F2CC8F]/30 p-5 sm:p-6 shadow-3xs flex flex-col gap-4 text-left">
+                <div className="space-y-1">
+                  <h4 className="font-sans font-bold text-xs sm:text-sm text-gray-900 flex items-center gap-1.5 uppercase">
+                    <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
+                    {CUSTOM_QUIZ_GENERATOR_LABELS[lang] || CUSTOM_QUIZ_GENERATOR_LABELS['en']}
+                  </h4>
+                  <p className="text-[10px] sm:text-xs text-gray-400">{CUSTOM_QUIZ_SUBTITLE_LABELS[lang] || CUSTOM_QUIZ_SUBTITLE_LABELS['en']}</p>
+                </div>
+
+                <form onSubmit={handleGenerateCustomQuiz} className="flex flex-col sm:flex-row gap-3 w-full">
+                  <input
+                    type="text"
+                    value={customTopic}
+                    disabled={isGeneratingCustom}
+                    onChange={(e) => setCustomTopic(e.target.value)}
+                    placeholder={ENTER_TOPIC_PLACEHOLDERS[lang] || ENTER_TOPIC_PLACEHOLDERS['en']}
+                    className="flex-1 p-2.5 sm:p-3 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#E07A5F]"
+                  />
+                  
+                  <button
+                    type="submit"
+                    disabled={!customTopic.trim() || isGeneratingCustom}
+                    className="py-2.5 px-5 bg-[#3D405B] hover:bg-[#2D2F44] text-white text-xs font-sans font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0 sm:w-auto"
+                  >
+                    {isGeneratingCustom ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span>{ASSEMBLING_QUESTIONS_LABELS[lang] || ASSEMBLING_QUESTIONS_LABELS['en']}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 text-[#F2CC8F]" />
+                        <span>{GENERATE_CUSTOM_GAME_LABELS[lang] || GENERATE_CUSTOM_GAME_LABELS['en']}</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* STATIC SUBJECT DECKS (Full Width, Below) */}
+            <div className="space-y-4">
               <h3 className="font-display font-extrabold text-xs text-gray-500 uppercase tracking-widest text-left">
                 {STANDARD_SUBJECTS_LABELS[lang] || STANDARD_SUBJECTS_LABELS['en']}
               </h3>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {GENERAL_QUIZZES.map((quiz) => (
                   <div 
                     key={quiz.id}
@@ -2428,52 +2474,6 @@ JSON Schema:
                     </button>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* AI QUIZ GENERATOR BLOCK (Right) */}
-            <div className="lg:col-span-4 space-y-4 text-left">
-              <h3 className="font-display font-extrabold text-xs text-gray-500 uppercase tracking-widest">
-                {AI_QUIZ_SYNTHESIZER_LABELS[lang] || AI_QUIZ_SYNTHESIZER_LABELS['en']}
-              </h3>
-
-              <div className="bg-white rounded-2xl border border-[#F2CC8F]/30 p-5 shadow-3xs space-y-4">
-                <div className="space-y-1">
-                  <h4 className="font-sans font-bold text-xs text-gray-900 flex items-center gap-1.5 uppercase">
-                    <Sparkles className="h-4 w-4 text-amber-500" />
-                    {CUSTOM_QUIZ_GENERATOR_LABELS[lang] || CUSTOM_QUIZ_GENERATOR_LABELS['en']}
-                  </h4>
-                  <p className="text-[10px] text-gray-400">{CUSTOM_QUIZ_SUBTITLE_LABELS[lang] || CUSTOM_QUIZ_SUBTITLE_LABELS['en']}</p>
-                </div>
-
-                <form onSubmit={handleGenerateCustomQuiz} className="space-y-3">
-                  <input
-                    type="text"
-                    value={customTopic}
-                    disabled={isGeneratingCustom}
-                    onChange={(e) => setCustomTopic(e.target.value)}
-                    placeholder={ENTER_TOPIC_PLACEHOLDERS[lang] || ENTER_TOPIC_PLACEHOLDERS['en']}
-                    className="w-full p-2.5 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#E07A5F]"
-                  />
-                  
-                  <button
-                    type="submit"
-                    disabled={!customTopic.trim() || isGeneratingCustom}
-                    className="w-full py-2 bg-[#3D405B] hover:bg-[#2D2F44] text-white text-xs font-sans font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    {isGeneratingCustom ? (
-                      <>
-                        <RefreshCw className="h-4.5 w-4.5 animate-spin" />
-                        <span>{ASSEMBLING_QUESTIONS_LABELS[lang] || ASSEMBLING_QUESTIONS_LABELS['en']}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4.5 w-4.5 text-[#F2CC8F]" />
-                        <span>{GENERATE_CUSTOM_GAME_LABELS[lang] || GENERATE_CUSTOM_GAME_LABELS['en']}</span>
-                      </>
-                    )}
-                  </button>
-                </form>
               </div>
             </div>
 

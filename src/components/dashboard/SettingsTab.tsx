@@ -15,7 +15,7 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
   // Input binders
   const [village, setVillage] = useState(user.village || '');
   const [school, setSchool] = useState(user.school || '');
-  const [standard, setStandard] = useState(user.standard || '6th Standard');
+  const [standard, setStandard] = useState(user.standard || '');
   const [board, setBoard] = useState(user.board || 'CBSE');
 
   // Local speech test state
@@ -163,10 +163,27 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
                 onChange={(e) => setStandard(e.target.value)}
                 className="w-full p-2.5 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans focus:outline-none focus:ring-1 focus:ring-[#81B29A] cursor-pointer"
               >
-                <option value="6th Standard">Class 6 (6th Standard)</option>
-                <option value="7th Standard">Class 7 (7th Standard)</option>
-                <option value="8th Standard">Class 8 (8th Standard)</option>
-                <option value="9th Standard">Class 9 (9th Standard)</option>
+                <option value="">{lang === 'hi' ? '-- अपनी कक्षा चुनें --' : '-- Select Your Class --'}</option>
+                <option value="Class 1">Class 1</option>
+                <option value="Class 2">Class 2</option>
+                <option value="Class 3">Class 3</option>
+                <option value="Class 4">Class 4</option>
+                <option value="Class 5">Class 5</option>
+                <option value="Class 6">Class 6</option>
+                <option value="Class 7">Class 7</option>
+                <option value="Class 8">Class 8</option>
+                <option value="Class 9">Class 9</option>
+                <option value="Class 10">Class 10</option>
+                <optgroup label={lang === 'hi' ? "कक्षा 11 (Arts, Commerce, Science)" : "Class 11 (Arts, Commerce, Science)"}>
+                  <option value="Class 11 (Science)">Class 11 (Science)</option>
+                  <option value="Class 11 (Commerce)">Class 11 (Commerce)</option>
+                  <option value="Class 11 (Arts)">Class 11 (Arts)</option>
+                </optgroup>
+                <optgroup label={lang === 'hi' ? "कक्षा 12 (Arts, Commerce, Science)" : "Class 12 (Arts, Commerce, Science)"}>
+                  <option value="Class 12 (Science)">Class 12 (Science)</option>
+                  <option value="Class 12 (Commerce)">Class 12 (Commerce)</option>
+                  <option value="Class 12 (Arts)">Class 12 (Arts)</option>
+                </optgroup>
               </select>
             </div>
 
