@@ -1341,12 +1341,12 @@ const SWEEP_BONUS_LABELS: Record<string, string> = {
 };
 
 const LENGTH_SELECTOR_LABELS: Record<string, string> = {
-  en: "🎯 Choose Quiz Length",
-  hi: "🎯 प्रश्नोत्तरी की लंबाई चुनें",
-  gu: "🎯 પ્રશ્નોત્તરીની લંબાઈ પસંદ કરો",
-  mr: "🎯 प्रश्नमंजुषा लांबी निवडा",
-  ta: "🎯 வினாடி வினா நீளத்தைத் தேர்ந்தெடுக்கவும்",
-  te: "🎯 క్విజ్ నిడివిని ఎంచుకోండి"
+  en: "Choose Quiz Length",
+  hi: "प्रश्नोत्तरी की लंबाई चुनें",
+  gu: "પ્રશ્નોત્તરીની લંબાઈ પસંદ કરો",
+  mr: "प्रश्नमंजुषा लांबी निवडा",
+  ta: "வினாடி வினா நீளத்தைத் தேர்ந்தெடுக்கவும்",
+  te: "క్విజ్ నిడివిని ఎంచుకోండి"
 };
 
 const LENGTH_OPTIONS_LABELS: Record<string, Record<number, string>> = {
@@ -1359,12 +1359,12 @@ const LENGTH_OPTIONS_LABELS: Record<string, Record<number, string>> = {
 };
 
 const DIFFICULTY_SELECTOR_LABELS: Record<string, string> = {
-  en: "⚡ Choose Quiz Difficulty",
-  hi: "⚡ प्रश्नोत्तरी कठिनाई चुनें",
-  gu: "⚡ પ્રશ્નોત્તરી મુશ્કેલી પસંદ કરો",
-  mr: "⚡ प्रश्नमंजुषा काठिण्य पातळी निवडा",
-  ta: "⚡ வினாடி வினா கடினத்தன்மையைத் தேர்ந்தெடுக்கவும்",
-  te: "⚡ క్విజ్ కఠినత్వాన్ని ఎంచుకోండి"
+  en: "Choose Quiz Difficulty",
+  hi: "प्रश्नोत्तरी कठिनाई चुनें",
+  gu: "પ્રશ્નોત્તરી મુશ્કેલી પસંદ કરો",
+  mr: "प्रश्नमंजुषा काठिण्य पातळी निवडा",
+  ta: "வினாடி வினா கடினத்தன்மையைத் தேர்ந்தெடுக்கவும்",
+  te: "క్విజ్ కఠినత్వాన్ని ఎంచుకోండి"
 };
 
 const DIFFICULTY_OPTIONS_LABELS: Record<string, Record<string, string>> = {
@@ -2301,7 +2301,7 @@ JSON Schema:
           )}
 
           <div className="bg-gradient-to-tr from-[#3D405B] to-[#4D506F] text-white rounded-2xl p-3 px-4 flex items-center gap-3 shrink-0 shadow-2xs w-full sm:w-auto justify-center">
-            <Award className="h-6 w-6 text-amber-300 animate-bounce" />
+            <Award className="h-6 w-6 text-amber-300" />
             <div className="font-mono text-left">
               <div className="text-[9px] text-[#F2CC8F] font-black uppercase tracking-wider">{CUMULATIVE_SCORE_TITLE_LABELS[lang] || CUMULATIVE_SCORE_TITLE_LABELS['en']}</div>
               <div className="text-base font-bold">{totalQuizPoints} {CUMULATIVE_SCORE_DESC_LABELS[lang] || CUMULATIVE_SCORE_DESC_LABELS['en']}</div>
@@ -2882,7 +2882,7 @@ JSON Schema:
             {/* Header / Dismiss */}
             <div className="flex justify-between items-center border-b border-[#F2CC8F]/30 pb-3">
               <div className="flex items-center gap-2">
-                <Award className="h-6 w-6 text-amber-500 animate-bounce" />
+                <Award className="h-6 w-6 text-amber-500" />
                 <h3 className="font-display font-extrabold text-base sm:text-lg text-[#3D405B]">
                   {lang === 'hi' ? 'सफलता का प्रमाण पत्र 📜' : 'Achievement Certificate 📜'}
                 </h3>

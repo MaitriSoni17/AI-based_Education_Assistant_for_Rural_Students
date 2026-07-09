@@ -37,6 +37,11 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
   const [activeTab, setActiveTab] = useState<'profile' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations'>('profile');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Scroll to top of page whenever activeTab changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [activeTab]);
+
   // Sync Manager state tracking
   const [isOnline, setIsOnline] = useState(offlineSyncManager.isOnline());
   const [pendingChatsCount, setPendingChatsCount] = useState(() => offlineSyncManager.getPendingChats(user.mobile).length);
@@ -192,7 +197,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
       <header className="bg-white rounded-3xl p-4 sm:p-5 border border-gray-150 flex flex-col md:flex-row justify-between items-center gap-4 text-left shadow-2xs">
         <div className="space-y-1 w-full md:w-auto">
           <h1 className="font-display font-extrabold text-lg sm:text-xl text-[#3D405B] flex items-center gap-1.5">
-            <span className="text-2xl sm:text-3xl animate-bounce duration-1000">{localUser.avatar || getDeterministicAvatar(localUser.name, localUser.mobile)}</span>
+            <span className="text-2xl sm:text-3xl hover:scale-110 transition-transform duration-300">{localUser.avatar || getDeterministicAvatar(localUser.name, localUser.mobile)}</span>
             <span>Namaste, {localUser.name}!</span>
           </h1>
           <p className="text-xs text-gray-500 font-sans">
@@ -205,7 +210,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
         {/* Global summary stats indicators */}
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {/* Real-time XP Gained Indicator */}
-          <div className="bg-emerald-50/50 border border-emerald-250 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs">
+          <div className="bg-emerald-50/50 border border-emerald-250 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs hover-float duration-300 transition-all cursor-default">
             <Sparkles className="h-4.5 w-4.5 text-emerald-500 animate-pulse" />
             <div className="text-left font-mono">
               <span className="text-[9px] text-emerald-800 font-bold uppercase tracking-wider block">XP Gained</span>
@@ -214,8 +219,8 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
           </div>
 
           {/* Real-time Active Streak Indicator */}
-          <div className="bg-orange-50/50 border border-orange-250 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs">
-            <Flame className="h-4.5 w-4.5 text-orange-500 animate-bounce" />
+          <div className="bg-orange-50/50 border border-orange-250 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs hover-float duration-300 transition-all cursor-default">
+            <Flame className="h-4.5 w-4.5 text-orange-500 animate-pulse" />
             <div className="text-left font-mono">
               <span className="text-[9px] text-orange-800 font-bold uppercase tracking-wider block">Study Streak</span>
               <span className="text-xs font-black text-gray-900">{localUser.streakDays ?? 1} Days</span>
@@ -223,7 +228,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
           </div>
 
           {/* Real-time Time Studied Indicator */}
-          <div className="bg-indigo-50/50 border border-indigo-200 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs">
+          <div className="bg-indigo-50/50 border border-indigo-200 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs hover-float duration-300 transition-all cursor-default">
             <Clock className="h-4.5 w-4.5 text-indigo-500" />
             <div className="text-left font-mono">
               <span className="text-[9px] text-indigo-800 font-bold uppercase tracking-wider block">Time Studied</span>
@@ -231,7 +236,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
             </div>
           </div>
 
-          <div className="bg-amber-50/50 border border-[#F2CC8F]/40 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs">
+          <div className="bg-amber-50/50 border border-[#F2CC8F]/40 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs hover-float duration-300 transition-all cursor-default">
             <Award className="h-4.5 w-4.5 text-amber-500" />
             <div className="text-left font-mono">
               <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider block">Completed Lessons</span>
@@ -261,13 +266,13 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full p-3 rounded-xl font-sans text-xs sm:text-sm font-bold flex items-center gap-3 transition-all cursor-pointer ${
+                  className={`w-full p-3 rounded-xl font-sans text-xs sm:text-sm font-bold flex items-center gap-3 transition-all duration-200 hover:translate-x-1 cursor-pointer ${
                     isSelected
                       ? 'border-[#E07A5F] bg-[#FAF8F4] text-[#E07A5F] ring-1 ring-[#FAF8F4]'
                       : 'text-gray-650 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <div className={`p-1.5 rounded-lg shrink-0 ${item.color}`}>
+                  <div className={`p-1.5 rounded-lg shrink-0 ${item.color} transition-transform duration-300 group-hover:scale-110`}>
                     <IconComp className="h-4.5 w-4.5" />
                   </div>
                   <span>{item.label}</span>
@@ -287,7 +292,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`p-2.5 px-4 rounded-full font-sans text-xs font-extrabold whitespace-nowrap flex items-center gap-2 transition-all cursor-pointer border ${
+                  className={`p-2.5 px-4 rounded-full font-sans text-xs font-extrabold whitespace-nowrap flex items-center gap-2 transition-all duration-200 cursor-pointer border hover-scale-sm ${
                     isSelected
                       ? 'bg-[#3D405B] text-white border-transparent shadow'
                       : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-55'

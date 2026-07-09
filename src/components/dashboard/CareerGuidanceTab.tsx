@@ -1878,7 +1878,7 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                   onClick={handleGenerateRecommendations}
                   className="bg-gradient-to-tr from-[#3D405B] to-[#81B29A] hover:opacity-90 active:scale-95 text-white p-3 py-2.5 px-6 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer shadow-3xs transition-all"
                 >
-                  <Sparkles className="h-4 w-4 text-[#F2CC8F] animate-bounce" />
+                  <Sparkles className="h-4 w-4 text-[#F2CC8F] animate-pulse" />
                   <span>{t('generateBtn')}</span>
                 </button>
               </div>

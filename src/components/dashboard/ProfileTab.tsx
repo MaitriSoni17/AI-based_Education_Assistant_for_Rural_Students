@@ -371,7 +371,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
               <div className="pt-2.5 animate-fade-in flex flex-col items-center sm:items-start text-center sm:text-left">
                 <div className="flex justify-between items-center w-full max-w-[256px] mb-1">
                   <span className="text-[11px] font-extrabold text-[#E07A5F] flex items-center gap-1.5">
-                    <Trophy className="h-3.5 w-3.5 text-amber-500 animate-bounce" />
+                    <Trophy className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
                     <span>Level {Math.floor(userPoints / 100) + 1} Rural Scholar</span>
                   </span>
                   <span className="text-[10px] font-mono text-gray-400 font-extrabold">
@@ -648,7 +648,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
 
         {/* Streak milestone alert banner if celebration is active */}
         {streakCelebration && (
-          <div className="bg-[#81B29A] text-white p-3 rounded-2xl border border-emerald-600 animate-bounce flex items-center justify-center gap-2.5 shadow-sm text-xs font-sans font-bold">
+          <div className="bg-[#81B29A] text-white p-3 rounded-2xl border border-emerald-600 animate-pulse flex items-center justify-center gap-2.5 shadow-sm text-xs font-sans font-bold">
             <Trophy className="h-5 w-5 text-yellow-300 animate-spin" />
             <span>
               {lang === 'hi' 
@@ -664,7 +664,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-gray-100 pb-3">
           <div>
             <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider flex items-center gap-1.5">
-              <Trophy className="h-4.5 w-4.5 text-amber-500 animate-bounce" />
+              <Trophy className="h-4.5 w-4.5 text-amber-500" />
               {lang === 'hi' ? 'मेरा पदक और बैज शोकेस' : 'Milestones & Badges Showcase'}
             </h3>
             <p className="text-[11px] text-gray-400 font-sans">

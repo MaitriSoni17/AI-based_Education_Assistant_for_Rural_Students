@@ -67,7 +67,7 @@ export default function SlideVisualBoard({
       return <Sun className="h-10 w-10 text-amber-400 animate-pulse" />;
     }
     if (titleText.includes('plant') || titleText.includes('tree') || titleText.includes('bio') || titleText.includes('cell') || titleText.includes('leaf') || titleText.includes('chlorophyll')) {
-      return <Leaf className="h-10 w-10 text-emerald-400 animate-bounce" />;
+      return <Leaf className="h-10 w-10 text-emerald-400 animate-pulse" />;
     }
     if (titleText.includes('chemical') || titleText.includes('atom') || titleText.includes('physic') || titleText.includes('molecule') || titleText.includes('energy') || titleText.includes('wind')) {
       return <Atom className="h-10 w-10 text-[#81B29A] animate-spin" style={{ animationDuration: '8s' }} />;
@@ -81,7 +81,7 @@ export default function SlideVisualBoard({
     if (titleText.includes('earth') || titleText.includes('world') || titleText.includes('map') || titleText.includes('geo') || titleText.includes('country')) {
       return <Globe className="h-10 w-10 text-sky-400 animate-pulse" />;
     }
-    return <Microscope className="h-10 w-10 text-[#F2CC8F] animate-bounce" />;
+    return <Microscope className="h-10 w-10 text-[#F2CC8F] animate-pulse" />;
   };
 
   return (

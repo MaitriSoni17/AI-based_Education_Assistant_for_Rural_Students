@@ -3690,7 +3690,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                             <span className="text-[9px] font-mono font-bold text-gray-700">{milligrams} mg Salt</span>
                           </div>
 
-                          <ArrowRight className="h-5 w-5 text-amber-500 animate-bounce" />
+                          <ArrowRight className="h-5 w-5 text-amber-500 animate-pulse" />
 
                           <div className="flex flex-col items-center bg-[#3D405B] text-white p-2 px-3 rounded-xl">
                             <span className="text-xl">🏫 💡</span>
@@ -3980,7 +3980,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                 <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl flex flex-col items-center justify-center space-y-6 shadow-inner py-8">
                   
                   {scoreNotification && (
-                    <div className="w-full max-w-md bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-bold text-center animate-bounce">
+                    <div className="w-full max-w-md bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-bold text-center animate-pulse">
                       {scoreNotification}
                     </div>
                   )}

@@ -218,6 +218,11 @@ export default function App() {
     }
   }, [user?.defaultLanguage, currentLanguage]);
 
+  // Scroll to top of page whenever currentView changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [currentView]);
+
   const [isOfflineSimulated, setIsOfflineSimulated] = useState(false);
 
   const handleUpdateUser = async (fields: Partial<User>) => {
@@ -362,7 +367,7 @@ export default function App() {
       </div>
 
       {showStreakEarnedToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#3D405B] text-white p-4 rounded-2xl border-2 border-amber-300 shadow-2xl flex items-center gap-3 animate-bounce max-w-sm text-left">
+        <div className="fixed bottom-6 right-6 z-50 bg-[#3D405B] text-white p-4 rounded-2xl border-2 border-amber-300 shadow-2xl flex items-center gap-3 max-w-sm text-left hover:scale-101 transition-transform duration-300">
           <div className="bg-amber-100 p-2 rounded-xl text-xl">🔥</div>
           <div className="flex-1">
             <h4 className="font-display font-black text-xs uppercase tracking-wider text-amber-300">

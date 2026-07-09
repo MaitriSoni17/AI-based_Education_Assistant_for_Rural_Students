@@ -114,3 +114,38 @@
     }
   }
 }
+
+/* Global Smooth Behavior and custom scrollbars */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Base interactive elements defaults */
+button, a {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Minimalist smooth float hover effect */
+.hover-float {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-float:hover {
+  transform: translateY(-2px) scale(1.01);
+}
+
+/* Minimalist smooth scale hover effect */
+.hover-scale-sm {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-scale-sm:hover {
+  transform: scale(1.015);
+}
+
+/* Soft hover shadow glow */
+.hover-shadow-glow {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-shadow-glow:hover {
+  box-shadow: 0 8px 24px -4px rgba(61, 64, 91, 0.08), 0 4px 12px -2px rgba(61, 64, 91, 0.04);
+}
+
