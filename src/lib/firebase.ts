@@ -87,6 +87,8 @@ export interface FirestoreUser {
   avatar?: string;
   streakDays?: number;
   lastCheckedInDate?: string;
+  todayMins?: number;
+  lastActiveDate?: string;
   totalPoints?: number;
   certificateName?: string;
   earnedCertificates?: string; // Stringified array

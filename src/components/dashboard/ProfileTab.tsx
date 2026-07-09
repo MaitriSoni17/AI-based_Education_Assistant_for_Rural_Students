@@ -9,6 +9,26 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { offlineSyncManager } from '../../utils/offlineSync';
+import { fireContinuousFireworks, fireConfetti } from '../../utils/confetti';
+
+export const formatStudyTime = (minutes: number, isHindi: boolean) => {
+  if (minutes < 60) {
+    return isHindi ? `${minutes} मिनट` : `${minutes} Mins`;
+  }
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (isHindi) {
+    const hrLabel = hrs === 1 ? 'घंटा' : 'घंटे';
+    return mins > 0 
+      ? `${hrs} ${hrLabel} ${mins} मिनट` 
+      : `${hrs} ${hrLabel}`;
+  } else {
+    const hrLabel = hrs === 1 ? 'hr' : 'hrs';
+    return mins > 0 
+      ? `${hrs} ${hrLabel} ${mins} mins` 
+      : `${hrs} ${hrLabel}`;
+  }
+};
 
 interface ProfileTabProps {
   user: User;
@@ -34,9 +54,16 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
   const [streakDays, setStreakDays] = useState(() => user.streakDays ?? 1);
   const [hasCheckedInToday, setHasCheckedInToday] = useState(() => user.lastCheckedInDate === new Date().toLocaleDateString());
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
-  const [badgeFilter, setBadgeFilter] = useState<'all' | 'unlocked' | 'locked' | 'science' | 'math'>('all');
+  const [badgeFilter, setBadgeFilter] = useState<'all' | 'unlocked' | 'locked' | 'general' | 'streak' | 'offline'>('all');
   const [streakCelebration, setStreakCelebration] = useState(false);
   const [chartReady, setChartReady] = useState(false);
+
+  // Celebratory effect when streak celebration is active
+  useEffect(() => {
+    if (streakCelebration) {
+      fireContinuousFireworks(4500);
+    }
+  }, [streakCelebration]);
 
   // Set chartReady to true after mount to avoid Recharts 0/negative dimension warnings
   useEffect(() => {
@@ -185,37 +212,37 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
       category: 'general'
     },
     {
-      id: 'science_explorer',
-      name: lang === 'hi' ? 'विज्ञान अन्वेषक' : 'Science Explorer',
-      title: lang === 'hi' ? 'प्रकृति प्रेमी' : 'Nature & Stars Scholar',
-      emoji: '🔬',
+      id: 'knowledge_seeker',
+      name: lang === 'hi' ? 'ज्ञान खोजी' : 'Knowledge Seeker',
+      title: lang === 'hi' ? 'सक्रिय अध्येता' : 'Active XP Accumulator',
+      emoji: '📚',
       color: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-      desc: lang === 'hi' ? 'विज्ञान के वर्षा और पौधे के दोनों अध्यायों को पूरा करने और पदक अर्जित करने पर।' : 'Earned by fully mastering both natural Science chapters (Rain cycle and Plant Chlorophyll) with 100% scores.',
-      required: lang === 'hi' ? 'वर्षा और पौधे दोनों स्वर्ण पदक प्राप्त करें' : 'Earn Rain & Plants gold medals (Science)',
-      unlocked: claimedMedals.includes('rain') && claimedMedals.includes('photo'),
-      category: 'science'
-    },
-    {
-      id: 'math_wizard',
-      name: lang === 'hi' ? 'गणित के जादूगर' : 'Math Prodigy',
-      title: lang === 'hi' ? 'चतुर लोमड़ी' : 'Super Calculation Speedster',
-      emoji: '📐',
-      color: 'bg-amber-50 border-amber-200 text-amber-700',
-      desc: lang === 'hi' ? 'चंदा के साथ गणित की चालों और तेज़ गणनाओं की परीक्षा पास करने पर।' : 'Awarded for completing the Mathematics speed multiplication quiz with a flawless score.',
-      required: lang === 'hi' ? 'गणित का स्वर्ण पदक प्राप्त करें' : 'Earn Mathematics gold medal',
-      unlocked: claimedMedals.includes('math'),
-      category: 'math'
+      desc: lang === 'hi' ? 'क्विज़, चेक-इन या समीकरणों को पूरा करके 50 से अधिक शैक्षणिक अंक (XP) अर्जित करने पर।' : 'Earned by accumulating 50 or more academic XP points through quizzes, study time, or equations.',
+      required: lang === 'hi' ? '50+ शैक्षणिक अंक (XP) अर्जित करें' : 'Earn 50+ total Academic XP points',
+      unlocked: userPoints >= 50,
+      category: 'general'
     },
     {
       id: 'streak_flame',
-      name: lang === 'hi' ? 'अखंड ज्योति' : 'Consistent Streak',
+      name: lang === 'hi' ? 'अखंड ज्योति' : 'Consistent Scholar',
       title: lang === 'hi' ? 'नियमित अध्येता' : 'Unstoppable Mindset',
       emoji: '🔥',
       color: 'bg-orange-50 border-orange-200 text-orange-700',
-      desc: lang === 'hi' ? 'लगातार 5 दिनों तक पढ़ने का रिकॉर्ड बनाने पर।' : 'Study for 5 consecutive days to spark continuous learning consistency.',
-      required: lang === 'hi' ? '5 दिनों की लगातार पढ़ाई' : 'Reach a 5-Day study streak',
-      unlocked: streakDays >= 5,
+      desc: lang === 'hi' ? 'लगातार 2 या अधिक दिनों तक पढ़ने का रिकॉर्ड बनाने पर।' : 'Study consistently to active a study streak of 2 or more consecutive days.',
+      required: lang === 'hi' ? '2+ दिनों की लगातार पढ़ाई' : 'Reach a 2-Day study streak or more',
+      unlocked: streakDays >= 2,
       category: 'streak'
+    },
+    {
+      id: 'medalist_club',
+      name: lang === 'hi' ? 'मेडल क्लब' : 'Medalist Club',
+      title: lang === 'hi' ? 'स्वर्ण पदक विजेता' : 'Gold Medal Collector',
+      emoji: '🏅',
+      color: 'bg-amber-50 border-amber-200 text-amber-700',
+      desc: lang === 'hi' ? 'ट्यूटरिंग क्विज़ में शानदार प्रदर्शन करके कम से कम 1 स्वर्ण पदक अर्जित करने पर।' : 'Unlock by mastering any tutorial quizzes and earning at least 1 gold medal.',
+      required: lang === 'hi' ? 'कम से कम 1 स्वर्ण पदक प्राप्त करें' : 'Earn at least 1 academic medal',
+      unlocked: claimedMedals && claimedMedals.length > 0,
+      category: 'general'
     },
     {
       id: 'offline_pioneer',
@@ -230,12 +257,12 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
     },
     {
       id: 'storyteller',
-      name: lang === 'hi' ? 'ग्रामीण वक्ता' : 'Village Storyteller',
-      title: lang === 'hi' ? 'दादी माँ के लोककथा' : 'Indian Folklore Master',
-      emoji: '🗣️',
+      name: lang === 'hi' ? 'संवाद गुरु' : 'AI Dialog Master',
+      title: lang === 'hi' ? 'जिज्ञासु छात्र' : 'Inquisitive Mind',
+      emoji: '💬',
       color: 'bg-teal-50 border-teal-200 text-teal-700',
-      desc: lang === 'hi' ? 'शुभम भैया और दादी माँ एआई के साथ बातचीत का सिलसिला शुरू करने पर।' : 'Earned by engaging in a science-storytelling dialog with our village mentors.',
-      required: lang === 'hi' ? 'दादी माँ एआई से पहली बातचीत' : 'First chat with grandmother AI tutor',
+      desc: lang === 'hi' ? 'दादी माँ, स्वामी या शुभम भैया एआई ट्यूटर के साथ बातचीत करके विज्ञान या गणित के प्रश्न पूछने पर।' : 'Earned by initiating dialogue with our interactive AI village mentors to clarify academic questions.',
+      required: lang === 'hi' ? 'एआई ट्यूटर से पहली बातचीत' : 'First chat with an AI teacher',
       unlocked: offlineSyncManager.getChatHistory('swami', user.mobile).some(msg => msg.sender === 'user') ||
                 offlineSyncManager.getChatHistory('dadi', user.mobile).some(msg => msg.sender === 'user') ||
                 offlineSyncManager.getChatHistory('shubham', user.mobile).some(msg => msg.sender === 'user'),
@@ -247,8 +274,9 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
     if (badgeFilter === 'all') return true;
     if (badgeFilter === 'unlocked') return badge.unlocked;
     if (badgeFilter === 'locked') return !badge.unlocked;
-    if (badgeFilter === 'science') return badge.category === 'science';
-    if (badgeFilter === 'math') return badge.category === 'math';
+    if (badgeFilter === 'general') return badge.category === 'general';
+    if (badgeFilter === 'streak') return badge.category === 'streak';
+    if (badgeFilter === 'offline') return badge.category === 'offline';
     return true;
   });
 
@@ -414,7 +442,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
       </div>
 
       {/* 2. CORE SCHOLASTIC METRICS GRID */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         
         {/* Metric 1: Medals */}
         <div 
@@ -464,36 +492,17 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
           </div>
           <div>
             <span className="text-[10px] font-mono text-gray-400 block font-bold uppercase tracking-wider">Time Studied</span>
-            <span className="text-xl font-black text-[#3D405B]">{totalWeeklyMins} Minutes</span>
-          </div>
-        </div>
-
-        {/* Metric 4: Offline Files Synced */}
-        <div 
-          onClick={() => onNavigateToTab('settings')}
-          className="bg-white p-4 rounded-2xl border border-gray-150 shadow-3xs text-left cursor-pointer transition-transform duration-300 hover:scale-102 flex flex-col justify-between h-28"
-        >
-          <div className="flex justify-between items-start">
-            <div className="p-2 bg-indigo-50 rounded-xl border border-indigo-150 text-[#3D405B]">
-              <Database className="h-5 w-5" />
-            </div>
-            <span className="text-[10px] font-mono font-bold text-indigo-600 block bg-indigo-50 px-1.5 py-0.5 rounded uppercase">
-              2G Cache
-            </span>
-          </div>
-          <div>
-            <span className="text-[10px] font-mono text-gray-400 block font-bold uppercase tracking-wider">Synced Files</span>
-            <span className="text-xl font-black text-[#3D405B]">{offlineCount} packs saved</span>
+            <span className="text-xl font-black text-[#3D405B]">{formatStudyTime(totalWeeklyMins, lang === 'hi')}</span>
           </div>
         </div>
 
       </div>
 
       {/* 3. RECHARTS STUDY ANALYTICS */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="w-full">
         
         {/* Weekly Study Area Chart */}
-        <div className="lg:col-span-8 bg-white p-5 rounded-2xl border border-gray-150 shadow-3xs text-left">
+        <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-3xs text-left">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider">
@@ -503,7 +512,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
             </div>
             <div className="text-right">
               <span className="text-xs font-mono font-bold text-[#E07A5F] bg-[#FAF8F4] px-2 py-1 rounded-sm border border-[#F2CC8F]/40 uppercase">
-                Avg: {Math.round(totalWeeklyMins / 7)} mins/day
+                {lang === 'hi' ? 'औसत' : 'Avg'}: {formatStudyTime(Math.round(totalWeeklyMins / 7), lang === 'hi')}/{lang === 'hi' ? 'दिन' : 'day'}
               </span>
             </div>
           </div>
@@ -511,7 +520,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
           <div className="h-64 w-full">
             {chartReady ? (
               <ResponsiveContainer width="100%" height={256}>
-                <AreaChart data={weeklyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <AreaChart data={weeklyData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorMins" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#E07A5F" stopOpacity={0.4}/>
@@ -520,10 +529,24 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
                   <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#64748b' }} stroke="#cbd5e1" />
-                  <YAxis tick={{ fontSize: 10, fill: '#64748b' }} stroke="#cbd5e1" />
+                  <YAxis 
+                    tickFormatter={(value) => {
+                      if (value === 0) return '0';
+                      if (value < 60) return `${value}m`;
+                      const hrs = Math.floor(value / 60);
+                      const mins = value % 60;
+                      return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+                    }}
+                    tick={{ fontSize: 10, fill: '#64748b' }} 
+                    stroke="#cbd5e1" 
+                  />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px', padding: '10px' }}
                     labelStyle={{ fontWeight: 'bold', color: '#3d405b' }}
+                    formatter={(value: any) => [
+                      formatStudyTime(Number(value), lang === 'hi'),
+                      lang === 'hi' ? 'अध्ययन का समय' : 'Study Time'
+                    ]}
                   />
                   <Area type="monotone" dataKey="mins" name="Study Time (Mins)" stroke="#E07A5F" strokeWidth={2.5} fillOpacity={1} fill="url(#colorMins)" />
                 </AreaChart>
@@ -534,47 +557,6 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
               </div>
             )}
           </div>
-        </div>
-
-        {/* Subjects Progression */}
-        <div className="lg:col-span-4 bg-white p-5 rounded-2xl border border-gray-150 shadow-3xs text-left flex flex-col justify-between">
-          <div className="space-y-1">
-            <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider">
-              Syllabus Mapping Progress
-            </h3>
-            <p className="text-[11px] text-gray-400">Grade curriculum completion rates</p>
-          </div>
-
-          <div className="space-y-3.5 my-4">
-            {subjects.map((sub, sIdx) => {
-              const pct = Math.round((sub.completed / sub.total) * 100);
-              return (
-                <div key={sIdx} className="space-y-1">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-sans font-bold text-gray-700">{sub.name}</span>
-                    <span className="font-mono font-bold text-gray-500">{pct}% ({sub.completed}/{sub.total})</span>
-                  </div>
-                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%`, backgroundColor: sub.color }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-                    <span>Quiz score avg:</span>
-                    <span className="font-bold text-[#3D405B]">{sub.accuracy}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <button
-            onClick={() => onNavigateToTab('tutor')}
-            className="w-full py-2 bg-[#FAF8F4] border border-[#F2CC8F]/50 hover:bg-[#F2CC8F]/10 active:scale-98 text-xs font-sans font-bold text-[#3D405B] rounded-xl cursor-pointer text-center block transition-all"
-          >
-            Study Next Chapters ➡️
-          </button>
         </div>
 
       </div>
@@ -588,23 +570,27 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
               {lang === 'hi' ? 'दैनिक अध्ययन निरंतरता पथ 🛤️' : 'Daily Consistency Streak Path 🛤️'}
             </h3>
             <p className="text-xs text-gray-500 font-sans">
-              {lang === 'hi' ? 'हर दिन चेक-इन करें और मुफ़्त में +15 XP अंक प्राप्त करें!' : 'Check in each day of continuous study and unlock +15 XP bonus points!'}
+              {lang === 'hi' 
+                ? 'प्रतिदिन 5 मिनट अध्ययन करने पर आज की स्ट्रीक स्वतः स्वीकृत हो जाती है!' 
+                : 'Study for 5 minutes daily to automatically accept today\'s streak and claim +15 XP bonus!'}
             </p>
           </div>
           <div className="shrink-0">
             {hasCheckedInToday ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-800 text-xs font-black rounded-xl border border-emerald-200">
-                <CheckCircle className="h-4.5 w-4.5 text-emerald-600" />
-                <span>{lang === 'hi' ? 'आज का चेक-इन पूर्ण' : 'Checked In Today'}</span>
+                <CheckCircle className="h-4.5 w-4.5 text-emerald-600 animate-pulse" />
+                <span>{lang === 'hi' ? 'आज की स्ट्रीक स्वतः स्वीकृत (+15 XP)' : 'Today\'s Streak Accepted (+15 XP)'}</span>
               </span>
             ) : (
-              <button
-                onClick={handleDailyCheckIn}
-                className="px-4 py-2 bg-gradient-to-r from-[#E07A5F] to-[#F2CC8F] hover:from-[#F2CC8F] hover:to-[#E07A5F] text-white text-xs font-black rounded-xl border border-orange-200/50 cursor-pointer shadow-3xs active:scale-95 transition-all duration-300 flex items-center gap-1.5 animate-pulse"
-              >
-                <Zap className="h-4 w-4 text-yellow-300 animate-bounce" />
-                <span>{lang === 'hi' ? 'चेक-इन करें (+15 XP)' : 'Claim Daily Reward (+15 XP)'}</span>
-              </button>
+              <div className="flex flex-col items-end gap-1">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-800 text-xs font-black rounded-xl border border-amber-200">
+                  <Clock className="h-4 w-4 text-amber-600 animate-spin" style={{ animationDuration: '3s' }} />
+                  <span>{lang === 'hi' ? `अध्ययन करें: ${user.todayMins ?? 0} / 5 मिनट` : `Study: ${user.todayMins ?? 0} / 5 Mins`}</span>
+                </span>
+                <span className="text-[9px] text-gray-400 font-mono font-bold uppercase tracking-wider">
+                  {lang === 'hi' ? '5 मिनट के बाद स्वतः पूर्ण होगा' : 'Auto-completes at 5 mins'}
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -651,7 +637,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 bg-white rounded-full shadow-3xs" />
                   ) : (
                     <span className="text-[9px] font-mono font-bold text-gray-400">
-                      {isToday ? '+15 XP' : `Day ${dayNum}`}
+                      {isToday ? `${user.todayMins ?? 0}m/5m` : `Day ${dayNum}`}
                     </span>
                   )}
                 </div>
@@ -673,113 +659,91 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         )}
       </div>
 
-      {/* 5. VISUAL BADGE SYSTEM & STUDY HISTORY SPLIT */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left">
-        
-        {/* Interactive Achievements & Badges Deck */}
-        <div className="lg:col-span-8 bg-white p-5 rounded-2xl border border-gray-150 shadow-3xs space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-gray-100 pb-3">
-            <div>
-              <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider flex items-center gap-1.5">
-                <Trophy className="h-4.5 w-4.5 text-amber-500 animate-bounce" />
-                {lang === 'hi' ? 'मेरा पदक और बैज शोकेस' : 'Milestones & Badges Showcase'}
-              </h3>
-              <p className="text-[11px] text-gray-400 font-sans">
-                {lang === 'hi' ? 'विशेष विषयों को पार करके और निरंतर अभ्यास से बैज अनलॉक करें।' : 'Showcase your subject mastery, caching efforts, and study consistency.'}
-              </p>
-            </div>
-            
-            {/* Filters */}
-            <div className="flex flex-wrap gap-1">
-              {[
-                { id: 'all', label: lang === 'hi' ? 'सभी' : 'All' },
-                { id: 'unlocked', label: lang === 'hi' ? 'अनलॉक' : 'Unlocked' },
-                { id: 'science', label: lang === 'hi' ? 'विज्ञान' : 'Science' },
-                { id: 'math', label: lang === 'hi' ? 'गणित' : 'Math' }
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setBadgeFilter(f.id as any)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase cursor-pointer border transition-colors ${
-                    badgeFilter === f.id 
-                      ? 'bg-[#3D405B] text-white border-[#3D405B]' 
-                      : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
+      {/* 5. VISUAL BADGE SYSTEM (Achievements Showcase) */}
+      <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-3xs space-y-4 text-left">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-gray-100 pb-3">
+          <div>
+            <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider flex items-center gap-1.5">
+              <Trophy className="h-4.5 w-4.5 text-amber-500 animate-bounce" />
+              {lang === 'hi' ? 'मेरा पदक और बैज शोकेस' : 'Milestones & Badges Showcase'}
+            </h3>
+            <p className="text-[11px] text-gray-400 font-sans">
+              {lang === 'hi' ? 'विशेष विषयों को पार करके और निरंतर अभ्यास से बैज अनलॉक करें।' : 'Showcase your subject mastery, caching efforts, and study consistency.'}
+            </p>
           </div>
-
-          {/* Badge grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {filteredBadges.map((badge) => (
-              <div 
-                key={badge.id}
-                onClick={() => setSelectedBadge(badge)}
-                className={`p-3.5 rounded-2xl border text-center relative flex flex-col justify-between items-center cursor-pointer transition-all duration-300 group hover:scale-103 ${
-                  badge.unlocked 
-                    ? 'bg-gradient-to-br from-white to-amber-50/10 border-amber-250 shadow-3xs' 
-                    : 'bg-gray-50/70 border-gray-200 opacity-60'
+          
+          {/* Filters */}
+          <div className="flex flex-wrap gap-1">
+            {[
+              { id: 'all', label: lang === 'hi' ? 'सभी' : 'All' },
+              { id: 'unlocked', label: lang === 'hi' ? 'अनलॉक' : 'Unlocked' },
+              { id: 'general', label: lang === 'hi' ? 'सामान्य' : 'Academic' },
+              { id: 'streak', label: lang === 'hi' ? 'निरंतरता' : 'Streak' },
+              { id: 'offline', label: lang === 'hi' ? 'ऑफ़लाइन' : 'Offline' }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setBadgeFilter(f.id as any)}
+                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase cursor-pointer border transition-colors ${
+                  badgeFilter === f.id 
+                    ? 'bg-[#3D405B] text-white border-[#3D405B]' 
+                    : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
                 }`}
               >
-                <div className={`p-2 rounded-xl text-3xl filter drop-shadow-sm select-none mb-1 group-hover:scale-110 transition-transform duration-300 ${
-                  badge.unlocked ? 'bg-amber-50/50' : 'bg-gray-100'
-                }`}>
-                  {badge.unlocked ? badge.emoji : '🔒'}
-                </div>
-                
-                <div className="space-y-0.5">
-                  <div className="text-[11px] font-sans font-black text-gray-800 line-clamp-1">
-                    {badge.name}
-                  </div>
-                  <div className="text-[9px] font-semibold text-gray-400 font-mono tracking-wider line-clamp-1 uppercase">
-                    {badge.unlocked ? (lang === 'hi' ? 'अनलॉक किया' : 'Unlocked') : (lang === 'hi' ? 'लॉक्ड' : 'Locked')}
-                  </div>
-                </div>
-
-                {/* Achievement progress indicators */}
-                <div className="w-full mt-2 pt-1.5 border-t border-gray-100/60 flex items-center justify-between text-[8px] font-mono font-bold text-gray-400">
-                  <span>{badge.category.toUpperCase()}</span>
-                  <span className={badge.unlocked ? 'text-emerald-600' : 'text-gray-400'}>
-                    {badge.unlocked ? '100%' : '0%'}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filteredBadges.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-6 font-mono">
-              No matching badges found. Keep learning to expand your shelf!
-            </p>
-          )}
-        </div>
-
-        {/* Live Study Feed Logs */}
-        <div className="lg:col-span-4 bg-white p-5 rounded-2xl border border-gray-150 shadow-3xs space-y-4">
-          <div className="flex justify-between items-center border-b border-gray-100 pb-2.5">
-            <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider flex items-center gap-1.5">
-              <Calendar className="h-4.5 w-4.5 text-[#E07A5F]" />
-              Recent Learning Feed
-            </h3>
-            <span className="text-[10px] font-mono text-gray-400 font-bold">Updated offline</span>
-          </div>
-
-          <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-            {offlineSyncManager.getLearningFeed(user.mobile, user.signupDate).map((event) => (
-              <div key={event.id} className="flex gap-3 text-xs leading-relaxed border-b border-gray-50 pb-2.5 last:border-0 last:pb-0">
-                <span className={`p-1 rounded-sm ${event.bgClass} ${event.textClass} block h-max`}>{event.icon}</span>
-                <div>
-                  <p className="font-sans font-bold text-gray-800">{event.title}</p>
-                  <span className="text-[10px] font-mono text-gray-400 font-extrabold block">{event.subtitle}</span>
-                </div>
-              </div>
+                {f.label}
+              </button>
             ))}
           </div>
         </div>
 
+        {/* Badge grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {filteredBadges.map((badge) => (
+            <div 
+              key={badge.id}
+              onClick={() => {
+                setSelectedBadge(badge);
+                if (badge.unlocked) {
+                  fireConfetti();
+                }
+              }}
+              className={`p-3.5 rounded-2xl border text-center relative flex flex-col justify-between items-center cursor-pointer transition-all duration-300 group hover:scale-103 ${
+                badge.unlocked 
+                  ? 'bg-gradient-to-br from-white to-amber-50/10 border-amber-250 shadow-3xs' 
+                  : 'bg-gray-50/70 border-gray-200 opacity-60'
+              }`}
+            >
+              <div className={`p-2 rounded-xl text-3xl filter drop-shadow-sm select-none mb-1 group-hover:scale-110 transition-transform duration-300 ${
+                badge.unlocked ? 'bg-amber-50/50' : 'bg-gray-100'
+              }`}>
+                {badge.unlocked ? badge.emoji : '🔒'}
+              </div>
+              
+              <div className="space-y-0.5">
+                <div className="text-[11px] font-sans font-black text-gray-800 line-clamp-1">
+                  {badge.name}
+                </div>
+                <div className="text-[9px] font-semibold text-gray-400 font-mono tracking-wider line-clamp-1 uppercase">
+                  {badge.unlocked ? (lang === 'hi' ? 'अनलॉक किया' : 'Unlocked') : (lang === 'hi' ? 'लॉक्ड' : 'Locked')}
+                </div>
+              </div>
+
+              {/* Achievement progress indicators */}
+              <div className="w-full mt-2 pt-1.5 border-t border-gray-100/60 flex items-center justify-between text-[8px] font-mono font-bold text-gray-400">
+                <span>{badge.category.toUpperCase()}</span>
+                <span className={badge.unlocked ? 'text-emerald-600' : 'text-gray-400'}>
+                  {badge.unlocked ? '100%' : '0%'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {filteredBadges.length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-6 font-mono">
+            No matching badges found. Keep learning to expand your shelf!
+          </p>
+        )}
       </div>
 
       {/* Badge Detail Modal popup */}

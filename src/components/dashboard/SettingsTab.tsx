@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { LanguageCode, User } from '../../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
-import { Settings, Volume2, Globe, GraduationCap, Check, AlertCircle, Trash2, Download } from 'lucide-react';
+import { Settings, Volume2, Globe, GraduationCap, Check, Download } from 'lucide-react';
 
 interface SettingsTabProps {
   user: User;
@@ -76,13 +76,6 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
       "Swami AI", 
       "🤖 Swami AI"
     );
-  };
-
-  const clearCachedClassroomData = () => {
-    if (confirm(lang === 'hi' ? "क्या आप सचमुच सारा स्थानीय डेटा मिटाना चाहते हैं?" : "Are you sure you want to clear cached progress metrics? This resets points/medals.")) {
-      localStorage.clear();
-      window.location.reload();
-    }
   };
 
   return (
@@ -288,25 +281,6 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
             })}
           </div>
         </div>
-
-        {/* 2. Administrative cleaning resets */}
-        <div className="bg-white rounded-2xl border border-gray-150 p-5 shadow-3xs space-y-3">
-          <h3 className="font-display font-extrabold text-xs text-rose-800 uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-2">
-            <AlertCircle className="h-4.5 w-4.5 text-rose-500" />
-            Diagnostic Reset
-          </h3>
-          <p className="text-[10px] sm:text-xs text-gray-500 leading-normal">
-            Clearing local storage deletes local progress logs, offline study caches, alarm parameters, and restores default settings.
-          </p>
-          <button
-            onClick={clearCachedClassroomData}
-            className="w-full mt-2 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs font-sans font-extrabold text-rose-700 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Clear Offline Progress Cache</span>
-          </button>
-        </div>
-
       </div>
 
     </div>

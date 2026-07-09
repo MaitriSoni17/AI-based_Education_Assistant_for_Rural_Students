@@ -1471,6 +1471,8 @@ Keep replies compact and structured.`;
     })();
 
     // Dynamic adaptive student guidelines
+    const studentBoard = user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE';
+
     const adaptationInstruction = `
 
 [EMPATHETIC ADAPTIVE LEARNING GUIDELINES]
@@ -1483,6 +1485,9 @@ You MUST adapt your personality and teaching strictly based on the following stu
    - For Beginner: Break things down step-by-step, explain starting terms simply, and be extra encouraging.
    - For Intermediate: Pose questions, use active application prompts, and encourage independent reasoning.
    - For Reviewing: Summarize key takeaways, connect concepts together, and challenge them to explain it.
+6. [Village_Location]: The student is from the village "${studentVillage || 'not specified'}". Incorporate or refer to their village/rural life in examples, stories, or math problems if relevant to ground concepts locally.
+7. [School_Name]: The student studies at "${studentSchool || 'their school'}". Refer to their school context to make explanations personal and relatable.
+8. [Academic_Board]: The student follows the "${studentBoard}" curriculum. Ensure explanation styles, marking formats, or curricular terminology align beautifully with this educational board.
 
 [BEHAVIOR & PEDAGOGICAL GUIDELINES]
 - Do not give wall-of-text answers. Use short, beautifully spaced paragraphs and bullet points for high legibility.

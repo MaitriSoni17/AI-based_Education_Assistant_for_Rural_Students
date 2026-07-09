@@ -2,6 +2,7 @@ import React, { useState, useEffect, FormEvent } from 'react';
 import { LanguageCode, User, QuizQuestion, OfflineResource } from '../../types';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../../data/translations';
 import { offlineSyncManager } from '../../utils/offlineSync';
+import { fireContinuousFireworks, fireConfetti } from '../../utils/confetti';
 import SpeakButton from '../SpeakButton';
 import SpeechInputButton from '../SpeechInputButton';
 import InteractiveAITeacher from '../InteractiveAITeacher';
@@ -2471,6 +2472,9 @@ JSON Schema:
     } else {
       setQuizFinished(true);
       if (quizScore + 1 >= selectedLesson.quiz.length) {
+        // Fire continuous golden fireworks for a perfect score!
+        fireContinuousFireworks(4000);
+        
         if (!claimedMedals.includes(selectedLesson.id)) {
           setClaimedMedals((prev) => [...prev, selectedLesson.id]);
           
@@ -2492,6 +2496,9 @@ JSON Schema:
             offlineSyncManager.queuePendingProgress('medal_earned', selectedLesson.id, user.mobile);
           }
         }
+      } else if (quizScore >= selectedLesson.quiz.length * 0.6) {
+        // Fire a standard confetti burst for passing with a good score!
+        fireConfetti();
       }
     }
   };

@@ -34,7 +34,6 @@ export default function AuthView({
   const [errorMessage, setErrorMessage] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [gatewayError, setGatewayError] = useState('');
 
   // Validation
   const validateMobile = (num: string) => {
@@ -100,9 +99,7 @@ export default function AuthView({
           setIsSimulated(false);
         }
         if (data.gatewayError) {
-          setGatewayError(data.gatewayError);
-        } else {
-          setGatewayError('');
+          console.log("Twilio Gateway Error Details:", data.gatewayError);
         }
         setIsOtpSent(true);
       } else {
@@ -195,7 +192,6 @@ export default function AuthView({
     setErrorMessage('');
     setGeneratedOtp('');
     setIsSimulated(false);
-    setGatewayError('');
   };
 
   return (
@@ -328,38 +324,6 @@ export default function AuthView({
         ) : (
           /* SECTION 2: OTP typing form */
           <form onSubmit={handleVerifyOTP} className="space-y-4">
-            
-            {/* Custom Twilio Diagnostic Card (when a gatewayError is detected) */}
-            {gatewayError && (
-              <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl space-y-2.5 text-left text-xs sm:text-sm animate-fade-in">
-                <div className="font-bold text-rose-800 flex items-center gap-1.5 uppercase tracking-wide text-xs">
-                  <span>⚠️</span> Twilio Setup Error Detected
-                </div>
-                <div className="text-gray-750 font-sans leading-relaxed text-xs">
-                  The backend's SMS system got an error response from Twilio:
-                  <div className="mt-1.5 font-mono text-[11px] bg-rose-100/60 p-2 rounded text-red-950 border border-rose-200/50 break-all select-all font-semibold">
-                    "{gatewayError}"
-                  </div>
-                </div>
-                <div className="text-gray-650 space-y-1.5 text-xs border-t border-rose-200/50 pt-2">
-                  <p className="font-bold text-gray-800">Why this happens and how to fix it:</p>
-                  <ul className="list-disc pl-4 space-y-1.5 text-[11px] leading-relaxed">
-                    <li>
-                      Your <code className="font-mono bg-white px-1 py-0.5 rounded border border-rose-200">TWILIO_PHONE_NUMBER</code> variable in the <strong>Settings</strong> menu has been set to an Indian mobile number (<code className="font-mono bg-white px-1.5 py-0.5 rounded border border-rose-250">+9173446570</code>).
-                    </li>
-                    <li>
-                      In Twilio, you <strong>cannot</strong> use a personal verification/receiving number in the "From" sender field. The sender ID must be a leased Twilio Virtual Phone Number (like a US/UK sender) or a Messaging Service SID (starts with <code className="font-mono bg-white">MG...</code>).
-                    </li>
-                    <li>
-                      <strong>To fix:</strong> Go to your Twilio console, get your leased virtual phone number, and type it into the <code>TWILIO_PHONE_NUMBER</code> variable in the AI Studio settings.
-                    </li>
-                  </ul>
-                </div>
-                <div className="pt-2 border-t border-rose-200/40 text-[10px] text-gray-500 font-medium">
-                  💡 <strong>Simulation Fallback Active:</strong> A copy of your OTP is printed below so your signup/login still works immediately!
-                </div>
-              </div>
-            )}
 
             {/* Floating Info alert with simulated code */}
             <div className="bg-[#FAF8F4] border border-[#F2CC8F]/40 p-3.5 rounded-2xl space-y-1.5 text-left text-xs sm:text-sm">
@@ -394,7 +358,7 @@ export default function AuthView({
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                   placeholder={t.otpPlaceholder}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] font-mono text-lg font-bold tracking-widest text-center"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] font-mono text-lg font-bold tracking-widest text-left"
                 />
               </div>
             </div>

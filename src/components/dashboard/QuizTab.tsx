@@ -1942,6 +1942,12 @@ CRITICAL REQUIREMENTS:
     const targetLangName = languageNames[targetLang] || "English";
     const difficultyLabel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
     
+    const studentName = user.name || 'Student';
+    const gradeLevel = user.standard || localStorage.getItem(`${user.mobile}_profile_standard`) || '';
+    const studentVillage = user.village || localStorage.getItem(`${user.mobile}_profile_village`) || '';
+    const studentSchool = user.school || localStorage.getItem(`${user.mobile}_profile_school`) || '';
+    const studentBoard = user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE';
+
     const systemInstruction = `You are Swami AI, an exceptionally smart and encouraging school teacher tutor. You create high-quality academic quizzes for young school students.
 CRITICAL MANDATES:
 1. Generate exactly ${count} multiple-choice questions about the specific topic: "${topic}".
@@ -1951,6 +1957,14 @@ CRITICAL MANDATES:
 5. Provide a clear, educational "explanation" of 2 sentences for each question.
 6. All text fields (including the quiz 'title', 'subject', 'question', 'options' array, and 'explanation') MUST be written entirely in ${targetLangName} (using its proper script/alphabet).
 7. Return ONLY valid raw JSON containing the schema below. Do NOT use markdown formatting (\`\`\`json) or conversational preambles. Output exactly the raw JSON text.
+
+[EMPATHETIC ADAPTIVE LEARNING GUIDELINES]
+Please tailor the quiz questions, complexity, and vocabulary to match this student's profile:
+- Target Student Name: ${studentName} (Include their name occasionally in question text or explanations if fun and relevant!).
+- Class Standard Level: ${gradeLevel ? gradeLevel : 'General School Level'} (Strictly target the question complexity and curriculum scope to match this class standard).
+- Academic Board: ${studentBoard} (Match the question patterns, focus areas, and terms with the ${studentBoard} syllabus).
+- Student Home Village: ${studentVillage ? studentVillage : 'not specified'} (Where possible or relevant, frame 1 or 2 word problems or question scenarios around local village settings like farming, village markets, crops, animals, or community ponds to make it super relatable!).
+- Student School: ${studentSchool ? studentSchool : 'not specified'} (Occasionally refer to their school context or motivate them as a brilliant student of their village school).
 
 JSON Schema:
 {

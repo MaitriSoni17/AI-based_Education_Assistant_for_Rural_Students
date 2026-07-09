@@ -8,7 +8,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
 // Modular Tab Components
-import ProfileTab from './dashboard/ProfileTab';
+import ProfileTab, { formatStudyTime } from './dashboard/ProfileTab';
 import AIAssistantTab from './dashboard/AIAssistantTab';
 import TutorTab from './dashboard/TutorTab';
 import QuizTab from './dashboard/QuizTab';
@@ -227,7 +227,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
             <Clock className="h-4.5 w-4.5 text-indigo-500" />
             <div className="text-left font-mono">
               <span className="text-[9px] text-indigo-800 font-bold uppercase tracking-wider block">Time Studied</span>
-              <span className="text-xs font-black text-gray-900">{localUser.studyMins ?? 30} Mins</span>
+              <span className="text-xs font-black text-gray-900">{formatStudyTime(localUser.studyMins ?? 30, lang === 'hi')}</span>
             </div>
           </div>
 

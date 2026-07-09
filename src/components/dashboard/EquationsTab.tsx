@@ -1963,10 +1963,24 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
     const langObj = CHATBOT_LANGUAGES.find(l => l.code === chatbotLang) || CHATBOT_LANGUAGES[0];
     const langName = langObj.name;
 
+    const studentName = user.name || 'Student';
+    const gradeLevel = user.standard || localStorage.getItem(`${user.mobile}_profile_standard`) || '';
+    const studentVillage = user.village || localStorage.getItem(`${user.mobile}_profile_village`) || '';
+    const studentSchool = user.school || localStorage.getItem(`${user.mobile}_profile_school`) || '';
+    const studentBoard = user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE';
+
     const systemInstruction = `You are GyaanBot's Smart AI Math and Science Solver, an expert teacher. Solve science/math problems, balance equations, explain physics laws, and show step-by-step calculations.
 CRITICAL RULE 1: You MUST explain, write, and reply ENTIRELY in the ${langName} language (using its native script/characters, e.g. Devanagari for Hindi/Sanskrit, Bengali script for Bengali, Arabic/Persian script for Urdu, Tamil script for Tamil, etc.). Do not speak English if the requested language is not English.
 CRITICAL RULE 2: NEVER use LaTeX symbols, block math wrappers, or LaTeX macros under any circumstances. Do not output LaTeX wrappers like $$, $, \\frac, \\pm, \\sqrt, or curly braces {}. All formulas and equations must be written in normal, clean, readable plain-text expressions using standard keyboard symbols (e.g., / for division, * or x for multiplication, ^2 for power, sqrt() for square root) and clear statements. Example: write 'x_1 = (5 + 1)/6 = 6/6 = 1' instead of LaTeX formatting.
-If a user uploads an image or PDF, carefully analyze the visual/document problem and provide a detailed educational walkthrough in the ${langName} language using this clean format.`;
+If a user uploads an image or PDF, carefully analyze the visual/document problem and provide a detailed educational walkthrough in the ${langName} language using this clean format.
+
+[EMPATHETIC ADAPTIVE LEARNING GUIDELINES]
+Please tailor your explanations, complexity, and vocabulary to match this student's profile:
+1. Student Name: ${studentName} (Address the student personally by name occasionally to encourage them!)
+2. Grade/Class Level: ${gradeLevel ? gradeLevel : 'General School Math/Science'} (Ensure the level of mathematics, physics, or chemistry complexity and pedagogy perfectly matches this standard).
+3. Academic Board: ${studentBoard} (Apply curriculum standards, grading parameters, or definitions aligning with ${studentBoard}).
+4. Student Village Location: ${studentVillage ? studentVillage : 'not specified'} (Incorporate local, familiar rural metaphors like crop weight, water pump discharge, seed bags, tractor speed, or village cattle counts in math word problems and science explanations to make learning intuitive).
+5. Student School Name: ${studentSchool ? studentSchool : 'not specified'} (Refer to their school context or encourage them as a bright pupil of their academy).`;
 
     try {
       const response = await fetch('/api/gemini/chat', {

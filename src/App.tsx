@@ -9,6 +9,8 @@ import { CurrentView, LanguageCode, User } from './types';
 import { TRANSLATIONS } from './data/translations';
 import { GraduationCap } from 'lucide-react';
 import { updateFirebaseUserFields, syncFirebaseUserWithLWW } from './lib/firebase';
+import { offlineSyncManager } from './utils/offlineSync';
+import { fireContinuousFireworks } from './utils/confetti';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<CurrentView>('home');
@@ -30,6 +32,66 @@ export default function App() {
     }
     return null;
   });
+
+  const [showStreakEarnedToast, setShowStreakEarnedToast] = useState(false);
+
+  // Celebratory effect when daily goal is completed
+  useEffect(() => {
+    if (showStreakEarnedToast) {
+      fireContinuousFireworks(4000);
+    }
+  }, [showStreakEarnedToast]);
+
+  // Helper to compute calendar day differences from locale strings safely
+  const getDaysDifference = (dateStr1?: string, dateStr2?: string): number => {
+    if (!dateStr1 || !dateStr2) return 999;
+    try {
+      const d1 = new Date(dateStr1);
+      const d2 = new Date(dateStr2);
+      d1.setHours(12, 0, 0, 0);
+      d2.setHours(12, 0, 0, 0);
+      const diffMs = d2.getTime() - d1.getTime();
+      return Math.round(diffMs / (1000 * 60 * 60 * 24));
+    } catch (e) {
+      return 999;
+    }
+  };
+
+  // Manage daily reset and streak checks when user is loaded or day changes
+  useEffect(() => {
+    if (!user) return;
+
+    const todayStr = new Date().toLocaleDateString();
+    
+    // Check if the user's lastActiveDate is different from today
+    if (user.lastActiveDate !== todayStr) {
+      const lastCheckedIn = user.lastCheckedInDate;
+      let updatedStreak = user.streakDays ?? 0;
+      
+      // If they missed a day (i.e. didn't check in/work yesterday), reset their streak to 0
+      const daysSinceLastCheckIn = lastCheckedIn ? getDaysDifference(lastCheckedIn, todayStr) : 999;
+      
+      if (daysSinceLastCheckIn > 1) {
+        updatedStreak = 0; // Streak is broken!
+      }
+      
+      const updatedFields: Partial<User> = {
+        lastActiveDate: todayStr,
+        todayMins: 0, // Reset today's study minutes
+        streakDays: updatedStreak
+      };
+      
+      setUser(current => {
+        if (!current) return null;
+        const nextUser = { ...current, ...updatedFields };
+        localStorage.setItem('gramin_student_session', JSON.stringify(nextUser));
+        return nextUser;
+      });
+      
+      updateFirebaseUserFields(user.mobile, updatedFields)
+        .catch(err => console.error("[Daily Reset] Failed to sync reset to Firebase:", err));
+    }
+  }, [user?.mobile]);
 
   // Ensure any existing user session with stale defaults is automatically migrated
   useEffect(() => {
@@ -73,16 +135,67 @@ export default function App() {
         activeSecs = 0;
         setUser((current) => {
           if (!current) return null;
+          
+          const todayStr = new Date().toLocaleDateString();
+          
           const currentMins = current.studyMins ?? 30;
           const updatedMins = currentMins + 1;
-          const updatedUser = { ...current, studyMins: updatedMins };
+          
+          const currentTodayMins = current.todayMins ?? 0;
+          const updatedTodayMins = currentTodayMins + 1;
+          
+          let nextStreak = current.streakDays ?? 0;
+          let nextPoints = current.totalPoints ?? 15;
+          let nextLastCheckedIn = current.lastCheckedInDate;
+          let earnedTodayStreak = false;
+          
+          // Check if today's streak can be automatically claimed:
+          // Criteria: works for at least 5 minutes today AND has not claimed today yet
+          if (updatedTodayMins >= 5 && current.lastCheckedInDate !== todayStr) {
+            // Yes! Auto-accept today's streak!
+            nextLastCheckedIn = todayStr;
+            
+            // If they completed yesterday, streak increments. If missed, starts at 1.
+            const daysSinceLastCheckIn = current.lastCheckedInDate ? getDaysDifference(current.lastCheckedInDate, todayStr) : 999;
+            if (daysSinceLastCheckIn === 1) {
+              nextStreak = nextStreak + 1;
+            } else {
+              nextStreak = 1; // Starts a new streak!
+            }
+            
+            nextPoints = nextPoints + 15; // Bonus +15 XP claimed automatically!
+            earnedTodayStreak = true;
+          }
+          
+          const updatedUser: User = { 
+            ...current, 
+            studyMins: updatedMins,
+            todayMins: updatedTodayMins,
+            streakDays: nextStreak,
+            totalPoints: nextPoints,
+            lastCheckedInDate: nextLastCheckedIn,
+            lastActiveDate: todayStr
+          };
 
           // Persist to local storage
           localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
 
           // Sync to Firebase Firestore
-          updateFirebaseUserFields(current.mobile, { studyMins: updatedMins })
-            .catch(err => console.error("[Timer] Failed to sync studyMins to Firebase:", err));
+          updateFirebaseUserFields(current.mobile, { 
+            studyMins: updatedMins,
+            todayMins: updatedTodayMins,
+            streakDays: nextStreak,
+            totalPoints: nextPoints,
+            lastCheckedInDate: nextLastCheckedIn,
+            lastActiveDate: todayStr
+          })
+          .then(() => {
+            if (earnedTodayStreak) {
+              setShowStreakEarnedToast(true);
+              offlineSyncManager.queuePendingProgress('quiz_points', 15, current.mobile);
+            }
+          })
+          .catch(err => console.error("[Timer] Failed to sync to Firebase:", err));
 
           return updatedUser;
         });
@@ -97,6 +210,13 @@ export default function App() {
     if (user) return user.defaultLanguage;
     return 'en';
   });
+
+  // Keep currentLanguage in sync with user's defaultLanguage when it changes in settings or via Firestore sync
+  useEffect(() => {
+    if (user?.defaultLanguage && user.defaultLanguage !== currentLanguage) {
+      setCurrentLanguage(user.defaultLanguage);
+    }
+  }, [user?.defaultLanguage, currentLanguage]);
 
   const [isOfflineSimulated, setIsOfflineSimulated] = useState(false);
 
@@ -240,6 +360,28 @@ export default function App() {
         <div className="flex-1 bg-[#81B29A]"></div>
         <div className="flex-1 bg-[#3D405B]"></div>
       </div>
+
+      {showStreakEarnedToast && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#3D405B] text-white p-4 rounded-2xl border-2 border-amber-300 shadow-2xl flex items-center gap-3 animate-bounce max-w-sm text-left">
+          <div className="bg-amber-100 p-2 rounded-xl text-xl">🔥</div>
+          <div className="flex-1">
+            <h4 className="font-display font-black text-xs uppercase tracking-wider text-amber-300">
+              {currentLanguage === 'hi' ? 'आज की स्ट्रीक स्वतः स्वीकृत!' : 'Streak Automatically Claimed!'}
+            </h4>
+            <p className="text-[10px] text-gray-200 mt-1 font-sans font-medium leading-relaxed">
+              {currentLanguage === 'hi' 
+                ? 'आपने आज 5 मिनट पढ़ाई की! स्ट्रीक सक्रिय हो गई है और +15 XP अंक जोड़े गए हैं।' 
+                : 'You studied for 5+ minutes today! Your consecutive streak is active and +15 XP is claimed.'}
+            </p>
+          </div>
+          <button 
+            onClick={() => setShowStreakEarnedToast(false)} 
+            className="text-gray-400 hover:text-white text-xs ml-2 cursor-pointer p-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
     </div>
   );

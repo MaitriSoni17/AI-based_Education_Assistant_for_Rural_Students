@@ -21,6 +21,8 @@ export interface User {
   totalPoints?: number;
   streakDays?: number;
   lastCheckedInDate?: string;
+  todayMins?: number;
+  lastActiveDate?: string;
   certificateName?: string;
   earnedCertificates?: string; // JSON string of certificates
   chatSessions?: string; // JSON string of chat sessions
