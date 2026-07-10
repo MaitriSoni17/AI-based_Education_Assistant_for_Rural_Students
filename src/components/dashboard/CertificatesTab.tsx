@@ -4,7 +4,7 @@ import { speakText } from '../../utils/speech';
 import { 
   Award, Sparkles, Download, Calendar, Clock, MessageSquare, 
   CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, 
-  User, BookOpen, ChevronRight, HelpCircle, FileText
+  User, BookOpen, ChevronRight, HelpCircle, FileText, Check, ArrowRight
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -37,7 +37,7 @@ interface CertificatesTabProps {
 }
 
 const TITLE_TRANSLATIONS: Record<string, string> = {
-  en: "Academic Certificates Portfolio",
+  en: "Academic Credentials Portfolio",
   hi: "शैक्षणिक प्रमाण पत्र पोर्टफोलियो",
   gu: "શૈક્ષણિક પ્રમાણપત્ર પોર્ટફોલિયો",
   mr: "शैक्षणिक प्रमाणपत्र पोर्टफोलिओ",
@@ -46,12 +46,12 @@ const TITLE_TRANSLATIONS: Record<string, string> = {
 };
 
 const SUBTITLE_TRANSLATIONS: Record<string, string> = {
-  en: "View and download your earned success credentials, including completion dates, times, and learning chats.",
-  hi: "अपने अर्जित सफलता प्रमाणपत्र देखें और डाउनलोड करें, जिसमें पूर्ण होने की तिथि, समय और शिक्षण चैट शामिल हैं।",
-  gu: "તમે મેળવેલા પ્રમાણપત્રો જુઓ અને ડાઉનલોડ કરો, જેમાં પૂર્ણ થયાની તારીખ, સમય અને ચેટ સામેલ છે.",
-  mr: "तुम्ही मिळवलेली प्रमाणपत्रे पहा आणि डाउनलोड करा, ज्यामध्ये पूर्ण झाल्याची तारीख, वेळ आणि चैट समाविष्ट आहे.",
-  ta: "நீங்கள் பெற்ற சான்றிதழ்களைப் பார்க்கவும் மற்றும் பதிவிறக்கவும், இதில் முடிக்கப்பட்ட தேதி, நேரம் மற்றும் அரட்டை அடங்கும்.",
-  te: "మీరు పొందిన ధృవీకరణ పత్రాలను వీక్షించండి మరియు డౌన్‌లోड చేయండి, ఇందులో తేదీ, సమయం మరియు చాట్ ఉన్నాయి."
+  en: "Access, customize, and print your officially earned success credentials and session transcripts.",
+  hi: "अपने आधिकारिक रूप से अर्जित सफलता प्रमाणपत्रों और सत्र ट्रांसक्रिप्ट को एक्सेस, कस्टमाइज़ और प्रिंट करें।",
+  gu: "તમે મેળવેલા સત્તાવાર પ્રમાણપત્રો અને ટ્રાન્સક્રિપ્ટ્સ જુઓ, કસ્ટમાઇઝ કરો અને ડાઉનલોડ કરો.",
+  mr: "तुम्ही मिळवलेली अधिकृत प्रमाणपत्रे आणि सत्र ट्रान्सक्रिप्ट पहा, कस्टमाइझ करा आणि प्रिंट करा.",
+  ta: "நீங்கள் பெற்ற சான்றிதழ்கள் மற்றும் அமர்வு பிரதிகள் ஆகியவற்றை அணுகவும், தனிப்பயனாக்கவும் மற்றும் அச்சிடவும்.",
+  te: "మీరు పొందిన అధికారిక ధృవీకరణ పత్రాలను మరియు సెషన్ వివరాలను వీక్షించండి, అనుకూలీకరించండి మరియు డౌన్‌లోడ్ చేయండి."
 };
 
 export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateUser }: CertificatesTabProps) {
@@ -390,49 +390,59 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
   };
 
   return (
-    <div id="certificates-tab-root" className="bg-white rounded-3xl border border-gray-150 shadow-xs p-4 sm:p-6 text-left space-y-6">
+    <div id="certificates-tab-root" className="bg-[#FAF9F6] rounded-3xl border border-gray-150 shadow-xs p-4 sm:p-6 text-left space-y-6">
       
-      {/* HEADER BANNER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-5">
-        <div className="space-y-1">
-          <h2 className="font-display font-extrabold text-xl text-[#3D405B] flex items-center gap-2">
-            <Award className="h-6 w-6 text-amber-500 animate-pulse" />
-            {TITLE_TRANSLATIONS[lang] || TITLE_TRANSLATIONS['en']}
-          </h2>
-          <p className="text-xs text-gray-500 max-w-2xl leading-relaxed">
+      {/* HEADER BANNER WITH GRADIENT PATTERN */}
+      <div className="relative overflow-hidden bg-gradient-to-tr from-[#3D405B] to-[#51557A] rounded-2xl p-5 sm:p-6 text-white shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* Decorative corner glows */}
+        <div className="absolute -top-12 -left-12 w-32 h-32 bg-amber-400/15 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-12 -right-12 w-40 h-40 bg-indigo-400/15 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="space-y-1 relative z-10">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-amber-400/10 border border-amber-400/20 rounded-lg text-amber-300">
+              <Award className="h-5 w-5 animate-pulse" />
+            </div>
+            <h2 className="font-display font-black text-base sm:text-lg tracking-tight">
+              {TITLE_TRANSLATIONS[lang] || TITLE_TRANSLATIONS['en']}
+            </h2>
+          </div>
+          <p className="text-[11px] sm:text-xs text-indigo-100 max-w-2xl leading-relaxed">
             {SUBTITLE_TRANSLATIONS[lang] || SUBTITLE_TRANSLATIONS['en']}
           </p>
         </div>
         {certificates.length > 0 && (
-          <span className="bg-amber-50 border border-amber-200 text-amber-800 font-mono font-bold text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 shadow-3xs">
-            🎓 {certificates.length} {lang === 'hi' ? "प्रमाण पत्र" : "Certificates Earned"}
+          <span className="relative z-10 bg-amber-400/10 border border-amber-300/30 text-amber-200 font-mono font-black text-xs px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 shadow-inner backdrop-blur-xs">
+            ✨ {certificates.length} {lang === 'hi' ? "प्रमाण पत्र" : "Earned Credentials"}
           </span>
         )}
       </div>
 
       {certificates.length === 0 ? (
         /* EMPTY STATE WRAPPER */
-        <div className="flex flex-col items-center justify-center text-center py-16 px-4 space-y-5 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 max-w-xl mx-auto my-4">
+        <div className="flex flex-col items-center justify-center text-center py-16 px-4 space-y-5 bg-white rounded-3xl border border-dashed border-gray-200 max-w-xl mx-auto my-4 shadow-3xs">
           <div className="relative flex justify-center">
-            <Award className="h-16 w-16 text-gray-300" />
-            <Sparkles className="h-6 w-6 text-amber-400 absolute -top-1 -right-1 animate-ping" />
+            <div className="p-4 bg-amber-50 rounded-full border border-amber-100">
+              <Award className="h-12 w-12 text-amber-500/80" />
+            </div>
+            <Sparkles className="h-5 w-5 text-amber-400 absolute -top-1 -right-1 animate-pulse" />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <h4 className="font-display font-extrabold text-[#3D405B] text-base">
-              {lang === 'hi' ? "कोई प्रमाण पत्र अभी तक अर्जित नहीं हुआ 🎓" : "No Certificates Earned Yet 🎓"}
+              {lang === 'hi' ? "कोई प्रमाण पत्र अभी तक अर्जित नहीं हुआ 🎓" : "No Academic Credentials Yet 🎓"}
             </h4>
             <p className="text-xs text-gray-500 max-w-sm leading-relaxed">
               {lang === 'hi' 
                 ? "स्वामी एआई के आधिकारिक प्रमाण पत्र को अर्जित करने के लिए 'विषय आधारित खेलें प्रश्नोत्तरी' अनुभाग में कम से कम 50% शुद्धता अंक प्राप्त करें।"
-                : "Earn official completion certificates by scoring at least 50% on any subject quiz in the Topic Play Quizzes channel."}
+                : "Earn official achievement credentials by scoring at least 50% on any subject-based quiz in our play zone."}
             </p>
           </div>
           {onNavigateToTab && (
             <button
               onClick={() => onNavigateToTab('quiz')}
-              className="px-5 py-2.5 bg-[#E07A5F] hover:bg-[#C9644B] text-white font-extrabold text-xs sm:text-sm rounded-xl cursor-pointer shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+              className="px-5 py-2.5 bg-[#E07A5F] hover:bg-[#C9644B] text-white font-extrabold text-xs sm:text-sm rounded-xl cursor-pointer shadow-md hover:shadow-lg transition-all flex items-center gap-2 hover-float"
             >
-              <span>{lang === 'hi' ? "प्रश्नोत्तरी खेलना शुरू करें ➡️" : "Go to Topic Play Quizzes ➡️"}</span>
+              <span>{lang === 'hi' ? "प्रश्नोत्तरी खेलना शुरू करें ➡️" : "Unlock Credentials Now ➡️"}</span>
             </button>
           )}
         </div>
@@ -441,12 +451,15 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* LEFT: EARNED CERTIFICATES SIDEBAR SELECTOR */}
-          <div className="lg:col-span-4 space-y-3 max-h-[75vh] overflow-y-auto pr-1">
-            <h3 className="text-[10px] font-mono font-black text-gray-400 uppercase tracking-widest pl-1">
-              🏆 {lang === 'hi' ? "सफलता सूची" : "Achievements History"}
-            </h3>
+          <div className="lg:col-span-4 space-y-3 lg:max-h-[82vh] lg:overflow-y-auto lg:pr-1">
+            <div className="flex items-center justify-between pl-1">
+              <h3 className="text-[10px] font-mono font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                <span>🏆</span>
+                <span>{lang === 'hi' ? "सफलता सूची" : "Credentials Log"}</span>
+              </h3>
+            </div>
             
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {certificates.map((cert) => {
                 const isSelected = selectedCert?.id === cert.id;
                 const accuracy = Math.round((cert.score / cert.totalQuestions) * 100);
@@ -459,37 +472,43 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                       setEditingName(cert.recipientName || 'GyaanBot Scholar');
                       setActiveChatIndex(null);
                     }}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer text-left relative group ${
+                    className={`p-3.5 rounded-2xl border transition-all duration-300 cursor-pointer text-left relative group ${
                       isSelected 
-                        ? 'bg-gradient-to-tr from-amber-50/50 via-white to-amber-50/20 border-amber-400 shadow-2xs scale-[1.01]' 
+                        ? 'bg-white border-amber-400 shadow-sm ring-1 ring-amber-100 scale-[1.01]' 
                         : 'bg-white border-gray-150 hover:border-gray-300 hover:shadow-3xs'
                     }`}
                   >
+                    {/* Selected Left Highlight Accent */}
+                    {isSelected && (
+                      <div className="absolute top-3 bottom-3 left-0 w-1 bg-amber-500 rounded-r-full" />
+                    )}
+
                     <div className="space-y-2">
-                      <div className="flex justify-between items-start gap-1">
-                        <h4 className={`font-sans font-extrabold text-xs sm:text-sm leading-snug ${isSelected ? 'text-amber-900' : 'text-[#3D405B]'}`}>
-                          🎯 {cert.quizTitle}
+                      <div className="flex justify-between items-start gap-2">
+                        <h4 className={`font-sans font-extrabold text-xs sm:text-sm leading-snug ${isSelected ? 'text-gray-900' : 'text-gray-700'} line-clamp-2`}>
+                          🎓 {cert.quizTitle}
                         </h4>
                         <button
                           onClick={(e) => handleDeleteCertificate(cert.id, e)}
-                          className="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+                          className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
                           title={lang === 'hi' ? "प्रमाण पत्र हटाएं" : "Delete certificate"}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                      <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        <span className={`text-[9px] font-mono font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 ${
                           accuracy >= 80 
-                            ? 'bg-emerald-50 text-emerald-700' 
-                            : 'bg-amber-50 text-amber-700'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                            : 'bg-amber-50 text-amber-700 border border-amber-100'
                         }`}>
-                          ⭐ {accuracy}% ({cert.score}/{cert.totalQuestions})
+                          <Check className="h-2.5 w-2.5" />
+                          <span>{accuracy}% ({cert.score}/{cert.totalQuestions})</span>
                         </span>
                         
-                        <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono font-medium">
-                          <Calendar className="h-3 w-3" />
+                        <div className="flex items-center gap-1 text-[9px] text-gray-400 font-mono font-medium">
+                          <Calendar className="h-2.5 w-2.5" />
                           <span>{cert.date}</span>
                         </div>
                       </div>
@@ -500,119 +519,195 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
             </div>
           </div>
 
-          {/* RIGHT: COMPREHENSIVE CERTIFICATE DETAILS VIEW */}
+          {/* RIGHT: COMPREHENSIVE CERTIFICATE DETAILS & PREMIUM MOCKUP */}
           {selectedCert && (
-            <div className="lg:col-span-8 space-y-6 bg-gray-50/30 rounded-2xl border border-gray-150 p-4 sm:p-5">
+            <div className="lg:col-span-8 space-y-6">
               
-              {/* EDIT NAME INPUT */}
-              <div className="space-y-1.5 p-4 bg-white rounded-2xl border border-gray-150 shadow-3xs text-left">
-                <label className="block text-xs font-black uppercase tracking-wider text-gray-500 font-mono flex items-center gap-1.5">
-                  <User className="h-4 w-4 text-amber-600" />
-                  ✏️ {lang === 'hi' ? "प्रमाण पत्र के लिए अपना पूरा नाम दर्ज करें / संपादित करें" : "Edit full name printed on certificate"}
-                </label>
-                <input
-                  type="text"
-                  value={editingName}
-                  onChange={(e) => handleUpdateName(e.target.value)}
-                  placeholder={lang === 'hi' ? "जैसे: राहुल कुमार" : "e.g., Jane Doe"}
-                  className="w-full px-4 py-2 text-sm sm:text-base border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-gray-50/50"
-                  maxLength={40}
-                />
-              </div>
-
-              {/* ACTION BUTTON PANEL */}
-              <div className="flex flex-wrap gap-2.5 items-center justify-between p-4 bg-white rounded-2xl border border-gray-150 shadow-3xs">
-                <div className="text-left font-mono space-y-0.5">
-                  <span className="block text-[10px] text-gray-400 font-bold uppercase tracking-wider">{lang === 'hi' ? "अर्जित तिथि और समय" : "Achieved On"}</span>
-                  <span className="block text-xs font-extrabold text-gray-700 flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5 text-indigo-500" />
-                    {selectedCert.date} @ {selectedCert.time}
-                  </span>
-                </div>
+              {/* PRIMARY OPTIONS / DETAILS BAR */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
-                <button
-                  onClick={() => handleDownloadPDF(selectedCert)}
-                  disabled={!editingName.trim() || isGeneratingPdf}
-                  className={`px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all shadow-md ${(!editingName.trim() || isGeneratingPdf) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {isGeneratingPdf ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      <span>{lang === 'hi' ? 'पीडीएफ तैयार हो रहा है...' : 'Generating PDF...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4.5 w-4.5" />
-                      <span>{lang === 'hi' ? 'पीडीएफ डाउनलोड करें 📥' : 'Download PDF Certificate 📥'}</span>
-                    </>
-                  )}
-                </button>
+                {/* NAME REGISTRATION AND CUSTOMIZATION */}
+                <div className="bg-white rounded-2xl border border-gray-150 p-4 shadow-3xs flex flex-col justify-between space-y-2 text-left">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 font-mono flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5 text-amber-500" />
+                      {lang === 'hi' ? "प्रमाण पत्र पर नाम" : "Registered Scholar Name"}
+                    </label>
+                    <p className="text-[10px] text-gray-400 font-sans leading-normal">
+                      {lang === 'hi' ? "यह नाम तुरंत नीचे दिए गए डिजिटल प्रमाण पत्र पर प्रिंट हो जाएगा।" : "Any edit will instantly customize and refresh your credential certificate."}
+                    </p>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => handleUpdateName(e.target.value)}
+                      placeholder={lang === 'hi' ? "जैसे: राहुल कुमार" : "e.g., Jane Doe"}
+                      className="w-full px-3 py-2 text-xs sm:text-sm border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-400 focus:border-amber-400 bg-gray-50/50 font-semibold"
+                      maxLength={40}
+                    />
+                    <span className="absolute right-3 top-2.5 text-[9px] text-gray-400 font-mono font-bold">
+                      {editingName.length}/40
+                    </span>
+                  </div>
+                </div>
+
+                {/* METADATA & PDF DOWNLOAD ACTION */}
+                <div className="bg-white rounded-2xl border border-gray-150 p-4 shadow-3xs flex flex-col justify-between space-y-4 text-left">
+                  <div className="space-y-2.5 font-mono text-xs">
+                    <div className="flex flex-row items-center justify-between border-b border-gray-100 pb-2 gap-4">
+                      <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px] shrink-0">
+                        {lang === 'hi' ? "अर्जित समय" : "Secured Timestamp"}
+                      </span>
+                      <span className="font-black text-gray-750 flex items-center gap-1.5 text-right">
+                        <Clock className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                        <span>{selectedCert.date} @ {selectedCert.time}</span>
+                      </span>
+                    </div>
+                    <div className="flex flex-row items-center justify-between gap-4">
+                      <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px] shrink-0">
+                        {lang === 'hi' ? "सत्यापन कोड" : "Credential ID"}
+                      </span>
+                      <span className="font-mono text-gray-500 font-bold uppercase select-all text-[10px] text-right truncate max-w-[200px]" title={selectedCert.id}>
+                        {selectedCert.id}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleDownloadPDF(selectedCert)}
+                    disabled={!editingName.trim() || isGeneratingPdf}
+                    className={`w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all shadow-3xs hover-float ${(!editingName.trim() || isGeneratingPdf) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {isGeneratingPdf ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        <span>{lang === 'hi' ? 'दस्तावेज़ तैयार हो रहा है...' : 'Generating Official PDF...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4" />
+                        <span>{lang === 'hi' ? 'आधिकारिक प्रमाण पत्र डाउनलोड करें' : 'Download PDF'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
               </div>
 
-              {/* MINI PREVIEW BOX */}
-              <div className="relative p-6 sm:p-10 bg-white border-8 border-double border-amber-600/60 rounded-2xl shadow-sm text-center font-serif select-none overflow-hidden max-w-full">
-                {/* Decorative border ornaments */}
-                <div className="absolute top-2 left-2 text-amber-600/30 text-base">⚜️</div>
-                <div className="absolute top-2 right-2 text-amber-600/30 text-base">⚜️</div>
-                <div className="absolute bottom-2 left-2 text-amber-600/30 text-base">⚜️</div>
-                <div className="absolute bottom-2 right-2 text-amber-600/30 text-base">⚜️</div>
+              {/* 3D EXHIBITION-STYLE CERTIFICATE PREVIEW MOCKUP */}
+              <div className="relative mx-auto max-w-2xl bg-stone-100 p-4 sm:p-5 rounded-3xl shadow-md border border-stone-200 hover-shadow-glow duration-300 transition-all">
+                {/* 3D Drop shadow and simulated wooden dark frame */}
+                <div className="bg-[#2C211A] p-2.5 sm:p-3.5 rounded-2xl shadow-xl border border-stone-800">
+                  {/* Subtle inner gold frame highlight */}
+                  <div className="bg-[#FDFBF7] border-4 border-[#C5A880] p-6 sm:p-8 rounded-lg relative font-serif text-center select-none overflow-hidden shadow-inner flex flex-col justify-between min-h-[380px] sm:min-h-[460px]">
+                    
+                    {/* Elegant corner motif lines */}
+                    <div className="border-l-2 border-t-2 border-[#C5A880] absolute top-3 left-3 w-5 h-5 pointer-events-none" />
+                    <div className="border-r-2 border-t-2 border-[#C5A880] absolute top-3 right-3 w-5 h-5 pointer-events-none" />
+                    <div className="border-l-2 border-b-2 border-[#C5A880] absolute bottom-3 left-3 w-5 h-5 pointer-events-none" />
+                    <div className="border-r-2 border-b-2 border-[#C5A880] absolute bottom-3 right-3 w-5 h-5 pointer-events-none" />
 
-                <div className="space-y-1">
-                  <h2 className="text-amber-700 font-extrabold text-[11px] sm:text-xs tracking-[0.15em] font-sans uppercase">
-                    {lang === 'hi' ? "सफलता का प्रमाण पत्र" : "CERTIFICATE OF ACHIEVEMENT"}
-                  </h2>
-                  <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
-                </div>
+                    {/* Faint luxury background watermark */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.015]">
+                      <span className="text-[180px]">🎓</span>
+                    </div>
 
-                <p className="text-[8px] sm:text-[9px] text-gray-400 italic mt-4 tracking-wide font-sans font-bold uppercase">
-                  {lang === 'hi' ? "यह प्रमाण पत्र गर्व के साथ दिया जाता है" : "PROUDLY PRESENTED TO"}
-                </p>
+                    {/* Title Header */}
+                    <div className="space-y-2 z-10">
+                      <h2 className="text-[#B45309] font-black text-[9px] sm:text-xs tracking-[0.2em] font-sans uppercase">
+                        {lang === 'hi' ? "सफलता का प्रमाण पत्र" : "CERTIFICATE OF ACHIEVEMENT"}
+                      </h2>
+                      <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto" />
+                    </div>
 
-                <h1 className="text-lg sm:text-xl font-extrabold text-[#3D405B] my-2 inline-block px-4 max-w-full truncate font-serif italic text-amber-900/90 min-h-[28px]">
-                  {editingName.trim() || (lang === 'hi' ? "आपका नाम यहाँ" : "Your Name Here")}
-                </h1>
+                    {/* Presentation Line */}
+                    <p className="text-[8px] sm:text-[9px] text-gray-400 italic tracking-widest font-sans font-bold uppercase mt-2">
+                      {lang === 'hi' ? "यह प्रमाण पत्र गर्व के साथ दिया जाता है" : "PROUDLY PRESENTED TO"}
+                    </p>
 
-                <div className="space-y-1 text-[10px] sm:text-xs text-gray-500 font-sans font-medium max-w-md mx-auto leading-relaxed">
-                  <p>
-                    {lang === 'hi' ? "जिन्होंने सफलतापूर्वक शैक्षणिक विषय प्रश्नोत्तरी उत्तीर्ण की:" : "for successfully passing the academic topic quiz on"}
-                  </p>
-                  <p className="font-extrabold text-[#3D405B] text-[11px] sm:text-xs tracking-tight font-serif bg-amber-50/40 py-0.5 px-2.5 rounded-lg border border-amber-100/30 inline-block">
-                    🎯 {selectedCert.quizTitle}
-                  </p>
-                  <p>
-                    {lang === 'hi' ? "एक उत्कृष्ट सटीकता स्कोर के साथ:" : "with a remarkable accuracy score of"}{" "}
-                    <span className="font-extrabold text-emerald-700">
-                      {Math.round((selectedCert.score / selectedCert.totalQuestions) * 100)}%
-                    </span>{" "}
-                    ({selectedCert.score}/{selectedCert.totalQuestions} {lang === 'hi' ? "उत्तर सही" : "correct"})
-                  </p>
-                </div>
+                    {/* Recipient Scholar Name */}
+                    <div className="my-1 sm:my-3 z-10">
+                      <h1 className="text-xl sm:text-3xl font-extrabold text-stone-900 font-serif italic text-amber-900 min-h-[36px] drop-shadow-3xs break-words px-2 max-w-md mx-auto leading-tight">
+                        {editingName.trim() || (lang === 'hi' ? "आपका नाम यहाँ" : "Honorary Scholar")}
+                      </h1>
+                      <div className="w-40 h-[1px] bg-stone-200 mx-auto mt-1" />
+                    </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-100/80 flex justify-between items-center text-[8px] sm:text-[10px] text-gray-400 font-mono">
-                  <span>🔒 ID: {selectedCert.id}</span>
-                  <span>✍️ Swami AI Academic Dean</span>
+                    {/* Subject/Topic Description */}
+                    <div className="space-y-1 text-[10px] sm:text-xs text-stone-600 font-sans font-medium max-w-md mx-auto leading-relaxed z-10">
+                      <p>
+                        {lang === 'hi' ? "जिन्होंने सफलतापूर्वक शैक्षणिक विषय प्रश्नोत्तरी उत्तीर्ण की:" : "for successfully passing the academic topic quiz on"}
+                      </p>
+                      <p className="font-extrabold text-stone-800 text-[11px] sm:text-xs tracking-tight font-serif bg-amber-50/50 py-1 px-3 rounded-lg border border-amber-100/40 inline-block my-1">
+                        🎯 {selectedCert.quizTitle}
+                      </p>
+                      <p className="text-stone-500">
+                        {lang === 'hi' ? "एक उत्कृष्ट सटीकता स्कोर के साथ:" : "with an outstanding academic accuracy score of"}{" "}
+                        <span className="font-extrabold text-emerald-600">
+                          {Math.round((selectedCert.score / selectedCert.totalQuestions) * 100)}%
+                        </span>{" "}
+                        ({selectedCert.score}/{selectedCert.totalQuestions} {lang === 'hi' ? "सही" : "correct"})
+                      </p>
+                    </div>
+
+                    {/* Signature & Seal Row */}
+                    <div className="mt-4 pt-3 border-t border-stone-100 flex justify-between items-end text-[8px] sm:text-[10px] text-stone-400 font-mono z-10">
+                      
+                      {/* Left: Metadata details */}
+                      <div className="text-left space-y-0.5">
+                        <span className="block text-[7px] font-sans font-bold text-stone-400 uppercase tracking-wider">{lang === 'hi' ? "अधिग्रहण तिथि" : "Acquisition Date"}</span>
+                        <span className="block font-bold text-stone-700">{selectedCert.date}</span>
+                      </div>
+
+                      {/* Center: Wax stamp visual seal with ribbons */}
+                      <div className="relative flex flex-col items-center select-none w-16 h-16 shrink-0 -mb-2">
+                        {/* Ribbons */}
+                        <div className="absolute top-4 left-4 w-3 h-10 bg-red-600/90 rotate-[-12deg] rounded-b-md shadow-3xs" />
+                        <div className="absolute top-4 right-4 w-3 h-10 bg-red-600/90 rotate-[12deg] rounded-b-md shadow-3xs" />
+                        
+                        {/* Gold Wax circular seal */}
+                        <div className="absolute top-0 w-11 h-11 rounded-full bg-gradient-to-br from-amber-300 via-amber-500 to-amber-700 flex items-center justify-center border border-amber-100 shadow-md">
+                          <div className="w-8 h-8 rounded-full border border-dashed border-amber-900/40 flex items-center justify-center font-bold text-amber-950 text-[11px]">
+                            ★
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Signature details */}
+                      <div className="text-right space-y-0.5">
+                        <span className="block italic text-[11px] sm:text-xs text-indigo-900 font-serif font-black pr-1 select-none">✍️ Swami AI</span>
+                        <div className="w-20 h-[1px] bg-stone-300 ml-auto" />
+                        <span className="block text-[7px] font-sans font-bold text-stone-400 uppercase tracking-wider">Academic Dean</span>
+                      </div>
+
+                    </div>
+
+                  </div>
                 </div>
               </div>
 
               {/* CHAT SESSION LOG / CONVERSATIONAL REVIEW */}
               <div className="space-y-3.5 text-left pt-2">
                 <div className="flex items-center gap-1.5 border-b border-gray-200 pb-2.5">
-                  <MessageSquare className="h-5 w-5 text-indigo-500" />
+                  <div className="p-1 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-500">
+                    <MessageSquare className="h-4.5 w-4.5" />
+                  </div>
                   <h3 className="font-display font-extrabold text-sm sm:text-base text-[#3D405B]">
-                    💬 {lang === 'hi' ? "अध्ययन संवाद रिकॉर्ड (चैट इतिहास)" : "Conversational Learning Chat History"}
+                    💬 {lang === 'hi' ? "अध्ययन संवाद रिकॉर्ड (चैट इतिहास)" : "Conversational Study Transcripts"}
                   </h3>
                 </div>
 
-                <p className="text-xs text-gray-400 italic pl-1 leading-normal">
+                <p className="text-xs text-gray-500 pl-1 leading-normal">
                   {lang === 'hi' 
                     ? "यह उस प्रश्नोत्तरी सत्र का चैट इतिहास रिकॉर्ड है। स्वामी एआई के प्रश्नों, अपने उत्तरों और शैक्षिक व्याख्याओं की समीक्षा के लिए नीचे स्क्रॉल करें।"
-                    : "This is the academic dialogue record of your quiz session. Scroll below to review Swami AI's questions, your selected answers, and learning explanations."}
+                    : "This is the full dialogue archive from your certified learning quiz. Scroll down to review Swami AI's questions, your submitted choices, and targeted learning insights."}
                 </p>
 
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto p-2 bg-white rounded-2xl border border-gray-150 shadow-inner">
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto p-3 bg-white rounded-2xl border border-gray-150 shadow-inner">
                   {selectedCert.chatLogs.map((log, logIdx) => {
                     const isCorrect = log.selectedAnswerIndex === log.correctAnswerIndex;
                     
@@ -623,12 +718,12 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                         </div>
 
                         {/* Swami AI Asks the Question (Chat Bubble) */}
-                        <div className="flex items-start gap-2.5 max-w-[90%]">
+                        <div className="flex items-start gap-2.5 max-w-[92%]">
                           <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-amber-400 to-amber-500 flex items-center justify-center text-xs shrink-0 shadow-3xs">
                             🤖
                           </div>
-                          <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-500/10 p-3 rounded-2xl rounded-tl-xs shadow-3xs">
-                            <span className="block text-xs font-mono font-bold text-amber-800 mb-1">🤖 SWAMI AI TUTOR</span>
+                          <div className="bg-amber-50/40 border border-amber-100 p-3 rounded-2xl rounded-tl-xs shadow-3xs">
+                            <span className="block text-[9px] font-mono font-bold text-amber-800 mb-0.5">🤖 SWAMI AI TUTOR</span>
                             <p className="text-xs sm:text-sm font-semibold text-gray-800 leading-relaxed font-sans">
                               {log.question}
                             </p>
@@ -636,16 +731,16 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                         </div>
 
                         {/* Options presented */}
-                        <div className="pl-9 grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-[85%]">
+                        <div className="pl-9.5 grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-2xl">
                           {log.options.map((opt, oIdx) => {
                             const isSelected = oIdx === log.selectedAnswerIndex;
                             const isCorrectAns = oIdx === log.correctAnswerIndex;
                             
-                            let borderClass = 'border-gray-200 bg-gray-50/40 text-gray-600';
+                            let borderClass = 'border-gray-200 bg-gray-50/30 text-gray-600';
                             if (isSelected) {
                               borderClass = isCorrect ? 'border-emerald-500 bg-emerald-50/50 text-emerald-800' : 'border-rose-500 bg-rose-50/50 text-rose-800';
-                            } else if (isCorrectAns && isSelected) {
-                              borderClass = 'border-emerald-500 bg-emerald-50/50 text-emerald-800';
+                            } else if (isCorrectAns) {
+                              borderClass = 'border-emerald-500/60 bg-emerald-50/20 text-emerald-700';
                             }
                             
                             return (
@@ -656,9 +751,9 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                                     {isCorrect ? '✅ Your Choice (Correct)' : '❌ Your Choice (Incorrect)'}
                                   </span>
                                 )}
-                                {!isSelected && isCorrectAns && isSelected && (
+                                {!isSelected && isCorrectAns && (
                                   <span className="block text-[8px] font-mono font-black mt-0.5 uppercase tracking-widest text-emerald-600">
-                                    Correct Answer
+                                    ✓ Correct Answer
                                   </span>
                                 )}
                               </div>
@@ -667,13 +762,13 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                         </div>
 
                         {/* User Replies / Choice Bubble */}
-                        <div className="flex items-start gap-2.5 max-w-[90%] ml-auto justify-end">
+                        <div className="flex items-start gap-2.5 max-w-[92%] ml-auto justify-end">
                           <div className={`p-3 rounded-2xl rounded-tr-xs shadow-3xs text-right ${
                             isCorrect 
                               ? 'bg-emerald-50 border border-emerald-100 text-emerald-950' 
                               : 'bg-rose-50 border border-rose-100 text-rose-950'
                           }`}>
-                            <span className="block text-[9px] font-mono font-black text-gray-400 mb-1">👤 MY SUBMISSION</span>
+                            <span className="block text-[9px] font-mono font-black text-gray-400 mb-0.5">👤 MY SUBMISSION</span>
                             <p className="text-xs sm:text-sm font-bold font-sans">
                               {log.selectedAnswerIndex === -1 
                                 ? (lang === 'hi' ? "समय समाप्त (कोई उत्तर नहीं)" : "Timeout / Unanswered")
@@ -686,12 +781,12 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                         </div>
 
                         {/* Swami AI Explains the Concept (Chat Bubble) */}
-                        <div className="flex items-start gap-2.5 max-w-[90%] pl-2">
+                        <div className="flex items-start gap-2.5 max-w-[92%] pl-1">
                           <div className="h-7 w-7 rounded-full bg-gradient-to-tr from-amber-400 to-amber-500 flex items-center justify-center text-xs shrink-0 shadow-3xs">
                             🤖
                           </div>
-                          <div className="bg-slate-50 border border-slate-150 p-3.5 rounded-2xl rounded-tl-xs shadow-3xs">
-                            <span className="block text-[9px] font-mono font-black text-indigo-500 mb-1 uppercase tracking-wider flex items-center gap-1">
+                          <div className="bg-indigo-50/30 border border-indigo-100/50 p-3.5 rounded-2xl rounded-tl-xs shadow-3xs">
+                            <span className="block text-[9px] font-mono font-black text-indigo-600 mb-1 uppercase tracking-wider flex items-center gap-1">
                               <BookOpen className="h-3 w-3" /> Learning Concept Breakdown & Explanation
                             </span>
                             <p className="text-xs sm:text-sm text-gray-700 leading-relaxed font-sans font-medium">
