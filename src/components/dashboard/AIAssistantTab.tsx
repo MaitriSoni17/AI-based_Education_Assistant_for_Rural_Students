@@ -8,7 +8,8 @@ import {
   Sparkles, Send, Volume2, VolumeX, Smile, ArrowRight, CornerDownRight,
   Paperclip, X, Trash, Image as ImageIcon, BookOpen, Compass, Map, 
   GraduationCap, Leaf, Sun, CloudRain, Award, Check, RotateCcw, Play, Plus,
-  ChevronDown, ChevronUp, MessageSquare, FileText, FileDown, Copy
+  ChevronDown, ChevronUp, MessageSquare, FileText, FileDown, Copy,
+  Search, Star
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { offlineSyncManager } from '../../utils/offlineSync';
@@ -62,6 +63,7 @@ interface ChatSession {
   title: string;
   timestamp: string;
   messages: ChatMessage[];
+  starred?: boolean;
 }
 
 const CHARACTERS = [
@@ -117,6 +119,60 @@ const LEARNING_PATH_TITLE_LABELS: Record<LanguageCode, string> = {
   mr: "संरचित अभ्यास मार्ग",
   ta: "கட்டமைக்கப்பட்ட கற்றல் வழி",
   te: "క్రమబద్ధమైన అభ్యసన మార్గం"
+};
+
+const SEARCH_PLACEHOLDERS: Record<LanguageCode, string> = {
+  en: "Search chat titles or messages...",
+  hi: "चैट शीर्षक या संदेशों में खोजें...",
+  gu: "ચેટ શીર્ષક અથવા સંદેશાઓમાં શોધો...",
+  mr: "चॅट शीर्षक किंवा संदेशांमध्ये शोधा...",
+  ta: "அரட்டை தலைப்புகள் அல்லது செய்திகளில் தேடவும்...",
+  te: "చాట్ శీర్షికలు లేదా సందేశాలలో శోధించండి..."
+};
+
+const NO_MATCH_LABELS: Record<LanguageCode, string> = {
+  en: "No matching results found.",
+  hi: "कोई मेल खाता परिणाम नहीं मिला।",
+  gu: "કોઈ મેળ ખાતા પરિણામો મળ્યા નથી.",
+  mr: "कोणतेही जुळणारे निकाल आढळले नाहीत.",
+  ta: "பொருந்தும் முடிவுகள் எதுவும் கிடைக்கவில்லை.",
+  te: "సరిపోలే ఫలితాలు ఏవీ కనుгөనబడలేదు."
+};
+
+const NO_MATCH_SUB_LABELS: Record<LanguageCode, string> = {
+  en: "Try resetting your filters or search query.",
+  hi: "कृपया अपनी खोज शब्द या फ़िल्टर बदलें।",
+  gu: "કૃપા કરીને તમારા ફિલ્ટર્સ અથવા શોધ ક્વેરી બદલો.",
+  mr: "कृपया आपले फिल्टर किंवा शोध क्वेरी बदला.",
+  ta: "தயவுசெய்து உங்கள் வடிப்பான்கள் அல்லது தேடல் வினவலை மாற்றவும்.",
+  te: "దయచేసి మీ ఫిల్టర్‌లు లేదా శోధన ప్రశ్నను మార్చండి."
+};
+
+const FILTER_ALL_LABELS: Record<LanguageCode, string> = {
+  en: "All",
+  hi: "सभी",
+  gu: "બધા",
+  mr: "सर्व",
+  ta: "அனைத்தும்",
+  te: "అన్నీ"
+};
+
+const FILTER_STARRED_LABELS: Record<LanguageCode, string> = {
+  en: "Starred",
+  hi: "तारांकित",
+  gu: "તારાંકિત",
+  mr: "तारांकित",
+  ta: "நட்சத்திரமிடப்பட்டது",
+  te: "నక్షత్రం గుర్తుగలవి"
+};
+
+const FILTER_ATTACHMENT_LABELS: Record<LanguageCode, string> = {
+  en: "With Attachments",
+  hi: "संलग्नक युक्त",
+  gu: "જોડાણો સાથે",
+  mr: "संलग्नकांसह",
+  ta: "இணைப்புகளுடன்",
+  te: "జోడింపులతో"
 };
 
 const LEARNING_PATH_INTRO_LABELS: Record<LanguageCode, string> = {
@@ -522,6 +578,14 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     }
   });
   const [showHistory, setShowHistory] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'starred' | 'hasAttachment'>('all');
+
+  const handleToggleStarSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setChatSessions(prev => prev.map(s => s.id === sessionId ? { ...s, starred: !s.starred } : s));
+  };
+
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
   const [activeSessionId, setActiveSessionIdState] = useState<string | null>(null);
   const activeSessionIdRef = useRef<string | null>(null);
@@ -1750,66 +1814,174 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                 </div>
               </div>
 
-              {chatSessions.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 text-xs font-sans bg-white rounded-2xl border border-gray-150 p-6 flex flex-col items-center justify-center gap-2">
-                  <span className="text-3xl">📚</span>
-                  <p className="font-bold">{lang === 'hi' ? 'कोई इतिहास नहीं मिला।' : 'No search history found.'}</p>
-                  <p className="text-[10px] text-gray-400">{lang === 'hi' ? 'चैट शुरू करके प्रश्न पूछना आरंभ करें!' : 'Start asking questions to build your search history!'}</p>
+              {/* Search and Filters Controls */}
+              {chatSessions.length > 0 && (
+                <div className="bg-white border border-gray-150 p-4 rounded-2xl shadow-3xs space-y-3.5">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    {/* Search Input */}
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder={SEARCH_PLACEHOLDERS[lang] || SEARCH_PLACEHOLDERS['en']}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]/20 focus:border-[#E07A5F] bg-gray-50/50 text-slate-800"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 font-bold"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Filter Type Buttons */}
+                    <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => setFilterType('all')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          filterType === 'all'
+                            ? 'bg-[#E07A5F] text-white shadow-3xs'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-150'
+                        }`}
+                      >
+                        {FILTER_ALL_LABELS[lang] || FILTER_ALL_LABELS['en']}
+                      </button>
+                      <button
+                        onClick={() => setFilterType('starred')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                          filterType === 'starred'
+                            ? 'bg-amber-500 text-white shadow-3xs'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-150'
+                        }`}
+                      >
+                        <Star className={`h-3.5 w-3.5 ${filterType === 'starred' ? 'fill-current text-white' : 'text-amber-500'}`} />
+                        <span>{FILTER_STARRED_LABELS[lang] || FILTER_STARRED_LABELS['en']}</span>
+                      </button>
+                      <button
+                        onClick={() => setFilterType('hasAttachment')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          filterType === 'hasAttachment'
+                            ? 'bg-blue-600 text-white shadow-3xs'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-150'
+                        }`}
+                      >
+                        {FILTER_ATTACHMENT_LABELS[lang] || FILTER_ATTACHMENT_LABELS['en']}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-8">
-                  {chatSessions.map((session) => (
-                    <div
-                      key={session.id}
-                      className="space-y-4"
-                    >
-                      {/* Session Elegant Divider Header */}
-                      <div className="border border-gray-200 bg-[#FAF8F4]/80 p-3 px-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow-3xs">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-lg">📖</span>
-                          <div className="truncate">
-                            <span className="text-xs font-extrabold text-[#3D405B] block truncate leading-tight">
-                              {session.title}
-                            </span>
-                            <span className="text-[9px] text-gray-400 font-mono block mt-0.5">
-                              📅 {session.timestamp}
-                            </span>
+              )}
+
+              {(() => {
+                const filtered = chatSessions.filter(session => {
+                  const queryLower = searchQuery.toLowerCase();
+                  const titleMatch = session.title.toLowerCase().includes(queryLower);
+                  const messagesArr = Array.isArray(session.messages) ? session.messages : [];
+                  const msgMatch = messagesArr.some(m => m && m.text && m.text.toLowerCase().includes(queryLower));
+                  const matchesSearch = titleMatch || msgMatch;
+
+                  let matchesFilter = true;
+                  if (filterType === 'starred') {
+                    matchesFilter = !!session.starred;
+                  } else if (filterType === 'hasAttachment') {
+                    matchesFilter = messagesArr.some(m => m && !!m.image);
+                  }
+
+                  return matchesSearch && matchesFilter;
+                });
+
+                if (chatSessions.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-gray-400 text-xs font-sans bg-white rounded-2xl border border-gray-150 p-6 flex flex-col items-center justify-center gap-2">
+                      <span className="text-3xl">📚</span>
+                      <p className="font-bold">{lang === 'hi' ? 'कोई इतिहास नहीं मिला।' : 'No search history found.'}</p>
+                      <p className="text-[10px] text-gray-400">{lang === 'hi' ? 'चैट शुरू करके प्रश्न पूछना आरंभ करें!' : 'Start asking questions to build your search history!'}</p>
+                    </div>
+                  );
+                }
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-gray-400 text-xs font-sans bg-white rounded-2xl border border-gray-150 p-6 flex flex-col items-center justify-center gap-2">
+                      <span className="text-3xl">🔍</span>
+                      <p className="font-bold">{NO_MATCH_LABELS[lang] || NO_MATCH_LABELS['en']}</p>
+                      <p className="text-[10px] text-gray-400">{NO_MATCH_SUB_LABELS[lang] || NO_MATCH_SUB_LABELS['en']}</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-8">
+                    {filtered.map((session) => (
+                      <div
+                        key={session.id}
+                        className="space-y-4"
+                      >
+                        {/* Session Elegant Divider Header */}
+                        <div className="border border-gray-200 bg-[#FAF8F4]/80 p-3 px-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow-3xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-lg">📖</span>
+                            <div className="truncate">
+                              <span className="text-xs font-extrabold text-[#3D405B] block truncate leading-tight">
+                                {session.title}
+                              </span>
+                              <span className="text-[9px] text-gray-400 font-mono block mt-0.5 font-bold">
+                                📅 {session.timestamp}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-auto">
+                            {/* Star Toggle Button */}
+                            <button
+                              onClick={(e) => handleToggleStarSession(session.id, e)}
+                              className={`p-1.5 rounded-lg border active:scale-95 transition-all cursor-pointer ${
+                                session.starred 
+                                  ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100' 
+                                  : 'bg-white border-gray-200 text-gray-400 hover:text-amber-500 hover:bg-gray-50'
+                              }`}
+                              title={session.starred ? "Unstar this session" : "Star this session"}
+                            >
+                              <Star className={`h-4 w-4 ${session.starred ? 'fill-current' : ''}`} />
+                            </button>
+
+                            {/* Toggle expand/collapse button */}
+                            <button
+                              onClick={() => {
+                                setExpandedSessions(prev => ({
+                                  ...prev,
+                                  [session.id]: !prev[session.id]
+                                }));
+                              }}
+                              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#E07A5F] hover:text-[#CE6B50] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 active:scale-95 shadow-3xs"
+                              title={expandedSessions[session.id] ? "Hide conversation history" : "Show conversation history"}
+                            >
+                              {expandedSessions[session.id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                              <span>{expandedSessions[session.id] ? (lang === 'hi' ? 'छिपाएं' : 'Hide') : (lang === 'hi' ? 'देखें' : 'View')}</span>
+                            </button>
+                            
+                            <button
+                              onClick={() => handleLoadSession(session)}
+                              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#81B29A] hover:text-[#5fa383] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 active:scale-95 shadow-3xs"
+                              title="Restore this conversation in the active chat view"
+                            >
+                              <MessageSquare className="h-3.5 w-3.5" />
+                              <span>{RESTORE_CHAT_LABEL[lang] || RESTORE_CHAT_LABEL['en']}</span>
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteSession(session.id, e)}
+                              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-rose-600 hover:text-rose-700 font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-100 active:scale-95"
+                              title="Permanently delete this search history item"
+                            >
+                              <Trash className="h-3.5 w-3.5" />
+                              <span>{lang === 'hi' ? 'हटाएं' : 'Delete'}</span>
+                            </button>
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-auto">
-                          {/* Toggle expand/collapse button */}
-                          <button
-                            onClick={() => {
-                              setExpandedSessions(prev => ({
-                                ...prev,
-                                [session.id]: !prev[session.id]
-                              }));
-                            }}
-                            className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#E07A5F] hover:text-[#CE6B50] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 active:scale-95 shadow-3xs"
-                            title={expandedSessions[session.id] ? "Hide conversation history" : "Show conversation history"}
-                          >
-                            {expandedSessions[session.id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                            <span>{expandedSessions[session.id] ? (lang === 'hi' ? 'छिपाएं' : 'Hide') : (lang === 'hi' ? 'देखें' : 'View')}</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => handleLoadSession(session)}
-                            className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#81B29A] hover:text-[#5fa383] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 active:scale-95 shadow-3xs"
-                            title="Restore this conversation in the active chat view"
-                          >
-                            <MessageSquare className="h-3.5 w-3.5" />
-                            <span>{RESTORE_CHAT_LABEL[lang] || RESTORE_CHAT_LABEL['en']}</span>
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteSession(session.id, e)}
-                            className="flex items-center gap-1.5 text-[10px] sm:text-xs text-rose-600 hover:text-rose-700 font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-100 active:scale-95"
-                            title="Permanently delete this search history item"
-                          >
-                            <Trash className="h-3.5 w-3.5" />
-                            <span>{lang === 'hi' ? 'हटाएं' : 'Delete'}</span>
-                          </button>
-                        </div>
-                      </div>
+  
 
                       {/* Render Messages in exact native bubble styling, collapsible */}
                       {expandedSessions[session.id] && (
@@ -1928,8 +2100,9 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                       )}
                     </div>
                   ))}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             /* NORMAL ACTIVE CONVERSATION FLOW */

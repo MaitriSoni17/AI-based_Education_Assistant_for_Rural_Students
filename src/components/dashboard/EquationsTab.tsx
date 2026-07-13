@@ -6,9 +6,13 @@ import {
   Award, RefreshCw, Layers, CheckCircle2, Sliders, Play, RotateCcw,
   Binary, Flame, Compass, HelpCircle as HelpIcon,
   Trash2, Paperclip, Send, X, Bot, FileDown, Copy, Check,
-  ChevronUp, ChevronDown, BookOpen, Plus, MessageSquare, Calendar
+  ChevronUp, ChevronDown, BookOpen, Plus, MessageSquare, Calendar,
+  Star, Search, User as UserIcon
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import katex from 'katex';
+import html2canvas from 'html2canvas-pro';
+import 'katex/dist/katex.min.css';
 import SpeechInputButton from '../SpeechInputButton';
 import SpeakButton from '../SpeakButton';
 
@@ -44,6 +48,7 @@ interface ChatSession {
   title: string;
   timestamp: string;
   messages: ChatMessage[];
+  starred?: boolean;
 }
 
 const SUPERSCRIPTS: Record<string, string> = {
@@ -69,6 +74,10 @@ const toSubscript = (str: string) => {
 };
 
 const FORMULA_SYMBOLS = [
+  { char: '\\frac{x}{y}', label: 'x/y', desc: 'Fraction / Division (भाग/भिन्न) - click or select text with / to convert', type: 'template' },
+  { char: '\\sqrt{x}', label: '√x', desc: 'Square Root (वर्गमूल)', type: 'template' },
+  { char: 'x^{y}', label: 'x^y', desc: 'Power / exponent (घात)', type: 'template' },
+  { char: 'x_{y}', label: 'x_y', desc: 'Subscript (आधार)', type: 'template' },
   { char: '²', label: 'x²', desc: 'Superscript / सुपरस्क्रिप्ट (e.g. select "2" to make it ²)', type: 'super' },
   { char: '₂', label: 'x₂', desc: 'Subscript / सबस्क्रिप्ट (e.g. select "2" to make it ₂)', type: 'sub' },
   { char: '√', label: '√', desc: 'Square Root (वर्गमूल)' },
@@ -913,66 +922,103 @@ export const EQ_TAB_LABELS: Record<string, Record<string, string>> = {
     balanceChemical: "రసాయన సమీకరణాన్ని సమతుల్యం చేయి",
     earnPoints: "బోనస్: స్టడీ పాయింట్లు సంపాదించండి",
     validateEquation: "సమీకరణాన్ని సరిచూడు",
-    reset: "రీసెట్",
+    reset: "రీసెట్ చేయి",
     helpBalancing: "సమతుల్యం చేయడంలో సహాయం కావాలా?",
-    downloadPDF: "పరిష్కారం PDF డౌన్‌లోడ్ చేయి",
-    copyText: "టెక్స్ట్ కాపీ చేయి",
+    downloadPDF: "పరిష్కారం PDF డౌన్‌లోడ్",
+    copyText: "వచనాన్ని కాపీ చేయి",
     copied: "కాపీ చేయబడింది!",
-    quickSolves: "త్వరిక పరిష్కారాలు",
+    quickSolves: "శీఘ్ర పరిష్కారాలు",
     formulaSheet: "ఫార్ములా షీట్",
-    tryQuickSolves: "త్వరిత పరిష్కారాలను ప్రయత్నించండి",
+    tryQuickSolves: "శీఘ్ర పరిష్కారాలను ప్రయత్నించండి",
     physicsEquations: "భౌతికశాస్త్ర సమీకరణాలు",
-    chemistryFormulae: "రసాయనశాస్త్ర ఫార్ములాలు",
+    chemistryFormulae: "రసాయన శాస్త్ర సూత్రాలు",
     mathEquations: "గణిత సమీకరణాలు",
-    explainFormulaDetail: "దయచేసి ఈ ఫార్ములాను వివరంగా వివరించండి",
-    explainChemicalFormulaDetail: "దయచేసి ఈ రసాయన ఫార్ములాను వివరించండి",
-    explainMathFormulaDetail: "దయచేసి ఈ గణిత ఫార్ములాను వివరించి, దాని ఉత్పాదనను చూపండి",
-    useFormula: "ఫార్ములా ఉపయోగించు",
+    explainFormulaDetail: "దయచేసి ఈ సూత్రాన్ని వివరంగా వివరించండి",
+    explainChemicalFormulaDetail: "దయచేసి ఈ రసాయన సూత్రాన్ని వివరించండి",
+    explainMathFormulaDetail: "దయచేసి ఈ గణిత సూత్రాన్ని వివరించి, దాని దశలను చూపండి",
+    useFormula: "సూత్రాన్ని ఉపయోగించు",
     aiSolve: "AI పరిష్కారం",
-    multiModalSolve: "చిత్రం మరియు PDF సాల్వర్ ఇంజిన్",
+    multiModalSolve: "చిత్రం మరియు PDF పరిష్కార ఇంజిన్",
     mathAndScienceFormulae: "గణితం మరియు సైన్స్ ఫార్ములా షీట్"
   }
 };
 
-export function getEqLabel(key: string, langCode: string): string {
-  const dict = EQ_TAB_LABELS[langCode] || EQ_TAB_LABELS.en;
-  return dict[key] || EQ_TAB_LABELS.en[key] || key;
-}
-
-export function getFormulaLocalized(f: any, lang: string) {
-  const translations: Record<string, Record<string, { name: string; description: string }>> = {
+function getFormulaLocalized(f: any, lang: string) {
+  const translations: Record<string, Record<string, any>> = {
     hi: {
-      "Newton's Second Law": { name: "न्यूटन का दूसरा नियम", description: "बल द्रव्यमान और त्वरण के गुणनफल के बराबर होता है।" },
-      "Ohm's Law": { name: "ओम का नियम", description: "विद्युत विभवान्तर धारा और प्रतिरोध के गुणनफल के बराबर होता है।" },
-      "Einstein's Mass-Energy": { name: "आइंस्टीन का द्रव्यमान-ऊर्जा समीकरण", description: "ऊर्जा द्रव्यमान और प्रकाश की गति के वर्ग के गुणनफल के बराबर होती है।" },
-      "Gravitational Potential Energy": { name: "गुरुत्वीय स्थितिज ऊर्जा", description: "स्थितिज ऊर्जा द्रव्यमान, गुरुत्वाकर्षण बल और ऊंचाई पर निर्भर करती है।" },
-      "Kinetic Energy": { name: "गतिज ऊर्जा", description: "गतिमान वस्तु की ऊर्जा।" },
-      "Density Formula": { name: "घनत्व का सूत्र", description: "घनत्व द्रव्यमान को आयतन से विभाजित करने पर प्राप्त होता है।" },
-      "Ideal Gas Law": { name: "आदर्श गैस नियम", description: "दाब, आयतन, मोल, गैस नियतांक और तापमान को जोड़ता है।" },
-      "Molarity": { name: "मोलरता", description: "विलेय के मोलों की संख्या को विलयन के लीटर आयतन से विभाजित किया जाता है।" },
-      "pH Formula": { name: "pH मान सूत्र", description: "विलयन की अम्लता या क्षारीयता की गणना करता है।" },
-      "Pythagorean Theorem": { name: "पाइथागोरस प्रमेय", description: "एक समकोण त्रिभुज में, कर्ण का वर्ग अन्य दो भुजाओं के वर्गों के योग के बराबर होता है।" },
-      "Quadratic Formula": { name: "द्विघात सूत्र", description: "द्विघात समीकरण ax² + bx + c = 0 के मूल निकालता है।" },
-      "Area of a Circle": { name: "वृत्त का क्षेत्रफल", description: "त्रिज्या r वाले वृत्त के क्षेत्रफल की गणना करता है।" },
-      "Volume of a Sphere": { name: "गोले का आयतन", description: "त्रिज्या r वाले गोले के आयतन की गणना करता है।" },
-      "Euler's Identity": { name: "यूलर की पहचान", description: "पांच गणितीय स्थिरांकों को जोड़ने वाला सबसे सुंदर समीकरण।" }
+      "Newton's Second Law": {
+        name: "न्यूटन का दूसरा नियम",
+        description: "बल वस्तु के द्रव्यमान और त्वरण के गुणनफल के बराबर होता है।"
+      },
+      "Ohm's Law": {
+        name: "ओम का नियम",
+        description: "विद्युत विभवांतर विद्युत धारा और प्रतिरोध के गुणनफल के बराबर होता है।"
+      },
+      "Einstein's Mass-Energy": {
+        name: "आइंस्टीन का द्रव्यमान-ऊर्जा समीकरण",
+        description: "ऊर्जा द्रव्यमान और प्रकाश की गति के वर्ग के गुणनफल के बराबर होती है।"
+      },
+      "Gravitational Potential Energy": {
+        name: "गुरुत्वीय स्थितिज ऊर्जा",
+        description: "स्थितिज ऊर्जा वस्तु के द्रव्यमान, गुरुत्वाकर्षण और ऊंचाई पर निर्भर करती है।"
+      },
+      "Kinetic Energy": {
+        name: "गतिज ऊर्जा",
+        description: "गतिमान वस्तु की ऊर्जा।"
+      },
+      "Density Formula": {
+        name: "घनत्व का सूत्र",
+        description: "घनत्व द्रव्यमान को आयतन से भाग देकर प्राप्त होता है।"
+      },
+      "Ideal Gas Law": {
+        name: "आदर्श गैस नियम",
+        description: "दबाव, आयतन, मोल, गैस स्थिरांक और तापमान को जोड़ता है।"
+      },
+      "Molarity": {
+        name: "मोलरता",
+        description: "विलेय के मोल की संख्या को विलयन के लीटर आयतन से भाग दिया जाता है।"
+      },
+      "pH Formula": {
+        name: "pH सूत्र",
+        description: "विलयन की अम्लता या क्षारीयता को मापता है।"
+      },
+      "Pythagorean Theorem": {
+        name: "पाइथागोरस प्रमेय",
+        description: "समकोण त्रिभुज में, कर्ण का वर्ग अन्य दो भुजाओं के वर्गों के योग के बराबर होता है।"
+      },
+      "Quadratic Formula": {
+        name: "द्विघात सूत्र",
+        description: "द्विघात समीकरण ax² + bx + c = 0 के मूलों को हल करता है।"
+      },
+      "Area of a Circle": {
+        name: "वृत्त का क्षेत्रफल",
+        description: "त्रिज्या r वाले वृत्त के क्षेत्रफल की गणना करता है।"
+      },
+      "Volume of a Sphere": {
+        name: "गोले का आयतन",
+        description: "त्रिज्या r वाले गोले के आयतन की गणना करता है।"
+      },
+      "Euler's Identity": {
+        name: "यूलर का समीकरण",
+        description: "पांच गणितीय स्थिरांकों को जोड़ने वाला सबसे सुंदर समीकरण।"
+      }
     },
     gu: {
       "Newton's Second Law": {
-        name: "ન્યૂટનનો બીજો નિયમ",
-        description: "બળ એ દ્રવ્યમાન અને પ્રવેગના ગુણાકાર બરાબર છે."
+        name: "ન્યૂટનનો ગતિનો બીજો નિયમ",
+        description: "બળ એ દ્રવ્યમાન અને પ્રવેગના ગુણાકાર બરાબર હોય છે."
       },
       "Ohm's Law": {
         name: "ઓહ્મનો નિયમ",
-        description: "વોલ્ટેજ એ વિદ્યુત પ્રવાહ અને અવરોધના ગુણાકાર બરાબર છે."
+        description: "વિદ્યુત વિભવાંતર એ વિદ્યુત પ્રવાહ અને અવરોધના ગુણાકાર બરાબર હોય છે."
       },
       "Einstein's Mass-Energy": {
         name: "આઇન્સ્ટાઇનનું દ્રવ્યમાન-ઊર્જા સમીકરણ",
-        description: "ઊર્જા એ દ્રવ્યમાન અને પ્રકાશની ગતિના વર્ગના ગુણાકાર બરાબર છે."
+        description: "ઊર્જા એ દ્રવ્યમાન અને પ્રકાશની ગતિના વર્ગના ગુણાકાર બરાબર હોય છે."
       },
       "Gravitational Potential Energy": {
-        name: "ગુરુત્વાકર્ષણ સ્થિતિજ ઊર્જા",
-        description: "સ્થિતિજ ઊર્જા દ્રવ્યમાન, ગુરુત્વાકર્ષણ બળ અને ઊંચાઈ પર આધાર રાખે છે."
+        name: "ગુરુત્વાકર્ષણ સ્થિતિ ઊર્જા",
+        description: "સ્થિતિ ઊર્જા દ્રવ્યમાન, ગુરુત્વાકર્ષણ અને ઊંચાઈ પર આધાર રાખે છે."
       },
       "Kinetic Energy": {
         name: "ગતિજ ઊર્જા",
@@ -1198,6 +1244,10 @@ export function getFormulaLocalized(f: any, lang: string) {
   return { name: f.name, description: f.description };
 }
 
+function getEqLabel(key: string, lang: string): string {
+  return EQ_TAB_LABELS[lang]?.[key] || EQ_TAB_LABELS['en']?.[key] || key;
+}
+
 function getScienceExplanations(lang: string, { mass, accel, force, current, resistance, voltage, milligrams, energyMWh }: any) {
   const defaultNewton = {
     title: "Newton's Second Law of Motion",
@@ -1316,7 +1366,7 @@ function getScienceExplanations(lang: string, { mass, accel, force, current, res
         variables: "V = व्होल्टेज (व्होल्ट), I = विद्युत धारा (अँपिअर), R = रोध (ओहम Ω)",
         explanation: "ओहमचा नियम सांगतो की एखाद्या वाहकामधून वाहणारी विद्युत धारा ही त्याच्या दोन टोकांमधील विभवांतराच्या थेट प्रमाणात आणि रोधाच्या व्यस्त प्रमाणात असते.",
         intuition: `सध्याची गणना: जर बल्बचा रोध ${resistance} ओहम असेल आणि त्यातून ${current} अँपिअर विद्युत धारा वाहत असेल, तर व्होल्टेज ${voltage.toFixed(1)} व्होल्ट असेल. घरगुती वीज सॉकेट २२० व्होल्टचे असते!`,
-        speechText: `ओहमचा नियम. व्होल्टेज बरोबर विद्युत धारा गुणिले रोध. विद्युत धारा ${current} अँपिअर आणि रोध ${resistance} ओहम आहे. याचे उत्तर ${voltage.toFixed(1)} व्होल्ट आहे.`
+        speechText: `ओहमचा नियम. व्होल्टेज बरोबर विद्युत धारा गुणिले रोध. विद्युत धारा ${current} अँपिअर आणि रोध ${resistance} ओहम आहे. याचे उत्तर ${voltage.toFixed(1)} व्होल्ट असेल.`
       },
       einstein: {
         title: "आईन्स्टाईनचे द्रव्यमान-ऊर्जा समीकरण",
@@ -1329,34 +1379,34 @@ function getScienceExplanations(lang: string, { mass, accel, force, current, res
       chemistry: {
         title: "रासायनिक समीकरण संतुलन प्रयोगशाळा",
         formula: 'a Reactants ➔ b Products',
-        variables: "परमाणूंचे संवर्धन (वस्तुमान संवर्धनाचा नियम)",
-        explanation: "रासायनिक अभिक्रियेदरम्यान कोणतेही परमाणू नवीन तयार होत नाहीत किंवा नष्ट होत नाहीत. समीकरणाच्या दोन्ही बाजूला प्रत्येक मूलद्रव्याच्या एकूण परमाणूंची संख्या समान असली पाहिजे.",
-        intuition: "सराव करून शिका! सहगुणक बदला आणि 'समीकरण तपासा' बटन दाबून आपले उत्तर तपासा.",
-        speechText: "रासायनिक समीकरण संतुलन प्रयोगशाळा. अभिकारक आणि उत्पादने संतुलित करा."
+        variables: "अणूंचे संवर्धन (वस्तुमान संवर्धन नियम)",
+        explanation: "रासायनिक अभिक्रियेदरम्यान कोणताही अणू नवीन तयार होत नाही किंवा नष्ट होत नाही. समीकरणाच्या दोन्ही बाजूला प्रत्येक मूलद्रव्याच्या अणूंची एकूण संख्या समान असायला हवी.",
+        intuition: "प्रयोगाद्वारे शिका! अभिकारक आणि उत्पादकांचे सहगुणक बदला आणि 'समीकरण तपासा' बटण दाबा.",
+        speechText: "रासायनिक समीकरण संतुलन प्रयोगशाळा. अभिकारक आणि उत्पादकांना संतुलित करा."
       }
     },
     ta: {
       newton: {
         title: "நியூட்டனின் இரண்டாம் இயக்க விதி",
         formula: 'F = m × a',
-        variables: "F = விசை (நியூட்டன்), m = நிறை (கிலோகிராம்), a = முடுக்கம் (m/s²)",
-        explanation: "ஒரு பொருளின் மீது செயல்படும் விசையானது அப்பொருளின் நிறை மற்றும் முடுக்கத்தின் பெருக்கற்பலனுக்குச் சமம் என்று இந்த விதி கூறுகிறது. எளிமையாகச் சொன்னால், கனமான பொருளை வேகமாகத் தள்ள அதிக விசை தேவைப்படும்!",
-        intuition: `தற்போதைய கணக்கீடு: ${mass} கிலோகிராம் வண்டியை ${accel} m/s² முடுக்கத்தில் தள்ள ${force.toFixed(1)} நியூட்டன் விசை தேவைப்படுகிறது. இது கிணற்றிலிருந்து தண்ணீர் வாலியை மேலே தூக்குவதற்குத் தேவையான விசைக்கு ஒப்பானது!`,
-        speechText: `நியூட்டனின் இரண்டாம் விதி. விசை என்பது நிறை மற்றும் முடுக்கத்தின் பெருக்கல் ஆகும். நிறை ${mass} கிலோகிராம், முடுக்கம் ${accel} m/s², மொத்த விசை ${force.toFixed(1)} நியூட்டன் ஆகும்.`
+        variables: "F = விசை (நியூட்டன்கள்), m = நிறை (கிலோகிராம்), a = முடுக்கம் (m/s²)",
+        explanation: "இந்த விதி ஒரு பொருளின் மீது செயல்படும் விசை அதன் நிறை மற்றும் முடுக்கத்தின் பெருக்கற்பலனுக்கு சமம் என்று கூறுகிறது. எளிமையாகச் சொன்னால், கனமான பொருளை வேகமாக நகர்த்த அதிக விசை தேவைப்படும்!",
+        intuition: `தற்போதைய கணக்கீடு: ${mass} கிலோகிராம் வண்டியை ${accel} m/s² முடுக்கத்துடன் தள்ள ${force.toFixed(1)} நியூட்டன் விசை தேவை. கிணற்றில் இருந்து தண்ணீர் குடங்களை மேலே இழுக்க தோராயமாக இந்த அளவு விசை தேவைப்படும்!`,
+        speechText: `நியூட்டனின் இரண்டாம் விதி. விசை என்பது நிறை மற்றும் முடுக்கத்தின் பெருக்கல் ஆகும். நிறை ${mass} கிலோகிராம், முடுக்கம் ${accel} m/s², மொத்த விசை ${force.toFixed(1)} நியூட்டன்கள்.`
       },
       ohms: {
-        title: "ஓம் விதி (மின்னோட்டம்)",
+        title: "ஓமின் விதி (மின்னோட்டம்)",
         formula: 'V = I × R',
         variables: "V = மின்னழுத்தம் (வோல்ட்), I = மின்னோட்டம் (ஆம்பியர்), R = மின்தடை (ஓம் Ω)",
-        explanation: "ஒரு கடத்தியின் வழியே பாயும் மின்னோட்டம் அதன் இரு முனைகளுக்கிடையே உள்ள மின்னழுத்த வேறுபாட்டிற்கு நேர்த்தகவிலும், மின்தடைக்கு எதிர்த்தகவிலும் இருக்கும் என்று ஓம் விதி கூறுகிறது.",
-        intuition: `தற்போதைய கணக்கீடு: விளக்கின் மின்தடை ${resistance} ஓம் மற்றும் மின்னோட்டம் ${current} ஆம்பியராக இருந்தால், தேவையான மின்னழுத்தம் ${voltage.toFixed(1)} வோல்ட் ஆகும். வீடுகளில் பயன்படுத்தப்படும் மின்சாரம் சுமார் 220 வோல்ட் ஆகும்!`,
-        speechText: `ஓம் விதி. மின்னழுத்தம் என்பது மின்னோட்டம் மற்றும் மின்தடையின் பெருக்கல் ஆகும். தற்போதைய மின்னோட்டம் ${current} ஆம்பியர், மின்தடை ${resistance} ஓம், மின்னழுத்தம் ${voltage.toFixed(1)} வோல்ட் ஆகும்.`
+        explanation: "வெப்பநிலை மாறாத நிலையில் கடத்தி ஒன்றின் வழியே பாயும் மின்னோட்டம் அதன் முனைகளுக்கு இடைப்பட்ட மின்னழுத்த வேறுபாட்டிற்கு நேர்த்தகவிலும், மின்தடைக்கு எதிர்த்தகவிலும் இருக்கும்.",
+        intuition: `தற்போதைய கணக்கீடு: ஒரு விளக்கின் மின்தடை ${resistance} ஓம் மற்றும் மின்னோட்டம் ${current} ஆம்பியர் எனில், தேவையான மின்னழுத்தம் ${voltage.toFixed(1)} வோல்ட் ஆகும். நமது வீடுகளில் பயன்படுத்தப்படும் மின்னழுத்தம் தோராயமாக 220 வோல்ட் ஆகும்!`,
+        speechText: `ஓமின் விதி. மின்னழுத்தம் என்பது மின்னோட்டம் மற்றும் மின்தடையின் பெருக்கல் ஆகும். மின்னோட்டம் ${current} ஆம்பியர், மின்தடை ${resistance} ஓம்ஸ், மின்னழுத்தம் ${voltage.toFixed(1)} வோல்ட்.`
       },
       einstein: {
         title: "ஐன்ஸ்டீனின் நிறை-ஆற்றல் சமன்பாடு",
         formula: 'E = m × c²',
-        variables: "E = ஆற்றல் (ஜூல்), m = நிறை (கிலோகிராம்), c = ஒளியின் வேகம் (~300,000 கிமீ/விநாடி)",
-        explanation: "இந்த புகழ்பெற்ற சமன்பாடு நிறையும் ஆற்றலும் ஒன்றோடொன்று மாற்றப்படக்கூடியவை என்பதைக் காட்டுகிறது. மிகக் குறைந்த அளவு நிறையைக் கூட ஆற்றலாக மாற்றும்போது பிரம்மாண்டமான ஆற்றலைப் பெற முடியும்!",
+        variables: "E = ஆற்றல் (ஜூல்), m = நிறை (கிலோகிராம்), c = ஒளியின் வேகம் (~3,00,000 கிமீ/விநாடி)",
+        explanation: "நிறையும் ஆற்றலும் ஒன்றோடொன்று மாற்றப்படக்கூடியவை என்பதைக் காட்டுகிறது. மிகக் குறைந்த அளவு நிறையைக் கூட ஆற்றலாக மாற்றும்போது பிரம்மாண்டமான ஆற்றலைப் பெற முடியும்!",
         intuition: `தற்போதைய கணக்கீடு: வெறும் ${milligrams} மில்லிகிராம் பொருளை முழுமையாக ஆற்றலாக மாற்றினால் ${energyMWh.toLocaleString()} மெகாவாட்-மணிநேர மின்சாரம் கிடைக்கும். இது உங்கள் கிராமத்தின் தொடக்கப் பள்ளிக்கு தொடர்ந்து ${((energyMWh) / 10).toFixed(0)} மாதங்கள் மின்சாரம் வழங்க போதுமானது!`,
         speechText: `ஐன்ஸ்டீனின் சமன்பாடு. ஈ என்பது எம் சி ஸ்கொயர். வெறும் ${milligrams} மில்லிகிராம் பொருள் ${energyMWh} மெகாவாட் மணிநேர ஆற்றலை வெளியிடுகிறது.`
       },
@@ -1581,6 +1631,102 @@ function getMathExplanations(lang: string, { sideA, sideB, hypotenuse, distance,
   };
 }
 
+const SEARCH_PLACEHOLDERS: Record<string, string> = {
+  en: "Search equations or solutions...",
+  hi: "समीकरण या समाधान में खोजें...",
+  gu: "સમીકરણ અથવા ઉકેલોમાં શોધો...",
+  mr: "समीकरण किंवा उपायांमध्ये शोधा...",
+  ta: "சமன்பாடுகள் அல்லது தீர்வுகளில் தேடவும்...",
+  te: "சமீకరణాలు లేదా పరిష్కారాలలో శోధించండి...",
+  bn: "সমীকরণ বা সমাধান খুঁজুন...",
+  kn: "ಸಮೀಕರಣಗಳು ಅಥವಾ ಪರಿಹಾರಗಳನ್ನು ಹುಡುಕಿ...",
+  sa: "समीकरणं समाधानं वा अन्विष्यताम्...",
+  ur: "مساوات یا حل تلاش کریں...",
+  es: "Buscar ecuaciones o soluciones...",
+  fr: "Rechercher des équations ou des solutions...",
+  de: "Gleichungen oder Lösungen suchen..."
+};
+
+const NO_MATCH_LABELS: Record<string, string> = {
+  en: "No matching results found.",
+  hi: "कोई मेल खाता परिणाम नहीं मिला।",
+  gu: "કોઈ મેળ ખાતા પરિણામો મળ્યા નથી.",
+  mr: "कोणतेही जुळणारे निकाल आढळले नाहीत.",
+  ta: "பொருந்தும் முடிவுகள் எதுவும் கிடைக்கவில்லை.",
+  te: "సరిపోలే ఫలితాలు ఏవీ కనుగొనబడలేదు.",
+  bn: "কোনো মিল পাওয়া যায়নি।",
+  kn: "ಯಾವುದೇ ಫಲಿತಾಂಶಗಳು ಕಂಡುಬಂದಿಲ್ಲ.",
+  sa: "कोऽपि परिणामः न मिलितः।",
+  ur: "کوئی مماثل نتائج نہیں ملے۔",
+  es: "No se encontraron resultados coincidentes.",
+  fr: "Aucun résultat correspondant trouvé.",
+  de: "Keine übereinstimmenden Ergebnisse gefunden."
+};
+
+const NO_MATCH_SUB_LABELS: Record<string, string> = {
+  en: "Try resetting your filters or search query.",
+  hi: "कृपया अपनी खोज शब्द या फ़िल्टर बदलें।",
+  gu: "કૃપા કરીને તમારા ફિલ્ટર્સ અથવા શોધ ક્વેરી બદલો.",
+  mr: "कृपया आपले फिल्टर किंवा शोध क्वेरी बदला.",
+  ta: "தயவுசெய்து உங்கள் வடிப்பான்கள் அல்லது தேடல் வினவலை மாற்றவும்.",
+  te: "దయచేసి మీ ఫిల్టర్‌లు లేదా శోధన ప్రశ్నను మార్చండి.",
+  bn: "অনুগ্রহ করে আপনার ফিল্টার বা অনুসন্ধান শব্দ পরিবর্তন করুন।",
+  kn: "ದಯವಿಟ್ಟು ನಿಮ್ಮ ಫಿಲ್ಟರ್‌ಗಳು ಅಥವಾ ಹುಡುಕಾಟ ಪ್ರಶ್ನೆಯನ್ನು ಬದಲಾಯಿಸಿ.",
+  sa: "कृपया स्वकीयशोधशब्दं शोधकप्रक्रियां वा परिवर्तयन्तु।",
+  ur: "براہ کرم اپنے فلٹرز یا تلاش کا سوال تبدیل کریں۔",
+  es: "Intente restablecer sus filtros o consulta de búsqueda.",
+  fr: "Essayez de réinitialiser vos filtres ou votre requête de recherche.",
+  de: "Versuchen Sie, Ihre Filter oder Ihre Suchanfrage zurückzusetzen."
+};
+
+const FILTER_ALL_LABELS: Record<string, string> = {
+  en: "All",
+  hi: "सभी",
+  gu: "બધા",
+  mr: "सर्व",
+  ta: "அனைத்தும்",
+  te: "అన్నీ",
+  bn: "সব",
+  kn: "ಎಲ್ಲಾ",
+  sa: "सर्वे",
+  ur: "سب",
+  es: "Todo",
+  fr: "Tout",
+  de: "Alle"
+};
+
+const FILTER_STARRED_LABELS: Record<string, string> = {
+  en: "Starred",
+  hi: "तारांकित",
+  gu: "तારાંકિત",
+  mr: "तारांकित",
+  ta: "நட்சத்திரமிடப்பட்டது",
+  te: "నక్షత్రం గుర్తుగలవి",
+  bn: "তারকাচিহ্নিত",
+  kn: "ನಕ್ಷತ್ರ ಗುರುತಿಸಲ್ಪಟ್ಟ",
+  sa: "ताराङ्कितम्",
+  ur: "ستارہ زدہ",
+  es: "Favoritos",
+  fr: "Favoris",
+  de: "Markiert"
+};
+
+const FILTER_ATTACHMENT_LABELS: Record<string, string> = {
+  en: "With Attachments",
+  hi: "संलग्नक युक्त",
+  gu: "જોડાણો સાથે",
+  mr: "संलग्नकांसह",
+  ta: "இணைப்புகளுடன்",
+  te: "జోడింపులతో",
+  bn: "সংযুক্তি সহ",
+  kn: "ಲಗತ್ತುಗಳೊಂದಿಗೆ",
+  sa: "संलग्नकैः सह",
+  ur: "منسلکات کے ساتھ",
+  es: "Con archivos",
+  fr: "Avec pièces jointes",
+  de: "Mit Anhängen"
+};
+
 export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabProps) {
   // Main Category state: 'science' or 'math' or 'chatbot'
   const [activeCategory, setActiveCategory] = useState<'science' | 'math' | 'chatbot'>('chatbot');
@@ -1615,6 +1761,19 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
   });
 
   const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'starred' | 'hasAttachment'>('all');
+
+  // PDF rendering state
+  const [pdfExportMessage, setPdfExportMessage] = useState<ChatMessage | null>(null);
+  const [pdfExportQuestion, setPdfExportQuestion] = useState<string>("");
+  const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
+
+  const handleToggleStarSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSolverSessions(prev => prev.map(s => s.id === sessionId ? { ...s, starred: !s.starred } : s));
+  };
+
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
   const [activeSessionId, setActiveSessionIdState] = useState<string | null>(null);
   const activeSessionIdRef = React.useRef<string | null>(null);
@@ -1704,7 +1863,7 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
   const [chatInput, setChatInput] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const applyFormatting = (type: 'super' | 'sub' | 'symbol', symbolValue?: string) => {
+  const applyFormatting = (type: 'super' | 'sub' | 'symbol' | 'template', symbolValue?: string) => {
     const input = inputRef.current;
     if (!input) return;
 
@@ -1716,6 +1875,29 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
     let replacement = '';
     if (type === 'symbol' && symbolValue) {
       replacement = symbolValue;
+    } else if (type === 'template' && symbolValue) {
+      if (symbolValue === '\\frac{x}{y}') {
+        if (selectedText) {
+          if (selectedText.includes('/')) {
+            const parts = selectedText.split('/');
+            const num = parts[0].trim();
+            const den = parts.slice(1).join('/').trim();
+            replacement = `\\frac{${num}}{${den}}`;
+          } else {
+            replacement = `\\frac{${selectedText}}{y}`;
+          }
+        } else {
+          replacement = '\\frac{x}{y}';
+        }
+      } else if (symbolValue === '\\sqrt{x}') {
+        replacement = selectedText ? `\\sqrt{${selectedText}}` : '\\sqrt{x}';
+      } else if (symbolValue === 'x^{y}') {
+        replacement = selectedText ? `${selectedText}^{y}` : 'x^{y}';
+      } else if (symbolValue === 'x_{y}') {
+        replacement = selectedText ? `${selectedText}_{y}` : 'x_{y}';
+      } else {
+        replacement = symbolValue;
+      }
     } else if (type === 'super') {
       if (selectedText) {
         replacement = toSuperscript(selectedText);
@@ -1937,15 +2119,81 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
     reader.readAsDataURL(file);
   };
 
+  const convertDivisionToFraction = (text: string): string => {
+    let result = text;
+    
+    // 1. Convert parenthesized divisions, e.g. (x + 1)/(y - 1) -> \frac{x + 1}{y - 1}
+    const parenRegex = /\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g;
+    result = result.replace(parenRegex, '\\frac{$1}{$2}');
+    
+    // 2. Convert parenthesized numerator with simple denominator, e.g. (x + 1)/y -> \frac{x + 1}{y}
+    const parenNumRegex = /\(([^()]+)\)\s*\/\s*([a-zA-Z0-9]+)/g;
+    result = result.replace(parenNumRegex, '\\frac{$1}{$2}');
+    
+    // 3. Convert simple numerator with parenthesized denominator, e.g. x/(y - 1) -> \frac{x}{y - 1}
+    const parenDenRegex = /([a-zA-Z0-9]+)\s*\/\s*\(([^()]+)\)/g;
+    result = result.replace(parenDenRegex, '\\frac{$1}{$2}');
+    
+    // 4. Convert simple numbers/variables divisions, e.g. 3/4 -> \frac{3}{4}, x/y -> \frac{x}{y}
+    const simpleRegex = /\b([a-zA-Z0-9]+)\s*\/\s*([a-zA-Z0-9]+)\b/g;
+    result = result.replace(simpleRegex, '\\frac{$1}{$2}');
+    
+    return result;
+  };
+
+  const formatPlainTextInputToLatex = (input: string): string => {
+    let text = input;
+
+    // Check if the input already contains any LaTeX delimiters. If yes, preserve them.
+    const hasLatex = text.includes('\\(') || text.includes('\\[') || text.includes('$$') || text.includes('$');
+    if (hasLatex) {
+      return text;
+    }
+
+    // If it is completely plain text, let's try to identify and convert mathematical/chemical formulas.
+    const isPureFormula = /^[a-zA-Z0-9\s\+\-\*\/\^\(\)\.\,=<>≤≥≠÷×]+$/.test(text) && 
+                          (/[0-9]/.test(text) || /[a-zA-Z]/.test(text)) &&
+                          !(/^(solve|what|is|how|explain|calculate|find|the|equation|of|and|or|for|in|on|at|to|with|by|a|an)\b/i.test(text.trim()));
+
+    if (isPureFormula) {
+      const formatted = convertDivisionToFraction(text.trim());
+      return `\\[ ${formatted} \\]`;
+    }
+
+    // Otherwise, it is a combination of text and formulas.
+    text = convertDivisionToFraction(text);
+
+    // Identify equations and wrap them (e.g., words containing letters and numbers with =, +, -, *, / or ^)
+    const eqRegex = /([a-zA-Z0-9_\-\+\*\/\^\(\)\s\.]+\s*=\s*[a-zA-Z0-9_\-\+\*\/\^\(\)\s\.]+)/g;
+    text = text.replace(eqRegex, (match) => {
+      if (/^\s*[0-9]+\s*$/.test(match) || /^\s*[a-zA-Z]{1,3}\s*$/.test(match)) {
+        return match;
+      }
+      return `\\(${match.trim()}\\)`;
+    });
+
+    // Format chemical formulas
+    text = text.replace(/\b(H2O|CO2|C6H12O6|H2SO4|O2|H2|NaCl|HCl|NaOH|CaCO3)\b/g, (match) => {
+      let formatted = match.replace(/([A-Z][a-z]?)(\d+)/g, '\\text{$1}_$2');
+      formatted = formatted.replace(/\b([A-Z][a-z]?)\b/g, '\\text{$1}');
+      return `\\(${formatted}\\)`;
+    });
+
+    return text;
+  };
+
   // Handle sending message
   const handleSendMessage = async (customText?: string) => {
     const messageText = customText !== undefined ? customText : chatInput;
     if (!messageText.trim() && !selectedFile) return;
 
+    // Preprocess plain text into proper LaTeX mathematical format before solving
+    const preprocessedText = formatPlainTextInputToLatex(messageText);
+
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'user',
-      text: messageText,
+      text: preprocessedText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       attachmentName: selectedFile?.name,
       attachmentType: selectedFile?.mimeType.includes('pdf') ? 'pdf' : (selectedFile ? 'image' : undefined),
@@ -1971,7 +2219,8 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
 
     const systemInstruction = `You are GyaanBot's Smart AI Math and Science Solver, an expert teacher. Solve science/math problems, balance equations, explain physics laws, and show step-by-step calculations.
 CRITICAL RULE 1: You MUST explain, write, and reply ENTIRELY in the ${langName} language (using its native script/characters, e.g. Devanagari for Hindi/Sanskrit, Bengali script for Bengali, Arabic/Persian script for Urdu, Tamil script for Tamil, etc.). Do not speak English if the requested language is not English.
-CRITICAL RULE 2: NEVER use LaTeX symbols, block math wrappers, or LaTeX macros under any circumstances. Do not output LaTeX wrappers like $$, $, \\frac, \\pm, \\sqrt, or curly braces {}. All formulas and equations must be written in normal, clean, readable plain-text expressions using standard keyboard symbols (e.g., / for division, * or x for multiplication, ^2 for power, sqrt() for square root) and clear statements. Example: write 'x_1 = (5 + 1)/6 = 6/6 = 1' instead of LaTeX formatting.
+CRITICAL RULE 2: Always present mathematical equations, formulas, fractions, derivatives, integrals, and multi-step math solutions in proper mathematical notation using LaTeX formatting. Do not write equations or formulas as plain text sentences. Every single equation, math term, variable, or inline formula must be enclosed in LaTeX inline syntax, e.g. \\(x^2 + y^2 = z^2\\) or \\(\\text{H}_2\\text{O}\\). Use display-style block LaTeX wrappers for multi-step solutions, derivations, or stand-alone prominent equations: \\[ E = mc^2 \\]. Explanations should be in simple, friendly, empathetic text in the ${langName} language, but equations must ALWAYS appear as LaTeX equations. For all science, physics, chemistry formulas and molecules, also use LaTeX formatting (e.g., \\(\\text{H}_2\\text{O}\\), \\(\\Delta G = \\Delta H - T\\Delta S\\)). Never mix plain text math with explanations — keep all math strictly in LaTeX (e.g., write \\(\\frac{d}{dx}x^2 = 2x\\) instead of "the derivative of x squared is 2x").
+CRITICAL RULE 3: MATH-AWARE PARSING AND SOLVING: Always parse and solve equations in LaTeX formatting. If the student's input query is in plain text, mentally convert it into proper LaTeX and provide the step-by-step mathematical explanation showing how the variables and fractions relate. Ensure any division type equations (e.g. \\(\\frac{a}{b}\\)), matrices, exponents, or chemical equations are beautifully structured and fully solved.
 If a user uploads an image or PDF, carefully analyze the visual/document problem and provide a detailed educational walkthrough in the ${langName} language using this clean format.
 
 [EMPATHETIC ADAPTIVE LEARNING GUIDELINES]
@@ -2085,48 +2334,155 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     return t;
   };
 
-  // Helper to format messages with markdown-like style (bold, bullet, newline)
-  const formatMessageText = (text: string) => {
-    const sanitizedText = sanitizeAccidentalLatex(text);
-    return sanitizedText.split('\n').map((line, i) => {
-      const trimmedLine = line.trim();
-      const isBullet = trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ');
-      const cleanLine = isBullet ? trimmedLine.substring(2) : line;
+  // Helper to format messages with proper LaTeX typesetting using KaTeX
+  const formatMessageText = (text: string, isUser?: boolean) => {
+    if (!text) return null;
 
-      // Match **text**
-      const parts = [];
-      const regex = /\*\*(.*?)\*\*/g;
-      let match;
-      let lastIndex = 0;
+    // Split text by display blocks first
+    const displayRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g;
+    const parts = text.split(displayRegex);
 
-      while ((match = regex.exec(cleanLine)) !== null) {
-        if (match.index > lastIndex) {
-          parts.push(cleanLine.substring(lastIndex, match.index));
+    return parts.map((part, partIdx) => {
+      const isDisplayBlock = part.startsWith('$$') && part.endsWith('$$') || part.startsWith('\\[') && part.endsWith('\\]');
+      
+      if (isDisplayBlock) {
+        let content = part;
+        if (content.startsWith('$$')) {
+          content = content.slice(2, -2);
+        } else {
+          content = content.slice(2, -2);
         }
-        parts.push(<strong key={match.index} className="font-bold text-gray-950">{match[1]}</strong>);
-        lastIndex = regex.lastIndex;
-      }
-      if (lastIndex < cleanLine.length) {
-        parts.push(cleanLine.substring(lastIndex));
+        
+        try {
+          const html = katex.renderToString(content.trim(), {
+            displayMode: true,
+            throwOnError: false,
+          });
+          return (
+            <div 
+              key={`block-${partIdx}`} 
+              className={`my-1.5 overflow-x-auto p-2 rounded-lg border text-center text-xs sm:text-[13px] ${
+                isUser 
+                  ? 'bg-white/10 border-white/15 text-white font-semibold' 
+                  : 'bg-slate-50/50 border-slate-150 text-indigo-950 font-sans'
+              }`}
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          );
+        } catch (err) {
+          console.error("KaTeX block render error:", err);
+          return <pre key={`block-${partIdx}`} className="text-rose-600 bg-rose-50 p-2 rounded-xl text-xs overflow-x-auto my-2">\[{content}\]</pre>;
+        }
       }
 
-      const content = parts.length > 0 ? parts : cleanLine;
-
-      if (isBullet) {
-        return (
-          <li key={i} className="list-disc ml-4 mt-0.5 text-xs sm:text-sm text-gray-750 leading-relaxed font-sans">
-            {content}
-          </li>
-        );
-      }
+      // If not display block, it's normal text which may contain inline math and markdown bold/bullets
+      // First, let's split by inline math: \( ... \) and $ ... $
+      const inlineRegex = /(\\\([\s\S]*?\\\)|\\\(.*?\\\))/g;
+      const subParts = part.split(inlineRegex);
 
       return (
-        <p key={i} className="text-xs sm:text-sm text-gray-750 leading-relaxed min-h-[1rem] font-sans">
-          {content}
-        </p>
-      );
-    });
-  };
+        <span key={`text-block-${partIdx}`}>
+          {subParts.map((subPart, subIdx) => {
+            const isInlineMath = subPart.startsWith('\\(') && subPart.endsWith('\\)');
+            
+            if (isInlineMath) {
+              const content = subPart.slice(2, -2);
+              try {
+                const html = katex.renderToString(content.trim(), {
+                  displayMode: false,
+                  throwOnError: false,
+                });
+                return (
+                  <span 
+                    key={`inline-${subIdx}`} 
+                    className={`inline-block px-1 font-sans align-middle ${
+                      isUser ? 'text-white font-semibold' : 'text-indigo-950 font-sans'
+                    }`}
+                    dangerouslySetInnerHTML={{ __html: html }}
+                  />
+                );
+              } catch (err) {
+                console.error("KaTeX inline render error:", err);
+                return <code key={`inline-${subIdx}`} className="text-rose-600 bg-rose-50 px-1 rounded-md text-xs">\{content}\</code>;
+              }
+            }
+
+            // Also check for $ ... $ inline math in the subPart
+            const dollarRegex = /(\$[^\$\n]+?\$)/g;
+            const dollarParts = subPart.split(dollarRegex);
+
+            return dollarParts.map((dollarPart, dIdx) => {
+              const isDollarMath = dollarPart.startsWith('$') && dollarPart.endsWith('$') && dollarPart.length > 2;
+
+              if (isDollarMath) {
+                const content = dollarPart.slice(1, -1);
+                try {
+                  const html = katex.renderToString(content.trim(), {
+                    displayMode: false,
+                    throwOnError: false,
+                  });
+                  return (
+                    <span 
+                      key={`dollar-${dIdx}`} 
+                      className="inline-block px-1 font-sans text-indigo-950 align-middle"
+                      dangerouslySetInnerHTML={{ __html: html }}
+                  />
+                );
+              } catch (err) {
+                console.error("KaTeX inline dollar render error:", err);
+                return <code key={`dollar-${dIdx}`} className="text-rose-600 bg-rose-50 px-1 rounded-md text-xs">${content}$</code>;
+              }
+            }
+
+            // Normal text with newlines, bold markdown, and bullet points
+            return dollarPart.split('\n').map((line, lineIdx) => {
+              const trimmedLine = line.trim();
+              const isBullet = trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ');
+              const cleanLine = isBullet ? trimmedLine.substring(2) : line;
+
+              // Match **bold**
+              const parts = [];
+              const regex = /\*\*(.*?)\*\*/g;
+              let match;
+              let lastIndex = 0;
+
+              while ((match = regex.exec(cleanLine)) !== null) {
+                if (match.index > lastIndex) {
+                  parts.push(cleanLine.substring(lastIndex, match.index));
+                }
+                parts.push(<strong key={match.index} className={isUser ? "font-extrabold text-white" : "font-bold text-gray-950"}>{match[1]}</strong>);
+                lastIndex = regex.lastIndex;
+              }
+              if (lastIndex < cleanLine.length) {
+                parts.push(cleanLine.substring(lastIndex));
+              }
+
+              const content = parts.length > 0 ? parts : cleanLine;
+
+              if (isBullet) {
+                return (
+                  <span key={lineIdx} className={`block list-disc ml-3 mt-0.5 text-xs sm:text-[13px] leading-normal font-sans ${
+                    isUser ? 'text-white/90 font-sans' : 'text-gray-750 font-sans'
+                  }`}>
+                    • {content}
+                  </span>
+                );
+              }
+
+              return (
+                <span key={lineIdx} className={`block text-xs sm:text-[13px] leading-normal font-sans min-h-[0.25rem] ${
+                  isUser ? 'text-white font-sans' : 'text-gray-750 font-sans'
+                }`}>
+                  {content}
+                </span>
+              );
+            });
+          });
+        })}
+      </span>
+    );
+  });
+};
 
   const copyMessageToClipboard = (msg: ChatMessage) => {
     const cleanText = sanitizeAccidentalLatex(msg.text);
@@ -2140,227 +2496,124 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     });
   };
 
-  const exportMessageToPDF = (msg: ChatMessage) => {
+  const exportMessageToPDF = (msg: ChatMessage, messagesList?: ChatMessage[]) => {
     // Find preceding user question
     let userQuestion = "";
-    const activeMsgIndex = chatMessages.findIndex(m => m.id === msg.id);
+    const listToSearch = messagesList || chatMessages;
+    const activeMsgIndex = listToSearch.findIndex(m => m.id === msg.id);
     if (activeMsgIndex > 0) {
       for (let i = activeMsgIndex - 1; i >= 0; i--) {
-        if (chatMessages[i].sender === 'user') {
-          userQuestion = chatMessages[i].text;
+        if (listToSearch[i].sender === 'user') {
+          userQuestion = listToSearch[i].text;
           break;
         }
       }
     }
 
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 15;
-    const contentWidth = pageWidth - (margin * 2);
-
-    let currentY = 15;
-
-    // Helper to check and handle page break
-    const ensureSpace = (height: number) => {
-      if (currentY + height > pageHeight - margin - 12) {
-        doc.addPage();
-        currentY = margin + 10;
-        drawPageBackground();
-      }
-    };
-
-    const drawPageBackground = () => {
-      // Draw border
-      doc.setDrawColor(220, 215, 205);
-      doc.setLineWidth(0.2);
-      doc.rect(margin - 5, margin - 5, pageWidth - (margin - 5) * 2, pageHeight - (margin - 5) * 2);
-      
-      // Header accent bar
-      doc.setFillColor(61, 64, 91); // #3D405B Slate
-      doc.rect(margin - 5, margin - 5, pageWidth - (margin - 5) * 2, 4, 'F');
-
-      // Thin accent bar at bottom
-      doc.setFillColor(224, 122, 95); // #E07A5F Coral
-      doc.rect(margin - 5, pageHeight - margin + 1, pageWidth - (margin - 5) * 2, 4, 'F');
-
-      // Page Number Footer
-      doc.setFont("Helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      const pageNum = doc.getNumberOfPages();
-      const pageText = lang === 'hi' ? "पृष्ठ" : "Page";
-      doc.text(`${pageText} ${pageNum}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
-      doc.text(lang === 'hi' ? "एआई गणित और विज्ञान सॉल्वर" : "AI Math & Science Solver Notes", pageWidth - margin, pageHeight - 8, { align: 'right' });
-    };
-
-    // Initial background drawing
-    drawPageBackground();
-    currentY += 8;
-
-    // Title
-    doc.setFont("Helvetica", "bold");
-    doc.setFontSize(18);
-    doc.setTextColor(61, 64, 91);
-    doc.text(lang === 'hi' ? "गणित और विज्ञान समाधान रिपोर्ट" : "MATH & SCIENCE SOLUTION REPORT", margin, currentY);
-    currentY += 6;
-
-    // Subtitle
-    doc.setFont("Helvetica", "italic");
-    doc.setFontSize(9.5);
-    doc.setTextColor(110, 110, 120);
-    doc.text(lang === 'hi' ? "एआई गणित और विज्ञान सॉल्वर द्वारा तैयार किया गया" : "Curated by AI Math & Science Calculation Engine", margin, currentY);
-    currentY += 8;
-
-    // Meta box
-    ensureSpace(35);
-    doc.setFillColor(250, 248, 244);
-    doc.setDrawColor(230, 225, 215);
-    doc.setLineWidth(0.3);
-    doc.rect(margin, currentY, contentWidth, 28, 'FD');
-
-    doc.setFont("Helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(61, 64, 91);
-    
-    doc.text(lang === 'hi' ? "छात्र:" : "STUDENT:", margin + 5, currentY + 6);
-    doc.text(lang === 'hi' ? "एआई सॉल्वर:" : "AI SOLVER:", margin + 5, currentY + 12);
-    doc.text(lang === 'hi' ? "तारीख:" : "DATE CURATED:", margin + 5, currentY + 18);
-    doc.text(lang === 'hi' ? "सत्यापन:" : "VERIFICATION:", margin + 5, currentY + 24);
-
-    const studentName = user.name || 'Verified Student';
-    const gradeLevel = localStorage.getItem(`${user.mobile}_profile_standard`) || user.standard || 'Primary Grade';
-
-    doc.setFont("Helvetica", "normal");
-    doc.setTextColor(80, 80, 90);
-    doc.text(`${studentName} (${gradeLevel})`, margin + 35, currentY + 6);
-    doc.text(lang === 'hi' ? "स्मार्ट एआई गणित और विज्ञान शिक्षक" : "Smart AI Math & Science Tutor (Owl)", margin + 35, currentY + 12);
-    doc.text(msg.timestamp || new Date().toLocaleDateString(), margin + 35, currentY + 18);
-    doc.text(lang === 'hi' ? "🔒 सत्यापित शैक्षणिक सत्र सिंक" : "🔒 Verified Academic Session Sync", margin + 35, currentY + 24);
-    currentY += 36;
-
-    // Question Section
-    if (userQuestion) {
-      ensureSpace(20);
-      doc.setFont("Helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(224, 122, 95);
-      doc.text(lang === 'hi' ? "छात्र का प्रश्न" : "STUDENT QUESTION", margin, currentY);
-      currentY += 5;
-
-      doc.setFont("Helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(60, 60, 70);
-      
-      const splitQuestion = doc.splitTextToSize(userQuestion, contentWidth - 8);
-      const boxHeight = splitQuestion.length * 5 + 6;
-      
-      ensureSpace(boxHeight + 5);
-      doc.setFillColor(253, 251, 247);
-      doc.setDrawColor(242, 204, 143);
-      doc.setLineWidth(0.5);
-      doc.rect(margin, currentY, contentWidth, boxHeight, 'FD');
-      
-      doc.setFillColor(242, 204, 143);
-      doc.rect(margin, currentY, 2.5, boxHeight, 'F');
-
-      doc.text(splitQuestion, margin + 6, currentY + 5);
-      currentY += boxHeight + 8;
-    }
-
-    // Answer Section
-    ensureSpace(20);
-    doc.setFont("Helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(129, 178, 154);
-    doc.text(lang === 'hi' ? "सॉल्वर स्पष्टीकरण और समाधान" : "SOLVER EXPLANATION & SOLUTION", margin, currentY);
-    currentY += 6;
-
-    const cleanText = sanitizeAccidentalLatex(msg.text);
-
-    doc.setFont("Helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(40, 40, 50);
-
-    const lines = cleanText.split('\n');
-    
-    lines.forEach((line) => {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) {
-        currentY += 3.5;
-        return;
-      }
-
-      const isHeading = trimmedLine.startsWith('#') || (trimmedLine.startsWith('**') && trimmedLine.endsWith('**'));
-      const cleanLine = trimmedLine.replace(/^#+\s*/, '').replace(/\*\*/g, '');
-
-      if (isHeading) {
-        doc.setFont("Helvetica", "bold");
-        doc.setFontSize(10.5);
-        doc.setTextColor(61, 64, 91);
-        const splitHeading = doc.splitTextToSize(cleanLine, contentWidth);
-        const height = splitHeading.length * 4.5;
-        ensureSpace(height + 2);
-        doc.text(splitHeading, margin, currentY);
-        currentY += height + 2.5;
-      } else if (trimmedLine.startsWith('*') || trimmedLine.startsWith('-') || /^\d+\./.test(trimmedLine)) {
-        doc.setFont("Helvetica", "normal");
-        doc.setFontSize(9.5);
-        doc.setTextColor(50, 50, 60);
-        
-        let symbol = "•";
-        let textOffset = 6;
-        let contentPart = trimmedLine;
-        if (/^\d+\./.test(trimmedLine)) {
-          const match = trimmedLine.match(/^(\d+\.)/);
-          symbol = match ? match[1] : "•";
-          textOffset = 8;
-          contentPart = trimmedLine.replace(/^\d+\.\s*/, '');
-        } else {
-          contentPart = trimmedLine.replace(/^[-*]\s*/, '');
-        }
-        contentPart = contentPart.replace(/\*\*/g, '');
-
-        ensureSpace(5);
-        doc.setFont("Helvetica", "bold");
-        doc.setTextColor(224, 122, 95);
-        doc.text(symbol, margin + 2, currentY);
-        
-        doc.setFont("Helvetica", "normal");
-        doc.setTextColor(50, 50, 60);
-        const splitBullet = doc.splitTextToSize(contentPart, contentWidth - textOffset);
-        const height = splitBullet.length * 4.5;
-        ensureSpace(height + 1);
-        doc.text(splitBullet, margin + textOffset, currentY);
-        currentY += height + 2;
-      } else {
-        doc.setFont("Helvetica", "normal");
-        doc.setFontSize(9.5);
-        doc.setTextColor(60, 60, 65);
-        const splitParagraph = doc.splitTextToSize(cleanLine, contentWidth);
-        const height = splitParagraph.length * 4.5;
-        ensureSpace(height + 1);
-        doc.text(splitParagraph, margin, currentY);
-        currentY += height + 1.5;
-      }
-    });
-
-    const safeTitle = (userQuestion || "Explanation").substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_');
-    doc.save(`Equation_Hub_Solution_${safeTitle}.pdf`);
-    
     speakText(
       lang === 'hi' 
-        ? "आपका समाधान PDF सफलतापूर्वक डाउनलोड हो गया है!" 
-        : "Your calculation solution PDF has been successfully generated and downloaded!",
+        ? "आपका समाधान PDF तैयार किया जा रहा है..." 
+        : "Preparing your mathematical solution report PDF...",
       lang,
       "AI Solver",
       "🤖 AI Solver"
     );
+
+    setPdfExportMessage(msg);
+    setPdfExportQuestion(userQuestion);
+    setIsExportingPDF(true);
+
+    // Give React a brief moment to render the offscreen HTML fully with KaTeX typesetting
+    setTimeout(() => {
+      const element = document.getElementById("pdf-render-template");
+      if (!element) {
+        setIsExportingPDF(false);
+        setPdfExportMessage(null);
+        return;
+      }
+
+      html2canvas(element, {
+        scale: 2, // high quality
+        useCORS: true,
+        backgroundColor: '#FAF8F5',
+        logging: false,
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+        const printWidth = pageWidth - (margin * 2);
+
+        // Aspect ratio calculation
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const printHeight = printWidth * (canvasHeight / canvasWidth);
+
+        let pageCount = 0;
+        
+        // Single page or multi page rendering
+        if (printHeight <= pageHeight - (margin * 2)) {
+          pdf.addImage(imgData, 'PNG', margin, margin, printWidth, printHeight);
+        } else {
+          // Multi-page slicing if too long
+          let leftHeight = printHeight;
+          const pageImgHeight = pageHeight - (margin * 2);
+          
+          while (leftHeight > 0) {
+            if (pageCount > 0) {
+              pdf.addPage();
+            }
+            // Draw standard PDF border and footer elements on each page
+            pdf.setDrawColor(220, 215, 205);
+            pdf.setLineWidth(0.2);
+            pdf.rect(margin - 2, margin - 2, pageWidth - (margin - 2) * 2, pageHeight - (margin - 2) * 2);
+            
+            pdf.setFont("Helvetica", "normal");
+            pdf.setFontSize(8);
+            pdf.setTextColor(150, 150, 150);
+            pdf.text(lang === 'hi' ? `पृष्ठ ${pageCount + 1}` : `Page ${pageCount + 1}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+
+            // Add the image slice using source clipping/positioning
+            pdf.addImage(
+              imgData, 
+              'PNG', 
+              margin, 
+              margin - (pageCount * pageImgHeight), 
+              printWidth, 
+              printHeight
+            );
+            
+            leftHeight -= pageImgHeight;
+            pageCount++;
+          }
+        }
+
+        const safeTitle = (userQuestion || "Explanation").substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_');
+        pdf.save(`Equation_Hub_Solution_${safeTitle}.pdf`);
+
+        setIsExportingPDF(false);
+        setPdfExportMessage(null);
+
+        speakText(
+          lang === 'hi' 
+            ? "आपका समाधान PDF सफलतापूर्वक डाउनलोड हो गया है!" 
+            : "Your calculation solution PDF has been successfully generated and downloaded!",
+          lang,
+          "AI Solver",
+          "🤖 AI Solver"
+        );
+      }).catch((err) => {
+        console.error("HTML to PDF capture error:", err);
+        setIsExportingPDF(false);
+        setPdfExportMessage(null);
+      });
+    }, 300);
   };
   
   // Selection states
@@ -2590,6 +2843,95 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
   return (
     <div id="interactive-equation-hub" className="space-y-6">
+      
+      {/* OFF-SCREEN PDF RENDER TEMPLATE */}
+      {isExportingPDF && pdfExportMessage && (
+        <div 
+          id="pdf-render-template" 
+          className="p-10 bg-[#FAF8F5] text-slate-800 border-2 border-[#DCD7CD] rounded-3xl"
+          style={{
+            position: 'fixed',
+            left: '-9999px',
+            top: '-9999px',
+            width: '800px',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+          }}
+        >
+          {/* Header Accent Bar */}
+          <div className="h-2 bg-[#3D405B] rounded-t-lg -mx-10 -mt-10 mb-8" />
+
+          {/* Title Block */}
+          <div className="border-b border-[#E6E1D7] pb-6 mb-6">
+            <h1 className="text-2xl font-extrabold text-[#3D405B] uppercase tracking-wide">
+              {lang === 'hi' ? "गणित और विज्ञान समाधान रिपोर्ट" : "MATH & SCIENCE SOLUTION REPORT"}
+            </h1>
+            <p className="text-sm italic text-gray-500 mt-1">
+              {lang === 'hi' ? "एआई गणित और विज्ञान सॉल्वर द्वारा तैयार किया गया" : "Curated by AI Math & Science Calculation Engine"}
+            </p>
+          </div>
+
+          {/* Student Meta Details Grid */}
+          <div className="grid grid-cols-2 gap-4 bg-[#F9F6F0] border border-[#E6E1D7] rounded-2xl p-5 mb-8 text-xs font-sans">
+            <div>
+              <p className="font-bold text-[#3D405B] uppercase mb-1">
+                {lang === 'hi' ? "छात्र:" : "STUDENT:"}
+              </p>
+              <p className="text-gray-700">
+                {user.name || 'Verified Student'} ({localStorage.getItem(`${user.mobile}_profile_standard`) || user.standard || 'Primary Grade'})
+              </p>
+            </div>
+            <div>
+              <p className="font-bold text-[#3D405B] uppercase mb-1">
+                {lang === 'hi' ? "एआई सॉल्वर:" : "AI SOLVER:"}
+              </p>
+              <p className="text-gray-700">
+                {lang === 'hi' ? "स्मार्ट एआई गणित और विज्ञान शिक्षक" : "Smart AI Math & Science Tutor (Owl)"}
+              </p>
+            </div>
+            <div>
+              <p className="font-bold text-[#3D405B] uppercase mb-1">
+                {lang === 'hi' ? "तारीख:" : "DATE CURATED:"}
+              </p>
+              <p className="text-gray-700">
+                {pdfExportMessage.timestamp || new Date().toLocaleDateString()}
+              </p>
+            </div>
+            <div>
+              <p className="font-bold text-[#3D405B] uppercase mb-1">
+                {lang === 'hi' ? "सत्यापन:" : "VERIFICATION:"}
+              </p>
+              <p className="text-emerald-600 font-semibold">
+                🔒 {lang === 'hi' ? "सत्यापित शैक्षणिक सत्र सिंक" : "Verified Academic Session Sync"}
+              </p>
+            </div>
+          </div>
+
+          {/* Student Question Block */}
+          {pdfExportQuestion && (
+            <div className="mb-8">
+              <h2 className="text-sm font-bold text-[#E07A5F] tracking-wider uppercase mb-3">
+                {lang === 'hi' ? "छात्र का प्रश्न" : "STUDENT QUESTION"}
+              </h2>
+              <div className="bg-[#FDFBF7] border-l-4 border-[#F2CC8F] rounded-r-2xl p-5 text-sm text-gray-800 leading-relaxed shadow-3xs">
+                {pdfExportQuestion}
+              </div>
+            </div>
+          )}
+
+          {/* Solution Block */}
+          <div>
+            <h2 className="text-sm font-bold text-[#81B29A] tracking-wider uppercase mb-3">
+              {lang === 'hi' ? "सॉल्वर स्पष्टीकरण और समाधान" : "SOLVER EXPLANATION & SOLUTION"}
+            </h2>
+            <div className="bg-white border border-[#E6E1D7] rounded-2xl p-6 text-sm text-gray-800 leading-relaxed shadow-3xs space-y-4">
+              {formatMessageText(pdfExportMessage.text, false)}
+            </div>
+          </div>
+
+          {/* Footer Accent Bar */}
+          <div className="h-1 bg-[#E07A5F] rounded-b-lg -mx-10 -mb-10 mt-10" />
+        </div>
+      )}
       
       {/* HEADER BANNER */}
       <div className="bg-gradient-to-br from-[#3D405B] to-[#2B2D42] text-white p-6 rounded-3xl border border-slate-700 shadow-sm relative overflow-hidden">
@@ -3619,7 +3961,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         </div>
                       </div>
 
-                      <div className="text-[10px] text-gray-500 text-center italic bg-white/50 p-2 rounded-lg border border-gray-100 font-sans">
+                      <div className="text-[10px] text-gray-550 text-center italic bg-white/50 p-2 rounded-lg border border-gray-100 font-sans">
                         {lang === 'hi' 
                           ? 'स्लाइडर बदलें! भारी वजन को उसी गति से बढ़ाने के लिए अधिक बल चाहिए।' 
                           : 'Adjust sliders! A heavier box needs a stronger push to accelerate to the same speed.'}
@@ -3705,7 +4047,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         </div>
                       </div>
 
-                      <div className="text-[10px] text-gray-500 text-center italic bg-white/50 p-2 rounded-lg border border-gray-100 font-sans">
+                      <div className="text-[10px] text-gray-550 text-center italic bg-white/50 p-2 rounded-lg border border-gray-100 font-sans">
                         {lang === 'hi'
                           ? 'चूंकि प्रकाश की गति बहुत अधिक है, इसलिए बहुत कम मात्रा में द्रव्यमान नष्ट होने पर भी विशाल ऊर्जा उत्पन्न होती है!'
                           : 'Because the speed of light is exceptionally fast, converting even a speck of dust yields incredible quantities of power!'}
@@ -3761,7 +4103,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         </svg>
                       </div>
 
-                      <div className="text-[10px] text-gray-500 text-center italic bg-white/50 p-2 rounded-lg border border-gray-100 font-sans">
+                      <div className="text-[10px] text-gray-550 text-center italic bg-white/50 p-2 rounded-lg border border-gray-100 font-sans">
                         {lang === 'hi'
                           ? 'भारतीय राजमिस्त्रियों का गुनिया नियम 3:4:5 अनुपात पर आधारित है, क्योंकि 3² + 4² = 5²।'
                           : 'Indian builders utilize the exact 3:4:5 ratio as a simple geometric standard to square foundations perfectly!'}
@@ -3817,7 +4159,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         </svg>
                       </div>
 
-                      <div className="text-[10px] text-gray-500 text-center italic bg-white/50 p-2 rounded-lg border border-gray-100 font-sans">
+                      <div className="text-[10px] text-gray-550 text-center italic bg-white/50 p-2 rounded-lg border border-gray-150 font-sans">
                         {lang === 'hi'
                           ? 'कोण (θ) या दूरी (d) बढ़ाने पर मीनार की आनुमानिक ऊँचाई भी बढ़ जाती है!'
                           : 'Increasing angle (θ) or walking further away updates the dynamic heights & distances model!'}
@@ -3832,7 +4174,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         {lang === 'hi' ? 'परवलय आरेख (Parabola curve) SVG' : 'Parabola Graph Plotter'}
                       </span>
                       
-                      <div className="relative h-32 flex items-center justify-center bg-white border border-gray-100 rounded-xl p-2 overflow-hidden">
+                      <div className="relative h-32 flex items-center justify-center bg-white border border-gray-150 p-2 overflow-hidden">
                         <svg width="220" height="110" viewBox="0 0 220 110" className="overflow-visible">
                           {(() => {
                             const originX = 110;
@@ -3871,7 +4213,6 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                                     strokeLinecap="round"
                                   />
                                 )}
-
                                 {/* Real Roots markers on the graph if any */}
                                 {rootsInfo.hasReal && (() => {
                                   const r1Val = parseFloat(rootsInfo.r1);
@@ -4105,11 +4446,12 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
       </div>
       ) : (
-        /* AI SOLVER CHATBOT WORKSPACE */
-        <div className="bg-white rounded-3xl border border-gray-150 shadow-2xs overflow-hidden flex flex-col lg:flex-row h-[620px] sm:h-[650px] animate-fade-in">
+        <>
+          {/* AI SOLVER CHATBOT WORKSPACE */}
+        <div className="bg-white rounded-3xl border border-gray-150 shadow-2xs overflow-hidden flex flex-col h-[520px] sm:h-[580px] animate-fade-in mb-6">
           
-          {/* MAIN CHAT WORKSPACE (LHS) */}
-          <div className="flex-1 flex flex-col border-b lg:border-b-0 lg:border-r border-gray-100">
+          {/* MAIN CHAT WORKSPACE */}
+          <div className="w-full flex-1 flex flex-col min-h-0">
             
             {/* CHAT HEADER */}
             <div className="border-b border-gray-100 p-4 bg-gray-50/60 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
@@ -4167,7 +4509,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
             </div>
 
             {/* CHAT MESSAGES STREAM OR HISTORY PANEL */}
-            <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-white/50 min-h-0">
+            <div className="flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-3 bg-white/50 min-h-0">
               {showHistory ? (
                 /* INLINE FULL SEARCH HISTORY VIEW WITH NATIVE CHAT BUBBLES */
                 <div className="space-y-6 animate-fade-in text-left">
@@ -4212,41 +4554,152 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                     </div>
                   </div>
 
-                  {solverSessions.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400 text-xs font-sans bg-white rounded-2xl border border-gray-150 p-6 flex flex-col items-center justify-center gap-2">
-                      <span className="text-3xl">📚</span>
-                      <p className="font-bold">{translations.noHistory}</p>
-                      <p className="text-[10px] text-gray-400">{translations.noHistorySub}</p>
+                  {/* Search and Filters Controls */}
+                  {solverSessions.length > 0 && (
+                    <div className="bg-white border border-gray-150 p-4 rounded-2xl shadow-3xs space-y-3.5 mb-4">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        {/* Search Input */}
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder={SEARCH_PLACEHOLDERS[chatbotLang] || SEARCH_PLACEHOLDERS[lang] || SEARCH_PLACEHOLDERS['en']}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]/20 focus:border-[#E07A5F] bg-gray-50/50 text-slate-800"
+                          />
+                          {searchQuery && (
+                            <button
+                              onClick={() => setSearchQuery('')}
+                              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 font-bold"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Filter Type Buttons */}
+                        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setFilterType('all')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              filterType === 'all'
+                                ? 'bg-[#E07A5F] text-white shadow-3xs'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-150'
+                            }`}
+                          >
+                            {FILTER_ALL_LABELS[chatbotLang] || FILTER_ALL_LABELS[lang] || FILTER_ALL_LABELS['en']}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFilterType('starred')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                              filterType === 'starred'
+                                ? 'bg-amber-500 text-white shadow-3xs'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-150'
+                            }`}
+                          >
+                            <Star className={`h-3.5 w-3.5 ${filterType === 'starred' ? 'fill-current text-white' : 'text-amber-500'}`} />
+                            <span>{FILTER_STARRED_LABELS[chatbotLang] || FILTER_STARRED_LABELS[lang] || FILTER_STARRED_LABELS['en']}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFilterType('hasAttachment')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              filterType === 'hasAttachment'
+                                ? 'bg-blue-600 text-white shadow-3xs'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-150'
+                            }`}
+                          >
+                            {FILTER_ATTACHMENT_LABELS[chatbotLang] || FILTER_ATTACHMENT_LABELS[lang] || FILTER_ATTACHMENT_LABELS['en']}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="space-y-8">
-                      {solverSessions.map((session) => (
-                        <div key={session.id} className="space-y-4">
-                          {/* Session Elegant Divider Header */}
-                          <div className="border border-gray-200 bg-[#FAF8F4]/80 p-3 px-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow-3xs">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-lg">📖</span>
-                              <div className="truncate">
-                                <span className="text-xs font-extrabold text-[#3D405B] block truncate leading-tight">
-                                  {session.title}
-                                </span>
-                                <span className="text-[9px] text-gray-400 font-mono block mt-0.5">
-                                  📅 {session.timestamp}
-                                </span>
+                  )}
+
+                  {(() => {
+                    const filtered = solverSessions.filter(session => {
+                      const queryLower = searchQuery.toLowerCase();
+                      const titleMatch = session.title.toLowerCase().includes(queryLower);
+                      const messagesArr = Array.isArray(session.messages) ? session.messages : [];
+                      const msgMatch = messagesArr.some(m => m && m.text && m.text.toLowerCase().includes(queryLower));
+                      const matchesSearch = titleMatch || msgMatch;
+
+                      let matchesFilter = true;
+                      if (filterType === 'starred') {
+                        matchesFilter = !!session.starred;
+                      } else if (filterType === 'hasAttachment') {
+                        matchesFilter = messagesArr.some(m => m && !!m.attachmentUrl);
+                      }
+
+                      return matchesSearch && matchesFilter;
+                    });
+
+                    if (solverSessions.length === 0) {
+                      return (
+                        <div className="text-center py-12 text-gray-400 text-xs font-sans bg-white rounded-2xl border border-gray-150 p-6 flex flex-col items-center justify-center gap-2">
+                          <span className="text-3xl">📚</span>
+                          <p className="font-bold">{translations.noHistory}</p>
+                          <p className="text-[10px] text-gray-400">{translations.noHistorySub}</p>
+                        </div>
+                      );
+                    }
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="text-center py-12 text-gray-400 text-xs font-sans bg-white rounded-2xl border border-gray-150 p-6 flex flex-col items-center justify-center gap-2">
+                          <span className="text-3xl">🔍</span>
+                          <p className="font-bold">{NO_MATCH_LABELS[chatbotLang] || NO_MATCH_LABELS[lang] || NO_MATCH_LABELS['en']}</p>
+                          <p className="text-[10px] text-gray-400">{NO_MATCH_SUB_LABELS[chatbotLang] || NO_MATCH_SUB_LABELS[lang] || NO_MATCH_SUB_LABELS['en']}</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-8">
+                        {filtered.map((session) => (
+                          <div key={session.id} className="space-y-4">
+                            {/* Session Elegant Divider Header */}
+                            <div className="border border-gray-200 bg-[#FAF8F4]/80 p-3 px-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow-3xs">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-lg">📖</span>
+                                <div className="truncate">
+                                  <span className="text-xs font-extrabold text-[#3D405B] block truncate leading-tight">
+                                    {session.title}
+                                  </span>
+                                  <span className="text-[9px] text-gray-400 font-mono block mt-0.5">
+                                    📅 {session.timestamp}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-auto">
-                              {/* Toggle expand/collapse button */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setExpandedSessions(prev => ({
-                                    ...prev,
-                                    [session.id]: !prev[session.id]
-                                  }));
-                                }}
-                                className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#E07A5F] hover:text-[#CE6B50] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 active:scale-95 shadow-3xs"
-                              >
+                              <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-auto">
+                                {/* Star Toggle Button */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleToggleStarSession(session.id, e)}
+                                  className={`p-1.5 rounded-lg border active:scale-95 transition-all cursor-pointer ${
+                                    session.starred 
+                                      ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100' 
+                                      : 'bg-white border-gray-200 text-gray-400 hover:text-amber-500 hover:bg-gray-50'
+                                  }`}
+                                  title={session.starred ? "Unstar this session" : "Star this session"}
+                                >
+                                  <Star className={`h-4 w-4 ${session.starred ? 'fill-current' : ''}`} />
+                                </button>
+
+                                {/* Toggle expand/collapse button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setExpandedSessions(prev => ({
+                                      ...prev,
+                                      [session.id]: !prev[session.id]
+                                    }));
+                                  }}
+                                  className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#E07A5F] hover:text-[#CE6B50] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 active:scale-95 shadow-3xs"
+                                >
                                 {expandedSessions[session.id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                 <span>{expandedSessions[session.id] ? translations.hideButton : translations.viewButton}</span>
                               </button>
@@ -4284,17 +4737,17 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                                       className={`flex gap-3 max-w-[85%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
                                     >
                                       {/* Sender Avatar indicator */}
-                                      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                                      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
                                         isMe 
-                                          ? 'bg-[#3D405B] text-white font-mono' 
+                                          ? 'bg-[#3D405B] text-white' 
                                           : 'bg-rose-100 text-[#E07A5F]'
                                       }`}>
-                                        {isMe ? 'U' : 'Owl'}
+                                        {isMe ? <UserIcon className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                                       </div>
 
                                       {/* Bubble content */}
                                       <div className="space-y-1">
-                                        <div className={`p-4 rounded-2xl relative shadow-3xs text-xs sm:text-sm text-left border ${
+                                        <div className={`p-3 rounded-xl relative shadow-3xs text-xs sm:text-[13px] text-left border ${
                                           isMe 
                                             ? 'bg-[#E07A5F] text-white rounded-tr-none' 
                                             : 'bg-slate-50 border-slate-150 rounded-tl-none'
@@ -4317,11 +4770,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                                           )}
 
                                           <div className="space-y-1.5 break-words">
-                                            {isMe ? (
-                                              <p className="text-xs sm:text-sm font-medium whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-                                            ) : (
-                                              formatMessageText(msg.text)
-                                            )}
+                                            {formatMessageText(msg.text, isMe)}
                                           </div>
                                           
                                           <div className={`text-[9px] font-mono mt-2 text-right ${isMe ? 'text-white/70' : 'text-gray-450'}`}>
@@ -4333,7 +4782,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                                             <div className="absolute -bottom-3 -right-1 flex items-center gap-1 bg-white p-0.5 rounded-full border border-gray-150 shadow-xs z-10">
                                               <button
                                                 type="button"
-                                                onClick={() => exportMessageToPDF(msg)}
+                                                onClick={() => exportMessageToPDF(msg, session.messages)}
                                                 className="p-1 rounded-full text-xs text-blue-600 hover:bg-slate-50 cursor-pointer transition-all"
                                                 title={lang === 'hi' ? "समाधान PDF डाउनलोड करें" : "Download Solution PDF"}
                                               >
@@ -4366,7 +4815,8 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         </div>
                       ))}
                     </div>
-                  )}
+                  );
+                })()}
                 </div>
               ) : (
                 /* NORMAL ACTIVE CONVERSATION FLOW */
@@ -4376,15 +4826,15 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                     className={`flex gap-3 max-w-[85%] ${msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
                   >
                     {/* Sender Avatar indicator */}
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
                       msg.sender === 'user' 
-                        ? 'bg-[#3D405B] text-white font-mono' 
+                        ? 'bg-[#3D405B] text-white' 
                         : 'bg-rose-100 text-[#E07A5F]'
                     }`}>
-                      {msg.sender === 'user' ? 'U' : 'Owl'}
+                      {msg.sender === 'user' ? <UserIcon className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                     </div>
 
-                    <div className={`p-4 rounded-2xl text-left shadow-3xs relative ${
+                    <div className={`p-3 rounded-xl text-left shadow-3xs relative text-xs sm:text-[13px] ${
                       msg.sender === 'user'
                         ? 'bg-[#E07A5F] text-white rounded-tr-none'
                         : 'bg-slate-50 border border-slate-150 rounded-tl-none'
@@ -4409,11 +4859,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                       )}
 
                       <div className="space-y-1.5 break-words">
-                        {msg.sender === 'user' ? (
-                          <p className="text-xs sm:text-sm font-medium whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-                        ) : (
-                          formatMessageText(msg.text)
-                        )}
+                        {formatMessageText(msg.text, msg.sender === 'user')}
                       </div>
                       
                       <div className={`text-[9px] font-mono mt-2 text-right ${msg.sender === 'user' ? 'text-white/70' : 'text-gray-450'}`}>
@@ -4432,7 +4878,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
                           <button
                             type="button"
-                            onClick={() => exportMessageToPDF(msg)}
+                            onClick={() => exportMessageToPDF(msg, chatMessages)}
                             className="p-1 rounded-full text-xs text-blue-600 hover:bg-slate-50 cursor-pointer transition-all"
                             title={lang === 'hi' ? "समाधान PDF डाउनलोड करें" : "Download Solution PDF"}
                           >
@@ -4463,8 +4909,8 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
               {/* Loader indicator */}
               {!showHistory && isSending && (
                 <div className="flex gap-3 max-w-[85%] animate-pulse">
-                  <div className="h-8 w-8 rounded-full bg-rose-100 text-[#E07A5F] flex items-center justify-center shrink-0 text-xs">
-                    Owl
+                  <div className="h-8 w-8 rounded-full bg-rose-100 text-[#E07A5F] flex items-center justify-center shrink-0">
+                    <Bot className="h-4 w-4" />
                   </div>
                   <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl rounded-tl-none text-left shadow-3xs flex items-center gap-3">
                     <span className="animate-spin text-[#E07A5F] text-sm">⏳</span>
@@ -4597,346 +5043,322 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
           </div>
 
-          {/* SIDEBAR SUGGESTED PROMPTS / FORMULA SHEET PANEL (RHS) */}
-          <div className="w-full lg:w-85 p-5 bg-slate-50/50 flex flex-col gap-4 overflow-y-auto border-t lg:border-t-0 lg:border-l border-gray-100 max-h-[600px] lg:max-h-none">
-            
-            {/* SEGMENTED TAB CONTROLLER */}
-            <div className="flex bg-gray-200/80 p-1 rounded-xl border border-gray-300/30 gap-0.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setSidebarTab('prompts')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  sidebarTab === 'prompts'
-                    ? 'bg-white text-gray-900 shadow-3xs'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                {getEqLabel('quickSolves', lang)}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSidebarTab('formulas')}
-                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  sidebarTab === 'formulas'
-                    ? 'bg-white text-gray-900 shadow-3xs'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                {getEqLabel('formulaSheet', lang)}
-              </button>
+        </div>
+
+        {/* SUB-SECTION: SUGGESTED QUESTIONS & FORMULAS (BELOW CHATBOT IN FULL WIDTH) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 animate-fade-in text-left">
+          
+          {/* PANEL 1: SUGGESTED QUESTIONS */}
+          <div className="bg-white rounded-3xl border border-gray-150 p-5 sm:p-6 flex flex-col gap-4 shadow-3xs">
+            <div className="border-b border-gray-100 pb-3">
+              <h4 className="text-sm font-display font-extrabold text-gray-900 flex items-center gap-2">
+                ⚡ <span>{getEqLabel('quickSolves', lang)}</span>
+              </h4>
+              <p className="text-xs text-gray-550 mt-1 leading-normal">
+                {lang === 'hi'
+                  ? 'इन कठिन विषयों और समीकरणों को तुरंत हल करने के लिए किसी भी प्रॉम्प्ट पर क्लिक करें:'
+                  : lang === 'gu'
+                  ? 'આ મુશ્કેલ વિષયો અને સમીકરણોને ઝડપથી હલ કરવા માટે કોઈપણ પ્રોમ્પ્ટ પર ક્લિક કરો:'
+                  : lang === 'mr'
+                  ? 'या कठीण विषयांचे आणि समीकरणांचे त्वरित निराकरण करण्यासाठी कोणत्याही प्रॉमप्टवर क्लिक करा:'
+                  : lang === 'ta'
+                  ? 'இந்த கடினமான தலைப்புகள் மற்றும் சமன்பாடுகளை விரைவாக தீர்க்க ஏதேனும் ஒரு உரையாடலை கிளிக் செய்யவும்:'
+                  : lang === 'te'
+                  ? 'ఈ కష్టమైన అంశాలు మరియు సమీకరణాలను త్వరగా పరిష్కరించడానికి ఏదైనా ప్రాంప్ట్‌ను క్లిక్ చేయండి:'
+                  : 'Click any interactive prompt to query the calculation engine instantly:'}
+              </p>
             </div>
 
-            {sidebarTab === 'prompts' ? (
-              <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                <div className="text-left border-b border-gray-100 pb-3">
-                  <h4 className="text-xs font-mono uppercase font-black text-gray-400 tracking-wider">
-                    {getEqLabel('tryQuickSolves', lang)}
-                  </h4>
-                  <p className="text-[11px] text-gray-550 mt-1 leading-normal">
-                    {lang === 'hi'
-                      ? 'इन कठिन विषयों और समीकरणों को तुरंत हल करने के लिए किसी भी प्रॉम्प्ट पर क्लिक करें:'
-                      : lang === 'gu'
-                      ? 'આ મુશ્કેલ વિષયો અને સમીકરણોને ઝડપથી હલ કરવા માટે કોઈપણ પ્રોમ્પ્ટ પર ક્લિક કરો:'
-                      : lang === 'mr'
-                      ? 'या कठीण विषयांचे आणि समीकरणांचे त्वरित निराकरण करण्यासाठी कोणत्याही प्रॉमप्टवर क्लिक करा:'
-                      : lang === 'ta'
-                      ? 'இந்த கடினமான தலைப்புகள் மற்றும் சமன்பாடுகளை விரைவாக தீர்க்க ஏதேனும் ஒரு உரையாடலை கிளிக் செய்யவும்:'
-                      : lang === 'te'
-                      ? 'ఈ కష్టమైన అంశాలు మరియు సమీకరణాలను త్వరగా పరిష్కరించడానికి ఏదైనా ప్రాంప్ట్‌ను క్లిક చేయండి:'
-                      : 'Click any interactive prompt to query the calculation engine instantly:'}
-                  </p>
-                </div>
-
-                {/* ACCORDION/LIST OF PROMPTS */}
-                <div className="space-y-4 text-left overflow-y-auto pr-1 flex-1 max-h-[350px]">
-                  {/* MATHEMATICS PROMPTS */}
-                  <div>
-                    <span className="text-[10px] font-mono font-black text-[#E07A5F] uppercase block tracking-wider mb-2">
-                      📐 {getEqLabel('mathEquations', lang)}
-                    </span>
-                    <div className="space-y-1.5">
-                      {[
-                        "Solve quadratic equation: 3x² - 5x + 2 = 0 showing roots",
-                        "How did Indian sages write the Pythagoras theorem (Baudhayan Sutras)?",
-                        "Find hypotenuse c if base a = 12 and height b = 5"
-                      ].map((q, idx) => (
-                        <button
-                           key={idx}
-                          type="button"
-                          onClick={() => handleSuggestionClick(q)}
-                          disabled={isSending}
-                          className="w-full p-2.5 bg-white border border-gray-150 hover:border-[#E07A5F] hover:bg-rose-50/20 rounded-xl text-xs text-gray-700 text-left transition-all hover:shadow-3xs cursor-pointer block truncate font-sans"
-                        >
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* SCIENCE PROMPTS */}
-                  <div>
-                    <span className="text-[10px] font-mono font-black text-[#E07A5F] uppercase block tracking-wider mb-2">
-                      🧪 {getEqLabel('physicsEquations', lang)}
-                    </span>
-                    <div className="space-y-1.5">
-                      {[
-                        "Balance the equation: Fe + O₂ ➔ Fe₂O₃ and explain rules",
-                        "Explain Ohm's Law V = IR using a water flow analogy",
-                        "If a 15kg school block accelerates at 6m/s², find force (F = ma)"
-                      ].map((q, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => handleSuggestionClick(q)}
-                          disabled={isSending}
-                          className="w-full p-2.5 bg-white border border-gray-150 hover:border-[#E07A5F] hover:bg-rose-50/20 rounded-xl text-xs text-gray-700 text-left transition-all hover:shadow-3xs cursor-pointer block truncate font-sans"
-                        >
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+            {/* LIST OF PROMPTS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* MATHEMATICS PROMPTS */}
+              <div className="space-y-2.5">
+                <span className="text-[10px] font-mono font-black text-[#E07A5F] uppercase block tracking-wider">
+                  📐 {getEqLabel('mathEquations', lang)}
+                </span>
+                <div className="space-y-2">
+                  {[
+                    "Solve quadratic equation: 3x² - 5x + 2 = 0 showing roots",
+                    "How did Indian sages write the Pythagoras theorem (Baudhayan Sutras)?",
+                    "Find hypotenuse c if base a = 12 and height b = 5"
+                  ].map((q, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSuggestionClick(q)}
+                      disabled={isSending}
+                      className="w-full p-2.5 bg-slate-50 border border-gray-150 hover:border-[#E07A5F] hover:bg-rose-50/20 rounded-xl text-xs text-gray-750 text-left transition-all hover:shadow-3xs cursor-pointer block whitespace-normal break-words leading-relaxed font-sans"
+                    >
+                      {q}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ) : (
-              /* THE COMPLETE FORMULA SHEET */
-              <div className="space-y-4 flex-1 flex flex-col min-h-0">
-                <div className="border-b border-gray-100 pb-2.5">
-                  <h4 className="text-xs font-mono uppercase font-black text-gray-400 tracking-wider">
-                    {getEqLabel('mathAndScienceFormulae', lang)}
-                  </h4>
-                  <p className="text-[11px] text-gray-550 mt-1 leading-normal">
-                    {lang === 'hi'
-                      ? 'नीचे दिए गए किसी भी महत्वपूर्ण समीकरण को चैट में डालने या एआई से तुरंत हल कराने के लिए चुनें:'
-                      : lang === 'gu'
-                      ? 'ચેટમાં દાખલ કરવા અથવા AI દ્વારા તરત જ હલ કરવા માટે નીચે આપેલા કોઈપણ મહત્વપૂર્ણ સમીકરણો પસંદ કરો:'
-                      : lang === 'mr'
-                      ? 'खालीलपैकी कोणतेही महत्त्वाचे समीकरण चॅटमध्ये टाकण्यासाठी किंवा एआय द्वारे त्वरित सोडवण्यासाठी निवडा:'
-                      : lang === 'ta'
-                      ? 'சாட்டில் நுழைக்க அல்லது AI மூலம் உடனடியாக தீர்க்க கீழே உள்ள ஏதேனும் முக்கிய சமன்பாட்டைத் தேர்ந்தெடுக்கவும்:'
-                      : lang === 'te'
-                      ? 'చాట్‌లో చేర్చడానికి లేదా AI ద్వారా తక్షణమే పరిష్కరించడానికి దిగువ పేర్కొన్న ఏదైనా ముఖ్యమైన సమీకరణాన్ని ఎంచుకోండి:'
-                      : 'Choose any complete key formula to auto-insert or solve instantly with AI:'}
-                  </p>
-                </div>
 
-                <div className="space-y-4 overflow-y-auto pr-1 flex-1 max-h-[350px]">
-                  {/* Category physics */}
-                  <div>
-                    <span className="text-[10px] font-mono font-black text-rose-500 uppercase block tracking-wider mb-2">
-                      ⚡ {getEqLabel('physicsEquations', lang)}
-                    </span>
-                    <div className="space-y-2">
-                      {formulasCatalog.filter(f => f.category === 'physics').map((f, i) => {
-                        const loc = getFormulaLocalized(f, lang);
-                        return (
-                          <div key={i} className="p-3 bg-white border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
-                            <div className="flex justify-between items-start gap-1">
-                              <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
-                                {loc.name}
-                              </span>
-                              <span className="px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
-                                Physics
-                              </span>
-                            </div>
-                            
-                            <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
-                              {f.equation}
-                            </div>
-
-                            <p className="text-[10px] text-gray-500 mt-1.5 font-sans leading-normal">
-                              {loc.description}
-                            </p>
-
-                            <div className="flex gap-1.5 mt-2.5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setChatInput(`${getEqLabel('explainFormulaDetail', lang)}: ${loc.name} (${f.equation})`);
-                                }}
-                                className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
-                              >
-                                {getEqLabel('useFormula', lang)}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleSendMessage(lang === 'hi' 
-                                    ? `कृपया मुझे सूत्र ${loc.name} (${f.equation}) का उपयोग करके चरण-दर-चरण गणना का एक अभ्यास प्रश्न और उसका हल दिखाएं।`
-                                    : lang === 'gu'
-                                    ? `કૃપા કરીને મને સૂત્ર ${loc.name} (${f.equation}) નો ઉપયોગ કરીને વિગતવાર ગણતરી બતાવો.`
-                                    : lang === 'mr'
-                                    ? `कृपया मला सूत्र ${loc.name} (${f.equation}) चा वापर करून पायरी-पायरीने सोडवलेले उदाहरण दाखवा.`
-                                    : lang === 'ta'
-                                    ? `தயவுசெய்து சூத்திரம் ${loc.name} (${f.equation}) ஐப் பயன்படுத்தி படிப்படியான தீர்வைக் காட்டுங்கள்.`
-                                    : lang === 'te'
-                                    ? `దయచేసి ఫార్ములా ${loc.name} (${f.equation}) ఉపయోగించి దశలవారీగా పరిష్కారం చూపించండి.`
-                                    : `Please generate a step-by-step example calculation and solution using the formula: ${f.name} (${f.equation}).`);
-                                }}
-                                disabled={isSending}
-                                className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
-                              >
-                                {getEqLabel('aiSolve', lang)}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Category chemistry */}
-                  <div>
-                    <span className="text-[10px] font-mono font-black text-blue-500 uppercase block tracking-wider mb-2">
-                      🧪 {getEqLabel('chemistryFormulae', lang)}
-                    </span>
-                    <div className="space-y-2">
-                      {formulasCatalog.filter(f => f.category === 'chemistry').map((f, i) => {
-                        const loc = getFormulaLocalized(f, lang);
-                        return (
-                          <div key={i} className="p-3 bg-white border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
-                            <div className="flex justify-between items-start gap-1">
-                              <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
-                                {loc.name}
-                              </span>
-                              <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
-                                Chem
-                              </span>
-                            </div>
-                            
-                            <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
-                              {f.equation}
-                            </div>
-
-                            <p className="text-[10px] text-gray-500 mt-1.5 font-sans leading-normal">
-                              {loc.description}
-                            </p>
-
-                            <div className="flex gap-1.5 mt-2.5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setChatInput(`${getEqLabel('explainChemicalFormulaDetail', lang)}: ${loc.name} (${f.equation})`);
-                                }}
-                                className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
-                              >
-                                {getEqLabel('useFormula', lang)}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleSendMessage(lang === 'hi'
-                                    ? `कृपया मुझे सूत्र ${loc.name} (${f.equation}) का उपयोग करके चरण-दर-चरण रासायनिक गणना का एक अभ्यास प्रश्न हल करके दिखाएं।`
-                                    : lang === 'gu'
-                                    ? `કૃપા કરીને મને સૂત્ર ${loc.name} (${f.equation}) નો ઉપયોગ કરીને વિગતવાર રાસાયણિક ઉકેલ બતાવો.`
-                                    : lang === 'mr'
-                                    ? `कृपया मला रासायनिक सूत्र ${loc.name} (${f.equation}) चा वापर करून सोडवलेले उदाहरण दाखवा.`
-                                    : lang === 'ta'
-                                    ? `தயவுசெய்து வேதியியல் சூத்திரம் ${loc.name} (${f.equation}) ஐப் பயன்படுத்தி படிப்படியான தீர்வைக் காட்டுங்கள்.`
-                                    : lang === 'te'
-                                    ? `దయచేసి రసాయన ఫార్ములా ${loc.name} (${f.equation}) ఉపయోగించి దశలవారీగా పరిష్కారం చూపించండి.`
-                                    : `Please generate a step-by-step example chemistry calculation and solution using the formula: ${f.name} (${f.equation}).`);
-                                }}
-                                disabled={isSending}
-                                className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
-                              >
-                                {getEqLabel('aiSolve', lang)}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Category math */}
-                  <div>
-                    <span className="text-[10px] font-mono font-black text-emerald-500 uppercase block tracking-wider mb-2">
-                      📐 {getEqLabel('mathEquations', lang)}
-                    </span>
-                    <div className="space-y-2">
-                      {formulasCatalog.filter(f => f.category === 'math').map((f, i) => {
-                        const loc = getFormulaLocalized(f, lang);
-                        return (
-                          <div key={i} className="p-3 bg-white border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
-                            <div className="flex justify-between items-start gap-1">
-                              <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
-                                {loc.name}
-                              </span>
-                              <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
-                                Math
-                              </span>
-                            </div>
-                            
-                            <div className="mt-2 p-2 bg-slate-50 border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
-                              {f.equation}
-                            </div>
-
-                            <p className="text-[10px] text-gray-500 mt-1.5 font-sans leading-normal">
-                              {loc.description}
-                            </p>
-
-                            <div className="flex gap-1.5 mt-2.5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setChatInput(`${getEqLabel('explainMathFormulaDetail', lang)}: ${loc.name} (${f.equation})`);
-                                }}
-                                className="flex-1 py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
-                              >
-                                {getEqLabel('useFormula', lang)}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleSendMessage(lang === 'hi'
-                                    ? `कृपया मुझे सूत्र ${loc.name} (${f.equation}) का उपयोग करके चरण-दर-चरण गणितीय हल का एक उदाहरण दें।`
-                                    : lang === 'gu'
-                                    ? `કૃપા કરીને મને ગણિત સૂત્ર ${loc.name} (${f.equation}) નો ઉપયોગ કરીને વિગતવાર ઉકેલ આપો.`
-                                    : lang === 'mr'
-                                    ? `कृपया मला गणितीय सूत्र ${loc.name} (${f.equation}) चा वापर करून पायरी-पायरीने सोडवलेले उदाहरण दाखवा.`
-                                    : lang === 'ta'
-                                    ? `தயவுசெய்து கணிதச் சூத்திரம் ${loc.name} (${f.equation}) ஐப் பயன்படுத்தி படிப்படியான தீர்வைக் காட்டுங்கள்.`
-                                    : lang === 'te'
-                                    ? `దయచేసి గణిత ఫార్ములా ${loc.name} (${f.equation}) ఉపయోగించి దశలవారీగా పరిష్కారం చూపించండి.`
-                                    : `Please generate a step-by-step math problem and solution using the formula: ${f.name} (${f.equation}).`);
-                                }}
-                                disabled={isSending}
-                                className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
-                              >
-                                {getEqLabel('aiSolve', lang)}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+              {/* SCIENCE PROMPTS */}
+              <div className="space-y-2.5">
+                <span className="text-[10px] font-mono font-black text-[#E07A5F] uppercase block tracking-wider">
+                  🧪 {getEqLabel('physicsEquations', lang)}
+                </span>
+                <div className="space-y-2">
+                  {[
+                    "Balance the equation: Fe + O₂ ➔ Fe₂O₃ and explain rules",
+                    "Explain Ohm's Law V = IR using a water flow analogy",
+                    "If a 15kg school block accelerates at 6m/s², find force (F = ma)"
+                  ].map((q, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSuggestionClick(q)}
+                      disabled={isSending}
+                      className="w-full p-2.5 bg-slate-50 border border-gray-150 hover:border-[#E07A5F] hover:bg-rose-50/20 rounded-xl text-xs text-gray-750 text-left transition-all hover:shadow-3xs cursor-pointer block whitespace-normal break-words leading-relaxed font-sans"
+                    >
+                      {q}
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
+            </div>
+          </div>
 
-            {/* CONTEXT MATTERS NOTICE */}
-            <div className="mt-auto p-4 bg-amber-50/70 border border-amber-100 rounded-2xl text-left text-[11px] text-amber-900 font-sans leading-relaxed shrink-0">
-              <span className="font-bold block text-amber-800 mb-0.5">
-                📄 {getEqLabel('multiModalSolve', lang)}
-              </span>
-              {lang === 'hi'
-                ? 'आप गृहकार्य, सूत्रों या चित्रों की तस्वीरें खींचकर या अपनी वर्कशीट की पीडीएफ अपलोड करके सीधे सवाल पूछ सकते हैं। एआई उन्हें डिकोड कर पूरा समाधान देगा।'
-                : lang === 'gu'
-                ? 'તમે હોમવર્ક, સૂત્રો અથવા ચિત્રોના ફોટા પાડીને અથવા તમારી વર્કશીટની પીડીએફ અપલોડ કરીને સીધા પ્રશ્નો પૂછી શકો છો. એઆઈ તેનો ઉકેલ આપશે.'
-                : lang === 'mr'
-                ? 'तुम्ही गृहपाठ, सूत्रे किंवा चित्रांचे फोटो काढून किंवा तुमच्या वर्कशीटची पीडीएफ अपलोड करून थेट प्रश्न विचारू शकता. एआय पूर्ण उत्तर देईल.'
-                : lang === 'ta'
-                ? 'வீட்டுப்பாடம், சூத்திரங்கள் அல்லது படங்களின் புகைப்படங்களை எடுப்பதன் மூலம் அல்லது உங்கள் பணித்தாளின் PDF ஐ பதிவேற்றுவதன் மூலம் நீங்கள் நேரடியாக கேள்விகளைக் கேட்கலாம். AI அவற்றுக்கான முழுமையான தீர்வை வழங்கும்.'
-                : lang === 'te'
-                ? 'మీరు హోంవర్క్, ఫార్ములాలు లేదా చిత్రాల ఫోటోలు తీయడం ద్వారా లేదా మీ వర్క్‌షీట్ పిడిఎఫ్‌ను అప్‌లోడ్ చేయడం ద్వారా నేరుగా ప్రశ్నలు అడగవచ్చు. AI పూర్తి పరిష్కారాన్ని అందిస్తుంది.'
-                : 'Upload images of science diagrams, hand-written formulas, or complete PDF worksheets. The AI will parse details and provide step-by-step guidance.'}
+          {/* PANEL 2: FORMULA SHEET */}
+          <div className="bg-white rounded-3xl border border-gray-150 p-5 sm:p-6 flex flex-col gap-4 shadow-3xs">
+            <div className="border-b border-gray-100 pb-3">
+              <h4 className="text-sm font-display font-extrabold text-gray-900 flex items-center gap-2">
+                📚 <span>{getEqLabel('formulaSheet', lang)}</span>
+              </h4>
+              <p className="text-xs text-gray-550 mt-1 leading-normal">
+                {lang === 'hi'
+                  ? 'नीचे दिए गए किसी भी महत्वपूर्ण समीकरण को चैट में डालने या एआई से तुरंत हल कराने के लिए चुनें:'
+                  : lang === 'gu'
+                  ? 'ચેટમાં દાખલ કરવા અથવા AI દ્વારા તરત જ હલ કરવા માટે નીચે આપેલા કોઈપણ મહત્વપૂર્ણ સમીકરણો પસંદ કરો:'
+                  : lang === 'mr'
+                  ? 'खालीलपैकी कोणतेही महत्त्वाचे समीकरण चॅटमध्ये टाकण्यासाठी अथवा एआय द्वारे त्वरित सोडवण्यासाठी निवडा:'
+                  : lang === 'ta'
+                  ? 'சாட்டில் நுழைக்க அல்லது AI மூலம் உடனடியாக தீர்க்க கீழே உள்ள ஏதேனும் முக்கிய சமன்பாட்டைத் தேர்ந்தெடுக்கவும்:'
+                  : lang === 'te'
+                  ? 'చాట్‌లో చేర్చడానికి లేదా AI ద్వారా తక్షణమే పరిష్కరించడానికి దిగువ పేర్కొన్న ఏదైనా ముఖ్యమైన సమీకరణాన్ని ఎంచుకోండి:'
+                  : 'Choose any complete key formula to auto-insert or solve instantly with AI:'}
+              </p>
             </div>
 
+            <div className="space-y-4 overflow-y-auto pr-1 max-h-[350px]">
+              {/* Category physics */}
+              <div>
+                <span className="text-[10px] font-mono font-black text-rose-500 uppercase block tracking-wider mb-2">
+                  ⚡ {getEqLabel('physicsEquations', lang)}
+                </span>
+                <div className="space-y-2">
+                  {formulasCatalog.filter(f => f.category === 'physics').map((f, i) => {
+                    const loc = getFormulaLocalized(f, lang);
+                    return (
+                      <div key={i} className="p-3 bg-slate-50 border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
+                        <div className="flex justify-between items-start gap-1">
+                          <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
+                            {loc.name}
+                          </span>
+                          <span className="px-1.5 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
+                            Physics
+                          </span>
+                        </div>
+                        
+                        <div className="mt-2 p-2 bg-white border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
+                          {f.equation}
+                        </div>
+
+                        <p className="text-[10px] text-gray-550 mt-1.5 font-sans leading-normal">
+                          {loc.description}
+                        </p>
+
+                        <div className="flex gap-1.5 mt-2.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setChatInput(`${getEqLabel('explainFormulaDetail', lang)}: ${loc.name} (${f.equation})`);
+                            }}
+                            className="flex-1 py-1.5 px-2 bg-white border border-gray-200 hover:bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
+                          >
+                            {getEqLabel('useFormula', lang)}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSendMessage(lang === 'hi' 
+                                ? `कृपया मुझे सूत्र ${loc.name} (${f.equation}) का उपयोग करके चरण-दर-चरण गणना का एक अभ्यास प्रश्न और उसका हल दिखाएं।`
+                                : lang === 'gu'
+                                ? `કૃપા કરીને મને સૂત્ર ${loc.name} (${f.equation}) નો ઉપયોગ કરીને વિગતવાર ગણતરી બતાવો.`
+                                : lang === 'mr'
+                                ? `कृपया मला सूत्र ${loc.name} (${f.equation}) चा वापर करून पायरी-पायरीने सोडवलेले उदाहरण दाखवा.`
+                                : lang === 'ta'
+                                ? `தயவுசெய்து சூத்திரம் ${loc.name} (${f.equation}) ஐப் பயன்படுத்தி படிப்படியான தீர்வைக் காட்டுங்கள்.`
+                                : lang === 'te'
+                                ? `దయచేసి ఫార్ములా ${loc.name} (${f.equation}) ఉపయోగించి దశలవారీగా పరిష్కారం చూపించండి.`
+                                : `Please generate a step-by-step example calculation and solution using the formula: ${f.name} (${f.equation}).`);
+                            }}
+                            disabled={isSending}
+                            className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
+                          >
+                            {getEqLabel('aiSolve', lang)}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Category chemistry */}
+              <div>
+                <span className="text-[10px] font-mono font-black text-blue-500 uppercase block tracking-wider mb-2">
+                  🧪 {getEqLabel('chemistryFormulae', lang)}
+                </span>
+                <div className="space-y-2">
+                  {formulasCatalog.filter(f => f.category === 'chemistry').map((f, i) => {
+                    const loc = getFormulaLocalized(f, lang);
+                    return (
+                      <div key={i} className="p-3 bg-slate-50 border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
+                        <div className="flex justify-between items-start gap-1">
+                          <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
+                            {loc.name}
+                          </span>
+                          <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
+                            Chem
+                          </span>
+                        </div>
+                        
+                        <div className="mt-2 p-2 bg-white border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
+                          {f.equation}
+                        </div>
+
+                        <p className="text-[10px] text-gray-550 mt-1.5 font-sans leading-normal">
+                          {loc.description}
+                        </p>
+
+                        <div className="flex gap-1.5 mt-2.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setChatInput(`${getEqLabel('explainChemicalFormulaDetail', lang)}: ${loc.name} (${f.equation})`);
+                            }}
+                            className="flex-1 py-1.5 px-2 bg-white border border-gray-200 hover:bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
+                          >
+                            {getEqLabel('useFormula', lang)}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSendMessage(lang === 'hi'
+                                ? `कृपया मुझे सूत्र ${loc.name} (${f.equation}) का उपयोग करके चरण-दर-चरण रासायनिक गणना का एक अभ्यास प्रश्न हल करके दिखाएं।`
+                                : lang === 'gu'
+                                ? `કૃપા કરીને મને સૂત્ર ${loc.name} (${f.equation}) નો ઉપયોગ કરીને વિગતવાર રાસાયણિક ઉકેલ બતાવો.`
+                                : lang === 'mr'
+                                ? `कृपया मला रासायनिक सूत्र ${loc.name} (${f.equation}) चा वापर करून सोडवलेले उदाहरण दाखवा.`
+                                : lang === 'ta'
+                                ? `தயவுசெய்து வேதியியல் சூத்திரம் ${loc.name} (${f.equation}) ஐப் பயன்படுத்தி படிப்படியான தீர்வைக் காட்டுங்கள்.`
+                                : lang === 'te'
+                                ? `దయచేసి రసాయన ఫార్ములా ${loc.name} (${f.equation}) ఉపయోగించి దశలవారీగా పరిష్కారం చూపించండి.`
+                                : `Please generate a step-by-step example chemistry calculation and solution using the formula: ${f.name} (${f.equation}).`);
+                            }}
+                            disabled={isSending}
+                            className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
+                          >
+                            {getEqLabel('aiSolve', lang)}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Category math */}
+              <div>
+                <span className="text-[10px] font-mono font-black text-emerald-500 uppercase block tracking-wider mb-2">
+                  📐 {getEqLabel('mathEquations', lang)}
+                </span>
+                <div className="space-y-2">
+                  {formulasCatalog.filter(f => f.category === 'math').map((f, i) => {
+                    const loc = getFormulaLocalized(f, lang);
+                    return (
+                      <div key={i} className="p-3 bg-slate-50 border border-gray-150 rounded-2xl hover:border-[#E07A5F] transition-all hover:shadow-3xs">
+                        <div className="flex justify-between items-start gap-1">
+                          <span className="text-xs font-bold text-gray-800 font-sans block leading-snug">
+                            {loc.name}
+                          </span>
+                          <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-md text-[9px] font-mono font-bold uppercase shrink-0">
+                            Math
+                          </span>
+                        </div>
+                        
+                        <div className="mt-2 p-2 bg-white border border-slate-100 rounded-xl font-mono text-xs font-bold text-[#E07A5F] text-center">
+                          {f.equation}
+                        </div>
+
+                        <p className="text-[10px] text-gray-550 mt-1.5 font-sans leading-normal">
+                          {loc.description}
+                        </p>
+
+                        <div className="flex gap-1.5 mt-2.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setChatInput(`${getEqLabel('explainMathFormulaDetail', lang)}: ${loc.name} (${f.equation})`);
+                            }}
+                            className="flex-1 py-1.5 px-2 bg-white border border-gray-200 hover:bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center"
+                          >
+                            {getEqLabel('useFormula', lang)}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSendMessage(lang === 'hi'
+                                ? `कृपया मुझे सूत्र ${loc.name} (${f.equation}) का उपयोग करके चरण-दर-चरण गणितीय हल का एक उदाहरण दें।`
+                                : lang === 'gu'
+                                ? `કૃપા કરીને મને ગણિત સૂત્ર ${loc.name} (${f.equation}) નો ઉપયોગ કરીને વિગતવાર ઉકેલ આપો.`
+                                : lang === 'mr'
+                                ? `कृपया मला गणितीय सूत्र ${loc.name} (${f.equation}) चा वापर करून पायरी-पायरीने सोडवलेले उदाहरण दाखवा.`
+                                : lang === 'ta'
+                                ? `தயவுசெய்து கணிதச் சூத்திரம் ${loc.name} (${f.equation}) ஐப் பயன்படுத்தி படிப்படியான தீர்வைக் காட்டுங்கள்.`
+                                : lang === 'te'
+                                ? `దయచేసి ఫార్ములా ${loc.name} (${f.equation}) ఉపయోగించి దశలవారీగా పరిష్కారం చూపించండి.`
+                                : `Please generate a step-by-step math problem and solution using the formula: ${f.name} (${f.equation}).`);
+                            }}
+                            disabled={isSending}
+                            className="flex-1 py-1.5 px-2 bg-[#E07A5F]/10 hover:bg-[#E07A5F]/20 text-[#E07A5F] text-[10px] font-bold rounded-lg transition-colors cursor-pointer text-center disabled:opacity-40"
+                          >
+                            {getEqLabel('aiSolve', lang)}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
           </div>
 
         </div>
+
+        {/* CONTEXT MATTERS NOTICE */}
+        <div className="mt-6 p-4 bg-amber-50/70 border border-amber-100 rounded-2xl text-left text-xs text-amber-900 font-sans leading-relaxed">
+          <span className="font-bold block text-amber-800 mb-1">
+            📄 {getEqLabel('multiModalSolve', lang)}
+          </span>
+          {lang === 'hi'
+            ? 'आप गृहकार्य, सूत्रों या चित्रों की तस्वीरें खींचकर या अपनी वर्कशीट की पीडीएफ अपलोड करके सीधे सवाल पूछ सकते हैं। एआई उन्हें डिकोड कर पूरा समाधान देगा।'
+            : lang === 'gu'
+            ? 'તમે હોમવર્ક, સૂત્રો અથવા ચિત્રોના ફોટા પાડીને અથવા તમારી વર્કશીટની પીડીએફ અપલોડ કરીને સીધા પ્રશ્નો પૂછી શકો છો. એઆઈ તેનો ઉકેલ આપશે।'
+            : lang === 'mr'
+            ? 'तुम्ही गृहपाठ, सूत्रे किंवा चित्रांचे फोटो काढून किंवा तुमच्या वर्कशीटची पीडीएफ अपलोड करून थेट प्रश्न विचारू शकता. एआय पूर्ण उत्तर देईल।'
+            : lang === 'ta'
+            ? 'வீட்டுப்பாடம், சூத்திரங்கள் அல்லது படங்களின் புகைப்படங்களை எடுப்பதன் மூலம் அல்லது உங்கள் பணித்தாளின் PDF ஐ பதிவேற்றுவதன் மூலம் நீங்கள் நேரடியாக கேள்விகளைக் கேட்கலாம். AI அவற்றுக்கான முழுமையான தீர்வை வழங்கும்.'
+            : lang === 'te'
+            ? 'మీరు హోంవర్క్, ఫార్ముलाలు లేదా చిత్రాల ఫోటోలు తీయడం ద్వారా లేదా మీ వర్క్‌షీట్ పిడిఎఫ్‌ను అప్‌లోడ్ చేయడం ద్వారా నేరుगा ప్రశ్నలు అడగవచ్చు. AI పూర్తి పరిష్కారాన్ని అందిస్తుంది।'
+            : 'Upload images of science diagrams, hand-written formulas, or complete PDF worksheets. The AI will parse details and provide step-by-step guidance.'}
+        </div>
+
+        </>
       )}
 
     </div>

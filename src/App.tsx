@@ -24,6 +24,7 @@ export default function App() {
           if (parsed.streakDays === 5) parsed.streakDays = 1;
           if (parsed.totalPoints === 40) parsed.totalPoints = 15;
           if (parsed.studyMins === undefined) parsed.studyMins = 30;
+          if (parsed.todayMins === undefined) parsed.todayMins = 0;
           return parsed;
         } catch (e) {
           return null;
@@ -110,13 +111,18 @@ export default function App() {
         updated.studyMins = 30;
         needsUpdate = true;
       }
+      if (user.todayMins === undefined) {
+        updated.todayMins = 0;
+        needsUpdate = true;
+      }
       if (needsUpdate) {
         setUser(updated);
         localStorage.setItem('gramin_student_session', JSON.stringify(updated));
         updateFirebaseUserFields(user.mobile, {
           streakDays: updated.streakDays,
           totalPoints: updated.totalPoints,
-          studyMins: updated.studyMins
+          studyMins: updated.studyMins,
+          todayMins: updated.todayMins
         }).catch(err => console.error(err));
       }
     }
@@ -128,6 +134,12 @@ export default function App() {
 
     let activeSecs = 0;
     const interval = setInterval(() => {
+      // Do not accumulate study time if the tab is hidden or minimized
+      if (document.hidden) {
+        activeSecs = 0; // Reset active accumulator to avoid sudden jumps when returning
+        return;
+      }
+
       activeSecs += 10; // Add 10 seconds of active browsing time
 
       // Every 60 seconds (1 minute), we increment user's total study minutes

@@ -57,6 +57,8 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'unlocked' | 'locked' | 'general' | 'streak' | 'offline'>('all');
   const [streakCelebration, setStreakCelebration] = useState(false);
   const [chartReady, setChartReady] = useState(false);
+  const [isAdjustingTime, setIsAdjustingTime] = useState(false);
+  const [customMinsInput, setCustomMinsInput] = useState(() => (user.todayMins ?? 0).toString());
 
   // Celebratory effect when streak celebration is active
   useEffect(() => {
@@ -118,8 +120,25 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
   });
 
   function loggedMinutesToday() {
-    return user.studyMins ?? 30;
+    return user.todayMins ?? 0;
   }
+
+  const handleAdjustTodayMins = () => {
+    const nextMins = parseInt(customMinsInput, 10);
+    if (isNaN(nextMins) || nextMins < 0) return;
+
+    const oldTodayMins = user.todayMins ?? 0;
+    const diff = nextMins - oldTodayMins;
+
+    const oldStudyMins = user.studyMins ?? 30;
+    const nextStudyMins = Math.max(0, oldStudyMins + diff);
+
+    onUpdateUser({
+      todayMins: nextMins,
+      studyMins: nextStudyMins
+    });
+    setIsAdjustingTime(false);
+  };
 
   const saveProfileDetails = () => {
     onUpdateUser({
@@ -505,8 +524,18 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-3xs text-left">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider">
+              <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider flex items-center gap-2">
                 Weekly Learning Area
+                <button 
+                  onClick={() => {
+                    setIsAdjustingTime(!isAdjustingTime);
+                    setCustomMinsInput((user.todayMins ?? 0).toString());
+                  }}
+                  className="p-1 text-gray-400 hover:text-[#E07A5F] rounded-lg hover:bg-gray-50 transition-colors"
+                  title={lang === 'hi' ? 'आज का समय समायोजित करें' : "Adjust today's study time"}
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                </button>
               </h3>
               <p className="text-[11px] text-gray-400">Minutes of customized voice lessons & reading logs</p>
             </div>
@@ -516,6 +545,36 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
               </span>
             </div>
           </div>
+
+          {isAdjustingTime && (
+            <div className="mb-4 p-3 bg-amber-50/55 rounded-xl border border-amber-200 flex flex-wrap items-center gap-3 text-xs">
+              <span className="font-medium text-[#3D405B]">
+                {lang === 'hi' ? 'आज के मिनट समायोजित करें:' : "Adjust today's study minutes:"}
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="0"
+                  value={customMinsInput}
+                  onChange={(e) => setCustomMinsInput(e.target.value)}
+                  className="w-20 px-2 py-1 rounded-lg border border-gray-350 focus:outline-none focus:ring-1 focus:ring-[#E07A5F] font-mono text-center"
+                />
+                <button
+                  onClick={handleAdjustTodayMins}
+                  className="px-3 py-1 bg-[#E07A5F] text-white rounded-lg font-bold hover:opacity-90 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  {lang === 'hi' ? 'सहेजें' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setIsAdjustingTime(false)}
+                  className="px-2.5 py-1 bg-white border border-gray-200 text-gray-500 rounded-lg font-medium hover:bg-gray-55 cursor-pointer"
+                >
+                  {lang === 'hi' ? 'रद्द करें' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="h-64 w-full">
             {chartReady ? (
@@ -598,10 +657,11 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         {/* 7-Day sequence map */}
         <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 text-center pt-2">
           {[1, 2, 3, 4, 5, 6, 7].map((dayNum) => {
-            // Determine active day of the current 7-day streak cycle
+            // Determine active day of the current 7-day streak cycle with modulo 7 wrapping
             // If the user's streak is N, and they checked in today, N is the active checked-in day.
             // If they haven't checked in today, the active day they can check in on is N + 1.
-            const currentActiveDay = hasCheckedInToday ? Math.max(1, streakDays) : streakDays + 1;
+            const totalActiveDay = hasCheckedInToday ? Math.max(1, streakDays) : streakDays + 1;
+            const currentActiveDay = ((totalActiveDay - 1) % 7) + 1;
             
             // A day in the streak is completed if:
             // 1. It is less than the current active day (e.g. past checked-in days in this cycle)

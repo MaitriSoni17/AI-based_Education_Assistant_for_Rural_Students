@@ -12,7 +12,7 @@ import {
   Play, BookOpen, Download, CheckCircle2, ChevronRight, Award, 
   HelpCircle, Volume2, Search, Sparkles, Smile, Video, ArrowLeft, RefreshCw,
   ChevronLeft, Pause, Eye, MonitorPlay, Paperclip, FileText, X, FileUp,
-  Trash2, Clock, History, ExternalLink
+  Trash2, Clock, History, ExternalLink, Star
 } from 'lucide-react';
 
 interface LessonQuery {
@@ -25,6 +25,7 @@ interface LessonQuery {
   avatarName: string;
   quiz: QuizQuestion[];
   slides?: any[];
+  starred?: boolean;
 }
 
 const SAMPLE_LESSONS: Record<LanguageCode, LessonQuery[]> = {
@@ -1441,6 +1442,15 @@ export default function TutorTab({
   }, [user.mobile, user.mascotLessonsHistory]);
   const [isNewLecture, setIsNewLecture] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'starred'>('all');
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');
+
+  const handleToggleStarLesson = (lessonId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCustomHistory(prev => prev.map(item => item.id === lessonId ? { ...item, starred: !item.starred } : item));
+  };
+
   const [showPlayGesturePrompt, setShowPlayGesturePrompt] = useState(false);
 
   const isAutoplayEnabledRef = React.useRef(isAutoplayEnabled);
@@ -2760,6 +2770,64 @@ JSON Schema:
                   )}
                 </div>
 
+                {/* Search and Filters Controls */}
+                {customHistory.length > 0 && (
+                  <div className="bg-slate-900/60 border border-white/5 p-4 rounded-2xl shadow-3xs space-y-3.5">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      {/* Search Input */}
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder={lang === 'hi' ? 'लेक्चर विषय या प्रश्न में खोजें...' : 'Search lecture subject or question...'}
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-white/10 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]/20 focus:border-[#E07A5F] bg-slate-950/50 text-slate-100"
+                        />
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-200 font-bold"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filter Controls */}
+                      <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                        {/* Starred filter button */}
+                        <button
+                          type="button"
+                          onClick={() => setFilterType(filterType === 'starred' ? 'all' : 'starred')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                            filterType === 'starred'
+                              ? 'bg-amber-500 text-white shadow-3xs'
+                              : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/5'
+                          }`}
+                        >
+                          <Star className={`h-3.5 w-3.5 ${filterType === 'starred' ? 'fill-current text-white' : 'text-amber-400'}`} />
+                          <span>{lang === 'hi' ? 'तारांकित' : 'Starred'}</span>
+                        </button>
+
+                        {/* Subject dropdown filter */}
+                        <div className="relative">
+                          <select
+                            value={selectedSubjectFilter}
+                            onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+                            className="bg-slate-900 text-slate-300 border border-white/10 px-3 py-1.5 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#E07A5F] cursor-pointer"
+                          >
+                            <option value="all" className="bg-slate-900 text-slate-200">{lang === 'hi' ? 'सभी विषय' : 'All Subjects'}</option>
+                            {Array.from(new Set(customHistory.map(item => item.subject))).map(subj => (
+                              <option key={subj} value={subj} className="bg-slate-900 text-slate-200">{subj}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {customHistory.length === 0 ? (
                   <div className="text-center py-16 text-gray-400 text-xs font-sans bg-white/[0.02] rounded-2xl border border-white/5 p-6 flex flex-col items-center justify-center gap-2.5 my-4">
                     <span className="text-3xl">📚</span>
@@ -2771,80 +2839,129 @@ JSON Schema:
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-3.5 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
-                    {customHistory.map((item) => {
-                      const isActive = !isNewLecture && selectedLesson.id === item.id;
+                  (() => {
+                    const filtered = customHistory.filter(item => {
+                      const queryLower = searchQuery.toLowerCase();
+                      const matchesSearch = item.query.toLowerCase().includes(queryLower) || item.subject.toLowerCase().includes(queryLower);
+
+                      let matchesStarred = true;
+                      if (filterType === 'starred') {
+                        matchesStarred = !!item.starred;
+                      }
+
+                      let matchesSubject = true;
+                      if (selectedSubjectFilter !== 'all') {
+                        matchesSubject = item.subject === selectedSubjectFilter;
+                      }
+
+                      return matchesSearch && matchesStarred && matchesSubject;
+                    });
+
+                    if (filtered.length === 0) {
                       return (
-                        <div
-                          key={item.id}
-                          className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 hover:bg-slate-900/95 ${
-                            isActive
-                              ? 'border-[#E07A5F] bg-[#E07A5F]/5 shadow-md shadow-[#E07A5F]/5'
-                              : 'border-white/5 hover:border-white/10'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3 min-w-0 flex-1">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border border-indigo-500/20 flex items-center justify-center shrink-0 text-lg shadow-inner">
-                              📚
-                            </div>
-                            <div className="min-w-0 flex-1 font-sans">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-[9px] font-mono font-black text-[#81B29A] uppercase tracking-wider bg-[#81B29A]/10 px-2 py-0.5 rounded border border-[#81B29A]/20">
-                                  {item.subject}
-                                </span>
-                                {isActive && (
-                                  <span className="text-[9px] font-mono font-black text-[#E07A5F] uppercase tracking-wider bg-[#E07A5F]/15 px-2 py-0.5 rounded border border-[#E07A5F]/25 animate-pulse">
-                                    ACTIVE VIEW
-                                  </span>
-                                )}
-                              </div>
-                              <h4 className="font-bold text-xs sm:text-sm text-slate-100 leading-snug mt-1.5 break-words">
-                                "{item.query}"
-                              </h4>
-                              <p className="text-[10px] text-gray-500 flex items-center gap-1.5 mt-1 font-mono">
-                                <Clock className="h-3 w-3 text-gray-500 shrink-0" />
-                                <span>Guided by {item.avatarName}</span>
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2 shrink-0 self-end md:self-auto border-t md:border-t-0 pt-3.5 md:pt-0 border-white/5 w-full md:w-auto justify-end">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleLessonSelect(item);
-                                setShowHistory(false);
-                              }}
-                              className="px-3.5 py-2 bg-[#81B29A] hover:bg-[#6FA38B] text-[#1E293B] hover:text-white rounded-xl text-xs font-sans font-black flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md"
-                              title="Restore and play this lecture"
-                            >
-                              <Play className="h-3 w-3 fill-current" />
-                              <span>{lang === 'hi' ? 'लेक्चर चलाएं' : 'Restore & Play'}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => downloadLessonVideoAndSlidesSpecific(item)}
-                              className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-                              title="Download complete lesson package"
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">Download</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={(e) => handleDeleteLesson(item.id, e)}
-                              className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl hover:text-rose-200 transition-all cursor-pointer flex items-center justify-center border border-rose-500/20"
-                              title="Delete lecture"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
+                        <div className="text-center py-16 text-gray-400 text-xs font-sans bg-white/[0.02] rounded-2xl border border-white/5 p-6 flex flex-col items-center justify-center gap-2.5 my-4">
+                          <span className="text-3xl">🔍</span>
+                          <p className="font-bold text-gray-300">{lang === 'hi' ? 'कोई मेल खाता परिणाम नहीं मिला।' : 'No matching results found.'}</p>
+                          <p className="text-[10px] text-gray-500 max-w-xs mx-auto">
+                            {lang === 'hi' 
+                              ? 'कृपया अपने खोज शब्द या फ़िल्टर बदलें।' 
+                              : 'Try resetting your filters or search query.'}
+                          </p>
                         </div>
                       );
-                    })}
-                  </div>
+                    }
+
+                    return (
+                      <div className="space-y-3.5 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+                        {filtered.map((item) => {
+                          const isActive = !isNewLecture && selectedLesson.id === item.id;
+                          return (
+                            <div
+                              key={item.id}
+                              className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 hover:bg-slate-900/95 ${
+                                isActive
+                                  ? 'border-[#E07A5F] bg-[#E07A5F]/5 shadow-md shadow-[#E07A5F]/5'
+                                  : 'border-white/5 hover:border-white/10'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3 min-w-0 flex-1">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/15 to-purple-500/15 border border-indigo-500/20 flex items-center justify-center shrink-0 text-lg shadow-inner">
+                                  📚
+                                </div>
+                                <div className="min-w-0 flex-1 font-sans">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-[9px] font-mono font-black text-[#81B29A] uppercase tracking-wider bg-[#81B29A]/10 px-2 py-0.5 rounded border border-[#81B29A]/20">
+                                      {item.subject}
+                                    </span>
+                                    {isActive && (
+                                      <span className="text-[9px] font-mono font-black text-[#E07A5F] uppercase tracking-wider bg-[#E07A5F]/15 px-2 py-0.5 rounded border border-[#E07A5F]/25 animate-pulse">
+                                        ACTIVE VIEW
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h4 className="font-bold text-xs sm:text-sm text-slate-100 leading-snug mt-1.5 break-words">
+                                    "{item.query}"
+                                  </h4>
+                                  <p className="text-[10px] text-gray-500 flex items-center gap-1.5 mt-1 font-mono">
+                                    <Clock className="h-3 w-3 text-gray-500 shrink-0" />
+                                    <span>Guided by {item.avatarName}</span>
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2 shrink-0 self-end md:self-auto border-t md:border-t-0 pt-3.5 md:pt-0 border-white/5 w-full md:w-auto justify-end">
+                                {/* Star Toggle Button */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleToggleStarLesson(item.id, e)}
+                                  className={`p-2 rounded-xl transition-all border cursor-pointer flex items-center justify-center ${
+                                    item.starred
+                                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                                      : 'bg-white/5 border-white/10 text-slate-400 hover:text-amber-300 hover:bg-white/10'
+                                  }`}
+                                  title={item.starred ? "Unstar lesson" : "Star lesson"}
+                                >
+                                  <Star className={`h-3.5 w-3.5 ${item.starred ? 'fill-current' : ''}`} />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleLessonSelect(item);
+                                    setShowHistory(false);
+                                  }}
+                                  className="px-3.5 py-2 bg-[#81B29A] hover:bg-[#6FA38B] text-[#1E293B] hover:text-white rounded-xl text-xs font-sans font-black flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md"
+                                  title="Restore and play this lecture"
+                                >
+                                  <Play className="h-3 w-3 fill-current" />
+                                  <span>{lang === 'hi' ? 'लेक्चर चलाएं' : 'Restore & Play'}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => downloadLessonVideoAndSlidesSpecific(item)}
+                                  className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                                  title="Download complete lesson package"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                  <span className="hidden sm:inline">Download</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteLesson(item.id, e)}
+                                  className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl hover:text-rose-200 transition-all cursor-pointer flex items-center justify-center border border-rose-500/20"
+                                  title="Delete lecture"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()
                 )}
                 
                 <div className="flex justify-end pt-2 border-t border-white/5 mt-auto">
