@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LanguageCode, User, OfflineResource } from '../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../data/translations';
 import { getDeterministicAvatar } from '../utils/avatar';
@@ -92,6 +92,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
   const [claimedMedals, setClaimedMedals] = useState<string[]>(() => {
     try {
       const saved = user.claimedMedals;
+      if (Array.isArray(saved)) return saved;
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -109,11 +110,15 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
   useEffect(() => {
     try {
       const saved = user.claimedMedals;
-      setClaimedMedals(saved ? JSON.parse(saved) : []);
+      if (Array.isArray(saved)) {
+        setClaimedMedals(saved);
+      } else {
+        setClaimedMedals(saved ? JSON.parse(saved) : []);
+      }
     } catch {
       setClaimedMedals([]);
     }
-  }, [user]);
+  }, [user.mobile]);
 
   const [offlineResources, setOfflineResources] = useState<OfflineResource[]>([
     { id: 'off-1', title: 'Rain & Clouds Lesson Pack', subject: 'Science', size: '12.4 MB', category: 'video', downloaded: true },
@@ -130,6 +135,110 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
     setLocalUser(user);
   }, [user]);
 
+  // Automatically sync/unlock corresponding medals based on earned certificates (e.g., perfect scores or passed quizzes)
+  useEffect(() => {
+    if (!localUser.earnedCertificates) return;
+    try {
+      const certs = JSON.parse(localUser.earnedCertificates) as any[];
+      if (!Array.isArray(certs)) return;
+
+      const newMedals = [...claimedMedals];
+      let changed = false;
+
+      certs.forEach((cert) => {
+        // Only award medals for high performance (e.g. perfect score or passing with high percentage)
+        const totalQ = cert.totalQuestions || 5;
+        const pct = cert.score / totalQ;
+        if (pct >= 0.8) {
+          const titleLower = (cert.quizTitle || '').toLowerCase();
+          const idLower = (cert.quizId || '').toLowerCase();
+
+          // Science
+          if (
+            idLower.includes('sci') || 
+            idLower.includes('env') || 
+            idLower.includes('photo') || 
+            titleLower.includes('science') || 
+            titleLower.includes('earth') || 
+            titleLower.includes('environment') || 
+            titleLower.includes('photosynthesis') || 
+            titleLower.includes('rain') ||
+            titleLower.includes('cloud')
+          ) {
+            const scienceMedals = ['rain', 'photo', 'ch-photosynthesis'];
+            scienceMedals.forEach((m) => {
+              if (!newMedals.includes(m)) {
+                newMedals.push(m);
+                changed = true;
+              }
+            });
+          }
+
+          // Math
+          if (
+            idLower.includes('math') || 
+            idLower.includes('equation') || 
+            idLower.includes('mult') || 
+            titleLower.includes('math') || 
+            titleLower.includes('equation') || 
+            titleLower.includes('multiplication') || 
+            titleLower.includes('fraction') ||
+            titleLower.includes('algebra')
+          ) {
+            const mathMedals = ['math', 'ch-multiplication'];
+            mathMedals.forEach((m) => {
+              if (!newMedals.includes(m)) {
+                newMedals.push(m);
+                changed = true;
+              }
+            });
+          }
+
+          // Languages
+          if (
+            idLower.includes('lang') || 
+            idLower.includes('eng') || 
+            idLower.includes('hindi') || 
+            titleLower.includes('language') || 
+            titleLower.includes('english') || 
+            titleLower.includes('grammar')
+          ) {
+            if (!newMedals.includes('lang')) {
+              newMedals.push('lang');
+              changed = true;
+            }
+          }
+
+          // General Knowledge
+          if (
+            idLower.includes('gk') || 
+            idLower.includes('general') || 
+            titleLower.includes('gk') || 
+            titleLower.includes('general knowledge') || 
+            titleLower.includes('trivia')
+          ) {
+            if (!newMedals.includes('gk')) {
+              newMedals.push('gk');
+              changed = true;
+            }
+          }
+        }
+      });
+
+      if (changed) {
+        setClaimedMedals(newMedals);
+      }
+    } catch (e) {
+      console.error("Error auto-unlocking medals from certificates:", e);
+    }
+  }, [localUser.earnedCertificates, claimedMedals]);
+
+  // Use a ref to track the latest localUser state and prevent stale closures inside snapshot listener
+  const latestLocalUserRef = useRef<User>(localUser);
+  useEffect(() => {
+    latestLocalUserRef.current = localUser;
+  }, [localUser]);
+
   useEffect(() => {
     if (!user.mobile) return;
 
@@ -139,8 +248,17 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
       if (docSnap.exists()) {
         const data = docSnap.data() as User;
         
+        // Prevent stale snapshot data from overwriting newer local state updates (LWW)
+        const localTs = latestLocalUserRef.current?.updatedAt || 0;
+        const remoteTs = data.updatedAt || 0;
+        if (remoteTs < localTs) {
+          console.log("[onSnapshot Sync] Skipped older remote update (LWW check). Local timestamp is newer.");
+          return;
+        }
+
         setLocalUser((prev) => {
-          // Merging keys and values safely
+          const prevTs = prev?.updatedAt || 0;
+          if (remoteTs < prevTs) return prev;
           const merged = { ...prev, ...data };
           return merged;
         });
@@ -148,7 +266,9 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
         // Sync claimed medals if it has changed
         if (data.claimedMedals) {
           try {
-            const parsed = JSON.parse(data.claimedMedals) as string[];
+            const parsed = Array.isArray(data.claimedMedals)
+              ? data.claimedMedals
+              : JSON.parse(data.claimedMedals) as string[];
             setClaimedMedals((prev) => {
               if (JSON.stringify(prev) !== JSON.stringify(parsed)) {
                 return parsed;

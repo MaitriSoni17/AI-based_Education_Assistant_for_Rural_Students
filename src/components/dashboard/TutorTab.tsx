@@ -2476,12 +2476,16 @@ JSON Schema:
   };
 
   const handleNextQuizQuestion = () => {
+    // Calculate final actual score taking into account the current question's answer before clearing it
+    const isCurrentCorrect = selectedQuizAnswer === selectedLesson.quiz[currentQuizIndex].answerIndex;
+    const finalScore = quizScore + (isCurrentCorrect ? 1 : 0);
+
     setSelectedQuizAnswer(null);
     if (currentQuizIndex + 1 < selectedLesson.quiz.length) {
       setCurrentQuizIndex((prev) => prev + 1);
     } else {
       setQuizFinished(true);
-      if (quizScore + 1 >= selectedLesson.quiz.length) {
+      if (finalScore >= selectedLesson.quiz.length) {
         // Fire continuous golden fireworks for a perfect score!
         fireContinuousFireworks(4000);
         
@@ -2506,7 +2510,7 @@ JSON Schema:
             offlineSyncManager.queuePendingProgress('medal_earned', selectedLesson.id, user.mobile);
           }
         }
-      } else if (quizScore >= selectedLesson.quiz.length * 0.6) {
+      } else if (finalScore >= selectedLesson.quiz.length * 0.6) {
         // Fire a standard confetti burst for passing with a good score!
         fireConfetti();
       }
