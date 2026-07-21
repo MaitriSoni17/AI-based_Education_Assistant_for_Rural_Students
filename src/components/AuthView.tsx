@@ -4,6 +4,7 @@ import { LanguageCode, User } from '../types';
 import SpeakButton from './SpeakButton';
 import { Smartphone, Lock, UserCheck, Globe, RefreshCw, Send } from 'lucide-react';
 import { getFirebaseUser, setFirebaseUser } from '../lib/firebase';
+import { getSafeDateString } from '../utils/dateUtils';
 
 interface AuthViewProps {
   mode: 'login' | 'signup';
@@ -143,7 +144,7 @@ export default function AuthView({
           await setFirebaseUser(mobile, {
             name: name.trim(),
             defaultLanguage: lang,
-            signupDate: data.user.signupDate || new Date().toLocaleDateString(),
+            signupDate: data.user.signupDate || getSafeDateString(),
           });
           
           const dbUser = await getFirebaseUser(mobile);
@@ -154,7 +155,7 @@ export default function AuthView({
               mobile,
               name: name.trim(),
               defaultLanguage: lang,
-              signupDate: data.user.signupDate || new Date().toLocaleDateString(),
+              signupDate: data.user.signupDate || getSafeDateString(),
             });
           }
         } else {

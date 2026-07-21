@@ -60,6 +60,8 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [editingName, setEditingName] = useState('');
   const [activeChatIndex, setActiveChatIndex] = useState<number | null>(null);
+  const [showDownloadPrompt, setShowDownloadPrompt] = useState(false);
+  const [tempDownloadName, setTempDownloadName] = useState('');
 
   // Load certificates from user object and sync when active user changes
   useEffect(() => {
@@ -134,7 +136,7 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
   };
 
   // Clean, robust direct canvas-based landscape high-resolution PDF generation
-  const handleDownloadPDF = async (cert: EarnedCertificate) => {
+  const handleDownloadPDF = async (cert: EarnedCertificate, nameOverride?: string) => {
     try {
       setIsGeneratingPdf(true);
       speakText(
@@ -207,7 +209,7 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
       ctx.fillText(subtitleLabel, canvas.width / 2, 340);
 
       // 7. Student's Full Name (Bold, elegant, dynamic font scaling if long)
-      const nameText = editingName.trim() || cert.recipientName || (lang === 'hi' ? "अध्ययनकर्ता" : "Acclaimed Scholar");
+      const nameText = (nameOverride || editingName).trim() || cert.recipientName || (lang === 'hi' ? "अध्ययनकर्ता" : "Acclaimed Scholar");
       ctx.fillStyle = '#111827'; // gray-900
       ctx.font = 'italic bold 72px Georgia, serif';
       // Measure name text and scale down if too long
@@ -575,9 +577,12 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                   </div>
 
                   <button
-                    onClick={() => handleDownloadPDF(selectedCert)}
-                    disabled={!editingName.trim() || isGeneratingPdf}
-                    className={`w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all shadow-3xs hover-float ${(!editingName.trim() || isGeneratingPdf) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => {
+                      setTempDownloadName(editingName || selectedCert.recipientName || user.certificateName || user.name || '');
+                      setShowDownloadPrompt(true);
+                    }}
+                    disabled={isGeneratingPdf}
+                    className={`w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all shadow-3xs hover-float ${isGeneratingPdf ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {isGeneratingPdf ? (
                       <>
@@ -804,6 +809,76 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* CONFIRM / EDIT NAME MODAL ON DOWNLOAD */}
+      {showDownloadPrompt && selectedCert && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all animate-fade-in animate-duration-200">
+          <div className="bg-white rounded-3xl border border-gray-150 max-w-md w-full shadow-2xl p-5 sm:p-6 space-y-5 text-left">
+            <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
+              <div className="p-2 bg-amber-50 rounded-xl border border-amber-100 text-amber-600 shrink-0">
+                <Award className="h-5 w-5 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="font-display font-black text-sm sm:text-base text-[#3D405B] tracking-tight">
+                  {lang === 'hi' ? "प्रमाण पत्र नाम संपादित करें" : "Edit Certificate Name"}
+                </h3>
+                <p className="text-[10px] sm:text-xs text-gray-400">
+                  {lang === 'hi' ? "डाउनलोड करने से पहले अपने प्रमाण पत्र का नाम सत्यापित करें" : "Verify or edit the name you want printed on your certificate"}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 font-mono">
+                {lang === 'hi' ? "अध्ययनकर्ता का पूरा नाम" : "Scholar's Full Name"}
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={tempDownloadName}
+                  onChange={(e) => setTempDownloadName(e.target.value)}
+                  placeholder={lang === 'hi' ? "जैसे: राहुल कुमार" : "e.g., Jane Doe"}
+                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-400 focus:border-amber-400 bg-gray-50/50 font-bold text-gray-800"
+                  maxLength={40}
+                  autoFocus
+                />
+                <span className="absolute right-3.5 top-3.5 text-[9px] text-gray-400 font-mono font-bold">
+                  {tempDownloadName.length}/40
+                </span>
+              </div>
+              <p className="text-[10px] text-amber-600 leading-normal font-medium bg-amber-50/30 p-2 rounded-lg border border-amber-100/30">
+                💡 {lang === 'hi' 
+                  ? "यह नाम आपके आधिकारिक सफलता प्रमाण पत्र पर स्थाई रूप से मुद्रित किया जाएगा।" 
+                  : "This exact name will be permanently embossed on your digital credentials PDF."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDownloadPrompt(false)}
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-black text-xs sm:text-sm rounded-xl cursor-pointer transition-all border border-gray-200/50 text-center"
+              >
+                {lang === 'hi' ? "रद्द करें" : "Cancel"}
+              </button>
+              <button
+                type="button"
+                disabled={!tempDownloadName.trim() || isGeneratingPdf}
+                onClick={async () => {
+                  const finalName = tempDownloadName.trim();
+                  handleUpdateName(finalName);
+                  setShowDownloadPrompt(false);
+                  await handleDownloadPDF(selectedCert, finalName);
+                }}
+                className={`flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl cursor-pointer transition-all text-center flex items-center justify-center gap-1.5 shadow-md ${(!tempDownloadName.trim() || isGeneratingPdf) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Download className="h-4 w-4" />
+                <span>{lang === 'hi' ? "डाउनलोड करें" : "Download PDF"}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

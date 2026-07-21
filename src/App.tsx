@@ -8,9 +8,10 @@ import DashboardView from './components/DashboardView';
 import { CurrentView, LanguageCode, User } from './types';
 import { TRANSLATIONS } from './data/translations';
 import { GraduationCap } from 'lucide-react';
-import { updateFirebaseUserFields, syncFirebaseUserWithLWW } from './lib/firebase';
+import { updateFirebaseUserFields, syncFirebaseUserWithLWW, getFirebaseUser } from './lib/firebase';
 import { offlineSyncManager } from './utils/offlineSync';
 import { fireContinuousFireworks } from './utils/confetti';
+import { getSafeDateString, getDaysDifference } from './utils/dateUtils';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<CurrentView>('home');
@@ -21,8 +22,6 @@ export default function App() {
       if (stored) {
         try {
           const parsed = JSON.parse(stored) as User;
-          if (parsed.streakDays === 5) parsed.streakDays = 1;
-          if (parsed.totalPoints === 40) parsed.totalPoints = 15;
           if (parsed.studyMins === undefined) parsed.studyMins = 30;
           if (parsed.todayMins === undefined) parsed.todayMins = 0;
           return parsed;
@@ -43,55 +42,84 @@ export default function App() {
     }
   }, [showStreakEarnedToast]);
 
-  // Helper to compute calendar day differences from locale strings safely
-  const getDaysDifference = (dateStr1?: string, dateStr2?: string): number => {
-    if (!dateStr1 || !dateStr2) return 999;
-    try {
-      const d1 = new Date(dateStr1);
-      const d2 = new Date(dateStr2);
-      d1.setHours(12, 0, 0, 0);
-      d2.setHours(12, 0, 0, 0);
-      const diffMs = d2.getTime() - d1.getTime();
-      return Math.round(diffMs / (1000 * 60 * 60 * 24));
-    } catch (e) {
-      return 999;
-    }
-  };
-
-  // Manage daily reset and streak checks when user is loaded or day changes
-  useEffect(() => {
-    if (!user) return;
-
-    const todayStr = new Date().toLocaleDateString();
-    
-    // Check if the user's lastActiveDate is different from today
-    if (user.lastActiveDate !== todayStr) {
-      const lastCheckedIn = user.lastCheckedInDate;
-      let updatedStreak = user.streakDays ?? 0;
+  // Helper to handle daily reset on a specific user object
+  const performDailyResetForUser = (targetUser: User): { updatedUser: User; wasReset: boolean; fields: Partial<User> } => {
+    const todayStr = getSafeDateString();
+    if (targetUser.lastActiveDate !== todayStr) {
+      const lastCheckedIn = targetUser.lastCheckedInDate;
+      const updatedStreak = targetUser.streakDays ?? 1;
       
-      // If they missed a day (i.e. didn't check in/work yesterday), reset their streak to 0
-      const daysSinceLastCheckIn = lastCheckedIn ? getDaysDifference(lastCheckedIn, todayStr) : 999;
+      // Keep streak continuing from that day even if a day is missed! Do not reset to 0.
+      // The streak remains preserved so they don't lose their progression.
       
-      if (daysSinceLastCheckIn > 1) {
-        updatedStreak = 0; // Streak is broken!
-      }
-      
-      const updatedFields: Partial<User> = {
+      const fields: Partial<User> = {
         lastActiveDate: todayStr,
         todayMins: 0, // Reset today's study minutes
-        streakDays: updatedStreak
+        streakDays: updatedStreak,
+        updatedAt: Date.now()
       };
       
-      setUser(current => {
-        if (!current) return null;
-        const nextUser = { ...current, ...updatedFields };
-        localStorage.setItem('gramin_student_session', JSON.stringify(nextUser));
-        return nextUser;
-      });
-      
-      updateFirebaseUserFields(user.mobile, updatedFields)
-        .catch(err => console.error("[Daily Reset] Failed to sync reset to Firebase:", err));
+      return {
+        updatedUser: { ...targetUser, ...fields },
+        wasReset: true,
+        fields
+      };
     }
+    return {
+      updatedUser: targetUser,
+      wasReset: false,
+      fields: {}
+    };
+  };
+
+  // Synchronize with Firebase Firestore on app startup/mount to pull latest remote progress
+  // and safely handle daily resets without racing or using a blocking state variable.
+  useEffect(() => {
+    if (!user?.mobile) return;
+
+    getFirebaseUser(user.mobile)
+      .then((dbUser) => {
+        let finalUser: User;
+        
+        if (dbUser) {
+          const remoteUser = dbUser as User;
+          const remoteUpdatedAt = remoteUser.updatedAt || 0;
+          const localUpdatedAt = user.updatedAt || 0;
+          
+          // Merge based on newest updated timestamp
+          if (remoteUpdatedAt >= localUpdatedAt || (remoteUser.streakDays ?? 0) > (user.streakDays ?? 0) || (remoteUser.studyMins ?? 30) > (user.studyMins ?? 30)) {
+            finalUser = { ...user, ...remoteUser };
+          } else {
+            finalUser = { ...remoteUser, ...user };
+          }
+        } else {
+          finalUser = { ...user };
+        }
+
+        // Perform daily reset check on the merged/synchronized user profile
+        const { updatedUser, wasReset, fields } = performDailyResetForUser(finalUser);
+        
+        setUser(updatedUser);
+        localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
+
+        if (wasReset) {
+          updateFirebaseUserFields(user.mobile, fields)
+            .catch((err) => console.error("[Startup Sync Reset] Failed to sync reset to Firebase:", err));
+        } else if (dbUser && JSON.stringify(dbUser) !== JSON.stringify(finalUser)) {
+          // If we resolved a local-first win but didn't trigger a reset, update remote with newer local details
+          updateFirebaseUserFields(user.mobile, finalUser)
+            .catch((err) => console.error("[Startup Sync Update] Failed to sync merged user to Firebase:", err));
+        }
+      })
+      .catch((err) => {
+        console.error("[Startup Sync] Offline or failed to load remote user profile. Falling back to local reset check:", err);
+        // Fallback to doing daily reset check directly on local user
+        const { updatedUser, wasReset } = performDailyResetForUser(user);
+        if (wasReset) {
+          setUser(updatedUser);
+          localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
+        }
+      });
   }, [user?.mobile]);
 
   // Ensure any existing user session with stale defaults is automatically migrated
@@ -99,14 +127,6 @@ export default function App() {
     if (user) {
       let needsUpdate = false;
       const updated = { ...user };
-      if (user.streakDays === 5) {
-        updated.streakDays = 1;
-        needsUpdate = true;
-      }
-      if (user.totalPoints === 40) {
-        updated.totalPoints = 15;
-        needsUpdate = true;
-      }
       if (user.studyMins === undefined) {
         updated.studyMins = 30;
         needsUpdate = true;
@@ -119,8 +139,6 @@ export default function App() {
         setUser(updated);
         localStorage.setItem('gramin_student_session', JSON.stringify(updated));
         updateFirebaseUserFields(user.mobile, {
-          streakDays: updated.streakDays,
-          totalPoints: updated.totalPoints,
           studyMins: updated.studyMins,
           todayMins: updated.todayMins
         }).catch(err => console.error(err));
@@ -148,7 +166,7 @@ export default function App() {
         setUser((current) => {
           if (!current) return null;
           
-          const todayStr = new Date().toLocaleDateString();
+          const todayStr = getSafeDateString();
           
           const currentMins = current.studyMins ?? 30;
           const updatedMins = currentMins + 1;
@@ -167,13 +185,8 @@ export default function App() {
             // Yes! Auto-accept today's streak!
             nextLastCheckedIn = todayStr;
             
-            // If they completed yesterday, streak increments. If missed, starts at 1.
-            const daysSinceLastCheckIn = current.lastCheckedInDate ? getDaysDifference(current.lastCheckedInDate, todayStr) : 999;
-            if (daysSinceLastCheckIn === 1) {
-              nextStreak = nextStreak + 1;
-            } else {
-              nextStreak = 1; // Starts a new streak!
-            }
+            // Streaks are never reset to 1 when a day is broken! The streak continues by incrementing from its last value.
+            nextStreak = nextStreak + 1;
             
             nextPoints = nextPoints + 15; // Bonus +15 XP claimed automatically!
             earnedTodayStreak = true;

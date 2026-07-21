@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getDeterministicAvatar } from "../utils/avatar";
+import { getSafeDateString } from "../utils/dateUtils";
 
 // Read configuration from the provisioned firebase applet config
 const firebaseConfig = {
@@ -139,7 +140,7 @@ export async function syncFirebaseUserWithLWW(
         mobile,
         name: localUser.name || "Student",
         defaultLanguage: localUser.defaultLanguage || "en",
-        signupDate: localUser.signupDate || new Date().toLocaleDateString(),
+        signupDate: localUser.signupDate || getSafeDateString(),
         avatar: getDeterministicAvatar(localUser.name || "Student", mobile),
         streakDays: 1,
         totalPoints: 15,
@@ -147,7 +148,7 @@ export async function syncFirebaseUserWithLWW(
         village: "",
         school: "",
         standard: "",
-        lastCheckedInDate: new Date().toLocaleDateString(),
+        lastCheckedInDate: getSafeDateString(),
         ...localUser,
         updatedAt: localUser.updatedAt || Date.now()
       };
@@ -194,7 +195,7 @@ export async function setFirebaseUser(mobile: string, userData: Partial<Firestor
         mobile,
         name: userData.name || "Student",
         defaultLanguage: userData.defaultLanguage || "en",
-        signupDate: userData.signupDate || new Date().toLocaleDateString(),
+        signupDate: userData.signupDate || getSafeDateString(),
         avatar: getDeterministicAvatar(userData.name || "Student", mobile),
         streakDays: 1,
         totalPoints: 15,
@@ -202,7 +203,7 @@ export async function setFirebaseUser(mobile: string, userData: Partial<Firestor
         village: "",
         school: "",
         standard: "",
-        lastCheckedInDate: new Date().toLocaleDateString(),
+        lastCheckedInDate: getSafeDateString(),
         ...userData
       };
       await setDoc(userDocRef, defaultUser);

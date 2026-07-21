@@ -10,6 +10,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { offlineSyncManager } from '../../utils/offlineSync';
 import { fireContinuousFireworks, fireConfetti } from '../../utils/confetti';
+import { getSafeDateString } from '../../utils/dateUtils';
 
 export const formatStudyTime = (minutes: number, isHindi: boolean) => {
   if (minutes < 60) {
@@ -52,7 +53,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
   // Gamified statistics from user prop
   const [userPoints, setUserPoints] = useState(() => user.totalPoints ?? 15);
   const [streakDays, setStreakDays] = useState(() => user.streakDays ?? 1);
-  const [hasCheckedInToday, setHasCheckedInToday] = useState(() => user.lastCheckedInDate === new Date().toLocaleDateString());
+  const [hasCheckedInToday, setHasCheckedInToday] = useState(() => user.lastCheckedInDate === getSafeDateString());
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'unlocked' | 'locked' | 'general' | 'streak' | 'offline'>('all');
   const [streakCelebration, setStreakCelebration] = useState(false);
@@ -81,7 +82,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
     setSelectedAvatar(user.avatar || getDeterministicAvatar(user.name, user.mobile));
     setUserPoints(user.totalPoints ?? 15);
     setStreakDays(user.streakDays ?? 1);
-    setHasCheckedInToday(user.lastCheckedInDate === new Date().toLocaleDateString());
+    setHasCheckedInToday(user.lastCheckedInDate === getSafeDateString());
   }, [user]);
 
   // Generate mock but consistent weekly analytics data based on user
@@ -99,7 +100,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
       return { day: dayName, mins: 0, quizzes: 0 };
     }
     // Past days:
-    const isNewUser = (user.streakDays ?? 1) <= 1;
+    const isNewUser = !user.village && !user.school && (user.studyMins ?? 30) <= 30 && (user.totalPoints ?? 15) <= 15;
     if (isNewUser) {
       return { day: dayName, mins: 0, quizzes: 0 };
     } else {
@@ -175,7 +176,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
 
     const newStreak = streakDays + 1;
     const newPoints = userPoints + 15;
-    const todayStr = new Date().toLocaleDateString();
+    const todayStr = getSafeDateString();
 
     // Update state
     setStreakDays(newStreak);
@@ -492,7 +493,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
           </div>
           <div>
             <span className="text-[10px] font-mono text-gray-400 block font-bold uppercase tracking-wider">Time Studied</span>
-            <span className="text-xl font-black text-[#3D405B]">{formatStudyTime(totalWeeklyMins, lang === 'hi')}</span>
+            <span className="text-xl font-black text-[#3D405B]">{formatStudyTime(Math.max(user.studyMins ?? 30, totalWeeklyMins), lang === 'hi')}</span>
           </div>
         </div>
 
