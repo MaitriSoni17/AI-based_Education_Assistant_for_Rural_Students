@@ -2,7 +2,59 @@ import React, { useState } from 'react';
 import { LanguageCode, User } from '../../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
-import { Settings, Volume2, Globe, GraduationCap, Check, Download } from 'lucide-react';
+import { Settings, Volume2, Globe, GraduationCap, Check, Download, ChevronDown, Search } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+
+const STANDARDS = [
+  { value: "Class 1", label: "Class 1" },
+  { value: "Class 2", label: "Class 2" },
+  { value: "Class 3", label: "Class 3" },
+  { value: "Class 4", label: "Class 4" },
+  { value: "Class 5", label: "Class 5" },
+  { value: "Class 6", label: "Class 6" },
+  { value: "Class 7", label: "Class 7" },
+  { value: "Class 8", label: "Class 8" },
+  { value: "Class 9", label: "Class 9" },
+  { value: "Class 10", label: "Class 10" },
+  { value: "Class 11 (Science)", label: "Class 11 (Science)", group: "Class 11" },
+  { value: "Class 11 (Commerce)", label: "Class 11 (Commerce)", group: "Class 11" },
+  { value: "Class 11 (Arts)", label: "Class 11 (Arts)", group: "Class 11" },
+  { value: "Class 12 (Science)", label: "Class 12 (Science)", group: "Class 12" },
+  { value: "Class 12 (Commerce)", label: "Class 12 (Commerce)", group: "Class 12" },
+  { value: "Class 12 (Arts)", label: "Class 12 (Arts)", group: "Class 12" },
+];
+
+const BOARDS = [
+  { value: "CBSE", label: "CBSE (NCERT Standards)", group: "National Boards" },
+  { value: "ICSE", label: "ICSE (CISCE Standards)", group: "National Boards" },
+  { value: "Andhra Pradesh: BIEAP & BSEAP", label: "Andhra Pradesh: BIEAP & BSEAP", group: "State Boards" },
+  { value: "Assam: AHSEC & SEBA", label: "Assam: AHSEC & SEBA", group: "State Boards" },
+  { value: "Bihar: BSEB", label: "Bihar: BSEB", group: "State Boards" },
+  { value: "Chhattisgarh: CGBSE", label: "Chhattisgarh: CGBSE", group: "State Boards" },
+  { value: "Goa: GBSHSE", label: "Goa: GBSHSE", group: "State Boards" },
+  { value: "Gujarat: GSEB", label: "Gujarat: GSEB", group: "State Boards" },
+  { value: "Haryana: HBSE", label: "Haryana: HBSE", group: "State Boards" },
+  { value: "Himachal Pradesh: HPBOSE", label: "Himachal Pradesh: HPBOSE", group: "State Boards" },
+  { value: "Jammu & Kashmir: JKBOSE", label: "Jammu & Kashmir: JKBOSE", group: "State Boards" },
+  { value: "Jharkhand: JAC", label: "Jharkhand: JAC", group: "State Boards" },
+  { value: "Karnataka: KSEAB", label: "Karnataka: KSEAB", group: "State Boards" },
+  { value: "Kerala: DHSE & Pareeksha Bhavan", label: "Kerala: DHSE & Pareeksha Bhavan", group: "State Boards" },
+  { value: "Madhya Pradesh: MPBSE", label: "Madhya Pradesh: MPBSE", group: "State Boards" },
+  { value: "Maharashtra: MSBSHSE", label: "Maharashtra: MSBSHSE", group: "State Boards" },
+  { value: "Manipur: BSEM & COHSEM", label: "Manipur: BSEM & COHSEM", group: "State Boards" },
+  { value: "Meghalaya: MBOSE", label: "Meghalaya: MBOSE", group: "State Boards" },
+  { value: "Mizoram: MBSE", label: "Mizoram: MBSE", group: "State Boards" },
+  { value: "Nagaland: NBSE", label: "Nagaland: NBSE", group: "State Boards" },
+  { value: "Odisha: BSE Odisha & CHSE Odisha", label: "Odisha: BSE Odisha & CHSE Odisha", group: "State Boards" },
+  { value: "Punjab: PSEB", label: "Punjab: PSEB", group: "State Boards" },
+  { value: "Rajasthan: RBSE", label: "Rajasthan: RBSE", group: "State Boards" },
+  { value: "Tamil Nadu: DGE TN", label: "Tamil Nadu: DGE TN", group: "State Boards" },
+  { value: "Telangana: TSBIE", label: "Telangana: TSBIE", group: "State Boards" },
+  { value: "Tripura: TBSE", label: "Tripura: TBSE", group: "State Boards" },
+  { value: "Uttar Pradesh: UPMSP", label: "Uttar Pradesh: UPMSP", group: "State Boards" },
+  { value: "Uttarakhand: UBSE", label: "Uttarakhand: UBSE", group: "State Boards" },
+  { value: "West Bengal: WBBSE & WBCHSE", label: "West Bengal: WBBSE & WBCHSE", group: "State Boards" },
+];
 
 interface SettingsTabProps {
   user: User;
@@ -17,6 +69,11 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
   const [school, setSchool] = useState(user.school || '');
   const [standard, setStandard] = useState(user.standard || '');
   const [board, setBoard] = useState(user.board || 'CBSE');
+
+  // Custom Dropdown Open States
+  const [isStandardOpen, setIsStandardOpen] = useState(false);
+  const [isBoardOpen, setIsBoardOpen] = useState(false);
+  const [boardSearch, setBoardSearch] = useState('');
 
   // Local speech test state
   const [speechRate, setSpeechRate] = useState(() => {
@@ -147,86 +204,140 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
               </div>
             </div>
 
-            <div className="space-y-1.5 text-left">
+            <div className="space-y-1.5 text-left relative">
               <label className="text-[10px] font-mono uppercase text-gray-400 font-bold block">
                 Standard / Grade Class
               </label>
-              <select
-                value={standard}
-                onChange={(e) => setStandard(e.target.value)}
-                className="w-full p-2.5 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans focus:outline-none focus:ring-1 focus:ring-[#81B29A] cursor-pointer"
+              <button
+                type="button"
+                onClick={() => {
+                  setIsStandardOpen(!isStandardOpen);
+                  setIsBoardOpen(false);
+                }}
+                className="w-full flex items-center justify-between p-2.5 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans font-bold text-gray-800 transition-all hover:bg-gray-100 cursor-pointer text-left"
               >
-                <option value="">{lang === 'hi' ? '-- अपनी कक्षा चुनें --' : '-- Select Your Class --'}</option>
-                <option value="Class 1">Class 1</option>
-                <option value="Class 2">Class 2</option>
-                <option value="Class 3">Class 3</option>
-                <option value="Class 4">Class 4</option>
-                <option value="Class 5">Class 5</option>
-                <option value="Class 6">Class 6</option>
-                <option value="Class 7">Class 7</option>
-                <option value="Class 8">Class 8</option>
-                <option value="Class 9">Class 9</option>
-                <option value="Class 10">Class 10</option>
-                <optgroup label={lang === 'hi' ? "कक्षा 11 (Arts, Commerce, Science)" : "Class 11 (Arts, Commerce, Science)"}>
-                  <option value="Class 11 (Science)">Class 11 (Science)</option>
-                  <option value="Class 11 (Commerce)">Class 11 (Commerce)</option>
-                  <option value="Class 11 (Arts)">Class 11 (Arts)</option>
-                </optgroup>
-                <optgroup label={lang === 'hi' ? "कक्षा 12 (Arts, Commerce, Science)" : "Class 12 (Arts, Commerce, Science)"}>
-                  <option value="Class 12 (Science)">Class 12 (Science)</option>
-                  <option value="Class 12 (Commerce)">Class 12 (Commerce)</option>
-                  <option value="Class 12 (Arts)">Class 12 (Arts)</option>
-                </optgroup>
-              </select>
+                <span className="text-left flex-1 mr-2">{standard || (lang === 'hi' ? 'अपनी कक्षा चुनें' : 'Select Your Class')}</span>
+                <ChevronDown className={`h-4 w-4 text-[#3D405B]/60 transition-transform ${isStandardOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {isStandardOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsStandardOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-1.5 space-y-0.5"
+                    >
+                      {STANDARDS.map((std) => (
+                        <button
+                          key={std.value}
+                          type="button"
+                          onClick={() => {
+                            setStandard(std.value);
+                            setIsStandardOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            standard === std.value
+                              ? 'bg-[#E07A5F]/10 text-[#E07A5F] font-extrabold'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {std.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
 
-            <div className="space-y-1.5 text-left">
+            <div className="space-y-1.5 text-left relative">
               <label className="text-[10px] font-mono uppercase text-gray-400 font-bold block">
                 Academic Board / Syllabus
               </label>
-              <select
-                value={board}
-                onChange={(e) => setBoard(e.target.value)}
-                className="w-full p-2.5 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans focus:outline-none focus:ring-1 focus:ring-[#81B29A] cursor-pointer font-bold text-[#3D405B]"
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBoardOpen(!isBoardOpen);
+                  setIsStandardOpen(false);
+                  setBoardSearch('');
+                }}
+                className="w-full flex items-center justify-between p-2.5 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans font-bold text-gray-800 transition-all hover:bg-gray-100 cursor-pointer text-left"
               >
-                <optgroup label="National Boards">
-                  <option value="CBSE">CBSE (NCERT Standards)</option>
-                  <option value="ICSE">ICSE (CISCE Standards)</option>
-                </optgroup>
-                <optgroup label="State Boards">
-                  <option value="Andhra Pradesh: BIEAP & BSEAP">Andhra Pradesh: BIEAP & BSEAP</option>
-                  <option value="Assam: AHSEC & SEBA">Assam: AHSEC & SEBA</option>
-                  <option value="Bihar: BSEB">Bihar: BSEB</option>
-                  <option value="Chhattisgarh: CGBSE">Chhattisgarh: CGBSE</option>
-                  <option value="Goa: GBSHSE">Goa: GBSHSE</option>
-                  <option value="Gujarat: GSEB">Gujarat: GSEB</option>
-                  <option value="Haryana: HBSE">Haryana: HBSE</option>
-                  <option value="Himachal Pradesh: HPBOSE">Himachal Pradesh: HPBOSE</option>
-                  <option value="Jammu & Kashmir: JKBOSE">Jammu & Kashmir: JKBOSE</option>
-                  <option value="Jharkhand: JAC">Jharkhand: JAC</option>
-                  <option value="Karnataka: KSEAB">Karnataka: KSEAB</option>
-                  <option value="Kerala: DHSE & Pareeksha Bhavan">Kerala: DHSE & Pareeksha Bhavan</option>
-                  <option value="Madhya Pradesh: MPBSE">Madhya Pradesh: MPBSE</option>
-                  <option value="Maharashtra: MSBSHSE">Maharashtra: MSBSHSE</option>
-                  <option value="Manipur: BSEM & COHSEM">Manipur: BSEM & COHSEM</option>
-                  <option value="Meghalaya: MBOSE">Meghalaya: MBOSE</option>
-                  <option value="Mizoram: MBSE">Mizoram: MBSE</option>
-                  <option value="Nagaland: NBSE">Nagaland: NBSE</option>
-                  <option value="Odisha: BSE Odisha & CHSE Odisha">Odisha: BSE Odisha & CHSE Odisha</option>
-                  <option value="Punjab: PSEB">Punjab: PSEB</option>
-                  <option value="Rajasthan: RBSE">Rajasthan: RBSE</option>
-                  <option value="Tamil Nadu: DGE TN">Tamil Nadu: DGE TN</option>
-                  <option value="Telangana: TSBIE">Telangana: TSBIE</option>
-                  <option value="Tripura: TBSE">Tripura: TBSE</option>
-                  <option value="Uttar Pradesh: UPMSP">Uttar Pradesh: UPMSP</option>
-                  <option value="Uttarakhand: UBSE">Uttarakhand: UBSE</option>
-                  <option value="West Bengal: WBBSE & WBCHSE">West Bengal: WBBSE & WBCHSE</option>
-                </optgroup>
-              </select>
-              <p className="text-[9px] text-gray-400 font-sans leading-normal">
-                This setting routes learning prompts dynamically, fine-tuning step-by-step solutions to your chosen national or regional SCERT syllabus format.
-              </p>
+                <span className="text-left flex-1 mr-2">{BOARDS.find(b => b.value === board)?.label || board}</span>
+                <ChevronDown className={`h-4 w-4 text-[#3D405B]/60 transition-transform ${isBoardOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {isBoardOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsBoardOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-2 space-y-2 max-h-72 overflow-hidden flex flex-col"
+                    >
+                      {/* Search box within board dropdown */}
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                        <input
+                          type="text"
+                          value={boardSearch}
+                          onChange={(e) => setBoardSearch(e.target.value)}
+                          placeholder={lang === 'hi' ? "बोर्ड खोजें..." : "Search board..."}
+                          className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-150 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#81B29A]"
+                        />
+                      </div>
+
+                      <div className="overflow-y-auto flex-1 space-y-1 pr-0.5">
+                        {["National Boards", "State Boards"].map(groupName => {
+                          const groupItems = BOARDS.filter(b => b.group === groupName && (boardSearch === '' || b.label.toLowerCase().includes(boardSearch.toLowerCase())));
+                          if (groupItems.length === 0) return null;
+
+                          return (
+                            <div key={groupName} className="space-y-0.5">
+                              <div className="text-[9px] font-black font-mono text-gray-400 uppercase tracking-wider px-2 py-1">
+                                {groupName === "National Boards" 
+                                  ? (lang === 'hi' ? "राष्ट्रीय बोर्ड" : "National Boards") 
+                                  : (lang === 'hi' ? "राज्य बोर्ड" : "State Boards")}
+                              </div>
+                              {groupItems.map((b) => (
+                                <button
+                                  key={b.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setBoard(b.value);
+                                    setIsBoardOpen(false);
+                                  }}
+                                  className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    board === b.value
+                                      ? 'bg-amber-50 text-amber-800 border-l-2 border-amber-500 font-extrabold pl-2'
+                                      : 'text-gray-700 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {b.label}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })}
+                        {BOARDS.filter(b => boardSearch === '' || b.label.toLowerCase().includes(boardSearch.toLowerCase())).length === 0 && (
+                          <div className="text-center py-4 text-xs text-gray-400 font-bold">
+                            {lang === 'hi' ? "कोई बोर्ड नहीं मिला" : "No board found"}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
+            <p className="text-[9px] text-gray-400 font-sans leading-normal">
+              This setting routes learning prompts dynamically, fine-tuning step-by-step solutions to your chosen national or regional SCERT syllabus format.
+            </p>
 
             {feedbackMsg && (
               <div className="p-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-sans font-semibold flex items-center gap-1">

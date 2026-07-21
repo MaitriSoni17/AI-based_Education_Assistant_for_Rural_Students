@@ -1,4 +1,5 @@
 import React, { useState, useEffect, FormEvent } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { LanguageCode, User, QuizQuestion, OfflineResource } from '../../types';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../../data/translations';
 import { offlineSyncManager } from '../../utils/offlineSync';
@@ -12,7 +13,7 @@ import {
   Play, BookOpen, Download, CheckCircle2, ChevronRight, Award, 
   HelpCircle, Volume2, Search, Sparkles, Smile, Video, ArrowLeft, RefreshCw,
   ChevronLeft, Pause, Eye, MonitorPlay, Paperclip, FileText, X, FileUp,
-  Trash2, Clock, History, ExternalLink, Star
+  Trash2, Clock, History, ExternalLink, Star, ChevronDown
 } from 'lucide-react';
 
 interface LessonQuery {
@@ -1445,6 +1446,7 @@ export default function TutorTab({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'starred'>('all');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');
+  const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
 
   const handleToggleStarLesson = (lessonId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -2816,16 +2818,64 @@ JSON Schema:
 
                         {/* Subject dropdown filter */}
                         <div className="relative">
-                          <select
-                            value={selectedSubjectFilter}
-                            onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-                            className="bg-slate-900 text-slate-300 border border-white/10 px-3 py-1.5 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#E07A5F] cursor-pointer"
+                          <button
+                            type="button"
+                            onClick={() => setIsSubjectDropdownOpen(!isSubjectDropdownOpen)}
+                            className="bg-slate-900/85 text-slate-200 border border-white/10 px-3 py-1.5 rounded-xl text-xs font-bold focus:outline-none flex items-center gap-1.5 hover:bg-slate-800 transition-colors cursor-pointer text-left"
                           >
-                            <option value="all" className="bg-slate-900 text-slate-200">{lang === 'hi' ? 'सभी विषय' : 'All Subjects'}</option>
-                            {Array.from(new Set(customHistory.map(item => item.subject))).map(subj => (
-                              <option key={subj} value={subj} className="bg-slate-900 text-slate-200">{subj}</option>
-                            ))}
-                          </select>
+                            <span className="text-left flex-1 mr-1">
+                              {selectedSubjectFilter === 'all'
+                                ? (lang === 'hi' ? 'सभी विषय' : 'All Subjects')
+                                : selectedSubjectFilter}
+                            </span>
+                            <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${isSubjectDropdownOpen ? 'rotate-180' : ''}`} />
+                          </button>
+
+                          <AnimatePresence>
+                            {isSubjectDropdownOpen && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setIsSubjectDropdownOpen(false)} />
+                                <motion.div
+                                  initial={{ opacity: 0, y: -4 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -4 }}
+                                  className="absolute right-0 mt-1 w-44 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-20 p-1 space-y-0.5"
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedSubjectFilter('all');
+                                      setIsSubjectDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                                      selectedSubjectFilter === 'all'
+                                        ? 'bg-[#E07A5F]/15 text-[#E07A5F]'
+                                        : 'text-slate-300 hover:bg-white/5'
+                                    }`}
+                                  >
+                                    {lang === 'hi' ? 'सभी विषय' : 'All Subjects'}
+                                  </button>
+                                  {Array.from(new Set(customHistory.map(item => item.subject))).map(subj => (
+                                    <button
+                                      key={subj}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedSubjectFilter(subj);
+                                        setIsSubjectDropdownOpen(false);
+                                      }}
+                                      className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                                        selectedSubjectFilter === subj
+                                          ? 'bg-[#E07A5F]/15 text-[#E07A5F]'
+                                          : 'text-slate-300 hover:bg-white/5'
+                                      }`}
+                                    >
+                                      {subj}
+                                    </button>
+                                  ))}
+                                </motion.div>
+                              </>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </div>
                     </div>

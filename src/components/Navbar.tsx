@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Menu, X, Globe, LogIn, UserPlus, LogOut, BookOpen, GraduationCap, Wifi } from 'lucide-react';
+import { Menu, X, Globe, LogIn, UserPlus, LogOut, BookOpen, GraduationCap, Wifi, ChevronDown } from 'lucide-react';
 import { CurrentView, LanguageCode, User } from '../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../data/translations';
 import { getDeterministicAvatar } from '../utils/avatar';
+import { AnimatePresence, motion } from 'motion/react';
 
 interface NavbarProps {
   currentView: CurrentView;
@@ -22,7 +23,10 @@ export default function Navbar({
   onLogout,
 }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const [isMobileLangOpen, setIsMobileLangOpen] = useState(false);
   const t = TRANSLATIONS[currentLanguage];
+  const activeLanguage = SUPPORTED_LANGUAGES.find((lang) => lang.code === currentLanguage) || SUPPORTED_LANGUAGES[0];
 
   const handleNavClick = (view: CurrentView) => {
     onNavigate(view);
@@ -143,21 +147,70 @@ export default function Navbar({
               </>
             )}
  
-            {/* Language Dropdown Selector */}
-            <div className="relative ml-2 flex items-center bg-white border border-[#F2CC8F]/30 rounded-xl px-2.5 py-1.5 hover:bg-gray-100 transition-colors">
-              <Globe className="h-4 w-4 text-[#E07A5F] mr-1.5" />
-              <select
-                id="language-picker-desktop"
-                value={currentLanguage}
-                onChange={(e) => onLanguageChange(e.target.value as LanguageCode)}
-                className="bg-transparent text-xs font-sans font-semibold text-gray-700 border-none outline-none focus:ring-0 cursor-pointer"
+            {/* Custom Premium Language Dropdown Selector */}
+            <div className="relative ml-2">
+              <button
+                id="language-dropdown-toggle-desktop"
+                onClick={() => setIsLangOpen(!isLangOpen)}
+                className="flex items-center gap-1.5 bg-white border border-[#F2CC8F]/50 rounded-xl px-3 py-1.5 hover:bg-[#FAF8F4] transition-all cursor-pointer shadow-3xs active:scale-95"
               >
-                {SUPPORTED_LANGUAGES.map((lang) => (
-                  <option key={lang.code} value={lang.code} className="text-gray-900 bg-white">
-                    {lang.nativeLabel} ({lang.label})
-                  </option>
-                ))}
-              </select>
+                <Globe className="h-4 w-4 text-[#E07A5F]" />
+                <span className="text-xs font-sans font-extrabold text-[#3D405B]">
+                  {activeLanguage.nativeLabel}
+                </span>
+                <ChevronDown className={`h-3 w-3 text-[#3D405B]/60 transition-transform duration-200 ${isLangOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {isLangOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsLangOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: -8 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-52 bg-white border border-[#F2CC8F]/40 rounded-2xl shadow-xl z-20 py-2.5 overflow-hidden"
+                    >
+                      <div className="px-3 pb-1.5 mb-1.5 border-b border-[#F2CC8F]/10 text-[10px] font-mono font-black uppercase tracking-wider text-gray-400">
+                        Select Language / भाषा चुनें
+                      </div>
+                      <div className="max-h-64 overflow-y-auto space-y-0.5 px-1.5">
+                        {SUPPORTED_LANGUAGES.map((lang) => {
+                          const isSelected = lang.code === currentLanguage;
+                          return (
+                            <button
+                              key={lang.code}
+                              onClick={() => {
+                                onLanguageChange(lang.code);
+                                setIsLangOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#E07A5F]/10 text-[#E07A5F] font-extrabold'
+                                  : 'text-[#3D405B]/85 hover:bg-[#FAF8F4] hover:text-[#E07A5F] font-bold'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm">
+                                  {lang.code === 'hi' ? '🇮🇳' : lang.code === 'gu' ? '🌾' : lang.code === 'mr' ? '🚩' : lang.code === 'ta' ? '📜' : lang.code === 'te' ? '🌊' : '🇬🇧'}
+                                </span>
+                                <div className="flex flex-col">
+                                  <span>{lang.nativeLabel}</span>
+                                  <span className="text-[9px] opacity-70 font-sans font-medium">{lang.label}</span>
+                                </div>
+                              </div>
+                              {isSelected && (
+                                <span className="flex h-1.5 w-1.5 rounded-full bg-[#E07A5F]" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
  
             {/* Network Indicator Mockup */}
@@ -171,21 +224,62 @@ export default function Navbar({
  
           {/* Hamburger / Mobile Toggle */}
           <div className="flex items-center lg:hidden space-x-2">
-            {/* Quick Language Toggle */}
-            <div className="flex items-center bg-white border border-[#F2CC8F]/30 rounded-xl px-2 py-1">
-              <Globe className="h-3.5 w-3.5 text-[#E07A5F] mr-1" />
-              <select
-                id="language-picker-mobile-quick"
-                value={currentLanguage}
-                onChange={(e) => onLanguageChange(e.target.value as LanguageCode)}
-                className="bg-transparent text-[11px] font-sans font-semibold text-gray-700 border-none outline-none focus:ring-0 cursor-pointer"
+            {/* Custom Mobile Language Selector */}
+            <div className="relative">
+              <button
+                id="language-dropdown-toggle-mobile"
+                onClick={() => setIsMobileLangOpen(!isMobileLangOpen)}
+                className="flex items-center gap-1 bg-white border border-[#F2CC8F]/50 rounded-xl px-2.5 py-1.5 cursor-pointer active:scale-95"
               >
-                {SUPPORTED_LANGUAGES.map((lang) => (
-                  <option key={lang.code} value={lang.code}>
-                    {lang.nativeLabel}
-                  </option>
-                ))}
-              </select>
+                <Globe className="h-3.5 w-3.5 text-[#E07A5F]" />
+                <span className="text-[11px] font-sans font-black text-[#3D405B]">
+                  {activeLanguage.nativeLabel}
+                </span>
+                <ChevronDown className={`h-2.5 w-2.5 text-[#3D405B]/60 transition-transform duration-200 ${isMobileLangOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {isMobileLangOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsMobileLangOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-44 bg-white border border-[#F2CC8F]/40 rounded-2xl shadow-xl z-20 py-2 space-y-0.5 px-1.5"
+                    >
+                      {SUPPORTED_LANGUAGES.map((lang) => {
+                        const isSelected = lang.code === currentLanguage;
+                        return (
+                          <button
+                            key={lang.code}
+                            onClick={() => {
+                              onLanguageChange(lang.code);
+                              setIsMobileLangOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left text-[11px] transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#E07A5F]/10 text-[#E07A5F] font-extrabold'
+                                : 'text-[#3D405B]/85 hover:bg-[#FAF8F4] hover:text-[#E07A5F] font-bold'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span>
+                                {lang.code === 'hi' ? '🇮🇳' : lang.code === 'gu' ? '🌾' : lang.code === 'mr' ? '🚩' : lang.code === 'ta' ? '📜' : lang.code === 'te' ? '🌊' : '🇬🇧'}
+                              </span>
+                              <span>{lang.nativeLabel}</span>
+                            </span>
+                            {isSelected && (
+                              <span className="flex h-1.5 w-1.5 rounded-full bg-[#E07A5F]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
  
             <button

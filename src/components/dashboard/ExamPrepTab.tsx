@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { LanguageCode, User } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
@@ -368,6 +369,13 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
   const [academicBoard, setAcademicBoard] = useState(user?.board || 'CBSE');
   const [feedbackLang, setFeedbackLang] = useState<LanguageCode>(lang);
   const [extraInstructions, setExtraInstructions] = useState('');
+
+  // Custom Dropdown Open States
+  const [isPresetDropdownOpen, setIsPresetDropdownOpen] = useState(false);
+  const [isQuestionsDropdownOpen, setIsQuestionsDropdownOpen] = useState(false);
+  const [isNegativeMarkingDropdownOpen, setIsNegativeMarkingDropdownOpen] = useState(false);
+  const [isPresetDropdownOpenStandard, setIsPresetDropdownOpenStandard] = useState(false);
+  const [isNegativeMarkingDropdownOpenStandard, setIsNegativeMarkingDropdownOpenStandard] = useState(false);
 
   // --- SIMULATED LIVE EXAM STATES ---
   const [mode, setMode] = useState<'simulated' | 'standard'>('simulated'); // Default to simulated mode
@@ -1157,17 +1165,48 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Exam Profile */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 relative">
                       <label className="text-xs font-bold text-gray-500">{t.examProfile}</label>
-                      <select 
-                        value={selectedPresetId}
-                        onChange={(e) => setSelectedPresetId(e.target.value)}
-                        className="w-full text-xs p-3 bg-gray-55 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
+                      <button
+                        type="button"
+                        onClick={() => setIsPresetDropdownOpen(!isPresetDropdownOpen)}
+                        className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl font-sans font-bold text-gray-800 flex items-center justify-between hover:bg-gray-100/70 transition-colors cursor-pointer text-left"
                       >
-                        {EXAM_PRESETS.map(preset => (
-                          <option key={preset.id} value={preset.id}>{preset.name}</option>
-                        ))}
-                      </select>
+                        <span className="text-left flex-1 mr-2">{EXAM_PRESETS.find(p => p.id === selectedPresetId)?.name || selectedPresetId}</span>
+                        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isPresetDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      <AnimatePresence>
+                        {isPresetDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setIsPresetDropdownOpen(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-1.5 space-y-0.5"
+                            >
+                              {EXAM_PRESETS.map(preset => (
+                                <button
+                                  key={preset.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedPresetId(preset.id);
+                                    setIsPresetDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    selectedPresetId === preset.id
+                                      ? 'bg-indigo-50 text-indigo-700'
+                                      : 'text-gray-750 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {preset.name}
+                                </button>
+                              ))}
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     {/* Board Selection */}
@@ -1214,18 +1253,59 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                       />
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 relative">
                       <label className="text-xs font-bold text-gray-500">Number of Questions</label>
-                      <select
-                        value={simNumQuestions}
-                        onChange={(e) => setSimNumQuestions(Number(e.target.value))}
-                        className="w-full text-xs p-3 bg-gray-55 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
+                      <button
+                        type="button"
+                        onClick={() => setIsQuestionsDropdownOpen(!isQuestionsDropdownOpen)}
+                        className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl font-sans font-bold text-gray-800 flex items-center justify-between hover:bg-gray-100/70 transition-colors cursor-pointer text-left"
                       >
-                        <option value={2}>2 Questions (Quick Sprint)</option>
-                        <option value={3}>3 Questions (Standard Practice)</option>
-                        <option value={5}>5 Questions (Rigorous Test)</option>
-                        <option value={8}>8 Questions (Full Length Exam)</option>
-                      </select>
+                        <span className="text-left flex-1 mr-2">
+                          {simNumQuestions === 2 ? "2 Questions (Quick Sprint)" :
+                           simNumQuestions === 3 ? "3 Questions (Standard Practice)" :
+                           simNumQuestions === 5 ? "5 Questions (Rigorous Test)" :
+                           simNumQuestions === 8 ? "8 Questions (Full Length Exam)" :
+                           `${simNumQuestions} Questions`}
+                        </span>
+                        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isQuestionsDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      <AnimatePresence>
+                        {isQuestionsDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setIsQuestionsDropdownOpen(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-1.5 space-y-0.5"
+                            >
+                              {[
+                                { val: 2, label: "2 Questions (Quick Sprint)" },
+                                { val: 3, label: "3 Questions (Standard Practice)" },
+                                { val: 5, label: "5 Questions (Rigorous Test)" },
+                                { val: 8, label: "8 Questions (Full Length Exam)" }
+                              ].map(opt => (
+                                <button
+                                  key={opt.val}
+                                  type="button"
+                                  onClick={() => {
+                                    setSimNumQuestions(opt.val);
+                                    setIsQuestionsDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    simNumQuestions === opt.val
+                                      ? 'bg-indigo-50 text-indigo-700'
+                                      : 'text-gray-750 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
 
@@ -1241,18 +1321,59 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                       />
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 relative">
                       <label className="text-xs font-bold text-gray-500">{t.negMarking}</label>
-                      <select 
-                        value={negativeMarking}
-                        onChange={(e) => setNegativeMarking(e.target.value)}
-                        className="w-full text-xs p-3 bg-gray-55 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
+                      <button
+                        type="button"
+                        onClick={() => setIsNegativeMarkingDropdownOpen(!isNegativeMarkingDropdownOpen)}
+                        className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl font-sans font-bold text-gray-800 flex items-center justify-between hover:bg-gray-100/70 transition-colors cursor-pointer text-left"
                       >
-                        <option value="None">{t.negNone}</option>
-                        <option value="-0.33 per wrong MCQ">{t.negOneThird}</option>
-                        <option value="-0.25 per wrong MCQ">{t.negOneFourth}</option>
-                        <option value="-1 per wrong subjective question">Strict penalty (-1 mark)</option>
-                      </select>
+                        <span className="text-left flex-1 mr-2">
+                          {negativeMarking === 'None' ? t.negNone :
+                           negativeMarking === '-0.33 per wrong MCQ' ? t.negOneThird :
+                           negativeMarking === '-0.25 per wrong MCQ' ? t.negOneFourth :
+                           negativeMarking === '-1 per wrong subjective question' ? "Strict penalty (-1 mark)" :
+                           negativeMarking}
+                        </span>
+                        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isNegativeMarkingDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      <AnimatePresence>
+                        {isNegativeMarkingDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setIsNegativeMarkingDropdownOpen(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-1.5 space-y-0.5"
+                            >
+                              {[
+                                { val: "None", label: t.negNone },
+                                { val: "-0.33 per wrong MCQ", label: t.negOneThird },
+                                { val: "-0.25 per wrong MCQ", label: t.negOneFourth },
+                                { val: "-1 per wrong subjective question", label: "Strict penalty (-1 mark)" }
+                              ].map(opt => (
+                                <button
+                                  key={opt.val}
+                                  type="button"
+                                  onClick={() => {
+                                    setNegativeMarking(opt.val);
+                                    setIsNegativeMarkingDropdownOpen(false);
+                                  }}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                    negativeMarking === opt.val
+                                      ? 'bg-indigo-50 text-indigo-700'
+                                      : 'text-gray-750 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
 
@@ -1675,17 +1796,48 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
 
                 {/* Exam Presets Selection */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 relative">
                     <label className="text-xs font-bold text-gray-500">{t.examProfile}</label>
-                    <select 
-                      value={selectedPresetId}
-                      onChange={(e) => setSelectedPresetId(e.target.value)}
-                      className="w-full text-xs p-3 bg-gray-55 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
+                    <button
+                      type="button"
+                      onClick={() => setIsPresetDropdownOpenStandard(!isPresetDropdownOpenStandard)}
+                      className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl font-sans font-bold text-gray-800 flex items-center justify-between hover:bg-gray-100/70 transition-colors cursor-pointer text-left"
                     >
-                      {EXAM_PRESETS.map(preset => (
-                        <option key={preset.id} value={preset.id}>{preset.name}</option>
-                      ))}
-                    </select>
+                      <span className="text-left flex-1 mr-2">{EXAM_PRESETS.find(p => p.id === selectedPresetId)?.name || selectedPresetId}</span>
+                      <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isPresetDropdownOpenStandard ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                      {isPresetDropdownOpenStandard && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setIsPresetDropdownOpenStandard(false)} />
+                          <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-1.5 space-y-0.5"
+                          >
+                            {EXAM_PRESETS.map(preset => (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedPresetId(preset.id);
+                                  setIsPresetDropdownOpenStandard(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  selectedPresetId === preset.id
+                                    ? 'bg-indigo-50 text-indigo-700'
+                                    : 'text-gray-750 hover:bg-gray-50'
+                                }`}
+                              >
+                                {preset.name}
+                              </button>
+                            ))}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {/* Board Selection */}
@@ -1727,18 +1879,59 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                     />
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 relative">
                     <label className="text-xs font-bold text-gray-500">{t.negMarking}</label>
-                    <select 
-                      value={negativeMarking}
-                      onChange={(e) => setNegativeMarking(e.target.value)}
-                      className="w-full text-xs p-3 bg-gray-55 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
+                    <button
+                      type="button"
+                      onClick={() => setIsNegativeMarkingDropdownOpenStandard(!isNegativeMarkingDropdownOpenStandard)}
+                      className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl font-sans font-bold text-gray-800 flex items-center justify-between hover:bg-gray-100/70 transition-colors cursor-pointer text-left"
                     >
-                      <option value="None">{t.negNone}</option>
-                      <option value="-0.33 per wrong MCQ">{t.negOneThird}</option>
-                      <option value="-0.25 per wrong MCQ">{t.negOneFourth}</option>
-                      <option value="-1 per wrong subjective question">Strict penalty (-1 mark)</option>
-                    </select>
+                      <span className="text-left flex-1 mr-2">
+                        {negativeMarking === 'None' ? t.negNone :
+                         negativeMarking === '-0.33 per wrong MCQ' ? t.negOneThird :
+                         negativeMarking === '-0.25 per wrong MCQ' ? t.negOneFourth :
+                         negativeMarking === '-1 per wrong subjective question' ? "Strict penalty (-1 mark)" :
+                         negativeMarking}
+                      </span>
+                      <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isNegativeMarkingDropdownOpenStandard ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                      {isNegativeMarkingDropdownOpenStandard && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setIsNegativeMarkingDropdownOpenStandard(false)} />
+                          <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-1.5 space-y-0.5"
+                          >
+                            {[
+                              { val: "None", label: t.negNone },
+                              { val: "-0.33 per wrong MCQ", label: t.negOneThird },
+                              { val: "-0.25 per wrong MCQ", label: t.negOneFourth },
+                              { val: "-1 per wrong subjective question", label: "Strict penalty (-1 mark)" }
+                            ].map(opt => (
+                              <button
+                                key={opt.val}
+                                type="button"
+                                onClick={() => {
+                                  setNegativeMarking(opt.val);
+                                  setIsNegativeMarkingDropdownOpenStandard(false);
+                                }}
+                                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  negativeMarking === opt.val
+                                    ? 'bg-indigo-50 text-indigo-700'
+                                    : 'text-gray-750 hover:bg-gray-50'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
 

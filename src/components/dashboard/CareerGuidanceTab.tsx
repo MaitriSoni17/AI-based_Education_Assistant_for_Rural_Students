@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { LanguageCode, User } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { 
   Compass, BookOpen, GraduationCap, ChevronRight, Sparkles, 
   Smile, ArrowRight, Heart, ArrowLeft, Loader2, Sparkle, AlertCircle, CheckCircle, Award,
-  IndianRupee, Wrench, Code, MessageSquare
+  IndianRupee, Wrench, Code, MessageSquare, ChevronDown
 } from 'lucide-react';
 
 interface CareerGuidanceTabProps {
@@ -1568,6 +1569,7 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
   const [aiHobbies, setAiHobbies] = useState('');
   const [aiSkills, setAiSkills] = useState('');
   const [aiPersonality, setAiPersonality] = useState('Analytical & Focused');
+  const [isPersonalityOpen, setIsPersonalityOpen] = useState(false);
   const [aiAcademicLevel, setAiAcademicLevel] = useState(user?.standard || 'Grade 10');
   const [aiCareerGoal, setAiCareerGoal] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
@@ -1826,18 +1828,59 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                 </div>
 
                 {/* Personality */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 relative">
                   <label className="font-sans font-bold text-[#3D405B]">{t('personalityVibeLabel')}</label>
-                  <select
-                    value={aiPersonality}
-                    onChange={(e) => setAiPersonality(e.target.value)}
-                    className="w-full p-2.5 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#81B29A]"
+                  <button
+                    type="button"
+                    onClick={() => setIsPersonalityOpen(!isPersonalityOpen)}
+                    className="w-full flex items-center justify-between p-2.5 bg-white rounded-lg border border-gray-200 text-xs sm:text-sm font-sans font-bold text-gray-805 transition-all hover:bg-gray-50 cursor-pointer text-left"
                   >
-                    <option value="Analytical & Focused">{t('personality1')}</option>
-                    <option value="Social & Outgoing">{t('personality2')}</option>
-                    <option value="Caring & Caring">{t('personality3')}</option>
-                    <option value="Creative & Artistic">{t('personality4')}</option>
-                  </select>
+                    <span className="text-left flex-1 mr-2">
+                      {aiPersonality === 'Analytical & Focused' ? t('personality1') :
+                       aiPersonality === 'Social & Outgoing' ? t('personality2') :
+                       aiPersonality === 'Caring & Caring' ? t('personality3') :
+                       aiPersonality === 'Creative & Artistic' ? t('personality4') :
+                       aiPersonality}
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-[#3D405B]/60 transition-transform ${isPersonalityOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {isPersonalityOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsPersonalityOpen(false)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-1 space-y-0.5"
+                        >
+                          {[
+                            { value: "Analytical & Focused", label: t('personality1') },
+                            { value: "Social & Outgoing", label: t('personality2') },
+                            { value: "Caring & Caring", label: t('personality3') },
+                            { value: "Creative & Artistic", label: t('personality4') }
+                          ].map((pers) => (
+                            <button
+                              key={pers.value}
+                              type="button"
+                              onClick={() => {
+                                setAiPersonality(pers.value);
+                                setIsPersonalityOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                                aiPersonality === pers.value
+                                  ? 'bg-[#E07A5F]/10 text-[#E07A5F] font-extrabold'
+                                  : 'text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {pers.label}
+                            </button>
+                          ))}
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Academic level / Current education */}
