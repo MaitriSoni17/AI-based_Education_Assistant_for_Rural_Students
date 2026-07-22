@@ -386,7 +386,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`w-full p-3 rounded-xl font-sans text-xs sm:text-sm font-bold flex items-center gap-3 transition-all duration-200 hover:translate-x-1 cursor-pointer ${
+                  className={`w-full p-3 rounded-xl font-sans text-xs sm:text-sm font-bold flex items-center gap-3 transition-all duration-200 hover:translate-x-1 cursor-pointer text-left ${
                     isSelected
                       ? 'border-[#E07A5F] bg-[#FAF8F4] text-[#E07A5F] ring-1 ring-[#FAF8F4]'
                       : 'text-gray-650 hover:bg-gray-50 hover:text-gray-900'
@@ -395,7 +395,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
                   <div className={`p-1.5 rounded-lg shrink-0 ${item.color} transition-transform duration-300 group-hover:scale-110`}>
                     <IconComp className="h-4.5 w-4.5" />
                   </div>
-                  <span>{item.label}</span>
+                  <span className="text-left flex-1">{item.label}</span>
                 </button>
               );
             })}
@@ -412,14 +412,14 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`p-2.5 px-4 rounded-full font-sans text-xs font-extrabold whitespace-nowrap flex items-center gap-2 transition-all duration-200 cursor-pointer border hover-scale-sm ${
+                  className={`p-2.5 px-4 rounded-full font-sans text-xs font-extrabold whitespace-nowrap flex items-center gap-2 transition-all duration-200 cursor-pointer border hover-scale-sm text-left ${
                     isSelected
                       ? 'bg-[#3D405B] text-white border-transparent shadow'
                       : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-55'
                   }`}
                 >
-                  <IconComp className="h-4 w-4" />
-                  <span>{item.label}</span>
+                  <IconComp className="h-4 w-4 shrink-0" />
+                  <span className="text-left">{item.label}</span>
                 </button>
               );
             })}
