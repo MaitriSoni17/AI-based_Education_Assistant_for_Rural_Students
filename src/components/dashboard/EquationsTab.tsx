@@ -7,7 +7,7 @@ import {
   Binary, Flame, Compass, HelpCircle as HelpIcon,
   Trash2, Paperclip, Send, X, Bot, FileDown, Copy, Check,
   ChevronUp, ChevronDown, BookOpen, Plus, MessageSquare, Calendar,
-  Star, Search, User as UserIcon
+  Star, Search, User as UserIcon, Pencil
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import katex from 'katex';
@@ -1769,6 +1769,138 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
   const [pdfExportQuestion, setPdfExportQuestion] = useState<string>("");
   const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
 
+  // Edit question states & handlers
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState<string>('');
+
+  const getLastUserMessage = () => {
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      if (chatMessages[i].sender === 'user') {
+        return chatMessages[i];
+      }
+    }
+    return null;
+  };
+
+  const handleStartEditMessage = (msg: ChatMessage) => {
+    setEditingMessageId(msg.id);
+    let textToEdit = msg.text || '';
+    if (textToEdit.startsWith('\\[ ') && textToEdit.endsWith(' \\]')) {
+      textToEdit = textToEdit.slice(3, -3);
+    } else if (textToEdit.startsWith('\\[') && textToEdit.endsWith('\\]')) {
+      textToEdit = textToEdit.slice(2, -2);
+    } else if (textToEdit.startsWith('\\(') && textToEdit.endsWith('\\)')) {
+      textToEdit = textToEdit.slice(2, -2);
+    }
+    setEditingText(textToEdit);
+  };
+
+  const handleCancelEditMessage = () => {
+    setEditingMessageId(null);
+    setEditingText('');
+  };
+
+  const handleSaveAndResubmitEdit = async (targetMsgId: string) => {
+    if (!editingText.trim()) return;
+    const newText = editingText.trim();
+    setEditingMessageId(null);
+    setEditingText('');
+
+    const msgIdx = chatMessages.findIndex(m => m.id === targetMsgId);
+    if (msgIdx === -1) return;
+
+    const previousMsgs = chatMessages.slice(0, msgIdx);
+    const targetMsg = chatMessages[msgIdx];
+
+    const preprocessedText = formatPlainTextInputToLatex(newText);
+    const updatedUserMsg: ChatMessage = {
+      ...targetMsg,
+      text: preprocessedText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    const updatedMessagesList = [...previousMsgs, updatedUserMsg];
+
+    if (activeSessionId) {
+      setSolverSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, messages: updatedMessagesList } : s));
+    }
+    setChatMessages(updatedMessagesList);
+
+    setIsSending(true);
+
+    const langObj = CHATBOT_LANGUAGES.find(l => l.code === chatbotLang) || CHATBOT_LANGUAGES[0];
+    const langName = langObj.name;
+    const studentName = user.name || 'Student';
+    const gradeLevel = user.standard || localStorage.getItem(`${user.mobile}_profile_standard`) || '';
+    const studentVillage = user.village || localStorage.getItem(`${user.mobile}_profile_village`) || '';
+    const studentSchool = user.school || localStorage.getItem(`${user.mobile}_profile_school`) || '';
+    const studentBoard = user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE';
+
+    const systemInstruction = `You are GyaanBot's Smart AI Math and Science Solver, an expert teacher. Solve science/math problems, balance equations, explain physics laws, and show step-by-step calculations.
+CRITICAL RULE 1: You MUST explain, write, and reply ENTIRELY in the ${langName} language (using its native script/characters, e.g. Devanagari for Hindi/Sanskrit, Bengali script for Bengali, Arabic/Persian script for Urdu, Tamil script for Tamil, etc.). Do not speak English if the requested language is not English.
+CRITICAL RULE 2: Always present mathematical equations, formulas, fractions, derivatives, integrals, and multi-step math solutions in proper mathematical notation using LaTeX formatting. Do not write equations or formulas as plain text sentences. Every single equation, math term, variable, or inline formula must be enclosed in LaTeX inline syntax, e.g. \\(x^2 + y^2 = z^2\\) or \\(\\text{H}_2\\text{O}\\). Use display-style block LaTeX wrappers for multi-step solutions, derivations, or stand-alone prominent equations: \\[ E = mc^2 \\]. Explanations should be in simple, friendly, empathetic text in the ${langName} language, but equations must ALWAYS appear as LaTeX equations. For all science, physics, chemistry formulas and molecules, also use LaTeX formatting (e.g., \\(\\text{H}_2\\text{O}\\), \\(\\Delta G = \\Delta H - T\\Delta S\\)). Never mix plain text math with explanations — keep all math strictly in LaTeX (e.g., write \\(\\frac{d}{dx}x^2 = 2x\\) instead of "the derivative of x squared is 2x").
+CRITICAL RULE 3: MATH-AWARE PARSING AND SOLVING: Always parse and solve equations in LaTeX formatting. If the student's input query is in plain text, mentally convert it into proper LaTeX and provide the step-by-step mathematical explanation showing how the variables and fractions relate. Ensure any division type equations (e.g. \\(\\frac{a}{b}\\)), matrices, exponents, or chemical equations are beautifully structured and fully solved.
+CRITICAL RULE 4: CONVERSATIONAL CONTINUITY & PRACTICE QUESTIONS: Maintain context across messages. Whenever you solve a problem, you may provide a relevant Practice Question at the end for the student to try. When the student subsequently asks for "the solution", "solution to the practice question", "solve the practice question", "tell me the answer", or provides their answer attempt to the practice question, refer directly to the exact practice question given in your previous message in the conversation history, and provide its full, step-by-step LaTeX solution.
+If a user uploads an image or PDF, carefully analyze the visual/document problem and provide a detailed educational walkthrough in the ${langName} language using this clean format.
+
+[EMPATHETIC ADAPTIVE LEARNING GUIDELINES]
+Please tailor your explanations, complexity, and vocabulary to match this student's profile:
+1. Student Name: ${studentName} (Address the student personally by name occasionally to encourage them!)
+2. Grade/Class Level: ${gradeLevel ? gradeLevel : 'General School Math/Science'} (Ensure the level of mathematics, physics, or chemistry complexity and pedagogy perfectly matches this standard).
+3. Academic Board: ${studentBoard} (Apply curriculum standards, grading parameters, or definitions aligning with ${studentBoard}).
+4. Student Village Location: ${studentVillage ? studentVillage : 'not specified'} (Incorporate local, familiar rural metaphors like crop weight, water pump discharge, seed bags, tractor speed, or village cattle counts in math word problems and science explanations to make learning intuitive).
+5. Student School Name: ${studentSchool ? studentSchool : 'not specified'} (Refer to their school context or encourage them as a bright pupil of their academy).`;
+
+    const historyPayload = previousMsgs
+      .filter(m => !m.id.startsWith('welcome'))
+      .slice(-12)
+      .map(m => ({
+        role: m.sender === 'user' ? 'user' : 'model',
+        text: m.text
+      }));
+
+    try {
+      const response = await fetch('/api/gemini/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: updatedUserMsg.text,
+          file: targetMsg.attachmentUrl ? { data: targetMsg.attachmentUrl, mimeType: 'image/jpeg' } : undefined,
+          history: historyPayload,
+          systemInstruction,
+          board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
+          lang: chatbotLang
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        const botMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          sender: 'bot',
+          text: data.text,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        updateChatAndSession(prev => [...prev, botMsg]);
+      } else {
+        throw new Error(data.message || 'API Error');
+      }
+    } catch (error: any) {
+      console.error(error);
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'bot',
+        text: chatbotLang === 'hi'
+          ? "क्षमा करें, मुझे आपकी समस्या को संसाधित करने में कोई त्रुटि हुई। कृपया दोबारा प्रयास करें।"
+          : `Sorry, I encountered an error while processing your request: ${error.message || 'Please check your connection and try again.'}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      updateChatAndSession(prev => [...prev, errorMsg]);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   const handleToggleStarSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSolverSessions(prev => prev.map(s => s.id === sessionId ? { ...s, starred: !s.starred } : s));
@@ -2142,7 +2274,7 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
   };
 
   const formatPlainTextInputToLatex = (input: string): string => {
-    let text = input;
+    let text = input.trim();
 
     // Check if the input already contains any LaTeX delimiters. If yes, preserve them.
     const hasLatex = text.includes('\\(') || text.includes('\\[') || text.includes('$$') || text.includes('$');
@@ -2150,36 +2282,23 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
       return text;
     }
 
-    // If it is completely plain text, let's try to identify and convert mathematical/chemical formulas.
-    const isPureFormula = /^[a-zA-Z0-9\s\+\-\*\/\^\(\)\.\,=<>≤≥≠÷×]+$/.test(text) && 
-                          (/[0-9]/.test(text) || /[a-zA-Z]/.test(text)) &&
-                          !(/^(solve|what|is|how|explain|calculate|find|the|equation|of|and|or|for|in|on|at|to|with|by|a|an)\b/i.test(text.trim()));
+    // Check if input is a natural language question/statement rather than a standalone math formula
+    const textWords = text.split(/\s+/);
+    const hasMultipleWords = textWords.length >= 2;
+    const hasCommonTextWords = /^(please|give|solve|what|is|how|explain|calculate|find|the|equation|of|and|or|for|in|on|at|to|with|by|a|an|can|you|show|me|step|solution|practice|question|above|tell|answer|complete|detail|detailed)\b/i.test(text);
+
+    // Only wrap as pure display LaTeX if it is strictly a mathematical equation/formula without natural language words
+    const isPureFormula = !hasMultipleWords && !hasCommonTextWords &&
+                          /^[a-zA-Z0-9\s\+\-\*\/\^\(\)\.\,=<>≤≥≠÷×]+$/.test(text) && 
+                          (/[0-9]/.test(text) || /[=\+\*\/\^]/.test(text));
 
     if (isPureFormula) {
-      const formatted = convertDivisionToFraction(text.trim());
+      const formatted = convertDivisionToFraction(text);
       return `\\[ ${formatted} \\]`;
     }
 
-    // Otherwise, it is a combination of text and formulas.
-    text = convertDivisionToFraction(text);
-
-    // Identify equations and wrap them (e.g., words containing letters and numbers with =, +, -, *, / or ^)
-    const eqRegex = /([a-zA-Z0-9_\-\+\*\/\^\(\)\s\.]+\s*=\s*[a-zA-Z0-9_\-\+\*\/\^\(\)\s\.]+)/g;
-    text = text.replace(eqRegex, (match) => {
-      if (/^\s*[0-9]+\s*$/.test(match) || /^\s*[a-zA-Z]{1,3}\s*$/.test(match)) {
-        return match;
-      }
-      return `\\(${match.trim()}\\)`;
-    });
-
-    // Format chemical formulas
-    text = text.replace(/\b(H2O|CO2|C6H12O6|H2SO4|O2|H2|NaCl|HCl|NaOH|CaCO3)\b/g, (match) => {
-      let formatted = match.replace(/([A-Z][a-z]?)(\d+)/g, '\\text{$1}_$2');
-      formatted = formatted.replace(/\b([A-Z][a-z]?)\b/g, '\\text{$1}');
-      return `\\(${formatted}\\)`;
-    });
-
-    return text;
+    // Otherwise, convert any simple inline fraction like 3/4 -> \frac{3}{4} within the natural text
+    return convertDivisionToFraction(text);
   };
 
   // Handle sending message
@@ -2221,6 +2340,7 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
 CRITICAL RULE 1: You MUST explain, write, and reply ENTIRELY in the ${langName} language (using its native script/characters, e.g. Devanagari for Hindi/Sanskrit, Bengali script for Bengali, Arabic/Persian script for Urdu, Tamil script for Tamil, etc.). Do not speak English if the requested language is not English.
 CRITICAL RULE 2: Always present mathematical equations, formulas, fractions, derivatives, integrals, and multi-step math solutions in proper mathematical notation using LaTeX formatting. Do not write equations or formulas as plain text sentences. Every single equation, math term, variable, or inline formula must be enclosed in LaTeX inline syntax, e.g. \\(x^2 + y^2 = z^2\\) or \\(\\text{H}_2\\text{O}\\). Use display-style block LaTeX wrappers for multi-step solutions, derivations, or stand-alone prominent equations: \\[ E = mc^2 \\]. Explanations should be in simple, friendly, empathetic text in the ${langName} language, but equations must ALWAYS appear as LaTeX equations. For all science, physics, chemistry formulas and molecules, also use LaTeX formatting (e.g., \\(\\text{H}_2\\text{O}\\), \\(\\Delta G = \\Delta H - T\\Delta S\\)). Never mix plain text math with explanations — keep all math strictly in LaTeX (e.g., write \\(\\frac{d}{dx}x^2 = 2x\\) instead of "the derivative of x squared is 2x").
 CRITICAL RULE 3: MATH-AWARE PARSING AND SOLVING: Always parse and solve equations in LaTeX formatting. If the student's input query is in plain text, mentally convert it into proper LaTeX and provide the step-by-step mathematical explanation showing how the variables and fractions relate. Ensure any division type equations (e.g. \\(\\frac{a}{b}\\)), matrices, exponents, or chemical equations are beautifully structured and fully solved.
+CRITICAL RULE 4: CONVERSATIONAL CONTINUITY & PRACTICE QUESTIONS: Maintain context across messages. Whenever you solve a problem, you may provide a relevant Practice Question at the end for the student to try. When the student subsequently asks for "the solution", "solution to the practice question", "solve the practice question", "tell me the answer", or provides their answer attempt to the practice question, refer directly to the exact practice question given in your previous message in the conversation history, and provide its full, step-by-step LaTeX solution.
 If a user uploads an image or PDF, carefully analyze the visual/document problem and provide a detailed educational walkthrough in the ${langName} language using this clean format.
 
 [EMPATHETIC ADAPTIVE LEARNING GUIDELINES]
@@ -2231,6 +2351,15 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 4. Student Village Location: ${studentVillage ? studentVillage : 'not specified'} (Incorporate local, familiar rural metaphors like crop weight, water pump discharge, seed bags, tractor speed, or village cattle counts in math word problems and science explanations to make learning intuitive).
 5. Student School Name: ${studentSchool ? studentSchool : 'not specified'} (Refer to their school context or encourage them as a bright pupil of their academy).`;
 
+    // Gather conversation history turns (excluding initial welcome greeting)
+    const historyPayload = chatMessages
+      .filter(m => !m.id.startsWith('welcome'))
+      .slice(-12)
+      .map(m => ({
+        role: m.sender === 'user' ? 'user' : 'model',
+        text: m.text
+      }));
+
     try {
       const response = await fetch('/api/gemini/chat', {
         method: 'POST',
@@ -2238,6 +2367,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
         body: JSON.stringify({
           message: userMsg.text,
           file: tempFile ? { data: tempFile.data, mimeType: tempFile.mimeType } : undefined,
+          history: historyPayload,
           systemInstruction,
           board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
           lang: chatbotLang
@@ -2353,6 +2483,17 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
           content = content.slice(2, -2);
         }
         
+        const trimmedContent = content.trim();
+        const isPlainSentence = !/[=\+\*\/\\^\{]/.test(trimmedContent) && trimmedContent.split(/\s+/).length >= 2;
+
+        if (isUser || isPlainSentence) {
+          return (
+            <span key={`block-${partIdx}`} className="font-sans text-xs sm:text-[13px] leading-relaxed text-white">
+              {trimmedContent}
+            </span>
+          );
+        }
+
         try {
           const html = katex.renderToString(content.trim(), {
             displayMode: true,
@@ -4823,7 +4964,11 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                 chatMessages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex gap-3 max-w-[85%] ${msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
+                    className={`flex gap-3 group relative ${
+                      editingMessageId === msg.id 
+                        ? 'w-full max-w-2xl mx-auto' 
+                        : `max-w-[85%] ${msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`
+                    }`}
                   >
                     {/* Sender Avatar indicator */}
                     <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
@@ -4838,7 +4983,18 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                       msg.sender === 'user'
                         ? 'bg-[#E07A5F] text-white rounded-tr-none'
                         : 'bg-slate-50 border border-slate-150 rounded-tl-none'
-                    }`}>
+                    } ${editingMessageId === msg.id ? 'w-full' : ''}`}>
+                      {/* Floating Edit Icon button on hover / touch */}
+                      {msg.sender === 'user' && editingMessageId !== msg.id && (
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditMessage(msg)}
+                          className="absolute -top-2 -left-2 p-1.5 rounded-full bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-slate-50 shadow-sm border border-slate-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer z-10"
+                          title={chatbotLang === 'hi' ? 'प्रश्न संपादित करें' : 'Edit question'}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      )}
                       {/* Attachment description pill */}
                       {msg.attachmentName && (
                         <div className={`mb-3 p-2 rounded-xl flex items-center gap-2 max-w-xs text-xs font-mono font-bold ${
@@ -4858,9 +5014,82 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         </div>
                       )}
 
-                      <div className="space-y-1.5 break-words">
-                        {formatMessageText(msg.text, msg.sender === 'user')}
-                      </div>
+                      {msg.sender === 'user' && editingMessageId === msg.id ? (
+                        <div className="space-y-3 mt-1 w-full min-w-[280px] sm:min-w-[480px] md:min-w-[560px] text-slate-900">
+                          <label className="block text-xs font-bold text-white mb-1">
+                            {chatbotLang === 'hi' ? 'अपना प्रश्न संपादित करें:' : 'Edit Your Question:'}
+                          </label>
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="w-full p-3 rounded-xl bg-white text-slate-900 border-2 border-amber-400 focus:ring-2 focus:ring-[#E07A5F] text-xs sm:text-sm font-sans outline-none resize-y min-h-[110px] shadow-sm leading-relaxed"
+                            rows={4}
+                            autoFocus
+                            placeholder={chatbotLang === 'hi' ? 'अपना प्रश्न लिखें...' : 'Type your question...'}
+                          />
+                          <div className="flex items-center gap-2 justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={handleCancelEditMessage}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/20 text-white hover:bg-white/30 transition-colors cursor-pointer"
+                            >
+                              {chatbotLang === 'hi' ? 'रद्द करें' : 'Cancel'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveAndResubmitEdit(msg.id)}
+                              disabled={!editingText.trim()}
+                              className="px-4 py-1.5 rounded-lg text-xs font-bold bg-white text-[#E07A5F] hover:bg-rose-50 flex items-center gap-1.5 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              <span>{chatbotLang === 'hi' ? 'सहेजें और पुनः हल करें' : 'Save & Resolve'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 break-words">
+                          {formatMessageText(msg.text, msg.sender === 'user')}
+                        </div>
+                      )}
+
+                      {/* Quick practice question solution chip */}
+                      {msg.sender === 'bot' && (
+                        (msg.text.toLowerCase().includes('practice') || 
+                         msg.text.includes('अभ्यास') || 
+                         msg.text.includes('स्वाध्याय') || 
+                         msg.text.includes('வினா') || 
+                         msg.text.includes('ప్రశ్న')) && (
+                          <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={isSending}
+                              onClick={() => handleSendMessage(
+                                chatbotLang === 'hi'
+                                  ? "कृपया ऊपर दिए गए अभ्यास प्रश्न का विस्तृत चरण-दर-चरण समाधान प्रदान करें।"
+                                  : "Please give me the complete step-by-step solution to the practice question above."
+                              )}
+                              className="px-2.5 py-1 rounded-lg bg-rose-50 text-[#E07A5F] border border-rose-200 hover:bg-rose-100 text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-3xs"
+                            >
+                              <Sparkles className="h-3 w-3 shrink-0 text-[#E07A5F]" />
+                              <span>
+                                {chatbotLang === 'hi' 
+                                  ? 'अभ्यास प्रश्न का हल देखें' 
+                                  : chatbotLang === 'gu'
+                                  ? 'અભ્યાસ પ્રશ્નનો ઉકેલ જુઓ'
+                                  : chatbotLang === 'mr'
+                                  ? 'सरावाच्या प्रश्नाचे उत्तर पहा'
+                                  : chatbotLang === 'bn'
+                                  ? 'অনুশীলন প্রশ্নের সমাধান দেখুন'
+                                  : chatbotLang === 'ta'
+                                  ? 'பயிற்சி வினாவுக்கான தீர்வைக் காண்க'
+                                  : chatbotLang === 'te'
+                                  ? 'అభ్యాస ప్రశ్న పరిష్కారాన్ని చూడండి'
+                                  : 'Solve Practice Question'}
+                              </span>
+                            </button>
+                          </div>
+                        )
+                      )}
                       
                       <div className={`text-[9px] font-mono mt-2 text-right ${msg.sender === 'user' ? 'text-white/70' : 'text-gray-450'}`}>
                         {msg.timestamp}

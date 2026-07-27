@@ -9,7 +9,7 @@ import {
   Paperclip, X, Trash, Image as ImageIcon, BookOpen, Compass, Map, 
   GraduationCap, Leaf, Sun, CloudRain, Award, Check, RotateCcw, Play, Plus,
   ChevronDown, ChevronUp, MessageSquare, FileText, FileDown, Copy,
-  Search, Star
+  Search, Star, Pencil
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { offlineSyncManager } from '../../utils/offlineSync';
@@ -262,16 +262,16 @@ const READ_ALOUD_TOOLTIP_LABELS: Record<LanguageCode, string> = {
   gu: "આ જવાબ મોટેથી વાંચો",
   mr: "हे उत्तर मोठ्याने वाचा",
   ta: "இந்த பதிலை சத்தமாக வாசிக்கவும்",
-  te: "ఈ సమాధానాన్ని గట్టిగా చదవండి"
+  te: "ఈ సమాధానాన్ని బిగ్గరగా చదవండి"
 };
 
 const SYNC_PENDING_LABELS: Record<LanguageCode, string> = {
-  en: "Sync Pending...",
-  hi: "सिंक लंबित है...",
-  gu: "સિંક બાકી છે...",
-  mr: "सिंक प्रलंबित आहे...",
-  ta: "ஒத்திசைవు நிலுவையில் உள்ளது...",
-  te: "సింక్ పెండింగ్‌లో ఉంది..."
+  en: "Sync pending",
+  hi: "सिंक लंबित है",
+  gu: "સિંક પેન્ડિંગ",
+  mr: "सिंक प्रलंबित",
+  ta: "ஒத்திசைவு நிலுவையில் உள்ளது",
+  te: "సింక్ పెండింగ్‌లో ఉంది"
 };
 
 const THINKING_INDICATOR_LABELS: Record<LanguageCode, string> = {
@@ -284,56 +284,56 @@ const THINKING_INDICATOR_LABELS: Record<LanguageCode, string> = {
 };
 
 const ATTACHMENT_READY_LABELS: Record<LanguageCode, string> = {
-  en: "Ready to send with next query",
-  hi: "अगले प्रश्न के साथ भेजने के लिए तैयार",
-  gu: "આગામী પ્રશ્ન સાથે મોકલવા માટે તૈયાર",
-  mr: "पुढील प्रश्नासोबत पाठवण्यासाठी तयार",
-  ta: "அடுத்த கேள்வியுடன் அனுப்பத் தயார்",
-  te: "తదుపరి ప్రశ్నతో పంపడానికి సిద్ధంగా ఉంది"
-};
-
-const INPUT_PLACEHOLDER_LABELS: Record<LanguageCode, string> = {
-  en: "Ask AI companion anything, drag-and-drop or upload a file (Image/PDF)!",
-  hi: "AI साथी से कुछ भी पूछें, फ़ाइल (छवि/PDF) खींचें या अपलोड करें!",
-  gu: "AI સાથીદારને કંઈપણ પૂછો, ફાઇલ (ઈમેજ/PDF) ખેંચો અથવા અપલોડ કરો!",
-  mr: "AI सोबतीला काहीही विचारा, फाईल (इमेज/PDF) ड्रॅग करा किंवा अपलोड करा!",
-  ta: "AI துணையிடம் எதையும் கேளுங்கள், கோப்பை (படம்/PDF) இழுத்து அல்லது பதிવેற்றவும்!",
-  te: "AI సహచరుడిని ఏదైనా అడగండి, ఫైల్ (చిత్రం/PDF) లాగండి లేదా అప్‌లోడ్ చేయండి!"
-};
-
-const DRAG_DROP_PLACEHOLDER_LABELS: Record<LanguageCode, string> = {
-  en: "Drop your file here!",
-  hi: "अपनी फ़ाइल यहाँ छोड़ें!",
-  gu: "તમારી ફાઇલ અહીં મૂકો!",
-  mr: "तुमची फाईल येथे टाका!",
-  ta: "உங்கள் கோப்பை இங்கே பதிவிடவும்!",
-  te: "మీ ఫైల్‌ను ఇక్కడ వదిలివేయండి!"
+  en: "Attachment Ready",
+  hi: "संलग्नक तैयार है",
+  gu: "જોડાણ તૈયાર છે",
+  mr: "जोडपत्र तयार आहे",
+  ta: "இணைப்புத் தயார்",
+  te: "అటాచ్‌మెంట్ సిద్ధంగా ఉంది"
 };
 
 const ATTACH_TOOLTIP_LABELS: Record<LanguageCode, string> = {
-  en: "Attach notes, diagrams, question papers, assignments, or PDF textbooks",
-  hi: "नोट्स, आरेख, प्रश्न पत्र, असाइनमेंट या PDF पाठ्यपुस्तकें संलग्न करें",
-  gu: "નોંધો, આકૃતિઓ, પ્રશ્નપત્રો, અસાઇનમેન્ટ અથવા PDF પાઠ્યપુસ્તકો જોડો",
-  mr: "नोट्स, आकृत्या, प्रश्नपत्रिका, असाइनमेंट किंवा PDF पाठ्यपुस्तके जोडा",
-  ta: "குறிப்புகள், வரைபடங்கள், வினாத்தாள்கள், பணிகள் அல்லது PDF பாடப்புத்தகங்களை இணைக்கவும்",
-  te: "నోట్స్, రేఖాచిత్రాలు, ప్రశ్న పత్రాలు, అసైన్‌మెంట్‌లు లేదా PDF పాఠ్యపుస్తకాలను జత చేయండి"
+  en: "Attach image or PDF",
+  hi: "चित्र या पीडीएफ संलग्न करें",
+  gu: "છબી અથવા પીડીએફ જોડો",
+  mr: "प्रतिमा किंवा पीडीएफ जोडा",
+  ta: "படம் அல்லது PDF ஐ இணைக்கவும்",
+  te: "చిత్రం లేదా PDF ని జోడించండి"
+};
+
+const DRAG_DROP_PLACEHOLDER_LABELS: Record<LanguageCode, string> = {
+  en: "Drop your file or image here...",
+  hi: "अपनी फ़ाइल या छवि यहाँ छोड़ें...",
+  gu: "તમારી ફાઇલ અથવા છબી અહીં છોડો...",
+  mr: "तुमची फाईल किंवा प्रतिमा येथे टाका...",
+  ta: "உங்கள் கோப்பு அல்லது படத்தை இங்கே விடவும்...",
+  te: "మీ ఫైల్ లేదా చిత్రాన్ని ఇక్కడ వదలండి..."
+};
+
+const INPUT_PLACEHOLDER_LABELS: Record<LanguageCode, string> = {
+  en: "Ask AI companion anything...",
+  hi: "AI साथी से कुछ भी पूछें...",
+  gu: "AI સાથીને કાંઈ પણ પૂછો...",
+  mr: "AI सोबत्याला काहीही विचारा...",
+  ta: "AI துணையிடம் எதையும் கேட்கலாம்...",
+  te: "AI సహచరుడిని ఏదైనా అడగండి..."
 };
 
 const OFFLINE_DEVICE_TITLE: Record<LanguageCode, string> = {
-  en: "Device Offline 📴",
-  hi: "डिवाइस ऑफ़लाइन है 📴",
-  gu: "ડિવાઇસ ઓફલાઇન છે 📴",
-  mr: "डिव्हाइस ऑफलाइन आहे 📴",
-  ta: "சாதனம் ஆஃப்லைனில் உள்ளது 📴",
-  te: "పరికరం ఆఫ్‌లైన్‌లో ఉంది 📴"
+  en: "📶 Offline - Saved locally",
+  hi: "📶 ऑफ़लाइन - स्थानीय रूप से सहेजा गया",
+  gu: "📶 ઑફલાઇન - સ્થાનિક રીતે સાચવેલ",
+  mr: "📶 ऑफलाइन - स्थानिकरित्या जतन केले",
+  ta: "📶 ஆஃப்லைன் - உள்ளூரில் சேமிக்கப்பட்டது",
+  te: "📶 ఆఫ్‌లైన్ - స్థానికంగా సేవ్ చేయబడింది"
 };
 
 const OFFLINE_DEVICE_BODY: Record<LanguageCode, string> = {
-  en: "I've saved your homework inquiry safely! I will automatically transmit and solve this as soon as you step back into a signal area.",
-  hi: "मैंने आपकी पूछताछ को सुरक्षित रूप से सहेज लिया है! जैसे ही आप नेटवर्क क्षेत्र में वापस आएंगे, मैं इसे स्वचालित रूप से भेजकर हल कर दूंगा।",
+  en: "I've securely saved your inquiry! As soon as you return to network coverage, I'll automatically transmit and solve it.",
+  hi: "मैंने आपका प्रश्न सुरक्षित रूप से सहेज लिया है! जैसे ही आप नेटवर्क क्षेत्र में वापस आएंगे, मैं इसे स्वचालित रूप से भेजकर हल कर दूंगा।",
   gu: "મેં તમારો પ્રશ્ન સુરક્ષિત રીતે સાચવી લીધો છે! જેવો તમે નેટવર્ક વિસ્તારમાં પાછા આવશો, હું તેને મોકલીને આપમેળે ઉકેલી આપીશ.",
   mr: "मी तुमची चौकशी सुरक्षितपणे जतन केली आहे! तुम्ही नेटवर्क क्षेत्रात परत येताच मी ते स्वयंचलितपणे पाठवून सोडवून देईन.",
-  ta: "உங்கள் வீட்டுப்பாட கேள்விய道を நான் பாதுகாப்பாகச் சேமித்துள்ளேன்! சிக்னல் பகுதிக்குத் திரும்பியதும் இதைத் தானாகவே தீர்த்து வைப்பேன்.",
+  ta: "உங்கள் வீட்டுப்பாட கேள்வியை நான் பாதுகாப்பாகச் சேமித்துள்ளேன்! சிக்னல் பகுதிக்குத் திரும்பியதும் இதைத் தானாகவே தீர்த்து வைப்பேன்.",
   te: "నేను మీ హోంవర్క్ ప్రశ్నను సురక్షితంగా సేవ్ చేసాను! మీరు తిరిగి నెట్‌వర్క్ పరిధిలోకి రాగానే దీనిని స్వయంచాలకంగా పంపి పరిష్కరిస్తాను."
 };
 
@@ -566,6 +566,8 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   const [isPlayingVoice, setIsPlayingVoice] = useState<string | null>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [msgHistory, setMsgHistory] = useState<Record<string, ChatMessage[]>>({});
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState<string>('');
   const [mascotAction, setMascotAction] = useState<'idle' | 'explaining' | 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think'>('idle');
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -762,6 +764,139 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     await sendMessageWithPayload(promptText);
   };
 
+  const getLastUserMessage = () => {
+    const currentList = msgHistory[selectedChar.id] || [];
+    for (let i = currentList.length - 1; i >= 0; i--) {
+      if (currentList[i].sender === 'user') {
+        return currentList[i];
+      }
+    }
+    return null;
+  };
+
+  const handleStartEditMessage = (msg: ChatMessage) => {
+    setEditingMsgId(msg.id);
+    let textToEdit = msg.text || '';
+    if (textToEdit.startsWith('\\[ ') && textToEdit.endsWith(' \\]')) {
+      textToEdit = textToEdit.slice(3, -3);
+    } else if (textToEdit.startsWith('\\[') && textToEdit.endsWith('\\]')) {
+      textToEdit = textToEdit.slice(2, -2);
+    } else if (textToEdit.startsWith('\\(') && textToEdit.endsWith('\\)')) {
+      textToEdit = textToEdit.slice(2, -2);
+    }
+    setEditingText(textToEdit);
+  };
+
+  const handleCancelEditMessage = () => {
+    setEditingMsgId(null);
+    setEditingText('');
+  };
+
+  const handleSaveAndResubmitEdit = async (targetMsgId: string) => {
+    if (!editingText.trim()) return;
+    const newText = editingText.trim();
+    setEditingMsgId(null);
+    setEditingText('');
+
+    const currentList = msgHistory[selectedChar.id] || [];
+    const msgIdx = currentList.findIndex(m => m.id === targetMsgId);
+    if (msgIdx === -1) return;
+
+    const targetMsg = currentList[msgIdx];
+    const updatedUserMsg: ChatMessage = {
+      ...targetMsg,
+      text: newText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    // Replace question in place and truncate subsequent messages
+    const historyUpToEdited = [...currentList.slice(0, msgIdx), updatedUserMsg];
+
+    setMsgHistory(prev => ({
+      ...prev,
+      [selectedChar.id]: historyUpToEdited
+    }));
+    offlineSyncManager.saveChatHistory(selectedChar.id, historyUpToEdited, user.mobile);
+    updateActiveSessionMessages(historyUpToEdited);
+
+    setMascotAction('think');
+
+    const activeHistory = currentList.slice(0, msgIdx)
+      .filter(m => !m.id.startsWith('welcome') && !m.pending)
+      .slice(-12)
+      .map(m => ({
+        role: m.sender === 'user' ? 'user' : 'model',
+        text: m.text
+      }));
+
+    try {
+      const bodyPayload: any = {
+        message: newText,
+        history: activeHistory,
+        systemInstruction: getSystemInstructionForMascot(),
+        board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
+        lang: lang
+      };
+
+      if (targetMsg.image) {
+        bodyPayload.image = targetMsg.image;
+      }
+
+      const response = await fetch("/api/gemini/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bodyPayload)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const aiMsg: ChatMessage = {
+          id: 'ai-' + Date.now(),
+          sender: 'assistant',
+          text: data.text,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        const updatedHistoryWithAi = [...historyUpToEdited, aiMsg];
+
+        setMsgHistory(prev => ({
+          ...prev,
+          [selectedChar.id]: updatedHistoryWithAi
+        }));
+
+        offlineSyncManager.saveChatHistory(selectedChar.id, updatedHistoryWithAi, user.mobile);
+        updateActiveSessionMessages(updatedHistoryWithAi);
+
+        setTimeout(() => {
+          speakMessageAloud(aiMsg);
+        }, 300);
+
+        setMascotAction('explaining');
+      } else {
+        throw new Error(data.message || 'Error generating response');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setMascotAction('idle');
+      const errNotice: ChatMessage = {
+        id: 'ai-err-' + Date.now(),
+        sender: 'assistant',
+        text: lang === 'hi'
+          ? "क्षमा करें, उत्तर तैयार करने में समस्या आई। कृपया पुनः प्रयास करें।"
+          : "Sorry, I had trouble updating the response. Please try again.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      const updatedHistoryWithError = [...historyUpToEdited, errNotice];
+      setMsgHistory(prev => ({
+        ...prev,
+        [selectedChar.id]: updatedHistoryWithError
+      }));
+      offlineSyncManager.saveChatHistory(selectedChar.id, updatedHistoryWithError, user.mobile);
+      updateActiveSessionMessages(updatedHistoryWithError);
+    }
+  };
+
   // Unified message sender to handle regular inputs & learning path starter prompts
   const sendMessageWithPayload = async (queryText: string, imagePayload?: { data: string; mimeType: string; name?: string }) => {
     const online = offlineSyncManager.isOnline();
@@ -825,8 +960,17 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     setMascotAction('think');
 
     try {
+      const activeHistory = (msgHistory[selectedChar.id] || [])
+        .filter(m => !m.id.startsWith('welcome') && !m.pending)
+        .slice(-12)
+        .map(m => ({
+          role: m.sender === 'user' ? 'user' : 'model',
+          text: m.text
+        }));
+
       const bodyPayload: any = {
         message: queryText,
+        history: activeHistory,
         systemInstruction: getSystemInstructionForMascot(),
         board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
         lang: lang
@@ -1000,6 +1144,19 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
       }
     }
 
+    const cleanPdfText = (str: string) => {
+      if (!str) return '';
+      return str
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/[ØÝß<>]/g, '')
+        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2300}-\u{23CF}\u{2B50}\u{2B55}]/gu, '')
+        .trim();
+    };
+
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -1048,53 +1205,31 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
 
     // Initial background drawing
     drawPageBackground();
-    currentY += 8;
+    currentY += 4;
 
     const labels = PDF_LABELS[lang] || PDF_LABELS['en'];
 
-    // Title
+    // Clean Simple Header
     doc.setFont("Helvetica", "bold");
-    doc.setFontSize(18);
+    doc.setFontSize(13);
     doc.setTextColor(61, 64, 91);
-    doc.text(labels.documentTitle, margin, currentY);
-    currentY += 6;
-
-    // Subtitle
-    doc.setFont("Helvetica", "italic");
-    doc.setFontSize(9.5);
-    doc.setTextColor(110, 110, 120);
-    doc.text(`${labels.subTitle} ${selectedChar.name}`, margin, currentY);
-    currentY += 8;
-
-    // Meta box
-    ensureSpace(35);
-    doc.setFillColor(250, 248, 244);
-    doc.setDrawColor(230, 225, 215);
-    doc.setLineWidth(0.3);
-    doc.rect(margin, currentY, contentWidth, 28, 'FD');
-
-    doc.setFont("Helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(61, 64, 91);
-    
-    doc.text(labels.student, margin + 5, currentY + 6);
-    doc.text(labels.mentor, margin + 5, currentY + 12);
-    doc.text(labels.date, margin + 5, currentY + 18);
-    doc.text(labels.verification, margin + 5, currentY + 24);
-
-    const studentName = user.name || 'Verified Student';
-    const gradeLevel = localStorage.getItem(`${user.mobile}_profile_standard`) || user.standard || 'Primary Grade';
+    doc.text(labels.documentTitle || "STUDENT QUESTION & RESPONSE", margin, currentY);
 
     doc.setFont("Helvetica", "normal");
-    doc.setTextColor(80, 80, 90);
-    doc.text(`${studentName} (${gradeLevel})`, margin + 35, currentY + 6);
-    doc.text(`${selectedChar.name} (${selectedChar.role || 'Mascot Companion'})`, margin + 35, currentY + 12);
-    doc.text(msg.timestamp || new Date().toLocaleDateString(), margin + 35, currentY + 18);
-    doc.text(labels.verifiedText, margin + 35, currentY + 24);
-    currentY += 36;
+    doc.setFontSize(8.5);
+    doc.setTextColor(130, 130, 140);
+    const dateStr = msg.timestamp || new Date().toLocaleDateString();
+    doc.text(dateStr, pageWidth - margin, currentY, { align: 'right' });
+
+    currentY += 3;
+    doc.setDrawColor(230, 225, 215);
+    doc.setLineWidth(0.4);
+    doc.line(margin, currentY, pageWidth - margin, currentY);
+    currentY += 7;
 
     // Question Section
-    if (userQuestion) {
+    const cleanedQuestion = cleanPdfText(userQuestion);
+    if (cleanedQuestion) {
       ensureSpace(20);
       doc.setFont("Helvetica", "bold");
       doc.setFontSize(11);
@@ -1106,7 +1241,7 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
       doc.setFontSize(9.5);
       doc.setTextColor(60, 60, 70);
       
-      const splitQuestion = doc.splitTextToSize(userQuestion, contentWidth - 8);
+      const splitQuestion = doc.splitTextToSize(cleanedQuestion, contentWidth - 8);
       const boxHeight = splitQuestion.length * 5 + 6;
       
       ensureSpace(boxHeight + 5);
@@ -1140,14 +1275,14 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     const lines = cleanText.split('\n');
     
     lines.forEach((line) => {
-      const trimmedLine = line.trim();
+      const trimmedLine = cleanPdfText(line.trim());
       if (!trimmedLine) {
         currentY += 3.5;
         return;
       }
 
       const isHeading = trimmedLine.startsWith('#') || (trimmedLine.startsWith('**') && trimmedLine.endsWith('**'));
-      const cleanLine = trimmedLine.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+      const cleanLine = cleanPdfText(trimmedLine.replace(/^#+\s*/, '').replace(/\*\*/g, ''));
 
       if (isHeading) {
         doc.setFont("Helvetica", "bold");
@@ -1174,7 +1309,7 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
         } else {
           contentPart = trimmedLine.replace(/^[-*]\s*/, '');
         }
-        contentPart = contentPart.replace(/\*\*/g, '');
+        contentPart = cleanPdfText(contentPart.replace(/\*\*/g, ''));
 
         ensureSpace(5);
         doc.setFont("Helvetica", "bold");
@@ -2111,7 +2246,11 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
               return (
                 <div 
                   key={msg.id}
-                  className={`flex gap-3 max-w-[85%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
+                  className={`flex gap-3 group relative ${
+                    editingMsgId === msg.id 
+                      ? 'w-full max-w-2xl mx-auto' 
+                      : `max-w-[85%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`
+                  }`}
                 >
                   {/* Character Icon bubble / Student icon */}
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-lg shadow-2xs select-none ${
@@ -2121,12 +2260,24 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                   </div>
 
                   {/* Bubble content */}
-                  <div className="space-y-1">
+                  <div className={`space-y-1 relative ${editingMsgId === msg.id ? 'w-full' : ''}`}>
+                    {/* Floating Edit Icon button on hover / touch */}
+                    {isMe && editingMsgId !== msg.id && (
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditMessage(msg)}
+                        className="absolute -top-2 -left-2 p-1.5 rounded-full bg-white text-gray-700 hover:text-[#E07A5F] hover:bg-gray-50 shadow-sm border border-gray-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer z-10"
+                        title={lang === 'hi' ? 'प्रश्न संपादित करें' : 'Edit question'}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
+
                     <div className={`p-3.5 rounded-2xl relative shadow-3xs text-xs sm:text-sm border ${
                       isMe 
                         ? 'bg-gradient-to-tr from-[#3D405B] to-[#4D506F] text-white border-transparent rounded-tr-none' 
                         : 'bg-white text-gray-850 border-gray-150 rounded-tl-none'
-                    }`}>
+                    } ${editingMsgId === msg.id ? 'w-full' : ''}`}>
                       
                       {msg.image && (
                         <div className="mb-2 overflow-hidden rounded-xl border border-gray-150 bg-gray-50 flex justify-center items-center max-w-sm">
@@ -2155,17 +2306,51 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                         </div>
                       )}
 
-                      {(() => {
-                        const parsed = parseMessageContent(msg.text);
-                        return (
-                          <>
-                            <p className="leading-relaxed whitespace-pre-wrap">{parsed.text}</p>
-                            {parsed.diagram && (
-                              <InteractiveDiagram data={parsed.diagram} lang={lang} />
-                            )}
-                          </>
-                        );
-                      })()}
+                      {editingMsgId === msg.id ? (
+                        <div className="space-y-3 mt-1 w-full min-w-[280px] sm:min-w-[480px] md:min-w-[560px] text-gray-900">
+                          <label className="block text-xs font-bold text-white mb-1">
+                            {lang === 'hi' ? 'अपना प्रश्न संपादित करें:' : 'Edit Your Question:'}
+                          </label>
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="w-full p-3 rounded-xl bg-white text-gray-900 border-2 border-amber-300 focus:ring-2 focus:ring-[#E07A5F] text-xs sm:text-sm font-sans outline-none resize-y min-h-[110px] shadow-sm leading-relaxed"
+                            rows={4}
+                            autoFocus
+                            placeholder={lang === 'hi' ? 'अपना प्रश्न लिखें...' : 'Type your question...'}
+                          />
+                          <div className="flex items-center gap-2 justify-end pt-1">
+                            <button
+                              type="button"
+                              onClick={handleCancelEditMessage}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/20 text-white hover:bg-white/30 transition-colors cursor-pointer"
+                            >
+                              {lang === 'hi' ? 'रद्द करें' : 'Cancel'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveAndResubmitEdit(msg.id)}
+                              disabled={!editingText.trim()}
+                              className="px-4 py-1.5 rounded-lg text-xs font-bold bg-[#E07A5F] text-white hover:bg-[#d0694e] flex items-center gap-1.5 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              <span>{lang === 'hi' ? 'सहेजें और पुनः भेजें' : 'Save & Resubmit'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        (() => {
+                          const parsed = parseMessageContent(msg.text);
+                          return (
+                            <>
+                              <p className="leading-relaxed whitespace-pre-wrap">{parsed.text}</p>
+                              {parsed.diagram && (
+                                <InteractiveDiagram data={parsed.diagram} lang={lang} />
+                              )}
+                            </>
+                          );
+                        })()
+                      )}
                       
                       {/* Action buttons (Speak aloud, Download PDF, & Copy Plain Text) inside character box */}
                       {!isMe && (

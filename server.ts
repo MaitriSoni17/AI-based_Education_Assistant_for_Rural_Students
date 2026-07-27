@@ -502,14 +502,14 @@ Note: Respond in the requested language (e.g., English, Hindi, Tamil, Telugu, Ma
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
-        "gemini-3.1-flash-lite", // Extremely highly available and fast free-tier model
-        "gemini-2.5-flash",      // Next generation high availability
-        "gemini-3.5-flash",      // Highly capable text/vision free-tier model
-        "gemini-3.1-pro-preview" // Paid-tier model
+        "gemini-3.6-flash",      // Recommended primary model
+        "gemini-3.1-flash-lite", // Fast lightweight model
+        "gemini-flash-latest",   // General flash alias
+        "gemini-3.1-pro-preview" // Pro model
       ];
 
       for (const modelName of modelsToTry) {
-        const maxRetries = 3;
+        const maxRetries = 2;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
              console.log(`[EXAM EVALUATION] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
@@ -551,8 +551,8 @@ Note: Respond in the requested language (e.g., English, Hindi, Tamil, Telugu, Ma
                );
 
              if (attempt < maxRetries && isRetryable) {
-               const delay = attempt * 1500;
-               console.log(`Retrying model ${modelName} (attempt ${attempt + 1}/${maxRetries}) in ${delay}ms...`);
+               const delay = 400;
+               console.log(`Retrying model ${modelName} in ${delay}ms...`);
                await new Promise(resolve => setTimeout(resolve, delay));
              } else {
                break; // Move to next model immediately
@@ -643,14 +643,14 @@ Format your entire response strictly using the exact markers below to allow the 
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
-        "gemini-3.1-flash-lite", 
-        "gemini-2.5-flash",      
-        "gemini-3.5-flash",      
-        "gemini-3.1-pro-preview" 
+        "gemini-3.6-flash",      // Recommended primary model
+        "gemini-3.1-flash-lite", // Fast lightweight model
+        "gemini-flash-latest",   // General flash alias
+        "gemini-3.1-pro-preview" // Pro model
       ];
 
       for (const modelName of modelsToTry) {
-        const maxRetries = 3;
+        const maxRetries = 2;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
              console.log(`[EXAM GENERATOR] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
@@ -693,7 +693,7 @@ Format your entire response strictly using the exact markers below to allow the 
                );
 
              if (attempt < maxRetries && isRetryable) {
-               const delay = attempt * 1500;
+               const delay = 400;
                console.log(`Retrying exam generator under ${modelName} in ${delay}ms...`);
                await new Promise(resolve => setTimeout(resolve, delay));
              } else {
@@ -823,9 +823,9 @@ Instructions:
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
+        "gemini-3.6-flash",
         "gemini-3.1-flash-lite",
-        "gemini-2.5-flash",
-        "gemini-3.5-flash",
+        "gemini-flash-latest",
         "gemini-3.1-pro-preview"
       ];
 
@@ -1033,7 +1033,7 @@ Instructions:
   // API ROUTE: MULTI-MODAL GEMINI CHAT
   app.post("/api/gemini/chat", async (req, res) => {
     try {
-      const { message, image, file, systemInstruction, board, lang } = req.body;
+      const { message, image, file, history, systemInstruction, board, lang } = req.body;
 
       if (!message && !image && !file) {
         return res.status(400).json({
@@ -1276,6 +1276,72 @@ Board: State Board SCERT Standard
         });
       }
 
+      // Build multi-turn contents payload incorporating conversation history
+      let contents: any[] = [];
+
+      if (Array.isArray(history) && history.length > 0) {
+        const rawTurns: { role: 'user' | 'model'; text: string }[] = [];
+        
+        for (const item of history) {
+          if (!item) continue;
+          const role = (item.role === 'user' || item.sender === 'user') ? 'user' : 'model';
+          let text = item.text || '';
+          if (!text && Array.isArray(item.parts)) {
+            text = item.parts.map((p: any) => p?.text || '').join(' ');
+          }
+          if (text && text.trim()) {
+            rawTurns.push({ role, text: text.trim() });
+          }
+        }
+
+        const sanitizedTurns: any[] = [];
+        for (const turn of rawTurns) {
+          if (sanitizedTurns.length === 0) {
+            if (turn.role === 'user') {
+              sanitizedTurns.push({ role: 'user', parts: [{ text: turn.text }] });
+            }
+          } else {
+            const lastTurn = sanitizedTurns[sanitizedTurns.length - 1];
+            if (lastTurn.role === turn.role) {
+              lastTurn.parts[0].text += '\n\n' + turn.text;
+            } else {
+              sanitizedTurns.push({ role: turn.role, parts: [{ text: turn.text }] });
+            }
+          }
+        }
+
+        if (sanitizedTurns.length > 0 && sanitizedTurns[sanitizedTurns.length - 1].role === 'user') {
+          const lastUserTurn = sanitizedTurns[sanitizedTurns.length - 1];
+          if (message) {
+            lastUserTurn.parts[0].text += '\n\n' + message;
+          }
+          if (activeAttachment && activeAttachment.data && activeAttachment.mimeType) {
+            let base64Data = activeAttachment.data;
+            if (base64Data.includes(";base64,")) {
+              base64Data = base64Data.split(";base64,").pop();
+            }
+            lastUserTurn.parts.unshift({
+              inlineData: {
+                data: base64Data,
+                mimeType: activeAttachment.mimeType
+              }
+            });
+          }
+          contents = sanitizedTurns;
+        } else {
+          sanitizedTurns.push({
+            role: 'user',
+            parts: parts.length > 0 ? parts : [{ text: message || "Please continue." }]
+          });
+          contents = sanitizedTurns;
+        }
+      } else {
+        contents = [{
+          role: 'user',
+          parts: parts.length > 0 ? parts : [{ text: message || "Hello" }]
+        }];
+      }
+
       const getErrorInfo = (err: any) => {
         let msg = "";
         let status = "";
@@ -1298,20 +1364,20 @@ Board: State Board SCERT Standard
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
+        "gemini-3.6-flash",
         "gemini-3.1-flash-lite",
-        "gemini-2.5-flash",
-        "gemini-3.5-flash",
+        "gemini-flash-latest",
         "gemini-3.1-pro-preview"
       ];
 
       for (const modelName of modelsToTry) {
-        const maxRetries = 3; // Retry three times per model before trying fallback
+        const maxRetries = 2; // Retry 2 times per model before trying fallback
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
              console.log(`[GEMINI CHAT] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
              response = await ai.models.generateContent({
                model: modelName,
-               contents: { parts: parts },
+               contents: contents,
                config: {
                  systemInstruction: adjustedSystemInstruction,
                  temperature: 0.7,
@@ -1344,11 +1410,11 @@ Board: State Board SCERT Standard
                errCode === 500;
 
              if (attempt < maxRetries && isRetryable) {
-               const delay = attempt * 1500;
+               const delay = 400;
                console.log(`Retrying model ${modelName} (attempt ${attempt + 1}/${maxRetries}) in ${delay}ms...`);
                await new Promise(resolve => setTimeout(resolve, delay));
              } else {
-               break; // Try fallback model or bubble up
+               break; // Try fallback model immediately
              }
           }
         }
