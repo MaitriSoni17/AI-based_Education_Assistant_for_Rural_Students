@@ -3046,7 +3046,7 @@ JSON Schema:
                 </p>
 
                 <div className="flex flex-col gap-2 w-full max-w-xs sm:max-w-sm">
-                  <span className="text-[10px] uppercase tracking-wider font-mono text-gray-500 font-bold mb-1">
+                  <span className="text-[10px] uppercase tracking-wider font-mono text-gray-300 font-bold mb-1">
                     {lang === 'hi' ? 'कुछ मजेदार सुझाव:' : 'Or try one of these suggestions:'}
                   </span>
                   
@@ -3068,10 +3068,10 @@ JSON Schema:
                             inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                           }
                         }}
-                        className="py-2 px-3 bg-white/5 hover:bg-[#FAF8F4]/10 rounded-xl text-left text-[11px] sm:text-xs font-medium text-gray-250 transition-all border border-white/10 flex justify-between items-center cursor-pointer hover:border-[#E07A5F]"
+                        className="py-2.5 px-3.5 bg-white/10 hover:bg-white/20 rounded-xl text-left text-[11px] sm:text-xs font-semibold text-white transition-all border border-white/20 flex justify-between items-center cursor-pointer hover:border-[#E07A5F] shadow-xs"
                       >
-                        <span>{suggestion}</span>
-                        <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+                        <span className="text-white drop-shadow-2xs">{suggestion}</span>
+                        <ChevronRight className="h-3.5 w-3.5 text-gray-300" />
                       </button>
                     ))}
                   </div>
