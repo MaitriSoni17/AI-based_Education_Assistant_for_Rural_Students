@@ -7,7 +7,7 @@ import {
   Binary, Flame, Compass, HelpCircle as HelpIcon,
   Trash2, Paperclip, Send, X, Bot, FileDown, Copy, Check,
   ChevronUp, ChevronDown, BookOpen, Plus, MessageSquare, Calendar,
-  Star, Search, User as UserIcon, Pencil
+  Star, Search, User as UserIcon, Pencil, CornerUpLeft, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import katex from 'katex';
@@ -41,6 +41,12 @@ interface ChatMessage {
   attachmentName?: string;
   attachmentType?: 'image' | 'pdf';
   attachmentUrl?: string;
+  replyTo?: {
+    id: string;
+    sender: string;
+    text: string;
+    name?: string;
+  };
 }
 
 interface ChatSession {
@@ -1739,6 +1745,8 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
 
   const translations = CHATBOT_TRANSLATIONS[chatbotLang] || CHATBOT_TRANSLATIONS.en;
 
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
     const welcomeText = CHATBOT_TRANSLATIONS[lang]?.welcome || CHATBOT_TRANSLATIONS.en.welcome;
     return [
@@ -1761,6 +1769,8 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
   });
 
   const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingSessionTitle, setEditingSessionTitle] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'starred' | 'hasAttachment'>('all');
 
@@ -1984,8 +1994,51 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     setShowHistory(false);
   };
 
+  const handleSaveSessionTitle = (sessionId: string) => {
+    if (!editingSessionTitle.trim()) {
+      setEditingSessionId(null);
+      return;
+    }
+    setSolverSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: editingSessionTitle.trim() } : s));
+    setEditingSessionId(null);
+  };
+
+  const handleMoveSessionUp = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSolverSessions(prev => {
+      const idx = prev.findIndex(s => s.id === sessionId);
+      if (idx <= 0) return prev;
+      const next = [...prev];
+      const temp = next[idx - 1];
+      next[idx - 1] = next[idx];
+      next[idx] = temp;
+      return next;
+    });
+  };
+
+  const handleMoveSessionDown = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSolverSessions(prev => {
+      const idx = prev.findIndex(s => s.id === sessionId);
+      if (idx < 0 || idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      const temp = next[idx + 1];
+      next[idx + 1] = next[idx];
+      next[idx] = temp;
+      return next;
+    });
+  };
+
+  const handleDeleteMessageFromSession = (sessionId: string, messageId: string) => {
+    setSolverSessions(prev => prev.map(s => {
+      if (s.id !== sessionId) return s;
+      return { ...s, messages: s.messages.filter(m => m.id !== messageId) };
+    }));
+  };
+
   const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!confirm(chatbotLang === "hi" ? "क्या आप सचमुच इस चैट को इतिहास से हटाना चाहते हैं?" : "Are you sure you want to delete this solver session?")) return;
     setSolverSessions(prev => prev.filter(s => s.id !== sessionId));
     if (activeSessionIdRef.current === sessionId) {
       handleNewChat();
@@ -2306,6 +2359,9 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     const messageText = customText !== undefined ? customText : chatInput;
     if (!messageText.trim() && !selectedFile) return;
 
+    const currentReply = replyingTo;
+    setReplyingTo(null);
+
     // Preprocess plain text into proper LaTeX mathematical format before solving
     const preprocessedText = formatPlainTextInputToLatex(messageText);
 
@@ -2316,7 +2372,13 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       attachmentName: selectedFile?.name,
       attachmentType: selectedFile?.mimeType.includes('pdf') ? 'pdf' : (selectedFile ? 'image' : undefined),
-      attachmentUrl: selectedFile?.mimeType.includes('image') ? selectedFile.data : undefined
+      attachmentUrl: selectedFile?.mimeType.includes('image') ? selectedFile.data : undefined,
+      replyTo: currentReply ? {
+        id: currentReply.id,
+        sender: currentReply.sender,
+        text: currentReply.text,
+        name: currentReply.sender === 'bot' ? 'GyaanBot AI 🤖' : (user.name || 'You')
+      } : undefined
     };
 
     updateChatAndSession(prev => [...prev, userMsg]);
@@ -2361,11 +2423,15 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
       }));
 
     try {
+      const actualPrompt = currentReply
+        ? `[REPLYING TO PREVIOUS ${currentReply.sender === 'bot' ? 'AI SOLVER RESPONSE' : 'USER QUERY'}: "${currentReply.text}"]\n\n${userMsg.text}`
+        : userMsg.text;
+
       const response = await fetch('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMsg.text,
+          message: actualPrompt,
           file: tempFile ? { data: tempFile.data, mimeType: tempFile.mimeType } : undefined,
           history: historyPayload,
           systemInstruction,
@@ -4800,37 +4866,121 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
                     return (
                       <div className="space-y-8">
-                        {filtered.map((session) => (
+                        {filtered.map((session, index) => (
                           <div key={session.id} className="space-y-4">
                             {/* Session Elegant Divider Header */}
                             <div className="border border-gray-200 bg-[#FAF8F4]/80 p-3 px-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow-3xs">
-                              <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <span className="text-lg">📖</span>
-                                <div className="truncate">
-                                  <span className="text-xs font-extrabold text-[#3D405B] block truncate leading-tight">
-                                    {session.title}
-                                  </span>
-                                  <span className="text-[9px] text-gray-400 font-mono block mt-0.5">
-                                    📅 {session.timestamp}
-                                  </span>
-                                </div>
+                                {editingSessionId === session.id ? (
+                                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                    <input
+                                      type="text"
+                                      value={editingSessionTitle}
+                                      onChange={(e) => setEditingSessionTitle(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault();
+                                          handleSaveSessionTitle(session.id);
+                                        } else if (e.key === 'Escape') {
+                                          setEditingSessionId(null);
+                                        }
+                                      }}
+                                      className="px-2.5 py-1 bg-white border border-[#E07A5F] rounded-lg text-xs font-bold text-[#3D405B] focus:outline-none focus:ring-2 focus:ring-[#E07A5F] w-full max-w-xs shadow-inner"
+                                      autoFocus
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveSessionTitle(session.id)}
+                                      className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shrink-0 shadow-3xs cursor-pointer"
+                                      title={chatbotLang === 'hi' ? 'सहेजें' : 'Save title'}
+                                    >
+                                      <Check className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingSessionId(null)}
+                                      className="p-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors shrink-0 cursor-pointer"
+                                      title={chatbotLang === 'hi' ? 'रद्द करें' : 'Cancel'}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="truncate">
+                                    <span className="text-xs font-extrabold text-[#3D405B] block truncate leading-tight">
+                                      {session.title}
+                                    </span>
+                                    <span className="text-[9px] text-gray-400 font-mono block mt-0.5">
+                                      📅 {session.timestamp}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
-                              <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-auto">
-                                {/* Star Toggle Button */}
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleToggleStarSession(session.id, e)}
-                                  className={`p-1.5 rounded-lg border active:scale-95 transition-all cursor-pointer ${
-                                    session.starred 
-                                      ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100' 
-                                      : 'bg-white border-gray-200 text-gray-400 hover:text-amber-500 hover:bg-gray-50'
-                                  }`}
-                                  title={session.starred ? "Unstar this session" : "Star this session"}
-                                >
-                                  <Star className={`h-4 w-4 ${session.starred ? 'fill-current' : ''}`} />
-                                </button>
+                              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap">
+                                {/* Position Move Pills */}
+                                <div className="flex items-center bg-white border border-gray-200 rounded-lg p-0.5 shadow-3xs">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleMoveSessionUp(session.id, e)}
+                                    disabled={index === 0}
+                                    className="p-1 rounded text-gray-500 hover:text-[#E07A5F] hover:bg-rose-50 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors"
+                                    title={chatbotLang === "hi" ? "ऊपर ले जाएं" : "Move position up"}
+                                  >
+                                    <ArrowUp className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleMoveSessionDown(session.id, e)}
+                                    disabled={index === filtered.length - 1}
+                                    className="p-1 rounded text-gray-500 hover:text-[#E07A5F] hover:bg-rose-50 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors"
+                                    title={chatbotLang === "hi" ? "नीचे ले जाएं" : "Move position down"}
+                                  >
+                                    <ArrowDown className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
 
-                                {/* Toggle expand/collapse button */}
+                                {/* Compact Quick Action Bar */}
+                                <div className="flex items-center gap-0.5 bg-white border border-gray-200 rounded-lg p-0.5 shadow-3xs">
+                                  {/* Star Toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleToggleStarSession(session.id, e)}
+                                    className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                                      session.starred 
+                                        ? "bg-amber-50 text-amber-500" 
+                                        : "text-gray-400 hover:text-amber-500 hover:bg-gray-50"
+                                    }`}
+                                    title={session.starred ? "Unstar" : "Star"}
+                                  >
+                                    <Star className={`h-3.5 w-3.5 ${session.starred ? "fill-current" : ""}`} />
+                                  </button>
+
+                                  {/* Rename */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingSessionId(session.id);
+                                      setEditingSessionTitle(session.title);
+                                    }}
+                                    className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-gray-50 transition-colors cursor-pointer"
+                                    title={chatbotLang === "hi" ? "नाम बदलें" : "Rename chat session"}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  {/* Delete */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleDeleteSession(session.id, e)}
+                                    className="p-1.5 rounded-md text-gray-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                    title={chatbotLang === "hi" ? "हटाएं" : "Delete chat session"}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+
+                                {/* View History Button */}
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -4839,31 +4989,24 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                                       [session.id]: !prev[session.id]
                                     }));
                                   }}
-                                  className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#E07A5F] hover:text-[#CE6B50] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 active:scale-95 shadow-3xs"
+                                  className="flex items-center gap-1 text-xs text-[#E07A5F] hover:text-[#CE6B50] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 shadow-3xs active:scale-95"
+                                  title={expandedSessions[session.id] ? "Hide history" : "Show history"}
                                 >
-                                {expandedSessions[session.id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                <span>{expandedSessions[session.id] ? translations.hideButton : translations.viewButton}</span>
-                              </button>
-                              
-                              <button
-                                type="button"
-                                onClick={() => handleLoadSession(session)}
-                                className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#81B29A] hover:text-[#5fa383] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 active:scale-95 shadow-3xs"
-                              >
-                                <MessageSquare className="h-3.5 w-3.5" />
-                                <span>{translations.restoreButton}</span>
-                              </button>
-                              
-                              <button
-                                type="button"
-                                onClick={(e) => handleDeleteSession(session.id, e)}
-                                className="flex items-center gap-1.5 text-[10px] sm:text-xs text-rose-600 hover:text-rose-700 font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-100 active:scale-95"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                <span>{translations.deleteButton}</span>
-                              </button>
+                                  {expandedSessions[session.id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                                  <span>{expandedSessions[session.id] ? translations.hideButton : translations.viewButton}</span>
+                                </button>
+
+                                {/* Restore Chat Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleLoadSession(session)}
+                                  className="flex items-center gap-1.5 text-xs text-white bg-[#81B29A] hover:bg-[#6fa38b] font-bold cursor-pointer transition-colors px-3 py-1.5 rounded-lg shadow-3xs active:scale-95"
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  <span>{translations.restoreButton}</span>
+                                </button>
+                              </div>
                             </div>
-                          </div>
 
                           {/* Render Messages in exact native bubble styling, collapsible */}
                           {expandedSessions[session.id] && (
@@ -4964,6 +5107,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                 chatMessages.map((msg) => (
                   <div
                     key={msg.id}
+                    id={`eq-msg-${msg.id}`}
                     className={`flex gap-3 group relative ${
                       editingMessageId === msg.id 
                         ? 'w-full max-w-2xl mx-auto' 
@@ -4984,16 +5128,52 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         ? 'bg-[#E07A5F] text-white rounded-tr-none'
                         : 'bg-slate-50 border border-slate-150 rounded-tl-none'
                     } ${editingMessageId === msg.id ? 'w-full' : ''}`}>
-                      {/* Floating Edit Icon button on hover / touch */}
+                      {/* Floating Edit & Reply Icon buttons on hover / touch for User messages */}
                       {msg.sender === 'user' && editingMessageId !== msg.id && (
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditMessage(msg)}
-                          className="absolute -top-2 -left-2 p-1.5 rounded-full bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-slate-50 shadow-sm border border-slate-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer z-10"
-                          title={chatbotLang === 'hi' ? 'प्रश्न संपादित करें' : 'Edit question'}
+                        <div className="absolute -top-2 -left-2 flex items-center gap-1 z-10">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditMessage(msg)}
+                            className="p-1.5 rounded-full bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-slate-50 shadow-sm border border-slate-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
+                            title={chatbotLang === 'hi' ? 'प्रश्न संपादित करें' : 'Edit question'}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplyingTo(msg);
+                              setTimeout(() => inputRef.current?.focus(), 100);
+                            }}
+                            className="p-1.5 rounded-full bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-rose-50 shadow-sm border border-slate-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
+                            title={chatbotLang === 'hi' ? 'उत्तर दें (Reply)' : 'Reply to message'}
+                          >
+                            <CornerUpLeft className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Quoted Reply Preview block inside bubble */}
+                      {msg.replyTo && (
+                        <div 
+                          onClick={() => {
+                            const targetEl = document.getElementById(`eq-msg-${msg.replyTo?.id}`);
+                            if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }}
+                          className={`p-2 mb-2 rounded-r-lg border-l-4 text-xs font-sans cursor-pointer transition-all ${
+                            msg.sender === 'user'
+                              ? 'bg-black/25 border-amber-300 text-amber-100 hover:bg-black/35'
+                              : 'bg-rose-100/80 border-[#E07A5F] text-rose-950 hover:bg-rose-100'
+                          }`}
                         >
-                          <Pencil className="h-3 w-3" />
-                        </button>
+                          <div className="flex items-center gap-1 font-bold text-[10px] mb-0.5 opacity-90">
+                            <CornerUpLeft className="h-3 w-3 shrink-0" />
+                            <span>{msg.replyTo.name || (msg.replyTo.sender === 'bot' ? 'GyaanBot AI 🤖' : 'You')}</span>
+                          </div>
+                          <p className="line-clamp-2 text-[11px] opacity-85 leading-snug">
+                            {msg.replyTo.text}
+                          </p>
+                        </div>
                       )}
                       {/* Attachment description pill */}
                       {msg.attachmentName && (
@@ -5095,9 +5275,21 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         {msg.timestamp}
                       </div>
 
-                      {/* Action buttons (Download PDF, Copy Plain Text) inside bot box */}
+                      {/* Action buttons (Reply, Download PDF, Copy Plain Text) inside bot box */}
                       {msg.sender === 'bot' && (
                         <div className="absolute -bottom-3 -right-1 flex items-center gap-1 bg-white p-0.5 rounded-full border border-gray-150 shadow-xs z-10">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReplyingTo(msg);
+                              setTimeout(() => inputRef.current?.focus(), 100);
+                            }}
+                            className="p-1 rounded-full text-xs text-[#E07A5F] hover:bg-rose-50 cursor-pointer transition-all"
+                            title={chatbotLang === 'hi' ? "उत्तर दें (Reply)" : "Reply to AI solver"}
+                          >
+                            <CornerUpLeft className="h-3.5 w-3.5" />
+                          </button>
+
                           <SpeakButton
                             text={msg.text}
                             lang={chatbotLang as LanguageCode}
@@ -5218,6 +5410,33 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                       ))}
                     </div>
                   </div>
+
+                  {/* Replying banner preview above Form area */}
+                  {replyingTo && (
+                    <div className="px-4 py-2 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between gap-3 text-xs animate-fade-in">
+                      <div className="flex items-center gap-2 overflow-hidden border-l-4 border-[#E07A5F] pl-2 py-0.5">
+                        <CornerUpLeft className="h-4 w-4 text-[#E07A5F] shrink-0" />
+                        <div className="truncate">
+                          <span className="font-bold text-rose-950 block text-[11px]">
+                            {replyingTo.sender === 'bot'
+                              ? 'GyaanBot AI 🤖'
+                              : (user.name || (chatbotLang === 'hi' ? 'आप' : 'You'))}
+                          </span>
+                          <span className="text-slate-600 text-[11px] truncate block max-w-md">
+                            {replyingTo.text}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReplyingTo(null)}
+                        className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-rose-100 transition-colors cursor-pointer"
+                        title="Cancel reply"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
 
                   <form
                     onSubmit={(e) => {

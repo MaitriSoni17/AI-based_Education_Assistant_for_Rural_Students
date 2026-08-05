@@ -91,3 +91,85 @@ export function getDaysDifference(dateStr1?: string, dateStr2?: string): number 
     return 999;
   }
 }
+
+/**
+ * Returns 7 Date objects corresponding to Monday through Sunday of the current week.
+ */
+export function getCurrentWeekDates(refDate: Date = new Date()): Date[] {
+  const date = new Date(refDate);
+  const day = date.getDay(); // 0 is Sun, 1 is Mon...
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const monday = new Date(date);
+  monday.setDate(date.getDate() + diffToMon);
+  monday.setHours(12, 0, 0, 0);
+
+  const week: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    week.push(d);
+  }
+  return week;
+}
+
+export interface FormattedDateInfo {
+  dateStr: string; // "YYYY-MM-DD"
+  dayName: string; // "Wed" or "बुध"
+  monthDayStr: string; // "5 Aug" or "5 अग"
+  displayLabel: string; // "Wed, 5 Aug" or "बुध, 5 अग"
+  fullDisplayLabel: string; // "Wednesday, 5 August 2026"
+  isToday: boolean;
+  isPast: boolean;
+  isFuture: boolean;
+}
+
+/**
+ * Formats a Date object into detailed English or Hindi label metadata.
+ */
+export function formatDateInfo(date: Date, lang: string = 'en'): FormattedDateInfo {
+  const dateStr = getSafeDateString(date);
+  const todayStr = getSafeDateString(new Date());
+
+  const dayIdx = date.getDay(); // 0 = Sun, 1 = Mon ...
+  const monthIdx = date.getMonth(); // 0 = Jan ...
+  const dayOfMonth = date.getDate();
+
+  const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const daysHi = ['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि'];
+
+  const fullDaysEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const fullDaysHi = ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
+
+  const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthsHi = ['जन', 'फर', 'मार्च', 'अप्र', 'मई', 'जून', 'जुल', 'अग', 'सित', 'अक्तू', 'नव', 'दिस'];
+
+  const fullMonthsEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const fullMonthsHi = ['जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
+
+  const isHindi = lang === 'hi';
+
+  const dayName = isHindi ? daysHi[dayIdx] : daysEn[dayIdx];
+  const monthStr = isHindi ? monthsHi[monthIdx] : monthsEn[monthIdx];
+  const fullDayName = isHindi ? fullDaysHi[dayIdx] : fullDaysEn[dayIdx];
+  const fullMonthStr = isHindi ? fullMonthsHi[monthIdx] : fullMonthsEn[monthIdx];
+
+  const monthDayStr = `${dayOfMonth} ${monthStr}`;
+  const displayLabel = `${dayName}, ${monthDayStr}`;
+  const fullDisplayLabel = `${fullDayName}, ${dayOfMonth} ${fullMonthStr} ${date.getFullYear()}`;
+
+  const isToday = dateStr === todayStr;
+  const isPast = dateStr < todayStr;
+  const isFuture = dateStr > todayStr;
+
+  return {
+    dateStr,
+    dayName,
+    monthDayStr,
+    displayLabel,
+    fullDisplayLabel,
+    isToday,
+    isPast,
+    isFuture
+  };
+}
+

@@ -35,10 +35,14 @@ export default function App() {
 
   const [showStreakEarnedToast, setShowStreakEarnedToast] = useState(false);
 
-  // Celebratory effect when daily goal is completed
+  // Celebratory effect when daily goal is completed with auto-dismiss after 25 seconds
   useEffect(() => {
     if (showStreakEarnedToast) {
       fireContinuousFireworks(4000);
+      const timer = setTimeout(() => {
+        setShowStreakEarnedToast(false);
+      }, 25000); // Automatically disappears within 20-60 seconds (25s)
+      return () => clearTimeout(timer);
     }
   }, [showStreakEarnedToast]);
 
@@ -179,6 +183,20 @@ export default function App() {
           let nextLastCheckedIn = current.lastCheckedInDate;
           let earnedTodayStreak = false;
           
+          // Parse checkInDates array
+          let checkInList: string[] = [];
+          try {
+            if (current.checkInDates) checkInList = JSON.parse(current.checkInDates);
+          } catch(e) {}
+
+          // Parse dailyStudyLog object
+          let logMap: Record<string, number> = {};
+          try {
+            if (current.dailyStudyLog) logMap = JSON.parse(current.dailyStudyLog);
+          } catch(e) {}
+
+          logMap[todayStr] = updatedTodayMins;
+
           // Check if today's streak can be automatically claimed:
           // Criteria: works for at least 5 minutes today AND has not claimed today yet
           if (updatedTodayMins >= 5 && current.lastCheckedInDate !== todayStr) {
@@ -190,7 +208,13 @@ export default function App() {
             
             nextPoints = nextPoints + 15; // Bonus +15 XP claimed automatically!
             earnedTodayStreak = true;
+            if (!checkInList.includes(todayStr)) {
+              checkInList.push(todayStr);
+            }
           }
+
+          const updatedCheckInDatesStr = JSON.stringify(checkInList);
+          const updatedDailyStudyLogStr = JSON.stringify(logMap);
           
           const updatedUser: User = { 
             ...current, 
@@ -199,7 +223,9 @@ export default function App() {
             streakDays: nextStreak,
             totalPoints: nextPoints,
             lastCheckedInDate: nextLastCheckedIn,
-            lastActiveDate: todayStr
+            lastActiveDate: todayStr,
+            checkInDates: updatedCheckInDatesStr,
+            dailyStudyLog: updatedDailyStudyLogStr
           };
 
           // Persist to local storage
@@ -212,7 +238,9 @@ export default function App() {
             streakDays: nextStreak,
             totalPoints: nextPoints,
             lastCheckedInDate: nextLastCheckedIn,
-            lastActiveDate: todayStr
+            lastActiveDate: todayStr,
+            checkInDates: updatedCheckInDatesStr,
+            dailyStudyLog: updatedDailyStudyLogStr
           })
           .then(() => {
             if (earnedTodayStreak) {

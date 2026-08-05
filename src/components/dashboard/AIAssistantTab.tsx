@@ -5,11 +5,11 @@ import { speakText, stopSpeaking } from '../../utils/speech';
 import SpeechInputButton from '../SpeechInputButton';
 import InteractiveAITeacher from '../InteractiveAITeacher';
 import { 
-  Sparkles, Send, Volume2, VolumeX, Smile, ArrowRight, CornerDownRight,
+  Sparkles, Send, Volume2, VolumeX, Smile, ArrowRight, CornerDownRight, CornerUpLeft,
   Paperclip, X, Trash, Image as ImageIcon, BookOpen, Compass, Map, 
   GraduationCap, Leaf, Sun, CloudRain, Award, Check, RotateCcw, Play, Plus,
   ChevronDown, ChevronUp, MessageSquare, FileText, FileDown, Copy,
-  Search, Star, Pencil
+  Search, Star, Pencil, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { offlineSyncManager } from '../../utils/offlineSync';
@@ -56,6 +56,12 @@ interface ChatMessage {
     name?: string;
   };
   pending?: boolean;
+  replyTo?: {
+    id: string;
+    sender: string;
+    text: string;
+    name?: string;
+  };
 }
 
 interface ChatSession {
@@ -568,6 +574,8 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   const [msgHistory, setMsgHistory] = useState<Record<string, ChatMessage[]>>({});
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>('');
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
   const [mascotAction, setMascotAction] = useState<'idle' | 'explaining' | 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think'>('idle');
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -694,8 +702,54 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     setShowHistory(false);
   };
 
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingSessionTitle, setEditingSessionTitle] = useState<string>('');
+
+  const handleSaveSessionTitle = (sessionId: string) => {
+    if (!editingSessionTitle.trim()) {
+      setEditingSessionId(null);
+      return;
+    }
+    setChatSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: editingSessionTitle.trim() } : s));
+    setEditingSessionId(null);
+  };
+
+  const handleMoveSessionUp = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setChatSessions(prev => {
+      const idx = prev.findIndex(s => s.id === sessionId);
+      if (idx <= 0) return prev;
+      const next = [...prev];
+      const temp = next[idx - 1];
+      next[idx - 1] = next[idx];
+      next[idx] = temp;
+      return next;
+    });
+  };
+
+  const handleMoveSessionDown = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setChatSessions(prev => {
+      const idx = prev.findIndex(s => s.id === sessionId);
+      if (idx < 0 || idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      const temp = next[idx + 1];
+      next[idx + 1] = next[idx];
+      next[idx] = temp;
+      return next;
+    });
+  };
+
+  const handleDeleteMessageFromSession = (sessionId: string, messageId: string) => {
+    setChatSessions(prev => prev.map(s => {
+      if (s.id !== sessionId) return s;
+      return { ...s, messages: s.messages.filter(m => m.id !== messageId) };
+    }));
+  };
+
   const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!confirm(lang === "hi" ? "क्या आप सचमुच इस चैट को इतिहास से हटाना चाहते हैं?" : "Are you sure you want to delete this chat session?")) return;
     setChatSessions(prev => prev.filter(s => s.id !== sessionId));
     if (activeSessionIdRef.current === sessionId) {
       setActiveSessionId(null);
@@ -901,13 +955,22 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   const sendMessageWithPayload = async (queryText: string, imagePayload?: { data: string; mimeType: string; name?: string }) => {
     const online = offlineSyncManager.isOnline();
 
+    const currentReply = replyingTo;
+    setReplyingTo(null);
+
     const userMsg: ChatMessage = {
       id: 'usr-' + Date.now(),
       sender: 'user',
       text: queryText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       image: imagePayload,
-      pending: !online
+      pending: !online,
+      replyTo: currentReply ? {
+        id: currentReply.id,
+        sender: currentReply.sender,
+        text: currentReply.text,
+        name: currentReply.sender === 'assistant' ? selectedChar.name : (user.name || 'You')
+      } : undefined
     };
 
     const baseHistory = msgHistory[selectedChar.id] || [];
@@ -968,8 +1031,12 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
           text: m.text
         }));
 
+      const messageWithReplyContext = currentReply
+        ? `[REPLYING TO PREVIOUS ${currentReply.sender === 'assistant' ? 'AI RESPONSE' : 'USER MESSAGE'}: "${currentReply.text}"]\n\n${queryText}`
+        : queryText;
+
       const bodyPayload: any = {
-        message: queryText,
+        message: messageWithReplyContext,
         history: activeHistory,
         systemInstruction: getSystemInstructionForMascot(),
         board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
@@ -2051,39 +2118,122 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
 
                 return (
                   <div className="space-y-8">
-                    {filtered.map((session) => (
+                    {filtered.map((session, index) => (
                       <div
                         key={session.id}
                         className="space-y-4"
                       >
                         {/* Session Elegant Divider Header */}
                         <div className="border border-gray-200 bg-[#FAF8F4]/80 p-3 px-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shadow-3xs">
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
                             <span className="text-lg">📖</span>
-                            <div className="truncate">
-                              <span className="text-xs font-extrabold text-[#3D405B] block truncate leading-tight">
-                                {session.title}
-                              </span>
-                              <span className="text-[9px] text-gray-400 font-mono block mt-0.5 font-bold">
-                                📅 {session.timestamp}
-                              </span>
-                            </div>
+                            {editingSessionId === session.id ? (
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                <input
+                                  type="text"
+                                  value={editingSessionTitle}
+                                  onChange={(e) => setEditingSessionTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleSaveSessionTitle(session.id);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingSessionId(null);
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 bg-white border border-[#E07A5F] rounded-lg text-xs font-bold text-[#3D405B] focus:outline-none focus:ring-2 focus:ring-[#E07A5F] w-full max-w-xs shadow-inner"
+                                  autoFocus
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveSessionTitle(session.id)}
+                                  className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shrink-0 shadow-3xs cursor-pointer"
+                                  title={lang === 'hi' ? 'सहेजें' : 'Save title'}
+                                >
+                                  <Check className="h-3 w-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingSessionId(null)}
+                                  className="p-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors shrink-0 cursor-pointer"
+                                  title={lang === 'hi' ? 'रद्द करें' : 'Cancel'}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="truncate">
+                                <span className="text-xs font-extrabold text-[#3D405B] block truncate leading-tight">
+                                  {session.title}
+                                </span>
+                                <span className="text-[9px] text-gray-400 font-mono block mt-0.5 font-bold">
+                                  📅 {session.timestamp}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-auto">
-                            {/* Star Toggle Button */}
-                            <button
-                              onClick={(e) => handleToggleStarSession(session.id, e)}
-                              className={`p-1.5 rounded-lg border active:scale-95 transition-all cursor-pointer ${
-                                session.starred 
-                                  ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100' 
-                                  : 'bg-white border-gray-200 text-gray-400 hover:text-amber-500 hover:bg-gray-50'
-                              }`}
-                              title={session.starred ? "Unstar this session" : "Star this session"}
-                            >
-                              <Star className={`h-4 w-4 ${session.starred ? 'fill-current' : ''}`} />
-                            </button>
+                          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap">
+                            {/* Position Move Pills */}
+                            <div className="flex items-center bg-white border border-gray-200 rounded-lg p-0.5 shadow-3xs">
+                              <button
+                                type="button"
+                                onClick={(e) => handleMoveSessionUp(session.id, e)}
+                                disabled={index === 0}
+                                className="p-1 rounded text-gray-500 hover:text-[#E07A5F] hover:bg-rose-50 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors"
+                                title={lang === "hi" ? "ऊपर ले जाएं" : "Move position up"}
+                              >
+                                <ArrowUp className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleMoveSessionDown(session.id, e)}
+                                disabled={index === filtered.length - 1}
+                                className="p-1 rounded text-gray-500 hover:text-[#E07A5F] hover:bg-rose-50 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors"
+                                title={lang === "hi" ? "नीचे ले जाएं" : "Move position down"}
+                              >
+                                <ArrowDown className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
 
-                            {/* Toggle expand/collapse button */}
+                            {/* Compact Quick Action Bar */}
+                            <div className="flex items-center gap-0.5 bg-white border border-gray-200 rounded-lg p-0.5 shadow-3xs">
+                              {/* Star Toggle */}
+                              <button
+                                onClick={(e) => handleToggleStarSession(session.id, e)}
+                                className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                                  session.starred 
+                                    ? "bg-amber-50 text-amber-500" 
+                                    : "text-gray-400 hover:text-amber-500 hover:bg-gray-50"
+                                }`}
+                                title={session.starred ? "Unstar" : "Star"}
+                              >
+                                <Star className={`h-3.5 w-3.5 ${session.starred ? "fill-current" : ""}`} />
+                              </button>
+
+                              {/* Rename */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingSessionId(session.id);
+                                  setEditingSessionTitle(session.title);
+                                }}
+                                className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-gray-50 transition-colors cursor-pointer"
+                                title={lang === "hi" ? "नाम बदलें" : "Rename chat session"}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                onClick={(e) => handleDeleteSession(session.id, e)}
+                                className="p-1.5 rounded-md text-gray-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title={lang === "hi" ? "हटाएं" : "Delete chat session"}
+                              >
+                                <Trash className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+
+                            {/* View History Button */}
                             <button
                               onClick={() => {
                                 setExpandedSessions(prev => ({
@@ -2091,30 +2241,22 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                                   [session.id]: !prev[session.id]
                                 }));
                               }}
-                              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#E07A5F] hover:text-[#CE6B50] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 active:scale-95 shadow-3xs"
-                              title={expandedSessions[session.id] ? "Hide conversation history" : "Show conversation history"}
+                              className="flex items-center gap-1 text-xs text-[#E07A5F] hover:text-[#CE6B50] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 shadow-3xs active:scale-95"
+                              title={expandedSessions[session.id] ? "Hide history" : "Show history"}
                             >
                               {expandedSessions[session.id] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                              <span>{expandedSessions[session.id] ? (lang === 'hi' ? 'छिपाएं' : 'Hide') : (lang === 'hi' ? 'देखें' : 'View')}</span>
+                              <span>{expandedSessions[session.id] ? (lang === "hi" ? "छिपाएं" : "Hide") : (lang === "hi" ? "देखें" : "View")}</span>
                             </button>
-                            
+
+                            {/* Restore Chat Button */}
                             <button
                               onClick={() => handleLoadSession(session)}
-                              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-[#81B29A] hover:text-[#5fa383] font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 active:scale-95 shadow-3xs"
+                              className="flex items-center gap-1.5 text-xs text-white bg-[#81B29A] hover:bg-[#6fa38b] font-bold cursor-pointer transition-colors px-3 py-1.5 rounded-lg shadow-3xs active:scale-95"
                               title="Restore this conversation in the active chat view"
                             >
                               <MessageSquare className="h-3.5 w-3.5" />
-                              <span>{RESTORE_CHAT_LABEL[lang] || RESTORE_CHAT_LABEL['en']}</span>
-                            </button>
-                            <button
-                              onClick={(e) => handleDeleteSession(session.id, e)}
-                              className="flex items-center gap-1.5 text-[10px] sm:text-xs text-rose-600 hover:text-rose-700 font-bold cursor-pointer transition-colors px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-100 active:scale-95"
-                              title="Permanently delete this search history item"
-                            >
-                              <Trash className="h-3.5 w-3.5" />
-                              <span>{lang === 'hi' ? 'हटाएं' : 'Delete'}</span>
-                            </button>
-                          </div>
+                              <span>{RESTORE_CHAT_LABEL[lang] || RESTORE_CHAT_LABEL["en"]}</span>
+                            </button>                          </div>
                         </div>
   
 
@@ -2246,6 +2388,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
               return (
                 <div 
                   key={msg.id}
+                  id={`msg-${msg.id}`}
                   className={`flex gap-3 group relative ${
                     editingMsgId === msg.id 
                       ? 'w-full max-w-2xl mx-auto' 
@@ -2261,16 +2404,29 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
 
                   {/* Bubble content */}
                   <div className={`space-y-1 relative ${editingMsgId === msg.id ? 'w-full' : ''}`}>
-                    {/* Floating Edit Icon button on hover / touch */}
+                    {/* Floating Edit & Reply Icon buttons on hover / touch for User messages */}
                     {isMe && editingMsgId !== msg.id && (
-                      <button
-                        type="button"
-                        onClick={() => handleStartEditMessage(msg)}
-                        className="absolute -top-2 -left-2 p-1.5 rounded-full bg-white text-gray-700 hover:text-[#E07A5F] hover:bg-gray-50 shadow-sm border border-gray-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer z-10"
-                        title={lang === 'hi' ? 'प्रश्न संपादित करें' : 'Edit question'}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </button>
+                      <div className="absolute -top-2 -left-2 flex items-center gap-1 z-10">
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditMessage(msg)}
+                          className="p-1.5 rounded-full bg-white text-gray-700 hover:text-[#E07A5F] hover:bg-gray-50 shadow-sm border border-gray-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
+                          title={lang === 'hi' ? 'प्रश्न संपादित करें' : 'Edit question'}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplyingTo(msg);
+                            setTimeout(() => chatInputRef.current?.focus(), 100);
+                          }}
+                          className="p-1.5 rounded-full bg-white text-gray-700 hover:text-blue-600 hover:bg-blue-50 shadow-sm border border-gray-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
+                          title={lang === 'hi' ? 'उत्तर दें (Reply)' : 'Reply to message'}
+                        >
+                          <CornerUpLeft className="h-3 w-3" />
+                        </button>
+                      </div>
                     )}
 
                     <div className={`p-3.5 rounded-2xl relative shadow-3xs text-xs sm:text-sm border ${
@@ -2279,6 +2435,29 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                         : 'bg-white text-gray-850 border-gray-150 rounded-tl-none'
                     } ${editingMsgId === msg.id ? 'w-full' : ''}`}>
                       
+                      {/* Quoted Reply Preview block inside bubble */}
+                      {msg.replyTo && (
+                        <div 
+                          onClick={() => {
+                            const targetEl = document.getElementById(`msg-${msg.replyTo?.id}`);
+                            if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }}
+                          className={`p-2 mb-2 rounded-r-lg border-l-4 text-xs font-sans cursor-pointer transition-all ${
+                            isMe
+                              ? 'bg-black/25 border-amber-300 text-amber-100 hover:bg-black/35'
+                              : 'bg-blue-50/90 border-blue-500 text-blue-950 hover:bg-blue-100'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1 font-bold text-[10px] mb-0.5 opacity-90">
+                            <CornerUpLeft className="h-3 w-3 shrink-0" />
+                            <span>{msg.replyTo.name || (msg.replyTo.sender === 'assistant' ? selectedChar.name : 'You')}</span>
+                          </div>
+                          <p className="line-clamp-2 text-[11px] opacity-85 leading-snug">
+                            {msg.replyTo.text}
+                          </p>
+                        </div>
+                      )}
+
                       {msg.image && (
                         <div className="mb-2 overflow-hidden rounded-xl border border-gray-150 bg-gray-50 flex justify-center items-center max-w-sm">
                           {msg.image.mimeType === "application/pdf" ? (
@@ -2352,10 +2531,23 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                         })()
                       )}
                       
-                      {/* Action buttons (Speak aloud, Download PDF, & Copy Plain Text) inside character box */}
+                      {/* Action buttons (Reply, Speak aloud, Download PDF, & Copy Plain Text) inside character box */}
                       {!isMe && (
                         <div className="absolute -bottom-3 -right-2 flex items-center gap-1 bg-white p-0.5 rounded-full border border-gray-100 shadow-sm z-10">
                           <button
+                            type="button"
+                            onClick={() => {
+                              setReplyingTo(msg);
+                              setTimeout(() => chatInputRef.current?.focus(), 100);
+                            }}
+                            className="p-1 rounded-full text-xs text-blue-600 hover:bg-blue-50 cursor-pointer transition-all"
+                            title={lang === 'hi' ? "उत्तर दें (Reply)" : "Reply to AI message"}
+                          >
+                            <CornerUpLeft className="h-3 w-3" />
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => speakMessageAloud(msg)}
                             className={`p-1 rounded-full text-xs cursor-pointer transition-all ${
                               isPlayingVoice === msg.id 
@@ -2368,6 +2560,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                           </button>
                           
                           <button
+                            type="button"
                             onClick={() => exportMessageToPDF(msg)}
                             className="p-1 rounded-full text-xs text-blue-600 hover:bg-gray-50 cursor-pointer transition-all"
                             title={lang === 'en' ? "Download PDF Version" : "PDF संस्करण डाउनलोड करें"}
@@ -2376,6 +2569,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                           </button>
 
                           <button
+                            type="button"
                             onClick={() => copyMessageToClipboard(msg)}
                             className={`p-1 rounded-full text-xs cursor-pointer transition-all ${
                               copiedMessageId === msg.id 
@@ -2418,6 +2612,33 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
             </div>
           )}
         </div>
+
+        {/* Replying banner preview above Form area */}
+        {replyingTo && (
+          <div className="px-4 py-2 bg-blue-50 border-t border-b border-blue-200 flex items-center justify-between gap-3 text-xs animate-fade-in shrink-0">
+            <div className="flex items-center gap-2 overflow-hidden border-l-4 border-blue-600 pl-2 py-0.5">
+              <CornerUpLeft className="h-4 w-4 text-blue-600 shrink-0" />
+              <div className="truncate">
+                <span className="font-bold text-blue-950 block text-[11px]">
+                  {replyingTo.sender === 'assistant'
+                    ? (selectedChar.name || 'Swami AI 🤖')
+                    : (user.name || (lang === 'hi' ? 'आप' : 'You'))}
+                </span>
+                <span className="text-gray-600 text-[11px] truncate block max-w-md">
+                  {replyingTo.text}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReplyingTo(null)}
+              className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-blue-100 transition-colors cursor-pointer"
+              title="Cancel reply"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {/* Attached image preview draft panel above Form area */}
         {attachedFile && (
@@ -2480,10 +2701,11 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
 
           <div className="relative flex-1">
             <input
+              ref={chatInputRef}
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={isDragging ? (DRAG_DROP_PLACEHOLDER_LABELS[lang] || DRAG_DROP_PLACEHOLDER_LABELS['en']) : (INPUT_PLACEHOLDER_LABELS[lang] || INPUT_PLACEHOLDER_LABELS['en']).replace("AI companion", selectedChar.name.split(' ')[0])}
+              placeholder={replyingTo ? (lang === 'hi' ? 'उत्तर लिखें...' : 'Type your reply...') : isDragging ? (DRAG_DROP_PLACEHOLDER_LABELS[lang] || DRAG_DROP_PLACEHOLDER_LABELS['en']) : (INPUT_PLACEHOLDER_LABELS[lang] || INPUT_PLACEHOLDER_LABELS['en']).replace("AI companion", selectedChar.name.split(' ')[0])}
               className="w-full pl-3.5 pr-12 py-3 bg-white rounded-xl border border-gray-200 text-xs sm:text-sm font-sans placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]"
             />
             <div className="absolute right-2.5 top-2.5">

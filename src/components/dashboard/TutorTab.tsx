@@ -13,7 +13,7 @@ import {
   Play, BookOpen, Download, CheckCircle2, ChevronRight, Award, 
   HelpCircle, Volume2, Search, Sparkles, Smile, Video, ArrowLeft, RefreshCw,
   ChevronLeft, Pause, Eye, MonitorPlay, Paperclip, FileText, X, FileUp,
-  Trash2, Clock, History, ExternalLink, Star, ChevronDown
+  Trash2, Clock, History, ExternalLink, Star, ChevronDown, Pencil, Check, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 interface LessonQuery {
@@ -1448,6 +1448,18 @@ export default function TutorTab({
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
 
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  const [editingLessonTitle, setEditingLessonTitle] = useState<string>('');
+
+  const handleSaveLessonTitle = (lessonId: string) => {
+    if (!editingLessonTitle.trim()) {
+      setEditingLessonId(null);
+      return;
+    }
+    setCustomHistory(prev => prev.map(item => item.id === lessonId ? { ...item, query: editingLessonTitle.trim() } : item));
+    setEditingLessonId(null);
+  };
+
   const handleToggleStarLesson = (lessonId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setCustomHistory(prev => prev.map(item => item.id === lessonId ? { ...item, starred: !item.starred } : item));
@@ -2082,6 +2094,32 @@ export default function TutorTab({
     setShowHistory(false);
     setShowPlayGesturePrompt(false);
     simulateVideoGeneration(lesson, false);
+  };
+
+  const handleMoveLessonUp = (lessonId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCustomHistory(prev => {
+      const idx = prev.findIndex(item => item.id === lessonId);
+      if (idx <= 0) return prev;
+      const next = [...prev];
+      const temp = next[idx - 1];
+      next[idx - 1] = next[idx];
+      next[idx] = temp;
+      return next;
+    });
+  };
+
+  const handleMoveLessonDown = (lessonId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCustomHistory(prev => {
+      const idx = prev.findIndex(item => item.id === lessonId);
+      if (idx < 0 || idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      const temp = next[idx + 1];
+      next[idx + 1] = next[idx];
+      next[idx] = temp;
+      return next;
+    });
   };
 
   const handleDeleteLesson = (lessonId: string, e: React.MouseEvent) => {
@@ -2927,7 +2965,7 @@ JSON Schema:
 
                     return (
                       <div className="space-y-3.5 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
-                        {filtered.map((item) => {
+                        {filtered.map((item, index) => {
                           const isActive = !isNewLecture && selectedLesson.id === item.id;
                           return (
                             <div
@@ -2953,9 +2991,45 @@ JSON Schema:
                                       </span>
                                     )}
                                   </div>
-                                  <h4 className="font-bold text-xs sm:text-sm text-slate-100 leading-snug mt-1.5 break-words">
-                                    "{item.query}"
-                                  </h4>
+                                  {editingLessonId === item.id ? (
+                                    <div className="flex items-center gap-1.5 mt-1.5 w-full">
+                                      <input
+                                        type="text"
+                                        value={editingLessonTitle}
+                                        onChange={(e) => setEditingLessonTitle(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleSaveLessonTitle(item.id);
+                                          } else if (e.key === "Escape") {
+                                            setEditingLessonId(null);
+                                          }
+                                        }}
+                                        className="px-2.5 py-1 bg-slate-800 border border-[#E07A5F] rounded-lg text-xs font-bold text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] w-full max-w-sm"
+                                        autoFocus
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSaveLessonTitle(item.id)}
+                                        className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shrink-0 shadow-3xs cursor-pointer"
+                                        title={lang === "hi" ? "सहेजें" : "Save title"}
+                                      >
+                                        <Check className="h-3 w-3" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingLessonId(null)}
+                                        className="p-1.5 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600 transition-colors shrink-0 cursor-pointer"
+                                        title={lang === "hi" ? "रद्द करें" : "Cancel"}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <h4 className="font-bold text-xs sm:text-sm text-slate-100 leading-snug mt-1.5 break-words">
+                                      "{item.query}"
+                                    </h4>
+                                  )}
                                   <p className="text-[10px] text-gray-500 flex items-center gap-1.5 mt-1 font-mono">
                                     <Clock className="h-3 w-3 text-gray-500 shrink-0" />
                                     <span>Guided by {item.avatarName}</span>
@@ -2963,51 +3037,91 @@ JSON Schema:
                                 </div>
                               </div>
 
-                              <div className="flex flex-wrap items-center gap-2 shrink-0 self-end md:self-auto border-t md:border-t-0 pt-3.5 md:pt-0 border-white/5 w-full md:w-auto justify-end">
-                                {/* Star Toggle Button */}
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleToggleStarLesson(item.id, e)}
-                                  className={`p-2 rounded-xl transition-all border cursor-pointer flex items-center justify-center ${
-                                    item.starred
-                                      ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                                      : 'bg-white/5 border-white/10 text-slate-400 hover:text-amber-300 hover:bg-white/10'
-                                  }`}
-                                  title={item.starred ? "Unstar lesson" : "Star lesson"}
-                                >
-                                  <Star className={`h-3.5 w-3.5 ${item.starred ? 'fill-current' : ''}`} />
-                                </button>
+                              <div className="flex items-center gap-2 shrink-0 self-end md:self-auto border-t md:border-t-0 pt-3 md:pt-0 border-white/5 w-full md:w-auto justify-end flex-wrap">
+                                {/* Position Move Pills */}
+                                <div className="flex items-center bg-slate-900/90 border border-white/10 rounded-lg p-0.5 shadow-sm">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleMoveLessonUp(item.id, e)}
+                                    disabled={index === 0}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-amber-300 hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors"
+                                    title={lang === "hi" ? "ऊपर ले जाएं" : "Move position up"}
+                                  >
+                                    <ArrowUp className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleMoveLessonDown(item.id, e)}
+                                    disabled={index === filtered.length - 1}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-amber-300 hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent cursor-pointer disabled:cursor-not-allowed transition-colors"
+                                    title={lang === "hi" ? "नीचे ले जाएं" : "Move position down"}
+                                  >
+                                    <ArrowDown className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
 
+                                {/* Compact Quick Action Bar */}
+                                <div className="flex items-center gap-0.5 bg-slate-900/90 border border-white/10 rounded-lg p-0.5 shadow-sm">
+                                  {/* Star Toggle */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleToggleStarLesson(item.id, e)}
+                                    className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                                      item.starred
+                                        ? "bg-amber-500/20 text-amber-300"
+                                        : "text-slate-400 hover:text-amber-300 hover:bg-white/10"
+                                    }`}
+                                    title={item.starred ? "Unstar lesson" : "Star lesson"}
+                                  >
+                                    <Star className={`h-3.5 w-3.5 ${item.starred ? "fill-current" : ""}`} />
+                                  </button>
+
+                                  {/* Rename */}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingLessonId(item.id);
+                                      setEditingLessonTitle(item.query);
+                                    }}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-blue-300 hover:bg-white/10 transition-colors cursor-pointer"
+                                    title={lang === "hi" ? "नाम बदलें" : "Rename lecture topic"}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  {/* Download */}
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadLessonVideoAndSlidesSpecific(item)}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-emerald-300 hover:bg-white/10 transition-colors cursor-pointer"
+                                    title={lang === "hi" ? "डाउनलोड करें" : "Download package"}
+                                  >
+                                    <Download className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  {/* Delete */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleDeleteLesson(item.id, e)}
+                                    className="p-1.5 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/20 transition-colors cursor-pointer"
+                                    title={lang === "hi" ? "लेक्चर हटाएं" : "Delete lecture"}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+
+                                {/* Primary Restore & Play Button */}
                                 <button
                                   type="button"
                                   onClick={() => {
                                     handleLessonSelect(item);
                                     setShowHistory(false);
                                   }}
-                                  className="px-3.5 py-2 bg-[#81B29A] hover:bg-[#6FA38B] text-[#1E293B] hover:text-white rounded-xl text-xs font-sans font-black flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-md"
+                                  className="px-3.5 py-1.5 bg-[#81B29A] hover:bg-[#6FA38B] text-[#1E293B] hover:text-white rounded-lg text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-sm"
                                   title="Restore and play this lecture"
                                 >
-                                  <Play className="h-3 w-3 fill-current" />
-                                  <span>{lang === 'hi' ? 'लेक्चर चलाएं' : 'Restore & Play'}</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => downloadLessonVideoAndSlidesSpecific(item)}
-                                  className="px-3 py-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-                                  title="Download complete lesson package"
-                                >
-                                  <Download className="h-3.5 w-3.5" />
-                                  <span className="hidden sm:inline">Download</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleDeleteLesson(item.id, e)}
-                                  className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-xl hover:text-rose-200 transition-all cursor-pointer flex items-center justify-center border border-rose-500/20"
-                                  title="Delete lecture"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <Play className="h-3.5 w-3.5 fill-current" />
+                                  <span>{lang === "hi" ? "लेक्चर चलाएं" : "Restore & Play"}</span>
                                 </button>
                               </div>
                             </div>

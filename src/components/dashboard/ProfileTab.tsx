@@ -5,12 +5,31 @@ import { AVATARS, getDeterministicAvatar } from '../../utils/avatar';
 import { 
   Award, Flame, Clock, BookOpen, Database, MapPin, School, Phone, Calendar, 
   Sparkles, Settings, Globe, ShieldCheck, Edit3, Save, CheckCircle,
-  Trophy, Zap, Star, Compass, Brain, CheckCircle2, ChevronRight
+  Trophy, Zap, Star, Compass, Brain, CheckCircle2, ChevronRight, ChevronDown, Check
 } from 'lucide-react';
+
+const STANDARDS = [
+  { value: "Class 1", label: "Class 1" },
+  { value: "Class 2", label: "Class 2" },
+  { value: "Class 3", label: "Class 3" },
+  { value: "Class 4", label: "Class 4" },
+  { value: "Class 5", label: "Class 5" },
+  { value: "Class 6", label: "Class 6" },
+  { value: "Class 7", label: "Class 7" },
+  { value: "Class 8", label: "Class 8" },
+  { value: "Class 9", label: "Class 9" },
+  { value: "Class 10", label: "Class 10" },
+  { value: "Class 11 (Science)", label: "Class 11 (Science)" },
+  { value: "Class 11 (Commerce)", label: "Class 11 (Commerce)" },
+  { value: "Class 11 (Arts)", label: "Class 11 (Arts)" },
+  { value: "Class 12 (Science)", label: "Class 12 (Science)" },
+  { value: "Class 12 (Commerce)", label: "Class 12 (Commerce)" },
+  { value: "Class 12 (Arts)", label: "Class 12 (Arts)" },
+];
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { offlineSyncManager } from '../../utils/offlineSync';
 import { fireContinuousFireworks, fireConfetti } from '../../utils/confetti';
-import { getSafeDateString } from '../../utils/dateUtils';
+import { getSafeDateString, getCurrentWeekDates, formatDateInfo } from '../../utils/dateUtils';
 
 export const formatStudyTime = (minutes: number, isHindi: boolean) => {
   if (minutes < 60) {
@@ -49,6 +68,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
   const [standard, setStandard] = useState(() => user.standard || '');
   const [selectedAvatar, setSelectedAvatar] = useState(() => user.avatar || getDeterministicAvatar(user.name, user.mobile));
   const [isEditing, setIsEditing] = useState(false);
+  const [isStandardOpen, setIsStandardOpen] = useState(false);
 
   // Gamified statistics from user prop
   const [userPoints, setUserPoints] = useState(() => user.totalPoints ?? 15);
@@ -85,42 +105,51 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
     setHasCheckedInToday(user.lastCheckedInDate === getSafeDateString());
   }, [user]);
 
-  // Generate mock but consistent weekly analytics data based on user
-  const daysOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  
-  // Convert current day (0=Sun, 1=Mon, ..., 6=Sat) to index in Mon-Sun order (Mon=0, Tue=1, ..., Sun=6)
-  const rawDay = new Date().getDay();
-  const todayIdx = rawDay === 0 ? 6 : rawDay - 1;
+  // Generate date-based weekly analytics data for current week (Mon-Sun)
+  const currentWeekDateObjs = getCurrentWeekDates();
 
-  const weeklyData = daysOrder.map((dayName, idx) => {
-    if (idx === todayIdx) {
-      return { day: dayName, mins: loggedMinutesToday(), quizzes: claimedMedals.length > 0 ? 1 : 0 };
-    }
-    if (idx > todayIdx) {
-      return { day: dayName, mins: 0, quizzes: 0 };
-    }
-    // Past days:
-    const isNewUser = !user.village && !user.school && (user.studyMins ?? 30) <= 30 && (user.totalPoints ?? 15) <= 15;
-    if (isNewUser) {
-      return { day: dayName, mins: 0, quizzes: 0 };
-    } else {
-      // Returning user: show realistic mock data
-      const mockValues = [
-        { mins: 35, quizzes: 1 },
-        { mins: 45, quizzes: 2 },
-        { mins: 20, quizzes: 0 },
-        { mins: 55, quizzes: 3 },
-        { mins: 40, quizzes: 1 },
-        { mins: 60, quizzes: 2 },
-        { mins: 15, quizzes: 0 }
-      ];
-      return { day: dayName, mins: mockValues[idx].mins, quizzes: mockValues[idx].quizzes };
-    }
-  });
+  let checkInDatesList: string[] = [];
+  try {
+    if (user.checkInDates) checkInDatesList = JSON.parse(user.checkInDates);
+  } catch(e) {}
+
+  let dailyStudyLogMap: Record<string, number> = {};
+  try {
+    if (user.dailyStudyLog) dailyStudyLogMap = JSON.parse(user.dailyStudyLog);
+  } catch(e) {}
 
   function loggedMinutesToday() {
     return user.todayMins ?? 0;
   }
+
+  const weeklyData = currentWeekDateObjs.map((dateObj) => {
+    const info = formatDateInfo(dateObj, lang);
+    const dateStr = info.dateStr;
+
+    // Actual recorded study minutes from database log or active session today
+    let mins = 0;
+    if (dailyStudyLogMap[dateStr] !== undefined) {
+      mins = dailyStudyLogMap[dateStr];
+    } else if (info.isToday) {
+      mins = loggedMinutesToday();
+    } else {
+      mins = 0; // Strictly 0 for unstudied past/future dates
+    }
+
+    const shortLabel = `${info.dayName} ${dateObj.getDate()}`;
+
+    return {
+      day: shortLabel,
+      dayName: info.dayName,
+      monthDayStr: info.monthDayStr,
+      dateStr: info.dateStr,
+      mins,
+      isToday: info.isToday,
+      isPast: info.isPast,
+      isFuture: info.isFuture,
+      fullLabel: info.fullDisplayLabel
+    };
+  });
 
   const saveProfileDetails = () => {
     onUpdateUser({
@@ -178,6 +207,20 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
     const newPoints = userPoints + 15;
     const todayStr = getSafeDateString();
 
+    let checkInList: string[] = [];
+    try {
+      if (user.checkInDates) checkInList = JSON.parse(user.checkInDates);
+    } catch(e) {}
+    if (!checkInList.includes(todayStr)) {
+      checkInList.push(todayStr);
+    }
+
+    let logMap: Record<string, number> = {};
+    try {
+      if (user.dailyStudyLog) logMap = JSON.parse(user.dailyStudyLog);
+    } catch(e) {}
+    logMap[todayStr] = Math.max(logMap[todayStr] || 0, user.todayMins ?? 5);
+
     // Update state
     setStreakDays(newStreak);
     setUserPoints(newPoints);
@@ -188,7 +231,9 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
     onUpdateUser({
       streakDays: newStreak,
       totalPoints: newPoints,
-      lastCheckedInDate: todayStr
+      lastCheckedInDate: todayStr,
+      checkInDates: JSON.stringify(checkInList),
+      dailyStudyLog: JSON.stringify(logMap)
     });
 
     // Queue offline sync progress to user stats
@@ -327,19 +372,47 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                   </p>
                 ) : (
                   <div className="mt-2 space-y-2">
-                    <input
-                      type="text"
-                      value={standard}
-                      onChange={(e) => setStandard(e.target.value)}
-                      placeholder="e.g. Class 6 Science"
-                      className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-sans text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#E07A5F] w-full"
-                    />
+                    {/* Standard / Class Dropdown */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsStandardOpen(!isStandardOpen)}
+                        className="w-full flex items-center justify-between px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-sans text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#E07A5F] cursor-pointer text-left transition-all hover:bg-gray-100"
+                      >
+                        <span className="font-medium">{standard || (lang === 'hi' ? 'अपनी कक्षा चुनें' : 'Select Class / Grade')}</span>
+                        <ChevronDown className={`h-3.5 w-3.5 text-gray-500 transition-transform duration-200 ${isStandardOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {isStandardOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-xl z-50 max-h-52 overflow-y-auto p-1.5 space-y-0.5 animate-fade-in text-left">
+                          {STANDARDS.map((std) => (
+                            <button
+                              key={std.value}
+                              type="button"
+                              onClick={() => {
+                                setStandard(std.value);
+                                setIsStandardOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-sans transition-colors cursor-pointer text-left ${
+                                standard === std.value
+                                  ? 'bg-[#E07A5F]/10 text-[#E07A5F] font-bold'
+                                  : 'hover:bg-gray-50 text-gray-700'
+                              }`}
+                            >
+                              <span>{std.label}</span>
+                              {standard === std.value && <Check className="h-3.5 w-3.5 text-[#E07A5F]" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <input
                       type="text"
                       value={school}
                       onChange={(e) => setSchool(e.target.value)}
                       placeholder="e.g. Rampur Primary School"
-                      className="px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-sans text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#E07A5F] w-full"
+                      className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-sans text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#E07A5F] w-full"
                     />
                   </div>
                 )}
@@ -596,50 +669,77 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
           </div>
         </div>
 
-        {/* 7-Day sequence map */}
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 text-center pt-2">
-          {[1, 2, 3, 4, 5, 6, 7].map((dayNum) => {
-            // Determine active day of the current 7-day streak cycle with modulo 7 wrapping
-            // If the user's streak is N, and they checked in today, N is the active checked-in day.
-            // If they haven't checked in today, the active day they can check in on is N + 1.
-            const totalActiveDay = hasCheckedInToday ? Math.max(1, streakDays) : streakDays + 1;
-            const currentActiveDay = ((totalActiveDay - 1) % 7) + 1;
-            
-            // A day in the streak is completed if:
-            // 1. It is less than the current active day (e.g. past checked-in days in this cycle)
-            // 2. It is equal to the current active day AND they checked in today
-            const isDayCompleted = dayNum < currentActiveDay || (dayNum === currentActiveDay && hasCheckedInToday);
-            
-            // A day is "Today" if it is the current active day
-            const isToday = dayNum === currentActiveDay;
+        {/* 7-Day sequence map with actual calendar dates */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-center pt-2">
+          {currentWeekDateObjs.map((dateObj) => {
+            const info = formatDateInfo(dateObj, lang);
+            const dateStr = info.dateStr;
 
-            const dayLabel = isToday 
-              ? (lang === 'hi' ? 'आज' : 'Today') 
-              : (lang === 'hi' ? `दिन ${dayNum}` : `Day ${dayNum}`);
+            // Determine actual recorded time for this date:
+            const dayMinsRecorded = info.isToday 
+              ? Math.max(loggedMinutesToday(), dailyStudyLogMap[dateStr] ?? 0)
+              : (dailyStudyLogMap[dateStr] ?? 0);
+
+            // Determine if checked in strictly based on actual records or >=5 mins logged:
+            const isExplicitCheckIn = checkInDatesList.includes(dateStr) || dayMinsRecorded >= 5;
+            const isDayCompleted = isExplicitCheckIn || (info.isToday && hasCheckedInToday);
+            const isToday = info.isToday;
 
             return (
               <div 
-                key={dayNum} 
+                key={dateStr} 
+                onClick={() => {
+                  if (isToday && !hasCheckedInToday) {
+                    handleDailyCheckIn();
+                  }
+                }}
                 className={`p-2.5 rounded-xl border flex flex-col items-center justify-between transition-all duration-300 ${
+                  isToday && !hasCheckedInToday ? 'cursor-pointer hover:border-[#E07A5F] hover:shadow-md' : ''
+                } ${
                   isDayCompleted 
-                    ? 'bg-amber-50/50 border-amber-200 text-amber-950' 
+                    ? 'bg-amber-50/60 border-amber-200 text-amber-950' 
                     : isToday 
                     ? 'bg-white border-[#E07A5F] border-2 shadow-2xs text-[#E07A5F]' 
+                    : info.isPast
+                    ? 'bg-gray-50/80 border-gray-200 text-gray-400'
                     : 'bg-gray-50 border-gray-150 text-gray-300'
                 }`}
               >
-                <span className="text-[9px] font-mono font-bold uppercase tracking-wider block">
-                  {dayLabel}
-                </span>
-                <div className="text-2xl my-2 select-none">
-                  {isDayCompleted ? '🔥' : isToday ? '⭐' : '🔒'}
+                <div className="w-full flex flex-col items-center">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider block">
+                    {info.dayName}
+                  </span>
+                  <span className={`text-[11px] font-black font-sans block ${isToday ? 'text-[#E07A5F]' : 'text-gray-700'}`}>
+                    {info.monthDayStr}
+                  </span>
+                  {isToday && (
+                    <span className="mt-0.5 px-1.5 py-0.2 bg-[#E07A5F] text-white text-[8px] font-black rounded-xs uppercase tracking-wider">
+                      {lang === 'hi' ? 'आज' : 'Today'}
+                    </span>
+                  )}
                 </div>
+
+                <div className="text-2xl my-1.5 select-none">
+                  {isDayCompleted ? '🔥' : isToday ? '⭐' : info.isPast ? '❌' : '🔒'}
+                </div>
+
                 <div className="w-full flex justify-center">
                   {isDayCompleted ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600 bg-white rounded-full shadow-3xs" />
+                    <div className="flex items-center gap-1">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 bg-white rounded-full shadow-3xs" />
+                      <span className="text-[9px] font-mono font-black text-emerald-700">+15 XP</span>
+                    </div>
+                  ) : isToday ? (
+                    <span className="text-[9px] font-mono font-bold text-[#E07A5F] bg-orange-50 px-1 py-0.5 rounded border border-orange-100">
+                      {user.todayMins ?? 0}m/5m
+                    </span>
+                  ) : info.isPast ? (
+                    <span className="text-[9px] font-mono font-bold text-gray-400">
+                      {lang === 'hi' ? 'छूटा' : 'Missed'}
+                    </span>
                   ) : (
                     <span className="text-[9px] font-mono font-bold text-gray-400">
-                      {isToday ? `${user.todayMins ?? 0}m/5m` : `Day ${dayNum}`}
+                      {lang === 'hi' ? 'आगामी' : 'Upcoming'}
                     </span>
                   )}
                 </div>

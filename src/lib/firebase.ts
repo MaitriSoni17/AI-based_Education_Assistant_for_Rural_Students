@@ -101,6 +101,8 @@ export interface FirestoreUser {
   chatHistoryChanda?: string; // Stringified array
   chatHistorySwami?: string; // Stringified array
   studyMins?: number;
+  checkInDates?: string; // Stringified array
+  dailyStudyLog?: string; // Stringified object
   updatedAt?: number; // Epoch timestamp for Last-Write-Wins conflict resolution
 }
 

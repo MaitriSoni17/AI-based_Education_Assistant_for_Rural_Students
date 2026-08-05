@@ -36,6 +36,8 @@ export interface User {
   speechVolume?: number;
   selectedVoiceName?: string;
   studyMins?: number;
+  checkInDates?: string; // JSON string array of YYYY-MM-DD checked-in dates
+  dailyStudyLog?: string; // JSON string record of YYYY-MM-DD -> study minutes
   updatedAt?: number; // Epoch timestamp for Last-Write-Wins conflict resolution
 }
 
