@@ -8,7 +8,8 @@ import {
   collection, 
   query, 
   where, 
-  getDocs 
+  getDocs,
+  deleteDoc
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getDeterministicAvatar } from "../utils/avatar";
@@ -81,6 +82,7 @@ export interface FirestoreUser {
   name: string;
   defaultLanguage: 'en' | 'hi' | 'gu' | 'mr' | 'ta' | 'te';
   signupDate: string;
+  role?: 'student' | 'teacher' | 'admin';
   village?: string;
   school?: string;
   standard?: string;
@@ -101,6 +103,7 @@ export interface FirestoreUser {
   chatHistoryChanda?: string; // Stringified array
   chatHistorySwami?: string; // Stringified array
   studyMins?: number;
+  adminPin?: string; // Custom security PIN/Password for Admin accounts
   checkInDates?: string; // Stringified array
   dailyStudyLog?: string; // Stringified object
   updatedAt?: number; // Epoch timestamp for Last-Write-Wins conflict resolution
@@ -227,3 +230,257 @@ export async function updateFirebaseUserFields(mobile: string, fields: Partial<F
     handleFirestoreError(error, OperationType.WRITE, path);
   }
 }
+
+/**
+ * Fetch all user profiles for Admin Dashboard analytics & management.
+ */
+export async function getAllFirebaseUsers(): Promise<FirestoreUser[]> {
+  const path = "users";
+  try {
+    const usersCol = collection(db, "users");
+    const querySnapshot = await getDocs(usersCol);
+    const usersList: FirestoreUser[] = [];
+    querySnapshot.forEach((docSnap) => {
+      usersList.push(docSnap.data() as FirestoreUser);
+    });
+    return usersList;
+  } catch (error) {
+    console.error("Failed to fetch all users from Firestore:", error);
+    return [];
+  }
+}
+
+/**
+ * Update user role (student, teacher, admin)
+ */
+export async function updateUserRole(mobile: string, role: 'student' | 'teacher' | 'admin'): Promise<void> {
+  return updateFirebaseUserFields(mobile, { role, updatedAt: Date.now() });
+}
+
+/**
+ * Delete a user profile (Admin action)
+ */
+export async function deleteFirebaseUser(mobile: string): Promise<void> {
+  const path = `users/${mobile}`;
+  try {
+    const userDocRef = doc(db, "users", mobile);
+    await deleteDoc(userDocRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+/* ==========================================================================
+   Certificates Registry - Firestore Integration
+   ========================================================================== */
+
+export interface FirestoreCertificate {
+  id: string; // e.g. "CERT-2026-8819"
+  studentName: string;
+  studentMobile: string;
+  title: string;
+  date: string;
+  score: number;
+  status: 'valid' | 'revoked';
+  issuedBy?: string;
+  createdAt?: number;
+}
+
+const DEFAULT_DEMO_CERTIFICATES: FirestoreCertificate[] = [
+  { id: 'CERT-2026-8819', studentName: 'Aarav Patel', studentMobile: '9876543210', title: 'Mastery in Mathematics & Algebra', date: '2026-08-01', score: 95, status: 'valid', issuedBy: 'Quiz System' },
+  { id: 'CERT-2026-4421', studentName: 'Priya Sharma', studentMobile: '9812345678', title: 'General Science Excellence Award', date: '2026-08-03', score: 90, status: 'valid', issuedBy: 'Quiz System' },
+  { id: 'CERT-2026-1092', studentName: 'Rahul Verma', studentMobile: '9765432109', title: 'Mascot Learning Path Completion', date: '2026-07-28', score: 88, status: 'valid', issuedBy: 'Mascot Module' },
+  { id: 'CERT-2026-7734', studentName: 'Kavya Singh', studentMobile: '9654321098', title: 'Rural Science Quiz Champion', date: '2026-08-05', score: 100, status: 'valid', issuedBy: 'Admin Console' },
+];
+
+/**
+ * Fetch all certificates from Firestore (combines 'certificates' collection and 'users' earnedCertificates)
+ */
+export async function getAllFirebaseCertificates(): Promise<FirestoreCertificate[]> {
+  const path = "certificates";
+  try {
+    const certsMap = new Map<string, FirestoreCertificate>();
+
+    // 1. Get explicit certificates from "certificates" collection
+    try {
+      const certsCol = collection(db, "certificates");
+      const certsSnapshot = await getDocs(certsCol);
+      certsSnapshot.forEach((docSnap) => {
+        const cert = docSnap.data() as FirestoreCertificate;
+        if (cert && cert.id) {
+          certsMap.set(cert.id, cert);
+        }
+      });
+    } catch (e) {
+      console.warn("Could not fetch certificates collection directly:", e);
+    }
+
+    // 2. Aggregate student certificates from "users" collection
+    try {
+      const usersCol = collection(db, "users");
+      const usersSnapshot = await getDocs(usersCol);
+      usersSnapshot.forEach((userSnap) => {
+        const userData = userSnap.data() as FirestoreUser;
+        if (userData && userData.earnedCertificates) {
+          try {
+            const userCerts = JSON.parse(userData.earnedCertificates);
+            if (Array.isArray(userCerts)) {
+              userCerts.forEach((uc: any) => {
+                const certId = uc.id || `CERT-${userSnap.id}-${Math.floor(Math.random() * 1000)}`;
+                if (!certsMap.has(certId)) {
+                  certsMap.set(certId, {
+                    id: certId,
+                    studentName: uc.recipientName || userData.name || 'Student',
+                    studentMobile: userData.mobile || userSnap.id || '',
+                    title: uc.quizTitle || uc.title || 'Course Completion Certificate',
+                    date: uc.date || getSafeDateString(),
+                    score: uc.score !== undefined ? (typeof uc.score === 'number' && uc.score <= 5 ? uc.score * 20 : uc.score) : 100,
+                    status: uc.status || 'valid',
+                    issuedBy: 'Student Quiz'
+                  });
+                }
+              });
+            }
+          } catch (jsonErr) {
+            console.error("Failed parsing earnedCertificates for user", userSnap.id, jsonErr);
+          }
+        }
+      });
+    } catch (e) {
+      console.warn("Could not aggregate user earnedCertificates:", e);
+    }
+
+    // 3. Seed default certificates if database has none
+    if (certsMap.size === 0) {
+      for (const demoCert of DEFAULT_DEMO_CERTIFICATES) {
+        certsMap.set(demoCert.id, demoCert);
+        try {
+          await setDoc(doc(db, "certificates", demoCert.id), demoCert);
+        } catch (seedErr) {
+          console.warn("Failed to seed demo cert:", demoCert.id, seedErr);
+        }
+      }
+    }
+
+    return Array.from(certsMap.values());
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+  }
+}
+
+/**
+ * Issue or save a new certificate in Firestore
+ */
+export async function issueFirebaseCertificate(cert: FirestoreCertificate): Promise<void> {
+  const path = `certificates/${cert.id}`;
+  try {
+    const certDocRef = doc(db, "certificates", cert.id);
+    await setDoc(certDocRef, {
+      ...cert,
+      createdAt: cert.createdAt || Date.now()
+    });
+
+    // Also attach to user document if user exists
+    if (cert.studentMobile) {
+      try {
+        const userDocRef = doc(db, "users", cert.studentMobile);
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          const userData = userSnap.data() as FirestoreUser;
+          let userCerts: any[] = [];
+          if (userData.earnedCertificates) {
+            try {
+              userCerts = JSON.parse(userData.earnedCertificates);
+            } catch (e) {
+              userCerts = [];
+            }
+          }
+          const existingIndex = userCerts.findIndex((c: any) => c.id === cert.id);
+          const newCertObj = {
+            id: cert.id,
+            quizTitle: cert.title,
+            title: cert.title,
+            score: cert.score || 100,
+            date: cert.date,
+            recipientName: cert.studentName,
+            status: cert.status
+          };
+
+          if (existingIndex >= 0) {
+            userCerts[existingIndex] = newCertObj;
+          } else {
+            userCerts.unshift(newCertObj);
+          }
+
+          await updateDoc(userDocRef, {
+            earnedCertificates: JSON.stringify(userCerts),
+            updatedAt: Date.now()
+          });
+        }
+      } catch (userUpdateErr) {
+        console.warn("Failed syncing certificate to user record:", userUpdateErr);
+      }
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Update certificate status (e.g. valid -> revoked) in Firestore
+ */
+export async function updateFirebaseCertificateStatus(
+  id: string,
+  status: 'valid' | 'revoked',
+  studentMobile?: string
+): Promise<void> {
+  const path = `certificates/${id}`;
+  try {
+    const certDocRef = doc(db, "certificates", id);
+    const docSnap = await getDoc(certDocRef);
+    if (docSnap.exists()) {
+      await updateDoc(certDocRef, { status });
+    } else {
+      await setDoc(certDocRef, { id, status }, { merge: true });
+    }
+
+    // Sync with user's earnedCertificates if mobile provided
+    if (studentMobile) {
+      try {
+        const userDocRef = doc(db, "users", studentMobile);
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          const userData = userSnap.data() as FirestoreUser;
+          if (userData.earnedCertificates) {
+            let userCerts = JSON.parse(userData.earnedCertificates);
+            if (Array.isArray(userCerts)) {
+              userCerts = userCerts.map((c: any) => c.id === id ? { ...c, status } : c);
+              await updateDoc(userDocRef, {
+                earnedCertificates: JSON.stringify(userCerts),
+                updatedAt: Date.now()
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Could not sync revoked status to user record:", e);
+      }
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Delete a certificate from Firestore
+ */
+export async function deleteFirebaseCertificate(id: string): Promise<void> {
+  const path = `certificates/${id}`;
+  try {
+    const certDocRef = doc(db, "certificates", id);
+    await deleteDoc(certDocRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+

@@ -1,4 +1,4 @@
-export type CurrentView = 'home' | 'about' | 'features' | 'login' | 'signup' | 'dashboard';
+export type CurrentView = 'home' | 'about' | 'features' | 'login' | 'signup' | 'dashboard' | 'admin-login' | 'admin-dashboard';
 
 export type LanguageCode = 'en' | 'hi' | 'gu' | 'mr' | 'ta' | 'te';
 
@@ -13,6 +13,7 @@ export interface User {
   name: string;
   defaultLanguage: LanguageCode;
   signupDate: string;
+  role?: 'student' | 'teacher' | 'admin';
   village?: string;
   school?: string;
   standard?: string;

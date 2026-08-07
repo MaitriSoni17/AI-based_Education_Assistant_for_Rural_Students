@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, X, Globe, LogIn, UserPlus, LogOut, BookOpen, GraduationCap, Wifi, ChevronDown } from 'lucide-react';
+import { Menu, X, Globe, LogIn, UserPlus, LogOut, BookOpen, GraduationCap, Wifi, ChevronDown, Shield } from 'lucide-react';
 import { CurrentView, LanguageCode, User } from '../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../data/translations';
 import { getDeterministicAvatar } from '../utils/avatar';
@@ -10,8 +10,10 @@ interface NavbarProps {
   onNavigate: (view: CurrentView) => void;
   currentLanguage: LanguageCode;
   onLanguageChange: (lang: LanguageCode) => void;
-  user: User;
+  user: User | null;
+  adminUser?: User | null;
   onLogout: () => void;
+  onLogoutAdmin?: () => void;
 }
 
 export default function Navbar({
@@ -20,7 +22,9 @@ export default function Navbar({
   currentLanguage,
   onLanguageChange,
   user,
+  adminUser,
   onLogout,
+  onLogoutAdmin,
 }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -38,10 +42,10 @@ export default function Navbar({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo Brand */}
-          <div className="flex items-center">
+          <div className="flex items-center gap-2">
             <button
               id="brand-logo"
-              onClick={() => handleNavClick(user ? 'dashboard' : 'home')}
+              onClick={() => handleNavClick(adminUser ? 'admin-dashboard' : user ? 'dashboard' : 'home')}
               className="flex items-center space-x-2 text-[#3D405B] hover:text-[#E07A5F] transition-colors cursor-pointer"
             >
               <div className="p-2.5 bg-[#E07A5F] rounded-xl flex items-center justify-center">
@@ -51,11 +55,101 @@ export default function Navbar({
                 {t.appTitle}
               </span>
             </button>
+            {(adminUser || currentView === 'admin-dashboard' || currentView === 'admin-login') && (
+              /* <span className="bg-amber-500 text-slate-950 font-black text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs border border-amber-400">
+                <Shield className="h-3 w-3" />
+                <span className="hidden sm:inline">Admin Portal</span>
+              </span> */
+              null
+            )}
           </div>
  
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-1 lg:space-x-2">
-            {!user && (
+            {/* ADMIN LOGGED IN STATE */}
+            {adminUser ? (
+              <>
+                <button
+                  id="nav-desktop-admin-dash"
+                  onClick={() => handleNavClick('admin-dashboard')}
+                  className={`px-3.5 py-2 rounded-xl font-sans font-bold text-xs transition-all cursor-pointer flex items-center space-x-1.5 ${
+                    currentView === 'admin-dashboard'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                      : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+                  }`}
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  <span>Admin</span>
+                </button>
+
+                <span className="text-xs font-mono bg-amber-500/10 text-amber-900 px-3 py-1.5 rounded-full font-bold border border-amber-300 flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5 text-amber-600" />
+                  <span>{adminUser.name}</span>
+                </span>
+
+                {onLogoutAdmin && (
+                  <button
+                    id="nav-desktop-admin-logout"
+                    onClick={onLogoutAdmin}
+                    className="px-3 py-2 rounded-xl font-sans font-semibold text-xs text-red-600 hover:bg-red-50 cursor-pointer flex items-center space-x-1"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Logout</span>
+                  </button>
+                )}
+              </>
+            ) : currentView === 'admin-login' ? (
+              /* ON ADMIN LOGIN SCREEN (NOT LOGGED IN YET) */
+              <>
+                <button
+                  id="nav-desktop-home-from-admin"
+                  onClick={() => handleNavClick('home')}
+                  className="px-3.5 py-2 rounded-xl font-sans font-semibold text-sm text-[#3D405B]/85 hover:text-[#E07A5F] hover:bg-white/60 transition-all cursor-pointer"
+                >
+                  {t.navHome}
+                </button>
+
+                <button
+                  id="nav-desktop-admin-login-active"
+                  onClick={() => handleNavClick('admin-login')}
+                  className="px-3.5 py-2 rounded-xl font-sans font-bold text-xs bg-amber-500 text-slate-950 shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  <span>Admin</span>
+                </button>
+
+                <button
+                  id="nav-desktop-login-from-admin"
+                  onClick={() => handleNavClick('login')}
+                  className="px-3.5 py-2 rounded-xl font-sans font-semibold text-sm text-[#3D405B]/85 hover:text-[#E07A5F] hover:bg-white/60 transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <LogIn className="h-4 w-4 text-[#E07A5F]" />
+                  <span>Student Login</span>
+                </button>
+              </>
+            ) : user ? (
+              /* STUDENT LOGGED IN STATE */
+              <>
+                
+
+                <div className="h-4 w-[1px] bg-gray-200 mx-1" />
+
+                <span className="text-xs font-mono bg-[#E07A5F]/10 text-[#E07A5F] px-3 py-1.5 rounded-full font-bold border border-[#E07A5F]/20 flex items-center gap-1">
+                  <span>{user.avatar || getDeterministicAvatar(user.name, user.mobile)}</span>
+                  <span>{user.name}</span>
+                </span>
+
+                <button
+                  id="nav-desktop-logout"
+                  onClick={onLogout}
+                  className="px-3 py-2 rounded-xl font-sans font-semibold text-sm text-red-600 hover:bg-red-50 cursor-pointer flex items-center space-x-1"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>{t.navLogout}</span>
+                </button>
+              </>
+            ) : (
+              /* PUBLIC GUEST STATE */
               <>
                 <button
                   id="nav-desktop-home"
@@ -90,40 +184,11 @@ export default function Navbar({
                 >
                   {t.navFeatures}
                 </button>
-              </>
-            )}
- 
-            {user ? (
-              <>
-                <button
-                  id="nav-desktop-dashboard"
-                  onClick={() => handleNavClick('dashboard')}
-                  className={`px-4 py-2 rounded-xl font-sans font-bold text-sm transition-all cursor-pointer flex items-center space-x-1.5 ${
-                    currentView === 'dashboard'
-                      ? 'bg-[#81B29A] text-white shadow-xs'
-                      : 'bg-[#81B29A]/15 text-[#3D405B] hover:bg-[#81B29A]/25'
-                  }`}
-                >
-                  <BookOpen className="h-4 w-4" />
-                  <span>{t.navDashboard}</span>
-                </button>
-                <div className="h-4 w-[1px] bg-gray-200 mx-2" />
-                <span className="text-xs font-mono bg-[#E07A5F]/10 text-[#E07A5F] px-3 py-1.5 rounded-full font-bold border border-[#E07A5F]/20 flex items-center gap-1">
-                  <span>{user.avatar || getDeterministicAvatar(user.name, user.mobile)}</span>
-                  <span>{user.name}</span>
-                </span>
-                <button
-                  id="nav-desktop-logout"
-                  onClick={onLogout}
-                  className="px-3 py-2 rounded-xl font-sans font-semibold text-sm text-red-600 hover:bg-red-50 cursor-pointer flex items-center space-x-1"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>{t.navLogout}</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="h-4 w-[1px] bg-gray-200 mx-2" />
+
+                <div className="h-4 w-[1px] bg-gray-200 mx-1" />
+
+                
+
                 <button
                   id="nav-desktop-login"
                   onClick={() => handleNavClick('login')}
@@ -136,10 +201,11 @@ export default function Navbar({
                   <LogIn className="h-4 w-4 text-[#E07A5F]" />
                   <span>{t.navLogin}</span>
                 </button>
+
                 <button
                   id="nav-desktop-signup"
                   onClick={() => handleNavClick('signup')}
-                  className="ml-2 px-5 py-2 bg-[#3D405B] hover:bg-[#2D2F44] text-white font-sans font-bold text-sm rounded-xl shadow-md transition-all cursor-pointer flex items-center space-x-1"
+                  className="ml-1 px-4 py-2 bg-[#3D405B] hover:bg-[#2D2F44] text-white font-sans font-bold text-sm rounded-xl shadow-md transition-all cursor-pointer flex items-center space-x-1"
                 >
                   <UserPlus className="h-4 w-4 text-[#F2CC8F]" />
                   <span>{t.navSignUp}</span>
@@ -294,8 +360,68 @@ export default function Navbar({
       </div>       {/* Mobile Drawer */}
       {isOpen && (
         <div id="mobile-menu-drawer" className="lg:hidden border-t border-[#F2CC8F]/20 bg-white px-4 pt-2 pb-4 space-y-2 shadow-inner transition-all animate-fade-in">
-          {!user && (
-            <>
+          {adminUser ? (
+            <div className="space-y-2">
+              <div className="px-3.5 py-2 bg-amber-50 rounded-xl border border-amber-200">
+                <span className="text-[10px] font-mono text-amber-800 uppercase tracking-widest block font-bold">Logged in Administrator:</span>
+                <span className="font-display font-extrabold text-slate-900 text-sm flex items-center gap-1.5 mt-0.5">
+                  <Shield className="h-4 w-4 text-amber-600" />
+                  <span>{adminUser.name} ({adminUser.mobile})</span>
+                </span>
+              </div>
+              <button
+                id="nav-mobile-admin-dash"
+                onClick={() => handleNavClick('admin-dashboard')}
+                className="block w-full text-left px-3.5 py-2.5 bg-amber-500 text-slate-950 font-bold rounded-xl text-sm shadow-xs flex items-center gap-2"
+              >
+                <Shield className="h-4 w-4" />
+                <span>Admin</span>
+              </button>
+              {onLogoutAdmin && (
+                <button
+                  id="nav-mobile-admin-logout"
+                  onClick={() => {
+                    onLogoutAdmin();
+                    setIsOpen(false);
+                  }}
+                  className="block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-bold text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout Administrator</span>
+                </button>
+              )}
+            </div>
+          ) : user ? (
+            <div className="border-t border-gray-100 pt-2 space-y-2">
+              <div className="px-3.5 py-2">
+                <span className="text-xs text-gray-500 block">Logged in student:</span>
+                <span className="font-display font-semibold text-[#E07A5F] text-sm flex items-center gap-1.5">
+                  <span>{user.avatar || getDeterministicAvatar(user.name, user.mobile)}</span>
+                  <span>{user.name} ({user.mobile})</span>
+                </span>
+              </div>
+              <button
+                id="nav-mobile-admin-login-student"
+                onClick={() => handleNavClick('admin-login')}
+                className="block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-bold text-sm bg-amber-100 text-amber-900 flex items-center space-x-2"
+              >
+                <Shield className="h-4 w-4 text-amber-600" />
+                <span>Admin</span>
+              </button>
+              <button
+                id="nav-mobile-logout"
+                onClick={() => {
+                  onLogout();
+                  setIsOpen(false);
+                }}
+                className="block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-medium text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{t.navLogout}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
               <button
                 id="nav-mobile-home"
                 onClick={() => handleNavClick('home')}
@@ -329,60 +455,32 @@ export default function Navbar({
               >
                 {t.navFeatures}
               </button>
-            </>
-          )}
- 
-          {user ? (
-            <div className="border-t border-gray-100 pt-2 mt-2 space-y-2">
-              <div className="px-3.5 py-2">
-                <span className="text-xs text-gray-500 block">Logged in student:</span>
-                <span className="font-display font-semibold text-[#E07A5F] text-sm flex items-center gap-1.5">
-                  <span>{user.avatar || getDeterministicAvatar(user.name, user.mobile)}</span>
-                  <span>{user.name} ({user.mobile})</span>
-                </span>
+              <button
+                id="nav-mobile-admin-login"
+                onClick={() => handleNavClick('admin-login')}
+                className="block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-bold text-sm bg-amber-500 text-slate-950 flex items-center space-x-2"
+              >
+                <Shield className="h-4 w-4" />
+                <span>Admin</span>
+              </button>
+              <div className="border-t border-gray-100 pt-2 space-y-1.5">
+                <button
+                  id="nav-mobile-login"
+                  onClick={() => handleNavClick('login')}
+                  className="block w-full text-center py-2.5 rounded-xl font-sans font-medium text-sm text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100 flex items-center justify-center space-x-1.5"
+                >
+                  <LogIn className="h-4 w-4 text-[#E07A5F]" />
+                  <span>{t.navLogin}</span>
+                </button>
+                <button
+                  id="nav-mobile-signup"
+                  onClick={() => handleNavClick('signup')}
+                  className="block w-full text-center py-2.5 rounded-xl font-sans font-medium text-sm text-white bg-[#3D405B] hover:bg-[#2D2F44] shadow-xs flex items-center justify-center space-x-1.5"
+                >
+                  <UserPlus className="h-4 w-4 text-[#F2CC8F]" />
+                  <span>{t.navSignUp}</span>
+                </button>
               </div>
-              <button
-                id="nav-mobile-dashboard"
-                onClick={() => handleNavClick('dashboard')}
-                className={`block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-semibold text-sm transition-all flex items-center space-x-2 ${
-                  currentView === 'dashboard'
-                    ? 'bg-[#81B29A]/10 text-[#3D405B] border-l-4 border-[#81B29A]'
-                    : 'bg-[#81B29A]/5 text-[#3D405B]'
-                }`}
-              >
-                <BookOpen className="h-4 w-4 text-[#81B29A]" />
-                <span>{t.navDashboard}</span>
-              </button>
-              <button
-                id="nav-mobile-logout"
-                onClick={() => {
-                  onLogout();
-                  setIsOpen(false);
-                }}
-                className="block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-medium text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2 animate-pulse"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>{t.navLogout}</span>
-              </button>
-            </div>
-          ) : (
-            <div className="border-t border-gray-100 pt-2 mt-2 space-y-1.5">
-              <button
-                id="nav-mobile-login"
-                onClick={() => handleNavClick('login')}
-                className="block w-full text-center py-2.5 rounded-xl font-sans font-medium text-sm text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100 flex items-center justify-center space-x-1.5"
-              >
-                <LogIn className="h-4 w-4 text-[#E07A5F]" />
-                <span>{t.navLogin}</span>
-              </button>
-              <button
-                id="nav-mobile-signup"
-                onClick={() => handleNavClick('signup')}
-                className="block w-full text-center py-2.5 rounded-xl font-sans font-medium text-sm text-white bg-[#3D405B] hover:bg-[#2D2F44] shadow-xs flex items-center justify-center space-x-1.5"
-              >
-                <UserPlus className="h-4 w-4 text-[#F2CC8F]" />
-                <span>{t.navSignUp}</span>
-              </button>
             </div>
           )}
  

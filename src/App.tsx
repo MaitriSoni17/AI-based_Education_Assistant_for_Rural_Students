@@ -7,7 +7,9 @@ import AuthView from './components/AuthView';
 import DashboardView from './components/DashboardView';
 import { CurrentView, LanguageCode, User } from './types';
 import { TRANSLATIONS } from './data/translations';
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, Shield } from 'lucide-react';
+import AdminAuthView from './components/admin/AdminAuthView';
+import AdminDashboardView from './components/admin/AdminDashboardView';
 import { updateFirebaseUserFields, syncFirebaseUserWithLWW, getFirebaseUser } from './lib/firebase';
 import { offlineSyncManager } from './utils/offlineSync';
 import { fireContinuousFireworks } from './utils/confetti';
@@ -32,6 +34,32 @@ export default function App() {
     }
     return null;
   });
+
+  const [adminUser, setAdminUser] = useState<User | null>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('gramin_admin_session');
+      if (stored) {
+        try {
+          return JSON.parse(stored) as User;
+        } catch (e) {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
+
+  const handleAdminAuthSuccess = (authenticatedAdmin: User) => {
+    setAdminUser(authenticatedAdmin);
+    localStorage.setItem('gramin_admin_session', JSON.stringify(authenticatedAdmin));
+    setCurrentView('admin-dashboard');
+  };
+
+  const handleLogoutAdmin = () => {
+    setAdminUser(null);
+    localStorage.removeItem('gramin_admin_session');
+    setCurrentView('home');
+  };
 
   const [showStreakEarnedToast, setShowStreakEarnedToast] = useState(false);
 
@@ -347,7 +375,9 @@ export default function App() {
         currentLanguage={currentLanguage}
         onLanguageChange={handleLanguageChange}
         user={user}
+        adminUser={adminUser}
         onLogout={handleLogout}
+        onLogoutAdmin={handleLogoutAdmin}
       />
 
       {/* Main Viewport Container */}
@@ -389,6 +419,34 @@ export default function App() {
               onUpdateUser={handleUpdateUser}
             />
           )}
+
+          {currentView === 'admin-login' && (
+            <AdminAuthView
+              onSuccess={handleAdminAuthSuccess}
+              onBackToMain={() => setCurrentView('home')}
+              lang={currentLanguage}
+              adminUser={adminUser}
+              onGoToDashboard={() => setCurrentView('admin-dashboard')}
+            />
+          )}
+
+          {currentView === 'admin-dashboard' && (
+            adminUser ? (
+              <AdminDashboardView
+                adminUser={adminUser}
+                lang={currentLanguage}
+                onLogoutAdmin={handleLogoutAdmin}
+              />
+            ) : (
+              <AdminAuthView
+                onSuccess={handleAdminAuthSuccess}
+                onBackToMain={() => setCurrentView('home')}
+                lang={currentLanguage}
+                adminUser={adminUser}
+                onGoToDashboard={() => setCurrentView('admin-dashboard')}
+              />
+            )
+          )}
         </div>
 
       </main>
@@ -405,8 +463,18 @@ export default function App() {
           <p className="font-sans text-xs max-w-md mx-auto text-[#3D405B]/70 leading-relaxed">
             A specialized digital learning assistant designed to operate securely under 2G bandwidth. Built for local offline synchronization and text-to-speech literacy assistance.
           </p>
-          <div className="text-[10px] font-mono text-[#3D405B]/50 uppercase tracking-widest">
-            © 2026 GyaanBot. India Primary Rural Classrooms Initiatives.
+          <div className="flex items-center justify-center gap-4 text-[10px] font-mono text-[#3D405B]/50 uppercase tracking-widest">
+            <span>© 2026 GyaanBot. India Primary Rural Classrooms Initiatives.</span>
+            <span>•</span>
+            <button
+              id="footer-admin-portal-link"
+              onClick={() => setCurrentView('admin-login')}
+              title="Admin Portal Login"
+              aria-label="Admin Portal Login"
+              className="text-[#3D405B]/60 hover:text-[#E07A5F] transition-colors p-1 rounded-md hover:bg-[#F2CC8F]/20 cursor-pointer flex items-center justify-center"
+            >
+              <Shield className="h-3.5 w-3.5 text-amber-500" />
+            </button>
           </div>
         </div>
       </footer>

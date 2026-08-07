@@ -80,7 +80,7 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     navLogin: "Student Login",
     navSignUp: "Register First",
     navDashboard: "My Classroom",
-    navLogout: "Exit Class",
+    navLogout: "Exit",
     
     heroTitle: "AI Teacher for Every Village School",
     heroSubtitle: "Interactive voice and video learning that runs without any active internet. Speak, watch, and learn in your home language!",

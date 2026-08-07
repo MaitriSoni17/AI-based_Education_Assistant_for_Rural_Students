@@ -4,5 +4,8 @@ service cloud.firestore {
     match /users/{mobile} {
       allow read, write: if true; // In the demo sandbox environment, allow all reads/writes or check if mobile is present
     }
+    match /certificates/{certId} {
+      allow read, write: if true;
+    }
   }
 }

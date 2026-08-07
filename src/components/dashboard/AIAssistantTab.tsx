@@ -12,6 +12,7 @@ import {
   Search, Star, Pencil, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas-pro';
 import { offlineSyncManager } from '../../utils/offlineSync';
 import InteractiveDiagram from './InteractiveDiagram';
 import { LOCAL_LEARNING_PATHS, LearningPath } from '../../data/learningPaths';
@@ -578,6 +579,11 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   const chatInputRef = useRef<HTMLInputElement>(null);
   const [mascotAction, setMascotAction] = useState<'idle' | 'explaining' | 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think'>('idle');
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  // PDF export state for non-English Unicode compatible HTML canvas capture
+  const [pdfExportMessage, setPdfExportMessage] = useState<ChatMessage | null>(null);
+  const [pdfExportQuestion, setPdfExportQuestion] = useState<string>("");
+  const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
 
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => {
     try {
@@ -1211,439 +1217,107 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
       }
     }
 
-    const cleanPdfText = (str: string) => {
-      if (!str) return '';
-      return str
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/[ØÝß<>]/g, '')
-        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2300}-\u{23CF}\u{2B50}\u{2B55}]/gu, '')
-        .trim();
-    };
-
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 15;
-    const contentWidth = pageWidth - (margin * 2);
-
-    let currentY = 15;
-
-    // Helper to check and handle page break
-    const ensureSpace = (height: number) => {
-      if (currentY + height > pageHeight - margin - 12) {
-        doc.addPage();
-        currentY = margin + 10;
-        drawPageBackground();
-      }
-    };
-
-    const drawPageBackground = () => {
-      // Draw border
-      doc.setDrawColor(220, 215, 205);
-      doc.setLineWidth(0.2);
-      doc.rect(margin - 5, margin - 5, pageWidth - (margin - 5) * 2, pageHeight - (margin - 5) * 2);
-      
-      // Header accent bar
-      doc.setFillColor(61, 64, 91); // #3D405B Slate
-      doc.rect(margin - 5, margin - 5, pageWidth - (margin - 5) * 2, 4, 'F');
-
-      // Thin accent bar at bottom
-      doc.setFillColor(224, 122, 95); // #E07A5F Coral
-      doc.rect(margin - 5, pageHeight - margin + 1, pageWidth - (margin - 5) * 2, 4, 'F');
-
-      // Page Number Footer
-      doc.setFont("Helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      const pageNum = doc.getNumberOfPages();
-      const labels = PDF_LABELS[lang] || PDF_LABELS['en'];
-      doc.text(`${labels.page} ${pageNum}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
-      doc.text(labels.docSubtitle, pageWidth - margin, pageHeight - 8, { align: 'right' });
-    };
-
-    // Initial background drawing
-    drawPageBackground();
-    currentY += 4;
-
     const labels = PDF_LABELS[lang] || PDF_LABELS['en'];
 
-    // Clean Simple Header
-    doc.setFont("Helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(61, 64, 91);
-    doc.text(labels.documentTitle || "STUDENT QUESTION & RESPONSE", margin, currentY);
+    speakText(
+      lang === 'hi' 
+        ? "आपका अध्ययन नोट PDF तैयार किया जा रहा है..." 
+        : "Preparing your study note PDF...",
+      lang,
+      selectedChar.name,
+      `${selectedChar.char} ${selectedChar.name}`
+    );
 
-    doc.setFont("Helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(130, 130, 140);
-    const dateStr = msg.timestamp || new Date().toLocaleDateString();
-    doc.text(dateStr, pageWidth - margin, currentY, { align: 'right' });
+    setPdfExportMessage(msg);
+    setPdfExportQuestion(userQuestion);
+    setIsExportingPDF(true);
 
-    currentY += 3;
-    doc.setDrawColor(230, 225, 215);
-    doc.setLineWidth(0.4);
-    doc.line(margin, currentY, pageWidth - margin, currentY);
-    currentY += 7;
-
-    // Question Section
-    const cleanedQuestion = cleanPdfText(userQuestion);
-    if (cleanedQuestion) {
-      ensureSpace(20);
-      doc.setFont("Helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(224, 122, 95);
-      doc.text(labels.academicQuestion, margin, currentY);
-      currentY += 5;
-
-      doc.setFont("Helvetica", "normal");
-      doc.setFontSize(9.5);
-      doc.setTextColor(60, 60, 70);
-      
-      const splitQuestion = doc.splitTextToSize(cleanedQuestion, contentWidth - 8);
-      const boxHeight = splitQuestion.length * 5 + 6;
-      
-      ensureSpace(boxHeight + 5);
-      doc.setFillColor(253, 251, 247);
-      doc.setDrawColor(242, 204, 143);
-      doc.setLineWidth(0.5);
-      doc.rect(margin, currentY, contentWidth, boxHeight, 'FD');
-      
-      doc.setFillColor(242, 204, 143);
-      doc.rect(margin, currentY, 2.5, boxHeight, 'F');
-
-      doc.text(splitQuestion, margin + 6, currentY + 5);
-      currentY += boxHeight + 8;
-    }
-
-    // Answer Section
-    ensureSpace(20);
-    doc.setFont("Helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(129, 178, 154);
-    doc.text(labels.explanation, margin, currentY);
-    currentY += 6;
-
-    const parsed = parseMessageContent(msg.text);
-    const cleanText = parsed.text;
-
-    doc.setFont("Helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(40, 40, 50);
-
-    const lines = cleanText.split('\n');
-    
-    lines.forEach((line) => {
-      const trimmedLine = cleanPdfText(line.trim());
-      if (!trimmedLine) {
-        currentY += 3.5;
+    // Give React a brief moment to render offscreen DOM element with full Unicode/KaTeX formatting
+    setTimeout(() => {
+      const element = document.getElementById("ai-pdf-render-template");
+      if (!element) {
+        setIsExportingPDF(false);
+        setPdfExportMessage(null);
         return;
       }
 
-      const isHeading = trimmedLine.startsWith('#') || (trimmedLine.startsWith('**') && trimmedLine.endsWith('**'));
-      const cleanLine = cleanPdfText(trimmedLine.replace(/^#+\s*/, '').replace(/\*\*/g, ''));
+      html2canvas(element, {
+        scale: 2, // crisp high resolution
+        useCORS: true,
+        backgroundColor: '#FAF8F5',
+        logging: false,
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
 
-      if (isHeading) {
-        doc.setFont("Helvetica", "bold");
-        doc.setFontSize(10.5);
-        doc.setTextColor(61, 64, 91);
-        const splitHeading = doc.splitTextToSize(cleanLine, contentWidth);
-        const height = splitHeading.length * 4.5;
-        ensureSpace(height + 2);
-        doc.text(splitHeading, margin, currentY);
-        currentY += height + 2.5;
-      } else if (trimmedLine.startsWith('*') || trimmedLine.startsWith('-') || /^\d+\./.test(trimmedLine)) {
-        doc.setFont("Helvetica", "normal");
-        doc.setFontSize(9.5);
-        doc.setTextColor(50, 50, 60);
-        
-        let symbol = "•";
-        let textOffset = 6;
-        let contentPart = trimmedLine;
-        if (/^\d+\./.test(trimmedLine)) {
-          const match = trimmedLine.match(/^(\d+\.)/);
-          symbol = match ? match[1] : "•";
-          textOffset = 8;
-          contentPart = trimmedLine.replace(/^\d+\.\s*/, '');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+        const printWidth = pageWidth - (margin * 2);
+
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const printHeight = printWidth * (canvasHeight / canvasWidth);
+
+        let pageCount = 0;
+
+        if (printHeight <= pageHeight - (margin * 2)) {
+          pdf.addImage(imgData, 'PNG', margin, margin, printWidth, printHeight);
         } else {
-          contentPart = trimmedLine.replace(/^[-*]\s*/, '');
-        }
-        contentPart = cleanPdfText(contentPart.replace(/\*\*/g, ''));
+          let leftHeight = printHeight;
+          const pageImgHeight = pageHeight - (margin * 2);
 
-        ensureSpace(5);
-        doc.setFont("Helvetica", "bold");
-        doc.setTextColor(224, 122, 95);
-        doc.text(symbol, margin + 2, currentY);
-        
-        doc.setFont("Helvetica", "normal");
-        doc.setTextColor(50, 50, 60);
-        const splitBullet = doc.splitTextToSize(contentPart, contentWidth - textOffset);
-        const height = splitBullet.length * 4.5;
-        ensureSpace(height + 1);
-        doc.text(splitBullet, margin + textOffset, currentY);
-        currentY += height + 2;
-      } else {
-        doc.setFont("Helvetica", "normal");
-        doc.setFontSize(9.5);
-        doc.setTextColor(60, 60, 65);
-        const splitParagraph = doc.splitTextToSize(cleanLine, contentWidth);
-        const height = splitParagraph.length * 4.5;
-        ensureSpace(height + 1);
-        doc.text(splitParagraph, margin, currentY);
-        currentY += height + 1.5;
-      }
-    });
+          while (leftHeight > 0) {
+            if (pageCount > 0) {
+              pdf.addPage();
+            }
 
-    // Add Diagram Section if present
-    if (parsed.diagram) {
-      currentY += 8;
-      ensureSpace(30);
-      
-      // Divider line
-      doc.setDrawColor(220, 215, 205);
-      doc.setLineWidth(0.5);
-      doc.line(margin, currentY, margin + contentWidth, currentY);
-      currentY += 6;
-      
-      // Section header title
-      doc.setFont("Helvetica", "bold");
-      doc.setFontSize(11);
-      doc.setTextColor(61, 64, 91); // #3D405B Slate
-      const sectionHeader = parsed.diagram.type === 'mindmap' ? labels.conceptMap : labels.flowchart;
-      doc.text(`${sectionHeader}: ${parsed.diagram.title || 'Visual Study Chart'}`, margin, currentY);
-      currentY += 6;
+            // Draw clean border
+            pdf.setDrawColor(220, 215, 205);
+            pdf.setLineWidth(0.2);
+            pdf.rect(margin - 2, margin - 2, pageWidth - (margin - 2) * 2, pageHeight - (margin - 2) * 2);
 
-      if (parsed.diagram.type === 'mindmap') {
-        const mm = parsed.diagram;
-        if (mm.root) {
-          // Render Main Subject Box
-          const mainLabel = mm.root.label || 'Subject';
-          const mainDesc = mm.root.description || '';
-          
-          // Let's determine height of Main Subject box
-          doc.setFont("Helvetica", "bold");
-          doc.setFontSize(10);
-          const splitMainLabel = doc.splitTextToSize(mainLabel, contentWidth - 10);
-          
-          doc.setFont("Helvetica", "italic");
-          doc.setFontSize(8.5);
-          const splitMainDesc = mainDesc ? doc.splitTextToSize(mainDesc, contentWidth - 10) : [];
-          
-          const mainBoxHeight = 8 + (splitMainLabel.length * 4.5) + (splitMainDesc.length > 0 ? (splitMainDesc.length * 4) + 2 : 0);
-          
-          ensureSpace(mainBoxHeight + 5);
-          
-          // Draw Main Subject Box background (Slate Solid background)
-          doc.setFillColor(61, 64, 91); // #3D405B
-          doc.rect(margin, currentY, contentWidth, mainBoxHeight, 'F');
-          
-          // Add a border accent
-          doc.setDrawColor(242, 204, 143); // #F2CC8F Yellow accent
-          doc.setLineWidth(0.8);
-          doc.rect(margin, currentY, contentWidth, mainBoxHeight, 'D');
-          
-          // Small badge
-          doc.setFillColor(242, 204, 143);
-          doc.rect(margin + 4, currentY - 2.5, 28, 5, 'F');
-          doc.setFont("Helvetica", "bold");
-          doc.setFontSize(7);
-          doc.setTextColor(61, 64, 91);
-          doc.text(labels.mainSubject, margin + 6, currentY + 1);
-          
-          // Text inside Main Subject Box
-          let textY = currentY + 6;
-          doc.setFont("Helvetica", "bold");
-          doc.setFontSize(10);
-          doc.setTextColor(255, 255, 255);
-          doc.text(splitMainLabel, margin + 5, textY);
-          textY += splitMainLabel.length * 4.5;
-          
-          if (splitMainDesc.length > 0) {
-            doc.setFont("Helvetica", "normal");
-            doc.setFontSize(8.5);
-            doc.setTextColor(230, 230, 240);
-            doc.text(splitMainDesc, margin + 5, textY);
-            textY += splitMainDesc.length * 4;
-          }
-          
-          currentY += mainBoxHeight + 8;
-          
-          // Render branches
-          if (mm.root.branches && Array.isArray(mm.root.branches)) {
-            mm.root.branches.forEach((branch: any, bIdx: number) => {
-              const bLabel = branch.label || '';
-              const bDesc = branch.description || '';
-              const bSubs = branch.subBranches || [];
-              
-              // Prepare texts
-              doc.setFont("Helvetica", "bold");
-              doc.setFontSize(9.5);
-              const splitBLabel = doc.splitTextToSize(bLabel, contentWidth - 12);
-              
-              doc.setFont("Helvetica", "normal");
-              doc.setFontSize(8.5);
-              const splitBDesc = bDesc ? doc.splitTextToSize(bDesc, contentWidth - 12) : [];
-              
-              doc.setFont("Helvetica", "normal");
-              doc.setFontSize(8);
-              const subsText = bSubs.length > 0 ? `${labels.connectedConcepts}: ${bSubs.join(', ')}` : '';
-              const splitBSubs = subsText ? doc.splitTextToSize(subsText, contentWidth - 12) : [];
-              
-              const bBoxHeight = 8 + (splitBLabel.length * 4) 
-                + (splitBDesc.length > 0 ? (splitBDesc.length * 3.8) + 2 : 0)
-                + (splitBSubs.length > 0 ? (splitBSubs.length * 3.5) + 3 : 0);
-              
-              ensureSpace(bBoxHeight + 6);
-              
-              // Background (Soft tint card)
-              // Color cyclic accent
-              const colors = [
-                { r: 224, g: 122, b: 95 }, // Coral
-                { r: 129, g: 178, b: 154 }, // Green
-                { r: 242, g: 204, b: 143 }  // Yellow/Amber
-              ];
-              const accentColor = colors[bIdx % colors.length];
-              
-              doc.setFillColor(253, 252, 250);
-              doc.setDrawColor(220, 215, 205);
-              doc.setLineWidth(0.3);
-              doc.rect(margin, currentY, contentWidth, bBoxHeight, 'FD');
-              
-              // Left side vertical stripe
-              doc.setFillColor(accentColor.r, accentColor.g, accentColor.b);
-              doc.rect(margin, currentY, 3, bBoxHeight, 'F');
-              
-              // Small branch badge index on the right
-              doc.setFont("Helvetica", "bold");
-              doc.setFontSize(7.5);
-              doc.setTextColor(140, 140, 140);
-              doc.text(`BRANCH ${bIdx + 1}`, margin + contentWidth - 22, currentY + 4.5);
-              
-              let bTextY = currentY + 5;
-              
-              // Title
-              doc.setFont("Helvetica", "bold");
-              doc.setFontSize(9.5);
-              doc.setTextColor(61, 64, 91);
-              doc.text(splitBLabel, margin + 6, bTextY);
-              bTextY += splitBLabel.length * 4;
-              
-              // Description
-              if (splitBDesc.length > 0) {
-                doc.setFont("Helvetica", "normal");
-                doc.setFontSize(8.5);
-                doc.setTextColor(80, 80, 90);
-                doc.text(splitBDesc, margin + 6, bTextY);
-                bTextY += (splitBDesc.length * 3.8) + 2;
-              }
-              
-              // Connected concepts (sub-branches)
-              if (splitBSubs.length > 0) {
-                doc.setFillColor(245, 243, 238);
-                doc.rect(margin + 5, bTextY - 1, contentWidth - 10, (splitBSubs.length * 3.5) + 2, 'F');
-                
-                doc.setFont("Helvetica", "italic");
-                doc.setFontSize(8);
-                doc.setTextColor(110, 110, 120);
-                doc.text(splitBSubs, margin + 8, bTextY + 2.5);
-                bTextY += (splitBSubs.length * 3.5) + 3;
-              }
-              
-              currentY += bBoxHeight + 5;
-            });
+            pdf.setFont("Helvetica", "normal");
+            pdf.setFontSize(8);
+            pdf.setTextColor(150, 150, 150);
+            pdf.text(`${labels.page || 'Page'} ${pageCount + 1}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+
+            pdf.addImage(
+              imgData,
+              'PNG',
+              margin,
+              margin - (pageCount * pageImgHeight),
+              printWidth,
+              printHeight
+            );
+
+            leftHeight -= pageImgHeight;
+            pageCount++;
           }
         }
-      } else if (parsed.diagram.type === 'flowchart') {
-        // Render Flowchart Step-by-Step path
-        const fc = parsed.diagram;
-        if (fc.nodes && Array.isArray(fc.nodes)) {
-          fc.nodes.forEach((node: any, nIdx: number) => {
-            const nLabel = node.label || '';
-            const nDesc = node.description || '';
-            
-            doc.setFont("Helvetica", "bold");
-            doc.setFontSize(9.5);
-            const splitNLabel = doc.splitTextToSize(nLabel, contentWidth - 15);
-            
-            doc.setFont("Helvetica", "normal");
-            doc.setFontSize(8.5);
-            const splitNDesc = nDesc ? doc.splitTextToSize(nDesc, contentWidth - 15) : [];
-            
-            const nBoxHeight = 8 + (splitNLabel.length * 4) + (splitNDesc.length > 0 ? (splitNDesc.length * 3.8) + 1 : 0);
-            
-            ensureSpace(nBoxHeight + 8);
-            
-            // Draw visual step connection line if not first
-            if (nIdx > 0) {
-              doc.setDrawColor(224, 122, 95); // Coral arrow/line
-              doc.setLineWidth(1.2);
-              doc.line(margin + 8, currentY - 5, margin + 8, currentY);
-              // Draw an arrowhead
-              doc.setFillColor(224, 122, 95);
-              doc.triangle(margin + 6.5, currentY - 1.5, margin + 9.5, currentY - 1.5, margin + 8, currentY, 'F');
-            }
-            
-            // Card background
-            doc.setFillColor(253, 252, 250);
-            doc.setDrawColor(220, 215, 205);
-            doc.setLineWidth(0.3);
-            doc.rect(margin + 15, currentY, contentWidth - 15, nBoxHeight, 'FD');
-            
-            // Accent border on left side of Card
-            doc.setFillColor(61, 64, 91); // #3D405B Slate
-            doc.rect(margin + 15, currentY, 2.5, nBoxHeight, 'F');
-            
-            // Draw a circle on the left with Step index (Timeline style)
-            doc.setFillColor(224, 122, 95); // Coral circle
-            doc.setDrawColor(255, 255, 255);
-            doc.setLineWidth(0.5);
-            doc.circle(margin + 8, currentY + (nBoxHeight / 2), 4, 'FD');
-            
-            doc.setFont("Helvetica", "bold");
-            doc.setFontSize(7.5);
-            doc.setTextColor(255, 255, 255);
-            doc.text(`${nIdx + 1}`, margin + 8, currentY + (nBoxHeight / 2) + 1, { align: 'center' });
-            
-            let nTextY = currentY + 5;
-            
-            // Step title
-            doc.setFont("Helvetica", "bold");
-            doc.setFontSize(9.5);
-            doc.setTextColor(61, 64, 91);
-            doc.text(splitNLabel, margin + 21, nTextY);
-            nTextY += splitNLabel.length * 4;
-            
-            // Step Description
-            if (splitNDesc.length > 0) {
-              doc.setFont("Helvetica", "normal");
-              doc.setFontSize(8.5);
-              doc.setTextColor(80, 80, 90);
-              doc.text(splitNDesc, margin + 21, nTextY);
-            }
-            
-            currentY += nBoxHeight + 5;
-          });
-        }
-      }
-    }
 
-    const safeTitle = (userQuestion || "Explanation").substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_');
-    doc.save(`AI_Study_Note_${selectedChar.id}_${safeTitle}.pdf`);
-    
-    speakText(
-      labels.downloadSuccess,
-      lang,
-      selectedChar.name,
-      `🤖 ${selectedChar.name}`
-    );
+        const safeTitle = (userQuestion || "Study_Note").substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_');
+        pdf.save(`AI_Study_Note_${selectedChar.id}_${safeTitle}.pdf`);
+
+        setIsExportingPDF(false);
+        setPdfExportMessage(null);
+
+        speakText(
+          labels.downloadSuccess || "Your study note PDF has been successfully generated!",
+          lang,
+          selectedChar.name,
+          `${selectedChar.char} ${selectedChar.name}`
+        );
+      }).catch((err) => {
+        console.error("HTML to PDF capture error:", err);
+        setIsExportingPDF(false);
+        setPdfExportMessage(null);
+      });
+    }, 250);
   };
 
   const copyMessageToClipboard = (msg: ChatMessage) => {
@@ -2726,6 +2400,112 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
         </form>
 
 
+
+        {/* OFF-SCREEN UNICODE COMPATIBLE PDF RENDER TEMPLATE */}
+        {isExportingPDF && pdfExportMessage && (
+          <div 
+            id="ai-pdf-render-template" 
+            className="p-10 bg-[#FAF8F5] text-slate-800 border-2 border-[#DCD7CD] rounded-3xl"
+            style={{
+              position: 'fixed',
+              left: '-9999px',
+              top: '-9999px',
+              width: '800px',
+              fontFamily: 'system-ui, -apple-system, "Noto Sans", "Segoe UI", Roboto, sans-serif',
+            }}
+          >
+            {/* Header Accent Bar */}
+            <div className="h-2.5 bg-[#3D405B] rounded-t-lg -mx-10 -mt-10 mb-8" />
+
+            {/* Title Block */}
+            <div className="border-b border-[#E6E1D7] pb-6 mb-6 flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-extrabold text-[#3D405B] uppercase tracking-wide">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).documentTitle}
+                </h1>
+                <p className="text-sm italic text-gray-600 mt-1">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).subTitle}
+                </p>
+              </div>
+              <div className="text-3xl">
+                {selectedChar.char.split(' ')[0]}
+              </div>
+            </div>
+
+            {/* Student Details Grid */}
+            <div className="grid grid-cols-2 gap-4 bg-[#F9F6F0] border border-[#E6E1D7] rounded-2xl p-5 mb-8 text-xs font-sans">
+              <div>
+                <p className="font-bold text-[#3D405B] uppercase mb-1">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).student}
+                </p>
+                <p className="text-gray-700 font-medium">
+                  {user.name || 'Verified Student'} ({localStorage.getItem(`${user.mobile}_profile_standard`) || user.standard || 'Primary Grade'})
+                </p>
+              </div>
+              <div>
+                <p className="font-bold text-[#3D405B] uppercase mb-1">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).mentor}
+                </p>
+                <p className="text-gray-700 font-medium">
+                  {selectedChar.name} ({selectedChar.role[lang] || selectedChar.role['en']})
+                </p>
+              </div>
+              <div>
+                <p className="font-bold text-[#3D405B] uppercase mb-1">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).date}
+                </p>
+                <p className="text-gray-700">
+                  {pdfExportMessage.timestamp || new Date().toLocaleDateString()}
+                </p>
+              </div>
+              <div>
+                <p className="font-bold text-[#3D405B] uppercase mb-1">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).verification}
+                </p>
+                <p className="text-emerald-600 font-semibold">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).verifiedText}
+                </p>
+              </div>
+            </div>
+
+            {/* Student Question Block */}
+            {pdfExportQuestion && (
+              <div className="mb-8">
+                <h2 className="text-sm font-bold text-[#E07A5F] tracking-wider uppercase mb-3">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).academicQuestion}
+                </h2>
+                <div className="bg-[#FDFBF7] border-l-4 border-[#F2CC8F] rounded-r-2xl p-5 text-sm text-gray-800 leading-relaxed shadow-3xs">
+                  {pdfExportQuestion}
+                </div>
+              </div>
+            )}
+
+            {/* Answer / AI Explanation Block */}
+            <div>
+              <h2 className="text-sm font-bold text-[#81B29A] tracking-wider uppercase mb-3">
+                {(PDF_LABELS[lang] || PDF_LABELS['en']).explanation}
+              </h2>
+              <div className="bg-white border border-[#E6E1D7] rounded-2xl p-6 text-sm text-gray-800 leading-relaxed shadow-3xs space-y-4">
+                {(() => {
+                  const parsed = parseMessageContent(pdfExportMessage.text);
+                  return (
+                    <>
+                      <p className="whitespace-pre-wrap leading-relaxed">{parsed.text}</p>
+                      {parsed.diagram && (
+                        <div className="mt-6 pt-6 border-t border-gray-200">
+                          <InteractiveDiagram data={parsed.diagram} lang={lang} />
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Footer Accent Bar */}
+            <div className="h-1.5 bg-[#E07A5F] rounded-b-lg -mx-10 -mb-10 mt-10" />
+          </div>
+        )}
 
       </div>
 
