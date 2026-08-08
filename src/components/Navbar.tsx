@@ -130,7 +130,18 @@ export default function Navbar({
             ) : user ? (
               /* STUDENT LOGGED IN STATE */
               <>
-                
+                <button
+                  id="nav-desktop-my-classroom"
+                  onClick={() => handleNavClick('dashboard')}
+                  className={`px-3.5 py-2 rounded-xl font-sans font-bold text-sm transition-all cursor-pointer flex items-center space-x-1.5 ${
+                    currentView === 'dashboard'
+                      ? 'bg-[#E07A5F]/15 text-[#E07A5F]'
+                      : 'text-[#3D405B]/85 hover:text-[#E07A5F] hover:bg-white/60'
+                  }`}
+                >
+                  <BookOpen className="h-4 w-4 text-[#E07A5F]" />
+                  <span>{t.navDashboard}</span>
+                </button>
 
                 <div className="h-4 w-[1px] bg-gray-200 mx-1" />
 
@@ -393,6 +404,19 @@ export default function Navbar({
             </div>
           ) : user ? (
             <div className="border-t border-gray-100 pt-2 space-y-2">
+              <button
+                id="nav-mobile-my-classroom"
+                onClick={() => handleNavClick('dashboard')}
+                className={`block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-bold text-sm transition-all flex items-center gap-2 ${
+                  currentView === 'dashboard'
+                    ? 'bg-[#E07A5F]/10 text-[#E07A5F] border-l-4 border-[#E07A5F]'
+                    : 'text-[#3D405B] hover:bg-gray-50'
+                }`}
+              >
+                <BookOpen className="h-4 w-4 text-[#E07A5F]" />
+                <span>{t.navDashboard}</span>
+              </button>
+
               <div className="px-3.5 py-2">
                 <span className="text-xs text-gray-500 block">Logged in student:</span>
                 <span className="font-display font-semibold text-[#E07A5F] text-sm flex items-center gap-1.5">

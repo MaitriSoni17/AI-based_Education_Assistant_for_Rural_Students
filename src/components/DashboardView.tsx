@@ -18,12 +18,13 @@ import SettingsTab from './dashboard/SettingsTab';
 import OfflineLibraryTab from './dashboard/OfflineLibraryTab';
 import CertificatesTab from './dashboard/CertificatesTab';
 import EquationsTab from './dashboard/EquationsTab';
+import PuzzleGameTab from './dashboard/PuzzleGameTab';
 
 // Icons
 import { 
   User as UserIcon, MessageSquare, BookOpen, GraduationCap, 
   HelpCircle, Sparkles, Award, Settings as SettingsIcon, LogOut, Download, Globe, Menu, X,
-  RefreshCw, Wifi, WifiOff, Flame, Clock, Binary
+  RefreshCw, Wifi, WifiOff, Flame, Clock, Binary, Puzzle
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -34,7 +35,7 @@ interface DashboardViewProps {
 
 export default function DashboardView({ user, lang, onUpdateUser }: DashboardViewProps) {
   // Navigation active tab controller: default to 'profile' as requested for the overview
-  const [activeTab, setActiveTab] = useState<'profile' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations' | 'puzzle-game'>('profile');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Scroll to top of page whenever activeTab changes
@@ -301,6 +302,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
     { id: 'ai-assistant', label: 'AI Study Chatbot', icon: MessageSquare, color: 'text-emerald-500 bg-emerald-50' },
     { id: 'tutor', label: 'Mascot Class Tutor', icon: BookOpen, color: 'text-[#81B29A] bg-[#81B29A]/10' },
     { id: 'equations', label: 'Smart Equation Hub', icon: Binary, color: 'text-orange-500 bg-orange-55' },
+    { id: 'puzzle-game', label: 'Class Puzzle Game', icon: Puzzle, color: 'text-purple-600 bg-purple-50' },
     { id: 'quiz', label: 'Topic Play Quizzes', icon: HelpCircle, color: 'text-amber-500 bg-amber-50' },
     { id: 'certificates', label: 'My Certificates', icon: GraduationCap, color: 'text-amber-600 bg-amber-50' },
     { id: 'exam', label: 'Competitive Exams', icon: Award, color: 'text-rose-500 bg-rose-50' },
@@ -506,6 +508,14 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
 
             {activeTab === 'equations' && (
               <EquationsTab
+                user={localUser}
+                lang={lang}
+                onUpdateUser={handleUpdateLocalUser}
+              />
+            )}
+
+            {activeTab === 'puzzle-game' && (
+              <PuzzleGameTab
                 user={localUser}
                 lang={lang}
                 onUpdateUser={handleUpdateLocalUser}

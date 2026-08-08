@@ -37,9 +37,18 @@ export interface User {
   speechVolume?: number;
   selectedVoiceName?: string;
   studyMins?: number;
+  adminPin?: string;
   checkInDates?: string; // JSON string array of YYYY-MM-DD checked-in dates
   dailyStudyLog?: string; // JSON string record of YYYY-MM-DD -> study minutes
   updatedAt?: number; // Epoch timestamp for Last-Write-Wins conflict resolution
+  puzzlesSolved?: number;
+  puzzlesAttempted?: number;
+  puzzleAccuracy?: number;
+  puzzleStreak?: number;
+  puzzleSubjectProficiency?: string; // Stringified JSON object
+  puzzleStrongTopics?: string; // Stringified JSON array
+  puzzleWeakTopics?: string; // Stringified JSON array
+  puzzleStatsByClass?: string; // Stringified JSON object mapping class to stats
 }
 
 export interface QuizQuestion {

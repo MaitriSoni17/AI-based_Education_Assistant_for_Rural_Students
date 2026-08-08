@@ -23,19 +23,29 @@ export default function OfflineLibraryTab({ user, lang }: OfflineLibraryTabProps
   });
 
   useEffect(() => {
-    localStorage.setItem('sim_offline_mode', simulatedOffline ? 'true' : 'false');
-    // Notify the rest of the UI if they want to check local overrides
+    try {
+      localStorage.setItem('sim_offline_mode', simulatedOffline ? 'true' : 'false');
+    } catch (e) {
+      console.warn("Failed to set sim_offline_mode:", e);
+    }
   }, [simulatedOffline]);
 
   // Track downloaded chapter IDs in localStorage
   const [downloadedIds, setDownloadedIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem(`${user.mobile}_offline_library_downloaded_ids`);
-    // Pre-download the water cycle to give a starting point, others are downloadable
-    return saved ? JSON.parse(saved) : ['ch-water-cycle'];
+    try {
+      const saved = localStorage.getItem(`${user.mobile}_offline_library_downloaded_ids`);
+      return saved ? JSON.parse(saved) : ['ch-water-cycle'];
+    } catch {
+      return ['ch-water-cycle'];
+    }
   });
 
   useEffect(() => {
-    localStorage.setItem(`${user.mobile}_offline_library_downloaded_ids`, JSON.stringify(downloadedIds));
+    try {
+      localStorage.setItem(`${user.mobile}_offline_library_downloaded_ids`, JSON.stringify(downloadedIds));
+    } catch (e) {
+      console.warn("Failed to save downloaded IDs:", e);
+    }
   }, [downloadedIds, user.mobile]);
 
   // Sync when active user changes

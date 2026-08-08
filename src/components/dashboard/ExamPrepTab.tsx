@@ -797,7 +797,11 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
     e.stopPropagation();
     const updated = history.filter(item => item.id !== id);
     setHistory(updated);
-    localStorage.setItem('gyaanbot_eval_history', JSON.stringify(updated));
+    try {
+      localStorage.setItem('gyaanbot_eval_history', JSON.stringify(updated));
+    } catch (err) {
+      console.warn("Failed to set gyaanbot_eval_history in localStorage:", err);
+    }
   };
 
   const loadPastEvaluation = (record: SavedEvaluation) => {
@@ -923,7 +927,11 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
         };
         const updatedHistory = [newRecord, ...history];
         setHistory(updatedHistory);
-        localStorage.setItem('gyaanbot_eval_history', JSON.stringify(updatedHistory));
+        try {
+          localStorage.setItem('gyaanbot_eval_history', JSON.stringify(updatedHistory));
+        } catch (err) {
+          console.warn("Failed to set gyaanbot_eval_history in localStorage:", err);
+        }
 
         // Award points to student
         if (user) {

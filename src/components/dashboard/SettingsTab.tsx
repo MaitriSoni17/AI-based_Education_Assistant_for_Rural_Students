@@ -94,10 +94,14 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
       board
     });
 
-    localStorage.setItem(`${user.mobile}_profile_village`, village);
-    localStorage.setItem(`${user.mobile}_profile_school`, school);
-    localStorage.setItem(`${user.mobile}_profile_standard`, standard);
-    localStorage.setItem(`${user.mobile}_profile_board`, board);
+    try {
+      localStorage.setItem(`${user.mobile}_profile_village`, village);
+      localStorage.setItem(`${user.mobile}_profile_school`, school);
+      localStorage.setItem(`${user.mobile}_profile_standard`, standard);
+      localStorage.setItem(`${user.mobile}_profile_board`, board);
+    } catch (e) {
+      console.warn("Failed to set profile fields in localStorage:", e);
+    }
 
     setTimeout(() => {
       setSavingKey(false);
@@ -124,7 +128,11 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
 
   const handleSpeechRateSave = (rate: string) => {
     setSpeechRate(rate);
-    localStorage.setItem('speech_rate_multiplier', rate);
+    try {
+      localStorage.setItem('speech_rate_multiplier', rate);
+    } catch (e) {
+      console.warn("Failed to set speech_rate_multiplier in localStorage:", e);
+    }
     speakText(
       lang === 'hi' 
         ? "आवाज़ की गति अद्यतन की गई।" 

@@ -2125,11 +2125,15 @@ export default function TutorTab({
   const handleDeleteLesson = (lessonId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm(lang === 'hi' ? "क्या आप सचमुच इस लेक्चर को इतिहास से हटाना चाहते हैं?" : "Are you sure you want to delete this lecture from your history?")) {
-      setCustomHistory(prev => {
-        const updated = prev.filter(item => item.id !== lessonId);
-        localStorage.setItem(`${user.mobile}_mascot_lessons_history`, JSON.stringify(updated));
-        return updated;
-      });
+        setCustomHistory(prev => {
+          const updated = prev.filter(item => item.id !== lessonId);
+          try {
+            localStorage.setItem(`${user.mobile}_mascot_lessons_history`, JSON.stringify(updated));
+          } catch (e) {
+            console.warn("Failed to update mascot lessons history in localStorage:", e);
+          }
+          return updated;
+        });
       if (selectedLesson.id === lessonId) {
         setIsNewLecture(true);
       }
@@ -2339,7 +2343,11 @@ JSON Schema:
         // Add to history list and persist
         setCustomHistory(prev => {
           const updated = [newLesson, ...prev];
-          localStorage.setItem(`${user.mobile}_mascot_lessons_history`, JSON.stringify(updated));
+          try {
+            localStorage.setItem(`${user.mobile}_mascot_lessons_history`, JSON.stringify(updated));
+          } catch (e) {
+            console.warn("Failed to set mascot lessons history in localStorage:", e);
+          }
           return updated;
         });
         setActiveDeckTab('history');

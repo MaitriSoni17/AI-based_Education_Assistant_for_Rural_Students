@@ -5,6 +5,7 @@ import AboutView from './components/AboutView';
 import FeaturesView from './components/FeaturesView';
 import AuthView from './components/AuthView';
 import DashboardView from './components/DashboardView';
+import ErrorBoundary from './components/ErrorBoundary';
 import { CurrentView, LanguageCode, User } from './types';
 import { TRANSLATIONS } from './data/translations';
 import { GraduationCap, Shield } from 'lucide-react';
@@ -14,6 +15,14 @@ import { updateFirebaseUserFields, syncFirebaseUserWithLWW, getFirebaseUser } fr
 import { offlineSyncManager } from './utils/offlineSync';
 import { fireContinuousFireworks } from './utils/confetti';
 import { getSafeDateString, getDaysDifference } from './utils/dateUtils';
+
+function safeSetLocalStorage(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn(`[localStorage] Failed to write key "${key}":`, e);
+  }
+}
 
 export default function App() {
   const [currentView, setCurrentView] = useState<CurrentView>('home');
@@ -51,13 +60,17 @@ export default function App() {
 
   const handleAdminAuthSuccess = (authenticatedAdmin: User) => {
     setAdminUser(authenticatedAdmin);
-    localStorage.setItem('gramin_admin_session', JSON.stringify(authenticatedAdmin));
+    safeSetLocalStorage('gramin_admin_session', JSON.stringify(authenticatedAdmin));
+    setUser(authenticatedAdmin);
+    safeSetLocalStorage('gramin_student_session', JSON.stringify(authenticatedAdmin));
     setCurrentView('admin-dashboard');
   };
 
   const handleLogoutAdmin = () => {
     setAdminUser(null);
     localStorage.removeItem('gramin_admin_session');
+    setUser(null);
+    localStorage.removeItem('gramin_student_session');
     setCurrentView('home');
   };
 
@@ -132,7 +145,7 @@ export default function App() {
         const { updatedUser, wasReset, fields } = performDailyResetForUser(finalUser);
         
         setUser(updatedUser);
-        localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
+        safeSetLocalStorage('gramin_student_session', JSON.stringify(updatedUser));
 
         if (wasReset) {
           updateFirebaseUserFields(user.mobile, fields)
@@ -149,7 +162,7 @@ export default function App() {
         const { updatedUser, wasReset } = performDailyResetForUser(user);
         if (wasReset) {
           setUser(updatedUser);
-          localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
+          safeSetLocalStorage('gramin_student_session', JSON.stringify(updatedUser));
         }
       });
   }, [user?.mobile]);
@@ -169,7 +182,7 @@ export default function App() {
       }
       if (needsUpdate) {
         setUser(updated);
-        localStorage.setItem('gramin_student_session', JSON.stringify(updated));
+        safeSetLocalStorage('gramin_student_session', JSON.stringify(updated));
         updateFirebaseUserFields(user.mobile, {
           studyMins: updated.studyMins,
           todayMins: updated.todayMins
@@ -180,7 +193,7 @@ export default function App() {
 
   // Background study timer: tracks actual active dashboard time in real-time
   useEffect(() => {
-    if (!user) return;
+    if (!user || user.role === 'admin' || adminUser || currentView === 'admin-dashboard' || currentView === 'admin-auth') return;
 
     let activeSecs = 0;
     const interval = setInterval(() => {
@@ -257,7 +270,7 @@ export default function App() {
           };
 
           // Persist to local storage
-          localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
+          safeSetLocalStorage('gramin_student_session', JSON.stringify(updatedUser));
 
           // Sync to Firebase Firestore
           updateFirebaseUserFields(current.mobile, { 
@@ -319,7 +332,7 @@ export default function App() {
     const currentTimestamp = Date.now();
     const updatedUser = { ...user, ...fields, updatedAt: currentTimestamp };
     setUser(updatedUser);
-    localStorage.setItem('gramin_student_session', JSON.stringify(updatedUser));
+    safeSetLocalStorage('gramin_student_session', JSON.stringify(updatedUser));
 
     try {
       if (navigator.onLine && !isOfflineSimulated) {
@@ -327,7 +340,7 @@ export default function App() {
         if (conflictResolved && source === 'remote') {
           // A newer remote update was found (e.g. from another shared device). Remote wins.
           setUser(resolvedUser as User);
-          localStorage.setItem('gramin_student_session', JSON.stringify(resolvedUser));
+          safeSetLocalStorage('gramin_student_session', JSON.stringify(resolvedUser));
           console.log("[LWW Sync] Resolved conflict: remote data was newer and has overwritten local changes.");
         }
       } else {
@@ -349,7 +362,7 @@ export default function App() {
     // Override Default Language with the student's selected language at Auth
     const userWithUpdatedLanguage = { ...authenticatedUser, defaultLanguage: currentLanguage };
     setUser(userWithUpdatedLanguage);
-    localStorage.setItem('gramin_student_session', JSON.stringify(userWithUpdatedLanguage));
+    safeSetLocalStorage('gramin_student_session', JSON.stringify(userWithUpdatedLanguage));
     setCurrentView('dashboard');
   };
 
@@ -386,58 +399,52 @@ export default function App() {
         {/* Render Active Screen Panel */}
         <div id="active-viewport-card" className="w-full animate-fade-in">
           {currentView === 'home' && (
-            <HomeView
-              onNavigate={setCurrentView}
-              lang={currentLanguage}
-              onSimulateOffline={handleSimulateOfflineToggle}
-              isOfflineSimulated={isOfflineSimulated}
-            />
+            <ErrorBoundary fallbackTitle="Home View Notice">
+              <HomeView
+                onNavigate={setCurrentView}
+                lang={currentLanguage}
+                onSimulateOffline={handleSimulateOfflineToggle}
+                isOfflineSimulated={isOfflineSimulated}
+              />
+            </ErrorBoundary>
           )}
 
           {currentView === 'about' && (
-            <AboutView lang={currentLanguage} />
+            <ErrorBoundary fallbackTitle="About View Notice">
+              <AboutView lang={currentLanguage} />
+            </ErrorBoundary>
           )}
 
           {currentView === 'features' && (
-            <FeaturesView lang={currentLanguage} />
+            <ErrorBoundary fallbackTitle="Features View Notice">
+              <FeaturesView lang={currentLanguage} />
+            </ErrorBoundary>
           )}
 
           {(currentView === 'login' || currentView === 'signup') && (
-            <AuthView
-              mode={currentView}
-              onSuccess={handleAuthSuccess}
-              onSwitchMode={setCurrentView}
-              lang={currentLanguage}
-              onLanguageChange={handleLanguageChange}
-            />
+            <ErrorBoundary fallbackTitle="Authentication View Notice">
+              <AuthView
+                mode={currentView}
+                onSuccess={handleAuthSuccess}
+                onSwitchMode={setCurrentView}
+                lang={currentLanguage}
+                onLanguageChange={handleLanguageChange}
+              />
+            </ErrorBoundary>
           )}
 
           {currentView === 'dashboard' && user && (
-            <DashboardView
-              user={user}
-              lang={currentLanguage}
-              onUpdateUser={handleUpdateUser}
-            />
+            <ErrorBoundary fallbackTitle="Student Dashboard Notice">
+              <DashboardView
+                user={user}
+                lang={currentLanguage}
+                onUpdateUser={handleUpdateUser}
+              />
+            </ErrorBoundary>
           )}
 
           {currentView === 'admin-login' && (
-            <AdminAuthView
-              onSuccess={handleAdminAuthSuccess}
-              onBackToMain={() => setCurrentView('home')}
-              lang={currentLanguage}
-              adminUser={adminUser}
-              onGoToDashboard={() => setCurrentView('admin-dashboard')}
-            />
-          )}
-
-          {currentView === 'admin-dashboard' && (
-            adminUser ? (
-              <AdminDashboardView
-                adminUser={adminUser}
-                lang={currentLanguage}
-                onLogoutAdmin={handleLogoutAdmin}
-              />
-            ) : (
+            <ErrorBoundary fallbackTitle="Admin Authentication Notice">
               <AdminAuthView
                 onSuccess={handleAdminAuthSuccess}
                 onBackToMain={() => setCurrentView('home')}
@@ -445,6 +452,28 @@ export default function App() {
                 adminUser={adminUser}
                 onGoToDashboard={() => setCurrentView('admin-dashboard')}
               />
+            </ErrorBoundary>
+          )}
+
+          {currentView === 'admin-dashboard' && (
+            adminUser ? (
+              <ErrorBoundary fallbackTitle="Admin Dashboard Notice">
+                <AdminDashboardView
+                  adminUser={adminUser}
+                  lang={currentLanguage}
+                  onLogoutAdmin={handleLogoutAdmin}
+                />
+              </ErrorBoundary>
+            ) : (
+              <ErrorBoundary fallbackTitle="Admin Authentication Notice">
+                <AdminAuthView
+                  onSuccess={handleAdminAuthSuccess}
+                  onBackToMain={() => setCurrentView('home')}
+                  lang={currentLanguage}
+                  adminUser={adminUser}
+                  onGoToDashboard={() => setCurrentView('admin-dashboard')}
+                />
+              </ErrorBoundary>
             )
           )}
         </div>

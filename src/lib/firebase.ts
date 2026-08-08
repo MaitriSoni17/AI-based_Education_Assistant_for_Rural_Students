@@ -107,6 +107,14 @@ export interface FirestoreUser {
   checkInDates?: string; // Stringified array
   dailyStudyLog?: string; // Stringified object
   updatedAt?: number; // Epoch timestamp for Last-Write-Wins conflict resolution
+  puzzlesSolved?: number;
+  puzzlesAttempted?: number;
+  puzzleAccuracy?: number;
+  puzzleStreak?: number;
+  puzzleSubjectProficiency?: string; // Stringified JSON object
+  puzzleStrongTopics?: string; // Stringified JSON array
+  puzzleWeakTopics?: string; // Stringified JSON array
+  puzzleStatsByClass?: string; // Stringified JSON object mapping class to stats
 }
 
 /**
@@ -483,4 +491,149 @@ export async function deleteFirebaseCertificate(id: string): Promise<void> {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
+
+/**
+ * Helper to strip undefined values so Firestore setDoc/updateDoc doesn't throw unsupported field value errors
+ */
+function sanitizeFirestorePayload<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const cleanObj: Record<string, any> = {};
+  Object.keys(obj).forEach((key) => {
+    if (obj[key] !== undefined) {
+      cleanObj[key] = obj[key];
+    }
+  });
+  return cleanObj;
+}
+
+/* ==========================================================================
+   Curriculum Folders & Files - Firestore Integration
+   ========================================================================== */
+
+export interface FirestoreCurriculumFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  createdAt: string;
+  description?: string;
+  color?: string;
+}
+
+export interface FirestoreCurriculumFile {
+  id: string;
+  name: string;
+  folderId: string | null;
+  subject: string;
+  category: 'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other';
+  size: string;
+  uploadedAt: string;
+  fileDataUrl?: string;
+  externalUrl?: string;
+  description?: string;
+  standard?: string;
+  board?: string;
+  isVisible?: boolean;
+}
+
+/**
+ * Fetch all curriculum folders from Firestore
+ */
+export async function getAllFirebaseCurriculumFolders(): Promise<FirestoreCurriculumFolder[]> {
+  const path = "curriculum_folders";
+  try {
+    const colRef = collection(db, path);
+    const snapshot = await getDocs(colRef);
+    const result: FirestoreCurriculumFolder[] = [];
+    snapshot.forEach((docSnap) => {
+      if (docSnap.exists()) {
+        result.push(docSnap.data() as FirestoreCurriculumFolder);
+      }
+    });
+    return result;
+  } catch (error) {
+    console.warn("Failed to fetch curriculum folders from Firestore:", error);
+    return [];
+  }
+}
+
+/**
+ * Save/update a curriculum folder in Firestore
+ */
+export async function saveFirebaseCurriculumFolder(folder: FirestoreCurriculumFolder): Promise<void> {
+  const path = `curriculum_folders/${folder.id}`;
+  try {
+    const docRef = doc(db, "curriculum_folders", folder.id);
+    const cleanPayload = sanitizeFirestorePayload(folder);
+    await setDoc(docRef, cleanPayload, { merge: true });
+  } catch (error) {
+    console.warn("Failed to save curriculum folder to Firestore:", error);
+  }
+}
+
+/**
+ * Delete a curriculum folder from Firestore
+ */
+export async function deleteFirebaseCurriculumFolder(id: string): Promise<void> {
+  const path = `curriculum_folders/${id}`;
+  try {
+    const docRef = doc(db, "curriculum_folders", id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.warn("Failed to delete curriculum folder from Firestore:", error);
+  }
+}
+
+/**
+ * Fetch all curriculum files from Firestore
+ */
+export async function getAllFirebaseCurriculumFiles(): Promise<FirestoreCurriculumFile[]> {
+  const path = "curriculum_files";
+  try {
+    const colRef = collection(db, path);
+    const snapshot = await getDocs(colRef);
+    const result: FirestoreCurriculumFile[] = [];
+    snapshot.forEach((docSnap) => {
+      if (docSnap.exists()) {
+        result.push(docSnap.data() as FirestoreCurriculumFile);
+      }
+    });
+    return result;
+  } catch (error) {
+    console.warn("Failed to fetch curriculum files from Firestore:", error);
+    return [];
+  }
+}
+
+/**
+ * Save/update a curriculum file in Firestore
+ */
+export async function saveFirebaseCurriculumFile(file: FirestoreCurriculumFile): Promise<void> {
+  const path = `curriculum_files/${file.id}`;
+  try {
+    const payload = { ...file };
+    // If fileDataUrl is larger than 700KB, strip it for Firestore doc to respect 1MB doc size limit
+    if (payload.fileDataUrl && payload.fileDataUrl.length > 700000) {
+      delete payload.fileDataUrl;
+    }
+    const cleanPayload = sanitizeFirestorePayload(payload);
+    const docRef = doc(db, "curriculum_files", file.id);
+    await setDoc(docRef, cleanPayload, { merge: true });
+  } catch (error) {
+    console.warn("Failed to save curriculum file to Firestore:", error);
+  }
+}
+
+/**
+ * Delete a curriculum file from Firestore
+ */
+export async function deleteFirebaseCurriculumFile(id: string): Promise<void> {
+  const path = `curriculum_files/${id}`;
+  try {
+    const docRef = doc(db, "curriculum_files", id);
+    await deleteDoc(docRef);
+  } catch (error) {
+    console.warn("Failed to delete curriculum file from Firestore:", error);
+  }
+}
+
+
 

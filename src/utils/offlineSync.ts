@@ -155,13 +155,21 @@ class OfflineSyncManager {
 
   public saveChatHistory(characterId: string, history: ChatMessage[], userMobile: string) {
     if (typeof localStorage === 'undefined' || !userMobile) return;
-    localStorage.setItem(`gramin_chat_history_${userMobile}_${characterId}`, JSON.stringify(history));
+    try {
+      localStorage.setItem(`gramin_chat_history_${userMobile}_${characterId}`, JSON.stringify(history));
+    } catch (e) {
+      console.warn("Failed to save chat history to localStorage:", e);
+    }
     this.notifyUpdate();
   }
 
   public clearChatHistory(characterId: string, userMobile: string) {
     if (typeof localStorage === 'undefined' || !userMobile) return;
-    localStorage.removeItem(`gramin_chat_history_${userMobile}_${characterId}`);
+    try {
+      localStorage.removeItem(`gramin_chat_history_${userMobile}_${characterId}`);
+    } catch (e) {
+      console.warn("Failed to clear chat history from localStorage:", e);
+    }
     this.notifyUpdate();
   }
 
@@ -180,9 +188,13 @@ class OfflineSyncManager {
 
   public queuePendingChat(chat: PendingChat, userMobile: string) {
     if (typeof localStorage === 'undefined' || !userMobile) return;
-    const list = this.getPendingChats(userMobile);
-    list.push(chat);
-    localStorage.setItem(`gramin_pending_chats_${userMobile}`, JSON.stringify(list));
+    try {
+      const list = this.getPendingChats(userMobile);
+      list.push(chat);
+      localStorage.setItem(`gramin_pending_chats_${userMobile}`, JSON.stringify(list));
+    } catch (e) {
+      console.warn("Failed to queue pending chat to localStorage:", e);
+    }
     this.notifyUpdate();
 
     // Try automatic immediate reconciliation if online
@@ -206,14 +218,18 @@ class OfflineSyncManager {
 
   public queuePendingProgress(type: 'quiz_points' | 'medal_earned', value: string | number, userMobile: string) {
     if (typeof localStorage === 'undefined' || !userMobile) return;
-    const list = this.getPendingProgress(userMobile);
-    list.push({
-      id: 'prog-' + Math.random().toString(36).substring(2, 9),
-      type,
-      value,
-      timestamp: Date.now()
-    });
-    localStorage.setItem(`gramin_pending_progress_${userMobile}`, JSON.stringify(list));
+    try {
+      const list = this.getPendingProgress(userMobile);
+      list.push({
+        id: 'prog-' + Math.random().toString(36).substring(2, 9),
+        type,
+        value,
+        timestamp: Date.now()
+      });
+      localStorage.setItem(`gramin_pending_progress_${userMobile}`, JSON.stringify(list));
+    } catch (e) {
+      console.warn("Failed to queue pending progress to localStorage:", e);
+    }
     this.notifyUpdate();
 
     // Trigger reconciliation if online

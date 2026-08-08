@@ -1,0 +1,156 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Student or Admin profile containing credentials, learning metrics, and settings.",
+      "type": "object",
+      "properties": {
+        "mobile": {
+          "type": "string",
+          "description": "Unique phone number of the user."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the student or staff member."
+        },
+        "defaultLanguage": {
+          "type": "string",
+          "enum": ["en", "hi", "gu", "mr", "ta", "te"],
+          "description": "Preferred interface language."
+        },
+        "signupDate": {
+          "type": "string",
+          "description": "ISO date string representing when user signed up."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["student", "teacher", "admin"],
+          "description": "Privilege and operational role of the user."
+        },
+        "village": {
+          "type": "string",
+          "description": "Associated village or digital hub location."
+        },
+        "school": {
+          "type": "string",
+          "description": "Associated school name."
+        },
+        "standard": {
+          "type": "string",
+          "description": "Grade / class level."
+        },
+        "board": {
+          "type": "string",
+          "description": "School board affiliation."
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Avatar design type or reference."
+        },
+        "totalPoints": {
+          "type": "number",
+          "description": "Total accumulated points (XP) earned from various activities."
+        },
+        "streakDays": {
+          "type": "number",
+          "description": "Consecutive days checked in."
+        },
+        "lastCheckedInDate": {
+          "type": "string",
+          "description": "The date of the last check-in."
+        },
+        "todayMins": {
+          "type": "number",
+          "description": "Active study minutes clocked today."
+        },
+        "lastActiveDate": {
+          "type": "string",
+          "description": "Date of last activity."
+        },
+        "certificateName": {
+          "type": "string",
+          "description": "Custom name for certificates."
+        },
+        "earnedCertificates": {
+          "type": "string",
+          "description": "JSON stringified array of earned certificates."
+        },
+        "claimedMedals": {
+          "type": "string",
+          "description": "JSON stringified array of claimed medals."
+        },
+        "mascotLessonsHistory": {
+          "type": "string",
+          "description": "JSON stringified array of lessons historical metrics."
+        },
+        "activePathId": {
+          "type": "string",
+          "description": "Currently active learning path ID."
+        },
+        "completedMilestones": {
+          "type": "string",
+          "description": "JSON stringified array of completed learning milestones."
+        },
+        "studyMins": {
+          "type": "number",
+          "description": "Total historical study minutes clocked."
+        },
+        "adminPin": {
+          "type": "string",
+          "description": "Security PIN/Password for Admin accounts."
+        },
+        "checkInDates": {
+          "type": "string",
+          "description": "JSON stringified array of check-in dates."
+        },
+        "dailyStudyLog": {
+          "type": "string",
+          "description": "JSON stringified object tracking daily minutes."
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "High-precision epoch timestamp for LWW replication conflict resolution."
+        },
+        "puzzlesSolved": {
+          "type": "number",
+          "description": "Number of correct puzzles solved."
+        },
+        "puzzlesAttempted": {
+          "type": "number",
+          "description": "Total number of puzzles attempted."
+        },
+        "puzzleAccuracy": {
+          "type": "number",
+          "description": "Calculated puzzle success percentage."
+        },
+        "puzzleStreak": {
+          "type": "number",
+          "description": "Number of consecutive puzzle completion days."
+        },
+        "puzzleSubjectProficiency": {
+          "type": "string",
+          "description": "JSON string mapping subjects to proficiency levels."
+        },
+        "puzzleStrongTopics": {
+          "type": "string",
+          "description": "JSON string array of well-mastered concepts."
+        },
+        "puzzleWeakTopics": {
+          "type": "string",
+          "description": "JSON string array of concepts requiring reinforcement."
+        },
+        "puzzleStatsByClass": {
+          "type": "string",
+          "description": "JSON stringified object mapping class names to standard-specific puzzle metrics."
+        }
+      },
+      "required": ["mobile", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{mobile}": {
+      "schema": "User",
+      "description": "User profile document containing progress metrics and config."
+    }
+  }
+}

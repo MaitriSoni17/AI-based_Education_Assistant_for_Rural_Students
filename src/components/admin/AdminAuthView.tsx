@@ -102,8 +102,12 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
       };
 
       // Store separate admin session key for security isolation
-      localStorage.setItem('gramin_admin_session', JSON.stringify(adminUser));
-      localStorage.setItem('gramin_student_session', JSON.stringify(adminUser));
+      try {
+        localStorage.setItem('gramin_admin_session', JSON.stringify(adminUser));
+        localStorage.setItem('gramin_student_session', JSON.stringify(adminUser));
+      } catch (e) {
+        console.warn("Failed to set admin session in localStorage:", e);
+      }
 
       onSuccess(adminUser);
     } catch (err) {
@@ -172,7 +176,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
           )}
 
           {/* Quick Credential Hint Box */}
-          <div className="bg-slate-800/80 border border-amber-500/30 rounded-2xl p-4 text-xs space-y-2 text-slate-300">
+          {/*<div className="bg-slate-800/80 border border-amber-500/30 rounded-2xl p-4 text-xs space-y-2 text-slate-300">
             <div className="flex items-center gap-2 font-bold text-amber-400 uppercase tracking-wider text-[11px]">
               <KeyRound className="h-4 w-4" />
               <span>Admin Demo Passcode:</span>
@@ -184,7 +188,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
             <p className="text-[10px] text-slate-400 italic">
               Note: This dedicated endpoint is separate from the student login page.
             </p>
-          </div>
+          </div>*/}
 
           {/* Error Banner */}
           {errorMessage && (
