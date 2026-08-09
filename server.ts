@@ -1664,13 +1664,14 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
         }
       });
 
+      const langName = lang === 'hi' ? 'Hindi' : lang === 'gu' ? 'Gujarati' : lang === 'mr' ? 'Marathi' : lang === 'bn' ? 'Bengali' : lang === 'ta' ? 'Tamil' : lang === 'te' ? 'Telugu' : 'English';
       const prompt = `Generate a high-quality educational puzzle for an Indian school student named ${studentName} in ${studentClass}, studying ${subject} on the topic "${topic}".
 Puzzle Type: ${puzzleType}
 Difficulty: ${difficulty}
 Puzzle Number: ${puzzleNumber}
-Language preference: ${lang === 'hi' ? 'Hindi & English bilingual' : 'English'}
+Language preference: ${langName}. The puzzle question, options, hint, and explanation MUST be generated in ${langName}.
 
-Provide a challenging, engaging academic puzzle with 4 multiple choice options (or empty array if open response), correct answer, a helpful hint, and a clear detailed explanation. Also identify the student group (e.g. "Group A - STEM & Logical Sciences").
+Provide a challenging, engaging academic puzzle with 4 multiple choice options (or empty array if open response), correct answer, a helpful hint, and a clear detailed explanation. Also identify the student group.
 Return valid JSON adhering to the requested schema.`;
 
       let responseText = "";
@@ -1715,18 +1716,95 @@ Return valid JSON adhering to the requested schema.`;
       }
 
       if (!puzzleData) {
+        let defaultQuestion = `[AI ${puzzleType}] For ${studentClass} studying ${subject} on "${topic}", what is the correct conceptual solution?`;
+        let defaultOptions = [`Optimal Core Principle for ${topic}`, `Secondary Standard Hypothesis`, `Derived Experimental Constant`, `None of the Above`];
+        let defaultCorrect = `Optimal Core Principle for ${topic}`;
+        let defaultHint = `Recall core notes for ${subject} in ${studentClass}.`;
+        let defaultExp = `In ${topic}, applying foundational rules guarantees the correct outcome.`;
+
+        if (puzzleType === 'Picture Puzzle') {
+          if (studentClass.includes('1') || studentClass.includes('2')) {
+            defaultQuestion = `🖼️ [Animal Picture] Which animal is shown in this picture?`;
+            defaultOptions = [`🐶 Dog`, `🐱 Cat`, `🐘 Elephant`, `🦁 Lion`];
+            defaultCorrect = `🐘 Elephant`;
+            defaultHint = `It is a large land animal with a trunk.`;
+            defaultExp = `Elephants are majestic mammals known for their large ears and long trunks.`;
+          } else {
+            defaultQuestion = `🖼️ [Plant Diagram] Which part of the plant absorbs water and minerals from the soil?`;
+            defaultOptions = [`Root`, `Stem`, `Leaf`, `Flower`];
+            defaultCorrect = `Root`;
+            defaultHint = `It grows underground.`;
+            defaultExp = `Roots anchor the plant and absorb essential water and nutrients from the soil.`;
+          }
+        } else if (puzzleType === 'Number Puzzle') {
+          if (studentClass.includes('1')) {
+            defaultQuestion = `🔢 Solve the visual addition: ⭐ + ⭐ = ?`;
+            defaultOptions = [`1`, `2`, `3`, `4`];
+            defaultCorrect = `2`;
+            defaultHint = `Count the stars: 1 plus 1.`;
+            defaultExp = `1 star + 1 star equals 2 stars.`;
+          } else if (studentClass.includes('3')) {
+            defaultQuestion = `🔢 Calculate: 25 + 17 = ?`;
+            defaultOptions = [`32`, `42`, `52`, `37`];
+            defaultCorrect = `42`;
+            defaultHint = `Add 25 and 17 (25 + 10 = 35, 35 + 7 = 42).`;
+            defaultExp = `25 + 17 equals 42.`;
+          } else {
+            defaultQuestion = `🔢 Complete the number pattern: 5 → 10 → 15 → __ → 25`;
+            defaultOptions = [`18`, `20`, `22`, `30`];
+            defaultCorrect = `20`;
+            defaultHint = `Notice the increment of 5 at each step.`;
+            defaultExp = `The sequence increases by 5 each time, so after 15 comes 20.`;
+          }
+        } else if (puzzleType === 'Word Puzzle') {
+          if (studentClass.includes('1')) {
+            defaultQuestion = `🔤 Complete the missing letter: C _ T`;
+            defaultOptions = [`A`, `E`, `I`, `O`];
+            defaultCorrect = `A`;
+            defaultHint = `A small furry pet that says meow.`;
+            defaultExp = `C-A-T spells Cat.`;
+          } else if (studentClass.includes('3')) {
+            defaultQuestion = `🔤 Arrange the jumbled letters to form a fruit: P P A L E`;
+            defaultOptions = [`APPLE`, `PAPAYA`, `PEACH`, `PLUM`];
+            defaultCorrect = `APPLE`;
+            defaultHint = `An apple a day keeps the doctor away!`;
+            defaultExp = `P-P-A-L-E rearranged spells APPLE 🍎.`;
+          } else {
+            defaultQuestion = `🔤 Find the correct word: A person who teaches students in a school is a ______.`;
+            defaultOptions = [`Doctor`, `Teacher`, `Engineer`, `Pilot`];
+            defaultCorrect = `Teacher`;
+            defaultHint = `Guides students in classrooms.`;
+            defaultExp = `A teacher imparts education and knowledge to students.`;
+          }
+        } else if (puzzleType === 'Jigsaw Puzzle') {
+          defaultQuestion = `🧩 Complete the Solar System: Place the correct celestial object in the 3rd orbit from the Sun.`;
+          defaultOptions = [`☀️ Sun`, `🌍 Earth`, `🪐 Saturn`, `🌙 Moon`];
+          defaultCorrect = `🌍 Earth`;
+          defaultHint = `Our home planet is the third planet from the Sun.`;
+          defaultExp = `Earth is the third planet from the Sun and the only astronomical object known to harbor life.`;
+        } else if (puzzleType === 'Color & Identify') {
+          if (studentClass.includes('1')) {
+            defaultQuestion = `🎨 Find the Red Object from the choices below:`;
+            defaultOptions = [`🍎 Apple`, `🐘 Elephant`, `🍌 Banana`, `🌳 Tree`];
+            defaultCorrect = `🍎 Apple`;
+            defaultHint = `It is a red fruit.`;
+            defaultExp = `An apple is typically bright red in color.`;
+          } else {
+            defaultQuestion = `🎨 Which part of the plant is usually green and performs photosynthesis?`;
+            defaultOptions = [`🌱 Leaf`, `🌰 Seed`, `🪵 Bark`, `🪨 Soil`];
+            defaultCorrect = `🌱 Leaf`;
+            defaultHint = `It contains chlorophyll which makes it green.`;
+            defaultExp = `Leaves contain chlorophyll, which captures sunlight to make food for the plant.`;
+          }
+        }
+
         puzzleData = {
-          question: `[AI ${puzzleType}] For ${studentClass} studying ${subject} on "${topic}", what is the correct conceptual solution?`,
+          question: defaultQuestion,
           puzzleType: puzzleType,
-          options: [
-            `Optimal Core Principle for ${topic}`,
-            `Secondary Standard Hypothesis`,
-            `Derived Experimental Constant`,
-            `None of the Above`
-          ],
-          correctAnswer: `Optimal Core Principle for ${topic}`,
-          hint: `Recall core notes for ${subject} in ${studentClass}.`,
-          explanation: `In ${topic}, applying foundational rules guarantees the correct outcome.`,
+          options: defaultOptions,
+          correctAnswer: defaultCorrect,
+          hint: defaultHint,
+          explanation: defaultExp,
           groupIdentified: studentClass.includes('1') || studentClass.includes('2') || studentClass.includes('3') || studentClass.includes('4') || studentClass.includes('5') ? 'Group 1 — Fun & Visual Learning' : 'Group 2 — Concept & Skill-Based Learning',
           difficulty: difficulty
         };
@@ -1755,6 +1833,171 @@ Return valid JSON adhering to the requested schema.`;
           explanation: 'Primary Correct Choice satisfies all academic criteria.',
           groupIdentified: 'Standard Identified Group',
           difficulty: req.body?.difficulty || 'Medium'
+        }
+      });
+    }
+  });
+
+  // API ROUTE: AI STUDY WORKSPACE FOR STUDENTS (TRANSLATION, PRACTICE QUESTIONS, SUMMARIES, SHORT NOTES)
+  app.post("/api/gemini/pdf-workspace", async (req, res) => {
+    try {
+      const { action, targetLanguage, fileName, extractedText, customInput, board } = req.body;
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({
+          success: false,
+          message: "Gemini API key is not configured. Please define GEMINI_API_KEY in your secrets."
+        });
+      }
+
+      const { GoogleGenAI, Type } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      // Prepare context block
+      let pdfContext = "";
+      if (extractedText && extractedText.trim()) {
+        // Truncate extracted text to avoid token limits (keep first ~15,000 chars as context)
+        pdfContext = `\n--- EXTRACTED PDF TEXT LAYER CONTEXT (TRUNCATED) ---\n${extractedText.substring(0, 15000)}\n`;
+      }
+
+      let promptMsg = "";
+      if (action === 'translate') {
+        promptMsg = `Please translate the following content or topic into the requested language.
+Selected/Document Text: "${customInput || 'Entire Document'}"
+If the text is empty or says "Entire Document", translate the main concepts from the PDF context. Ensure the translation is beautiful, accurate, and includes bilingual headings/meanings where helpful.`;
+      } else if (action === 'solve-questions') {
+        promptMsg = `Analyze the practice questions in the PDF or solve the student's specific question: "${customInput || 'Please extract and solve the key practice questions from this chapter'}".
+Explain the solution in extremely simple, easy-to-understand words, step-by-step. Break down any complex technical terms or math equations.`;
+      } else if (action === 'summarize') {
+        promptMsg = `Summarize the topic: "${customInput || 'Summarize the entire document'}".
+Create a high-fidelity summary, highlighting the main objectives, definitions, and essential takeaways.`;
+      } else if (action === 'short-notes') {
+        promptMsg = `Create brief, high-yield revision short notes based on: "${customInput || 'Create short notes for this chapter'}".
+Structure it with neat bullet points, list key definitions, formulas (using LaTeX $$ notation), and memory tips or mnemonics.`;
+      } else {
+        promptMsg = `Provide academic study support for: "${customInput || 'General revision'}".`;
+      }
+
+      const systemPrompt = `You are GyaanBot's Senior AI Study Mentor, a highly encouraging tutor specializing in the Indian school curriculum (CBSE, GSEB, state boards, etc.).
+Your goal is to process the student's query and provide comprehensive study support in their requested language.
+Target Language Code: ${targetLanguage || 'en'}
+
+Document Filename: ${fileName || "Study Notes"}
+${pdfContext}
+
+You MUST generate your response STRICTLY as a single JSON object. Your entire response must be valid JSON, containing NO text outside the JSON object. Do not wrap the JSON object in markdown blocks like \`\`\`json.
+
+The JSON schema you must strictly follow:
+{
+  "text": "The rich, beautiful academic text response formatted in Markdown (using asterisks for bolding, bullet points, etc.). Use LaTeX notation for formulas and math equations (e.g., $$E = mc^2$$ or $$\\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$). Write the entire text content in the requested target language (${targetLanguage}). Be detailed, professional, and encouraging.",
+  "diagram": {
+    "title": "Title of the Concept Map / Flow Diagram",
+    "nodes": [
+      { "id": "1", "label": "Short, clear concept name (in requested language)", "color": "A light hex color code appropriate for the node (e.g. #fef3c7 for main topic, #dcfce7 for sub-concept, #e0f2fe, #f3e8ff, #fee2e2)", "description": "1-sentence definition or role of this concept" }
+    ],
+    "links": [
+      { "source": "1", "target": "2", "label": "Relationship verb (e.g., 'consists of', 'drives', 'equals', 'causes', 'translates to' in requested language)" }
+    ]
+  },
+  "video": {
+    "title": "Title of this Interactive Animated Video Lesson",
+    "slides": [
+      {
+        "slideNum": 1,
+        "title": "Slide Title (concept slide in requested language)",
+        "bullets": ["Slide bullet point 1 (in requested language)", "Slide bullet point 2 (in requested language)"],
+        "narrative": "Voice narrator narration script (max 3 sentences) written in the target language (${targetLanguage}). This script will be read aloud to the student as they view this slide.",
+        "visualAnimation": "Instruction for visual layout, e.g., 'Node 1 lights up and expands'"
+      }
+    ]
+  }
+}
+
+Guidelines for formatting the JSON fields:
+- Every string inside the JSON must be in the requested language (${targetLanguage}) unless it is a specific technical formula or english acronym.
+- Make sure that you escape quotes and newlines properly inside your JSON string values (use \\n for newlines).
+- The diagram nodes must form a logical flow or structure. Provide between 3 to 6 nodes.
+- The video slides must form a cohesive 3 to 5 slide animated educational lesson explaining the concept step-by-step.
+`;
+
+      let response: any = null;
+      let lastError: any = null;
+      let success = false;
+      const modelsToTry = [
+        "gemini-3.6-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-flash-latest"
+      ];
+
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`[PDF WORKSPACE] Querying model ${modelName} for action "${action}"...`);
+          response = await ai.models.generateContent({
+            model: modelName,
+            contents: promptMsg,
+            config: {
+              systemInstruction: systemPrompt,
+              temperature: 0.3,
+              responseMimeType: "application/json"
+            }
+          });
+          success = true;
+          break;
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`[PDF WORKSPACE] Failed with model ${modelName}:`, err.message || err);
+        }
+      }
+
+      if (!success && lastError) {
+        throw lastError;
+      }
+
+      const rawText = response?.text || "{}";
+      const resultData = JSON.parse(rawText.trim());
+
+      return res.json({
+        success: true,
+        data: resultData
+      });
+
+    } catch (error: any) {
+      console.error("[GLOBAL SERVER ERROR IN /api/gemini/pdf-workspace]:", error);
+      // Return beautiful fallback content on error so the app stays functional
+      return res.json({
+        success: true,
+        data: {
+          text: `### 🤖 Study Assistant Note\nWe encountered a transient network issue or API rate limit while processing this request. Here is a simplified offline response to keep your learning uninterrupted:\n\n* **Selected Action:** ${req.body.action || 'Study Support'}\n* **Selected Language:** ${req.body.targetLanguage || 'en'}\n\n**Key Concept Summary:**\nThis document covers essential academic materials. Please retry in a moment when the connection is fully clear.`,
+          diagram: {
+            title: "Concept Hub Map",
+            nodes: [
+              { id: "1", label: "Core Study Material", color: "#fef3c7", description: "The central curriculum topic being studied." },
+              { id: "2", label: "Student Learning", color: "#dcfce7", description: "Active revision, notes, and interactive practice." }
+            ],
+            links: [
+              { source: "1", target: "2", label: "leads to" }
+            ]
+          },
+          video: {
+            title: "Standard Quick Tutorial",
+            slides: [
+              {
+                slideNum: 1,
+                title: "Welcome to Study Companion",
+                bullets: ["Explore the interactive study guides", "Translate or solve practice questions instantly"],
+                narrative: "Welcome, student! Use the companion to translate lessons, solve homework questions, and study with diagrams.",
+                visualAnimation: "Central hub displays with soft pulsing circle"
+              }
+            ]
+          }
         }
       });
     }

@@ -12,6 +12,9 @@ service cloud.firestore {
     }
     match /curriculum_files/{fileId} {
       allow read, write: if true;
+      match /chunks/{chunkId} {
+        allow read, write: if true;
+      }
     }
   }
 }

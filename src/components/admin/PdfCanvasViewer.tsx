@@ -19,6 +19,7 @@ interface PdfCanvasViewerProps {
   fileName: string;
   onGetFileLocal: (id: string) => Promise<string | null>;
   onDownload: () => void;
+  onPagesTextExtracted?: (pages: { pageNum: number; text: string }[]) => void;
 }
 
 interface PdfPageItemProps {
@@ -174,6 +175,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   fileName,
   onGetFileLocal,
   onDownload,
+  onPagesTextExtracted,
 }) => {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [activePageNum, setActivePageNum] = useState<number>(1);
@@ -289,29 +291,35 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           throw new Error('PDF file stream not found. Please try re-uploading the file.');
         }
 
-        if (!dataUrlToUse.startsWith('data:application/pdf') && !dataUrlToUse.startsWith('data:')) {
-          throw new Error('Invalid file format. Only PDF documents can be loaded in the interactive reader.');
-        }
-
-        const base64Parts = dataUrlToUse.split(',');
-        if (base64Parts.length < 2) {
-          throw new Error('Corrupted PDF file stream payload.');
-        }
-
-        const base64 = base64Parts[1];
-        const binaryString = atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-
         const pdfjsLib = (window as any).pdfjsLib;
         if (!pdfjsLib) {
           throw new Error('PDF.js library could not be loaded.');
         }
 
-        const loadingTask = pdfjsLib.getDocument({ data: bytes });
+        let loadingTask: any = null;
+
+        if (dataUrlToUse.startsWith('http://') || dataUrlToUse.startsWith('https://') || dataUrlToUse.startsWith('blob:')) {
+          loadingTask = pdfjsLib.getDocument({ url: dataUrlToUse });
+        } else if (dataUrlToUse.startsWith('data:')) {
+          const base64Parts = dataUrlToUse.split(',');
+          if (base64Parts.length < 2) {
+            throw new Error('Corrupted PDF file stream payload.');
+          }
+
+          const base64 = base64Parts[1].replace(/[\s\r\n]/g, '');
+          const binaryString = atob(base64);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+
+          loadingTask = pdfjsLib.getDocument({ data: bytes });
+        } else {
+          // Attempt loading as URL directly
+          loadingTask = pdfjsLib.getDocument({ url: dataUrlToUse });
+        }
+
         const pdf = await loadingTask.promise;
 
         // Get standard dimensions from the first page
@@ -326,6 +334,41 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           setLoading(false);
         }
       } catch (err: any) {
+        console.warn("Primary PDF loading failed, attempting local fallback:", err);
+        try {
+          const fallbackDataUrl = await onGetFileLocal(fileId);
+          if (fallbackDataUrl && fallbackDataUrl !== fileDataUrl) {
+            const pdfjsLib = (window as any).pdfjsLib;
+            if (pdfjsLib) {
+              let loadingTask: any;
+              if (fallbackDataUrl.startsWith('http') || fallbackDataUrl.startsWith('blob:')) {
+                loadingTask = pdfjsLib.getDocument({ url: fallbackDataUrl });
+              } else {
+                const base64 = fallbackDataUrl.split(',')[1]?.replace(/[\s\r\n]/g, '') || '';
+                const binaryString = atob(base64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+                }
+                loadingTask = pdfjsLib.getDocument({ data: bytes });
+              }
+              const pdf = await loadingTask.promise;
+              const firstPage = await pdf.getPage(1);
+              const viewport = firstPage.getViewport({ scale: 1 });
+              if (isMounted) {
+                setPageSize({ width: viewport.width, height: viewport.height });
+                setPdfDoc(pdf);
+                setNumPages(pdf.numPages);
+                setActivePageNum(1);
+                setLoading(false);
+                return;
+              }
+            }
+          }
+        } catch (fbErr) {
+          console.warn("Fallback PDF loading failed:", fbErr);
+        }
+
         if (isMounted) {
           setError(err.message || 'Error processing the PDF document stream.');
           setLoading(false);
@@ -360,6 +403,9 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
         if (isMounted) {
           setPagesText(extracted);
           setIndexingText(false);
+          if (onPagesTextExtracted) {
+            onPagesTextExtracted(extracted);
+          }
         }
       } catch (err) {
         console.warn('Failed to extract PDF text layers:', err);

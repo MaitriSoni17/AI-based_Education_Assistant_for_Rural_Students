@@ -3028,7 +3028,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
       
       speakText(
         lang === 'hi' ? 'बहुत बढ़िया! रासायनिक समीकरण पूरी तरह से संतुलित है।' : 'Excellent work! The chemical equation is perfectly balanced.',
-        lang, 'Swami AI 🤖', '🤖 Swami AI'
+        lang, 'Swami AI', 'Swami AI'
       );
 
       setTimeout(() => {
@@ -3038,7 +3038,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
       setChemStatus('incorrect');
       speakText(
         lang === 'hi' ? 'यह संतुलित नहीं है। कृपया परमाणु संख्याओं की दोबारा जांच करें।' : 'That is not correct. Please count the atoms on both sides again.',
-        lang, 'Swami AI 🤖', '🤖 Swami AI'
+        lang, 'Swami AI', 'Swami AI'
       );
     }
   };

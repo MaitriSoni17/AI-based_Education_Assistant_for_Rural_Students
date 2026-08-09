@@ -557,7 +557,7 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                 {/* METADATA & PDF DOWNLOAD ACTION */}
                 <div className="bg-white rounded-2xl border border-gray-150 p-4 shadow-3xs flex flex-col justify-between space-y-4 text-left">
                   <div className="space-y-2.5 font-mono text-xs">
-                    <div className="flex flex-row items-center justify-between border-b border-gray-100 pb-2 gap-4">
+                    <div className="flex flex-col items-left justify-between border-b border-gray-100 pb-2 gap-4">
                       <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px] shrink-0">
                         {lang === 'hi' ? "अर्जित समय" : "Secured Timestamp"}
                       </span>
@@ -566,11 +566,11 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                         <span>{selectedCert.date} @ {selectedCert.time}</span>
                       </span>
                     </div>
-                    <div className="flex flex-row items-center justify-between gap-4">
+                    <div className="flex flex-col items-left justify-between gap-4">
                       <span className="text-gray-400 font-bold uppercase tracking-wider text-[10px] shrink-0">
                         {lang === 'hi' ? "सत्यापन कोड" : "Credential ID"}
                       </span>
-                      <span className="font-mono text-gray-500 font-bold uppercase select-all text-[10px] text-right truncate max-w-[200px]" title={selectedCert.id}>
+                      <span className="font-mono text-gray-500 font-bold uppercase select-all text-[10px] text-left truncate max-w-[200px]" title={selectedCert.id}>
                         {selectedCert.id}
                       </span>
                     </div>
@@ -702,7 +702,7 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                     <MessageSquare className="h-4.5 w-4.5" />
                   </div>
                   <h3 className="font-display font-extrabold text-sm sm:text-base text-[#3D405B]">
-                    💬 {lang === 'hi' ? "अध्ययन संवाद रिकॉर्ड (चैट इतिहास)" : "Conversational Study Transcripts"}
+                    {lang === 'hi' ? "अध्ययन संवाद रिकॉर्ड (चैट इतिहास)" : "Conversational Study Transcripts"}
                   </h3>
                 </div>
 

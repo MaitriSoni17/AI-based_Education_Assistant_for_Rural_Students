@@ -641,7 +641,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
           <div>
             <h3 className="font-display font-extrabold text-[#3D405B] text-base uppercase tracking-wider flex items-center gap-2">
               <Flame className="h-5 w-5 text-[#E07A5F] animate-pulse" />
-              {lang === 'hi' ? 'दैनिक अध्ययन निरंतरता पथ 🛤️' : 'Daily Consistency Streak Path 🛤️'}
+              {lang === 'hi' ? 'दैनिक अध्ययन निरंतरता पथ' : 'Daily Consistency Streak Path'}
             </h3>
             <p className="text-xs text-gray-500 font-sans">
               {lang === 'hi' 

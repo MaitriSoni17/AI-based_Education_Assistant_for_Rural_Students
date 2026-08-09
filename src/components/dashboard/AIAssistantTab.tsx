@@ -76,7 +76,7 @@ interface ChatSession {
 const CHARACTERS = [
   { 
     id: 'swami', 
-    name: 'Swami AI 🤖', 
+    name: 'Swami AI', 
     role: 'Mascot Companion', 
     char: '🤖 Swami AI',
     color: 'border-blue-200 bg-blue-50/50 hover:bg-blue-50 text-blue-900',
@@ -1564,7 +1564,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
     <div className="max-w-4xl mx-auto text-left">
       
       {/* RIGHT: LIVE CHAT DIALOGUE BOX */}
-      <div className="bg-white rounded-3xl border border-gray-150 shadow-sm flex flex-col h-[520px] overflow-hidden relative">
+      <div className="bg-white rounded-3xl border border-gray-150 shadow-sm flex flex-col h-[710px] overflow-hidden relative">
         
         {/* Chat Ribbon Header */}
         <div className="bg-[#3D405B] text-white p-3.5 px-5 flex justify-between items-center shrink-0">

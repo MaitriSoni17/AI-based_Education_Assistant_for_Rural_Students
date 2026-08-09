@@ -3159,7 +3159,7 @@ JSON Schema:
                 </div>
 
                 <h4 className="text-[#F2CC8F] font-display font-bold text-sm sm:text-base mb-1.5">
-                  {lang === 'hi' ? 'नया एआई लेक्चर शुरू करें! 🎓' : 'Start a New AI Lecture! 🎓'}
+                  {lang === 'hi' ? 'नया एआई लेक्चर शुरू करें!' : 'Start a New AI Lecture!'}
                 </h4>
                 <p className="text-gray-300 text-[11px] sm:text-xs max-w-md mx-auto mb-5 leading-relaxed">
                   {lang === 'hi' 
@@ -3206,7 +3206,7 @@ JSON Schema:
                   const slides = getSlidesForLesson(selectedLesson, lang);
                   const activeSlide = slides[currentSlideIndex] || slides[0] || { id: 'fallback', title: selectedLesson.query, content: selectedLesson.explanation, bullets: [], visualLayout: 'conceptual-flow' };
                   return (
-                    <div className="relative w-full">
+                    <div className="relative w-full overflow-hidden rounded-2xl">
                       <SlideVisualBoard 
                         slide={activeSlide} 
                         currentSlideIndex={currentSlideIndex} 
@@ -3223,14 +3223,14 @@ JSON Schema:
                             setShowPlayGesturePrompt(false);
                             handlePlayVoiceResponse();
                           }}
-                          className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center gap-3.5 cursor-pointer z-50 animate-fadeIn rounded-2xl border-2 border-[#E07A5F]/40"
+                          className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center gap-3.5 z-10 cursor-pointer animate-fadeIn rounded-2xl border-2 border-[#E07A5F]/40"
                         >
                           <div className="w-16 h-16 rounded-full bg-[#E07A5F] hover:bg-[#D56B4E] text-white flex items-center justify-center shadow-lg transform hover:scale-105 active:scale-95 transition-all animate-bounce">
                             <Play className="h-8 w-8 fill-current ml-1" />
                           </div>
                           <div className="space-y-1 text-center px-4">
                             <p className="text-white font-sans font-extrabold text-sm sm:text-base tracking-wide flex items-center justify-center gap-2">
-                              <span>🔊 {lang === 'hi' ? 'लेक्चर की आवाज़ शुरू करने के लिए यहाँ क्लिक करें!' : 'Click to Play Voice Lesson!'}</span>
+                              <span>{lang === 'hi' ? 'लेक्चर की आवाज़ शुरू करने के लिए यहाँ क्लिक करें!' : 'Click to Play Voice Lesson!'}</span>
                             </p>
                             <p className="text-gray-300 text-xs font-sans max-w-xs">
                               {lang === 'hi' 

@@ -9,7 +9,8 @@ import {
   query, 
   where, 
   getDocs,
-  deleteDoc
+  deleteDoc,
+  disableNetwork
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getDeterministicAvatar } from "../utils/avatar";
@@ -56,9 +57,15 @@ export interface FirestoreErrorInfo {
   }
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): void {
+  const errMessage = error instanceof Error ? error.message : String(error);
+  if (errMessage.includes("resource-exhausted") || errMessage.includes("quota")) {
+    console.warn("Firestore Quota Exceeded. Running in offline/local fallback mode.");
+    disableNetwork(db).catch(() => {});
+    return;
+  }
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMessage,
     authInfo: {
       userId: auth.currentUser?.uid || null,
       email: auth.currentUser?.email || null,
@@ -604,12 +611,62 @@ export async function getAllFirebaseCurriculumFiles(): Promise<FirestoreCurricul
 }
 
 /**
+ * Retrieve the full fileDataUrl from Firestore, reconstructing it from chunks if necessary
+ */
+export async function getFirebaseCurriculumFileDataUrl(fileId: string): Promise<string | null> {
+  try {
+    // Try to check chunks first
+    const chunksColRef = collection(db, "curriculum_files", fileId, "chunks");
+    const snapshot = await getDocs(chunksColRef);
+    if (!snapshot.empty) {
+      const chunks: { id: number; data: string }[] = [];
+      snapshot.forEach((docSnap) => {
+        const id = parseInt(docSnap.id, 10);
+        const data = docSnap.data().data || "";
+        chunks.push({ id, data });
+      });
+      // Sort chunks by index
+      chunks.sort((a, b) => a.id - b.id);
+      return chunks.map(c => c.data).join("");
+    }
+    
+    // Fallback: Check if it's on the main document
+    const docRef = doc(db, "curriculum_files", fileId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const fileData = docSnap.data() as FirestoreCurriculumFile;
+      return fileData.fileDataUrl || null;
+    }
+    return null;
+  } catch (error) {
+    console.warn("Failed to retrieve curriculum file chunks from Firestore:", error);
+    return null;
+  }
+}
+
+/**
  * Save/update a curriculum file in Firestore
  */
 export async function saveFirebaseCurriculumFile(file: FirestoreCurriculumFile): Promise<void> {
   const path = `curriculum_files/${file.id}`;
   try {
     const payload = { ...file };
+    const fileDataUrl = payload.fileDataUrl;
+
+    // If we have fileDataUrl, save it in chunks
+    if (fileDataUrl) {
+      // Chunk size of 800,000 characters (approx 800KB)
+      const chunkSize = 800000;
+      const chunksCount = Math.ceil(fileDataUrl.length / chunkSize);
+
+      // Save chunks to the chunks subcollection
+      for (let i = 0; i < chunksCount; i++) {
+        const chunkData = fileDataUrl.slice(i * chunkSize, (i + 1) * chunkSize);
+        const chunkDocRef = doc(db, "curriculum_files", file.id, "chunks", String(i));
+        await setDoc(chunkDocRef, { data: chunkData });
+      }
+    }
+
     // If fileDataUrl is larger than 700KB, strip it for Firestore doc to respect 1MB doc size limit
     if (payload.fileDataUrl && payload.fileDataUrl.length > 700000) {
       delete payload.fileDataUrl;
@@ -628,6 +685,15 @@ export async function saveFirebaseCurriculumFile(file: FirestoreCurriculumFile):
 export async function deleteFirebaseCurriculumFile(id: string): Promise<void> {
   const path = `curriculum_files/${id}`;
   try {
+    // Delete chunks first if any exist
+    const chunksColRef = collection(db, "curriculum_files", id, "chunks");
+    const snapshot = await getDocs(chunksColRef);
+    const deletePromises: Promise<void>[] = [];
+    snapshot.forEach((docSnap) => {
+      deletePromises.push(deleteDoc(doc(db, "curriculum_files", id, "chunks", docSnap.id)));
+    });
+    await Promise.all(deletePromises);
+
     const docRef = doc(db, "curriculum_files", id);
     await deleteDoc(docRef);
   } catch (error) {

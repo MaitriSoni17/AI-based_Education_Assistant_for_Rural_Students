@@ -1062,7 +1062,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
           }`}
         >
           <Clock className="h-4 w-4" />
-          <span>📝 Simulated Live AI Exam</span>
+          <span>Simulated Live AI Exam</span>
         </button>
         <button
           onClick={() => { setMode('standard'); setErrorMsg(null); }}
@@ -1073,7 +1073,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
           }`}
         >
           <UploadCloud className="h-4 w-4" />
-          <span>📤 Direct Answer Review</span>
+          <span>Direct Answer Review</span>
         </button>
       </div>
 

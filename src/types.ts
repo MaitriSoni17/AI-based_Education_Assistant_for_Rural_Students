@@ -67,3 +67,28 @@ export interface OfflineResource {
   category: 'video' | 'pdf' | 'audio' | 'quiz';
   downloaded: boolean;
 }
+
+export interface CurriculumFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  createdAt: string;
+  description?: string;
+  color?: string;
+}
+
+export interface CurriculumFile {
+  id: string;
+  name: string;
+  folderId: string | null;
+  subject: string;
+  category: 'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other';
+  size: string;
+  uploadedAt: string;
+  fileDataUrl?: string;
+  externalUrl?: string;
+  description?: string;
+  standard?: string;
+  board?: string;
+  isVisible?: boolean;
+}

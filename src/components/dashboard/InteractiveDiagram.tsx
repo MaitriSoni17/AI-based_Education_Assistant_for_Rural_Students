@@ -56,7 +56,7 @@ export default function InteractiveDiagram({ data, lang }: InteractiveDiagramPro
       return;
     }
     setIsPlayingText(identifier);
-    speakText(text, lang, 'Swami AI 🤖', '🤖 Swami AI', () => {
+    speakText(text, lang, 'Swami AI', 'Swami AI', () => {
       setIsPlayingText(null);
     });
   };

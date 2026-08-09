@@ -85,7 +85,7 @@ export default function SlideVisualBoard({
   };
 
   return (
-    <div className="w-full h-full flex flex-col md:flex-row gap-5 p-4 sm:p-5 text-white bg-[#1A1D2D]/95 rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden">
+    <div className="w-full min-h-[380px] sm:min-h-[440px] md:min-h-[480px] flex flex-col md:flex-row gap-5 p-4 sm:p-5 text-white bg-[#1A1D2D]/95 rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden">
       
       {/* Visual Canvas Panel (Left/Center) */}
       <div className="flex-1 min-h-[160px] sm:min-h-[240px] bg-slate-950/70 border border-white/5 rounded-2xl relative p-4 flex flex-col items-center justify-center overflow-hidden shadow-inner">

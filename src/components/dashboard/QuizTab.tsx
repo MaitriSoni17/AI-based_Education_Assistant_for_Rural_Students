@@ -943,12 +943,12 @@ const ASSEMBLING_QUESTIONS_LABELS: Record<string, string> = {
 };
 
 const GENERATE_CUSTOM_GAME_LABELS: Record<string, string> = {
-  en: "Generate Custom Game ✨",
-  hi: "कस्टम गेम जेनरेट करें ✨",
-  gu: "કસ્ટમ રમત બનાવો ✨",
-  mr: "कस्टम गेम तयार करा ✨",
-  ta: "தனிப்பயன் விளையாட்டை உருவாக்கு ✨",
-  te: "కస్టమ్ గేమ్ సృష్టించండి ✨"
+  en: "Generate Custom Game",
+  hi: "कस्टम गेम जेनरेट करें",
+  gu: "કસ્ટમ રમત બનાવો",
+  mr: "कस्टम गेम तयार करा",
+  ta: "தனிப்பயன் விளையாட்டை உருவாக்கு",
+  te: "కస్టమ్ గేమ్ సృష్టించండి"
 };
 
 const CUMULATIVE_SCORE_TITLE_LABELS: Record<string, string> = {
@@ -2290,7 +2290,14 @@ JSON Schema:
           <p className="text-xs text-gray-400">{HEADER_SUBTITLE_LABELS[lang] || HEADER_SUBTITLE_LABELS['en']}</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+        <div className="flex flex-col sm:flex-row gap-3 w-full">
+          <div className="bg-gradient-to-tr from-[#3D405B] to-[#4D506F] text-white rounded-2xl p-3 px-4 flex items-center gap-3 shrink-0 shadow-2xs w-full sm:w-auto justify-center">
+            <Award className="h-6 w-6 text-amber-300" />
+            <div className="font-mono text-left">
+              <div className="text-[9px] text-[#F2CC8F] font-black uppercase tracking-wider">{CUMULATIVE_SCORE_TITLE_LABELS[lang] || CUMULATIVE_SCORE_TITLE_LABELS['en']}</div>
+              <div className="text-base font-bold">{totalQuizPoints} {CUMULATIVE_SCORE_DESC_LABELS[lang] || CUMULATIVE_SCORE_DESC_LABELS['en']}</div>
+            </div>
+          </div>
           {onNavigateToTab && (
             <button
               onClick={() => onNavigateToTab('certificates')}
@@ -2299,14 +2306,6 @@ JSON Schema:
               <span>📜 {lang === 'hi' ? "मेरे प्रमाण पत्र" : "My Certificates Portfolio"}</span>
             </button>
           )}
-
-          <div className="bg-gradient-to-tr from-[#3D405B] to-[#4D506F] text-white rounded-2xl p-3 px-4 flex items-center gap-3 shrink-0 shadow-2xs w-full sm:w-auto justify-center">
-            <Award className="h-6 w-6 text-amber-300" />
-            <div className="font-mono text-left">
-              <div className="text-[9px] text-[#F2CC8F] font-black uppercase tracking-wider">{CUMULATIVE_SCORE_TITLE_LABELS[lang] || CUMULATIVE_SCORE_TITLE_LABELS['en']}</div>
-              <div className="text-base font-bold">{totalQuizPoints} {CUMULATIVE_SCORE_DESC_LABELS[lang] || CUMULATIVE_SCORE_DESC_LABELS['en']}</div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -2314,7 +2313,6 @@ JSON Schema:
         <div className="bg-white rounded-3xl border border-gray-200 p-8 text-center max-w-md mx-auto space-y-6 shadow-sm animate-pulse flex flex-col justify-center items-center">
           <div className="relative flex justify-center">
             <RefreshCw className="h-12 w-12 text-[#E07A5F] animate-spin" />
-            <Sparkles className="h-6 w-6 text-amber-400 absolute -top-1 -right-1 animate-bounce" />
           </div>
           <div className="space-y-2">
             <h4 className="font-display font-extrabold text-base text-[#3D405B]">

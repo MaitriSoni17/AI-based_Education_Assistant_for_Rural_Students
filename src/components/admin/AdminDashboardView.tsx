@@ -14,7 +14,7 @@ import {
   getAllFirebaseUsers, updateUserRole, deleteFirebaseUser, setFirebaseUser, updateFirebaseUserFields, FirestoreUser,
   getAllFirebaseCertificates, issueFirebaseCertificate, updateFirebaseCertificateStatus, deleteFirebaseCertificate, FirestoreCertificate,
   getAllFirebaseCurriculumFolders, getAllFirebaseCurriculumFiles, saveFirebaseCurriculumFolder, saveFirebaseCurriculumFile,
-  deleteFirebaseCurriculumFolder, deleteFirebaseCurriculumFile, FirestoreCurriculumFolder, FirestoreCurriculumFile
+  deleteFirebaseCurriculumFolder, deleteFirebaseCurriculumFile, getFirebaseCurriculumFileDataUrl, FirestoreCurriculumFolder, FirestoreCurriculumFile
 } from '../../lib/firebase';
 import { getSafeDateString } from '../../utils/dateUtils';
 import { saveFileLocal, getFileLocal, deleteFileLocal } from '../../lib/indexedDbStore';
@@ -368,6 +368,11 @@ export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: A
 
   // File action dropdown state
   const [activeFileMenuId, setActiveFileMenuId] = useState<string | null>(null);
+  const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
+  const [showBulkCategorizeModal, setShowBulkCategorizeModal] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [bulkCategory, setBulkCategory] = useState<'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other'>('pdf');
+  const [bulkSubject, setBulkSubject] = useState('Science');
 
   // PDF Viewer & Read Aloud State
   const [activePdfFile, setActivePdfFile] = useState<CurriculumFile | null>(null);
@@ -1218,9 +1223,16 @@ startxref
 
         createdFiles.push(fileObj);
 
-        // Save file payload to IndexedDB for offline persistence
+        // Save file payload to IndexedDB for offline persistence & localStorage cache
         if (item.dataUrl) {
           await saveFileLocal(fileObj.id, item.dataUrl);
+          try {
+            if (item.dataUrl.length < 2000000) {
+              localStorage.setItem(`gramin_pdf_cache_${fileObj.id}`, item.dataUrl);
+            }
+          } catch (e) {
+            console.warn("Failed to store PDF in localStorage cache:", e);
+          }
         }
 
         // Save to Firestore asynchronously
@@ -1383,9 +1395,16 @@ startxref
         description: newFileDesc.trim() || undefined
       };
 
-      // Save file payload to IndexedDB for offline persistence
+      // Save file payload to IndexedDB for offline persistence & localStorage cache
       if (newFileDataUrl) {
         await saveFileLocal(newFile.id, newFileDataUrl);
+        try {
+          if (newFileDataUrl.length < 2000000) {
+            localStorage.setItem(`gramin_pdf_cache_${newFile.id}`, newFileDataUrl);
+          }
+        } catch (e) {
+          console.warn("Failed to store PDF in localStorage cache:", e);
+        }
       }
 
       setCurriculumFiles((prev) => [newFile, ...prev]);
@@ -1510,6 +1529,75 @@ startxref
     }
   };
 
+  const handleBulkDeleteFiles = async () => {
+    if (selectedFileIds.length === 0) return;
+
+    try {
+      const idsToDelete = [...selectedFileIds];
+
+      const deletedFileIds: string[] = (() => {
+        try { return JSON.parse(localStorage.getItem('gramin_deleted_file_ids_v1') || '[]'); } catch { return []; }
+      })();
+
+      idsToDelete.forEach((id) => {
+        if (!deletedFileIds.includes(id)) {
+          deletedFileIds.push(id);
+        }
+      });
+      localStorage.setItem('gramin_deleted_file_ids_v1', JSON.stringify(deletedFileIds));
+
+      const updatedFiles = curriculumFiles.filter((f) => !idsToDelete.includes(f.id));
+      setCurriculumFiles(updatedFiles);
+      try {
+        localStorage.setItem('gramin_curriculum_files_v2', JSON.stringify(updatedFiles));
+      } catch (e) {
+        console.warn("Failed to update localStorage after bulk delete:", e);
+      }
+
+      setAuditLogs((prev) => [`[${new Date().toLocaleTimeString()}] Bulk deleted ${idsToDelete.length} files`, ...prev]);
+      setSelectedFileIds([]);
+      setShowBulkDeleteModal(false);
+
+      for (const id of idsToDelete) {
+        deleteFirebaseCurriculumFile(id).catch((err) => console.warn("Firestore bulk delete file error:", err));
+        deleteFileLocal(id).catch((err) => console.warn("IndexedDB delete file error:", err));
+      }
+    } catch (err: any) {
+      console.error("Error bulk deleting files:", err);
+      setShowBulkDeleteModal(false);
+    }
+  };
+
+  const handleBulkCategorizeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedFileIds.length === 0) return;
+
+    try {
+      const updatedFiles = curriculumFiles.map((f) => {
+        if (selectedFileIds.includes(f.id)) {
+          const updated = { ...f, category: bulkCategory, subject: bulkSubject };
+          saveFirebaseCurriculumFile(updated).catch((err) => console.warn("Firestore bulk categorize error:", err));
+          return updated;
+        }
+        return f;
+      });
+
+      setCurriculumFiles(updatedFiles);
+      try {
+        localStorage.setItem('gramin_curriculum_files_v2', JSON.stringify(updatedFiles));
+      } catch (e) {
+        console.warn("Failed to update localStorage after bulk categorize:", e);
+      }
+
+      setAuditLogs((prev) => [`[${new Date().toLocaleTimeString()}] Bulk re-categorized ${selectedFileIds.length} files to ${bulkCategory} / ${bulkSubject}`, ...prev]);
+      setSelectedFileIds([]);
+      setShowBulkCategorizeModal(false);
+    } catch (err: any) {
+      console.error("Error bulk categorizing files:", err);
+      alert("Failed to update selected files.");
+    }
+  };
+
   // Move file
   const handleMoveFileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1582,6 +1670,14 @@ startxref
     // Check IndexedDB if the memory state does not have it (due to page reload or size quota)
     if (!fileDataUrl) {
       fileDataUrl = await getFileLocal(file.id) || undefined;
+    }
+
+    if (!fileDataUrl) {
+      const remoteUrl = await getFirebaseCurriculumFileDataUrl(file.id);
+      if (remoteUrl) {
+        fileDataUrl = remoteUrl;
+        await saveFileLocal(file.id, remoteUrl);
+      }
     }
 
     if (fileDataUrl && fileDataUrl.startsWith('data:')) {
@@ -2632,15 +2728,63 @@ startxref
                 {/* Files Section */}
                 {visibleFiles.length > 0 && (
                   <div className="space-y-4">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                      <File className="h-4 w-4 text-emerald-500" />
-                      <span>Files & Documents ({visibleFiles.length})</span>
-                    </h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                        <File className="h-4 w-4 text-emerald-500" />
+                        <span>Files & Documents ({visibleFiles.length})</span>
+                      </h3>
+                    </div>
 
-                    <div className="overflow-hidden border border-slate-200/85 rounded-2xl bg-white shadow-xs">
+                    {/* Bulk Action Toolbar */}
+                    {selectedFileIds.length > 0 && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between animate-fade-in shadow-xs">
+                        <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
+                          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
+                          <span>{selectedFileIds.length} file(s) selected</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setShowBulkCategorizeModal(true)}
+                            className="px-3 py-1.5 bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Re-categorize Selected</span>
+                          </button>
+                          <button
+                            onClick={() => setShowBulkDeleteModal(true)}
+                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Selected</span>
+                          </button>
+                          <button
+                            onClick={() => setSelectedFileIds([])}
+                            className="px-2 py-1.5 text-slate-500 hover:text-slate-700 text-xs font-bold cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="overflow-visible border border-slate-200/85 rounded-2xl bg-white shadow-xs">
                       <table className="w-full text-left border-collapse">
                         <thead className="bg-slate-50/75 border-b border-slate-200/60">
                           <tr>
+                            <th className="p-4 w-10">
+                              <input
+                                type="checkbox"
+                                checked={visibleFiles.length > 0 && selectedFileIds.length === visibleFiles.length}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedFileIds(visibleFiles.map(f => f.id));
+                                  } else {
+                                    setSelectedFileIds([]);
+                                  }
+                                }}
+                                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                              />
+                            </th>
                             <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">File Name & Info</th>
                             <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden sm:table-cell">Subject</th>
                             <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden md:table-cell">Size</th>
@@ -2658,6 +2802,20 @@ startxref
                             
                             return (
                               <tr key={file.id} className="hover:bg-slate-50/40 transition-colors group">
+                                <td className="p-4 w-10">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedFileIds.includes(file.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedFileIds(prev => [...prev, file.id]);
+                                      } else {
+                                        setSelectedFileIds(prev => prev.filter(id => id !== file.id));
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                                  />
+                                </td>
                                 {/* File Name with Category Icon integrated */}
                                 <td className="p-4 max-w-sm">
                                   <div className="flex items-start gap-3">
@@ -3488,6 +3646,113 @@ startxref
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Bulk Re-categorize */}
+          {showBulkCategorizeModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-slate-900 text-base uppercase flex items-center gap-2">
+                    <Edit3 className="h-4 w-4 text-emerald-600" />
+                    Bulk Re-categorize ({selectedFileIds.length} files)
+                  </h3>
+                  <button
+                    onClick={() => setShowBulkCategorizeModal(false)}
+                    className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleBulkCategorizeSubmit} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">New Category *</label>
+                    <select
+                      value={bulkCategory}
+                      onChange={(e) => setBulkCategory(e.target.value as any)}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-sans"
+                    >
+                      <option value="pdf">PDF Study Material</option>
+                      <option value="video">Video Lecture</option>
+                      <option value="audio">Audio / Podcast</option>
+                      <option value="quiz">Interactive Quiz</option>
+                      <option value="document">General Document</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">New Subject *</label>
+                    <input
+                      type="text"
+                      required
+                      value={bulkSubject}
+                      onChange={(e) => setBulkSubject(e.target.value)}
+                      placeholder="e.g. Science, Mathematics, English"
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-sans"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowBulkCategorizeModal(false)}
+                      className="w-1/2 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="w-1/2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl cursor-pointer shadow-xs"
+                    >
+                      Update All
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Modal: Bulk Delete Confirmation */}
+          {showBulkDeleteModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-red-600 text-base uppercase flex items-center gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    Delete Selected Files ({selectedFileIds.length})
+                  </h3>
+                  <button
+                    onClick={() => setShowBulkDeleteModal(false)}
+                    className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Are you sure you want to permanently delete <strong className="text-slate-900">{selectedFileIds.length}</strong> selected file(s)? This will remove them from database and local storage permanently.
+                </p>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkDeleteModal(false)}
+                    className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkDeleteFiles}
+                    className="w-1/2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl cursor-pointer shadow-xs text-xs"
+                  >
+                    Delete Permanently
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -4524,7 +4789,16 @@ startxref
                     fileId={activePdfFile.id}
                     fileDataUrl={activePdfFile.fileDataUrl}
                     fileName={activePdfFile.name}
-                    onGetFileLocal={getFileLocal}
+                    onGetFileLocal={async (id) => {
+                      const localUrl = await getFileLocal(id);
+                      if (localUrl) return localUrl;
+                      const remoteUrl = await getFirebaseCurriculumFileDataUrl(id);
+                      if (remoteUrl) {
+                        await saveFileLocal(id, remoteUrl);
+                        return remoteUrl;
+                      }
+                      return null;
+                    }}
                     onDownload={() => handleDownloadFile(activePdfFile)}
                   />
                 </div>
