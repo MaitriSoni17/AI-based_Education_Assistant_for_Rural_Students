@@ -2302,7 +2302,7 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
               onClick={() => { stopSpeaking(); setInQuiz(false); }}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono"
             >
-              {t('cancelLabel')} X
+              X
             </button>
           </div>
 

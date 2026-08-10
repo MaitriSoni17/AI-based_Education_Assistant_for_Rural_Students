@@ -1171,7 +1171,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="gap-4">
                     {/* Exam Profile */}
                     <div className="space-y-1.5 relative">
                       <label className="text-xs font-bold text-gray-500">{t.examProfile}</label>
@@ -1218,7 +1218,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                     </div>
 
                     {/* Board Selection */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 mt-4">
                       <label className="text-xs font-bold text-gray-500">{t.boardLabel}</label>
                       <input 
                         type="text"
@@ -1245,10 +1245,10 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                   )}
 
                   {/* Target Topic and Question count */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="gap-4">
                     <div className="sm:col-span-2 space-y-1.5">
                       <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                        <span>🎯 Target Chapter / Specific Topic</span>
+                        <span>Target Chapter / Specific Topic</span>
                         <span className="text-rose-500 font-bold">*</span>
                       </label>
                       <input 
@@ -1261,7 +1261,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                       />
                     </div>
 
-                    <div className="space-y-1.5 relative">
+                    <div className="space-y-1.5 relative mt-4">
                       <label className="text-xs font-bold text-gray-500">Number of Questions</label>
                       <button
                         type="button"
@@ -1318,8 +1318,8 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                   </div>
 
                   {/* Max Marks & Penalty */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
+                  <div className="flex gap-4">
+                    <div className="space-y-1.5 flex-none w-32">
                       <label className="text-xs font-bold text-gray-500">Max Marks Allocated</label>
                       <input 
                         type="number"
@@ -1328,8 +1328,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                         className="w-full text-xs p-3 bg-gray-55 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
                       />
                     </div>
-
-                    <div className="space-y-1.5 relative">
+                    <div className="space-y-1.5 relative flex-1">
                       <label className="text-xs font-bold text-gray-500">{t.negMarking}</label>
                       <button
                         type="button"
@@ -1383,6 +1382,8 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                         )}
                       </AnimatePresence>
                     </div>
+
+                    
                   </div>
 
                   {/* Language and Extra instructions */}
@@ -1415,7 +1416,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-1.5 mt-5">
                       <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
                         <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
                         {t.extraInstructions}
@@ -1442,7 +1443,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                       <span>Generate Question Paper & Start Live Assessment</span>
                     </button>
                     {!simTopic.trim() && (
-                      <p className="text-[10px] text-rose-500 text-center mt-2">
+                      <p className="text-[10px] text-rose-500 text-left mt-2">
                         * Please type a Target Chapter/Topic above to unlock the generator.
                       </p>
                     )}
@@ -1803,7 +1804,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                 </h3>
 
                 {/* Exam Presets Selection */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="gap-4">
                   <div className="space-y-1.5 relative">
                     <label className="text-xs font-bold text-gray-500">{t.examProfile}</label>
                     <button
@@ -1849,7 +1850,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                   </div>
 
                   {/* Board Selection */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 mt-5">
                     <label className="text-xs font-bold text-gray-500">{t.boardLabel}</label>
                     <input 
                       type="text"
@@ -2033,13 +2034,13 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
 
               {/* QUESTION PAPER ZONE */}
               <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-xs space-y-4">
-                <div className="flex justify-between items-center border-b border-gray-100 pb-2.5">
+                <div className="justify-between items-center border-b border-gray-100 pb-2.5">
                   <h3 className="font-display font-bold text-[#3D405B] text-base flex items-center gap-2">
                     <FileText className="h-5 w-5 text-orange-500" />
                     3. {t.questionPaper}
                   </h3>
                   
-                  <div className="flex bg-gray-100 p-1 rounded-xl">
+                  <div className="flex bg-gray-100 p-1 rounded-xl mt-5 w-[310px] items-center">
                     <button 
                       onClick={() => setQpMode('text')}
                       className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${qpMode === 'text' ? 'bg-white shadow-2xs text-gray-800' : 'text-gray-500 hover:text-gray-800'}`}
@@ -2121,13 +2122,13 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
 
               {/* ANSWER KEY / RUBRIC ZONE */}
               <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-xs space-y-4">
-                <div className="flex justify-between items-center border-b border-gray-100 pb-2.5">
+                <div className="justify-between items-center border-b border-gray-100 pb-2.5">
                   <h3 className="font-display font-bold text-[#3D405B] text-base flex items-center gap-2">
                     <CheckSquare className="h-5 w-5 text-blue-500" />
                     4. {t.answerKey}
                   </h3>
                   
-                  <div className="flex bg-gray-100 p-1 rounded-xl">
+                  <div className="flex bg-gray-100 p-1 rounded-xl mt-5 w-[310px] items-center">
                     <button 
                       onClick={() => setAkMode('text')}
                       className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${akMode === 'text' ? 'bg-white shadow-2xs text-gray-800' : 'text-gray-500 hover:text-gray-800'}`}
@@ -2208,13 +2209,13 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
               </div>
 
               {/* LOWER CONTROLS & SUBMISSION ACTIONS */}
-              <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
+              <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-xs justify-between items-center gap-4 text-center sm:text-left">
                 <div className="space-y-1">
                   <p className="text-xs font-bold text-gray-500 flex items-center justify-center sm:justify-start gap-1">
                     <Languages className="h-4 w-4 text-[#81B29A]" />
                     {t.feedbackLanguage}
                   </p>
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-1.5">
+                  <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 mt-3">
                     {(['en', 'hi', 'gu', 'mr', 'ta', 'te'] as LanguageCode[]).map(langCode => (
                       <button
                         key={langCode}
@@ -2236,7 +2237,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                   </div>
                 </div>
 
-                <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                <div className="flex gap-2 w-full sm:w-auto shrink-0 mt-3">
                   <button
                     type="button"
                     onClick={clearCurrentFiles}

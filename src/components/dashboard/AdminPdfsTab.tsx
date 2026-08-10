@@ -1183,7 +1183,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
                                <button 
                                  onClick={() => {
                                    const textToSpeak = workspaceResult.video.slides[videoSlideIndex].narrative;
-                                   if (textToSpeak) speakText(textToSpeak, workspaceTargetLang);
+                                   if (textToSpeak) speakText(textToSpeak, workspaceTargetLang as LanguageCode);
                                  }}
                                  className="w-10 h-10 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg transition-all"
                                >

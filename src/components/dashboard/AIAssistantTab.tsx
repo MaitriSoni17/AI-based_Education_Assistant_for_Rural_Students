@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { LanguageCode, User } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
@@ -1564,10 +1565,10 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
     <div className="max-w-4xl mx-auto text-left">
       
       {/* RIGHT: LIVE CHAT DIALOGUE BOX */}
-      <div className="bg-white rounded-3xl border border-gray-150 shadow-sm flex flex-col h-[710px] overflow-hidden relative">
+      <div className="bg-white rounded-3xl border border-gray-150 shadow-sm flex flex-col h-[calc(100vh-140px)] sm:h-[750px] overflow-hidden relative">
         
         {/* Chat Ribbon Header */}
-        <div className="bg-[#3D405B] text-white p-3.5 px-5 flex justify-between items-center shrink-0">
+        <div className="bg-[#3D405B] text-white p-2.5 px-4 sm:p-3.5 sm:px-5 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="text-2xl">{selectedChar.char.split(' ')[0]}</span>
             <div>
@@ -1630,7 +1631,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
         {/* Message Log Container */}
         <div 
           ref={chatScrollRef}
-          className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#FAF8F4]/45 rounded-b-xl"
+          className="flex-1 p-3 sm:p-5 overflow-y-auto space-y-8 bg-[#FAF8F4]/45 rounded-b-xl"
         >
           {showHistory ? (
             /* INLINE FULL SEARCH HISTORY VIEW WITH NATIVE CHAT BUBBLES */
@@ -1944,7 +1945,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                               return (
                                 <div 
                                   key={msg.id || idx}
-                                  className={`flex gap-3 max-w-[85%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
+                                  className={`flex gap-3 max-w-[96%] sm:max-w-[88%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
                                 >
                                   {/* Character Icon bubble / Student icon */}
                                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-lg shadow-2xs select-none ${
@@ -1955,7 +1956,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
 
                                   {/* Bubble content */}
                                   <div className="space-y-1">
-                                    <div className={`p-3.5 rounded-2xl relative shadow-3xs text-xs sm:text-sm border text-left ${
+                                    <div className={`p-3.5 rounded-2xl relative shadow-3xs text-sm sm:text-base border text-left ${
                                       isMe 
                                         ? 'bg-gradient-to-tr from-[#3D405B] to-[#4D506F] text-white border-transparent rounded-tr-none' 
                                         : 'bg-white text-gray-850 border-gray-150 rounded-tl-none'
@@ -1990,14 +1991,14 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
 
                                       {(() => {
                                         const parsed = parseMessageContent(msg.text);
-                                        return (
-                                          <>
-                                            <p className="leading-relaxed whitespace-pre-wrap">{parsed.text}</p>
-                                            {parsed.diagram && (
-                                              <InteractiveDiagram data={parsed.diagram} lang={lang} />
-                                            )}
-                                          </>
-                                        );
+                                          return (
+                                            <div className="markdown-content w-full overflow-hidden break-words text-sm sm:text-base">
+                                              <ReactMarkdown>{parsed.text}</ReactMarkdown>
+                                              {parsed.diagram && (
+                                                <InteractiveDiagram data={parsed.diagram} lang={lang} />
+                                              )}
+                                            </div>
+                                          );
                                       })()}
                                       
                                       {/* Action buttons (Speak aloud, Download PDF, & Copy Plain Text) inside character box */}
@@ -2066,7 +2067,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                   className={`flex gap-3 group relative ${
                     editingMsgId === msg.id 
                       ? 'w-full max-w-2xl mx-auto' 
-                      : `max-w-[85%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`
+                      : `max-w-[96%] sm:max-w-[88%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`
                   }`}
                 >
                   {/* Character Icon bubble / Student icon */}
@@ -2084,7 +2085,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                         <button
                           type="button"
                           onClick={() => handleStartEditMessage(msg)}
-                          className="p-1.5 rounded-full bg-white text-gray-700 hover:text-[#E07A5F] hover:bg-gray-50 shadow-sm border border-gray-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
+                          className="p-1.5 rounded-full bg-white text-gray-700 hover:text-[#E07A5F] hover:bg-gray-50 shadow-sm border border-gray-200 transition-all opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
                           title={lang === 'hi' ? 'प्रश्न संपादित करें' : 'Edit question'}
                         >
                           <Pencil className="h-3 w-3" />
@@ -2095,7 +2096,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                             setReplyingTo(msg);
                             setTimeout(() => chatInputRef.current?.focus(), 100);
                           }}
-                          className="p-1.5 rounded-full bg-white text-gray-700 hover:text-blue-600 hover:bg-blue-50 shadow-sm border border-gray-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
+                          className="p-1.5 rounded-full bg-white text-gray-700 hover:text-blue-600 hover:bg-blue-50 shadow-sm border border-gray-200 transition-all opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
                           title={lang === 'hi' ? 'उत्तर दें (Reply)' : 'Reply to message'}
                         >
                           <CornerUpLeft className="h-3 w-3" />
@@ -2103,10 +2104,10 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                       </div>
                     )}
 
-                    <div className={`p-3.5 rounded-2xl relative shadow-3xs text-xs sm:text-sm border ${
+                    <div className={`p-4 rounded-2xl relative shadow-3xs text-sm sm:text-base border transition-all ${
                       isMe 
                         ? 'bg-gradient-to-tr from-[#3D405B] to-[#4D506F] text-white border-transparent rounded-tr-none' 
-                        : 'bg-white text-gray-850 border-gray-150 rounded-tl-none'
+                        : 'bg-white text-gray-800 border-gray-100 rounded-tl-none'
                     } ${editingMsgId === msg.id ? 'w-full' : ''}`}>
                       
                       {/* Quoted Reply Preview block inside bubble */}
@@ -2160,47 +2161,49 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                       )}
 
                       {editingMsgId === msg.id ? (
-                        <div className="space-y-3 mt-1 w-full min-w-[280px] sm:min-w-[480px] md:min-w-[560px] text-gray-900">
-                          <label className="block text-xs font-bold text-white mb-1">
-                            {lang === 'hi' ? 'अपना प्रश्न संपादित करें:' : 'Edit Your Question:'}
-                          </label>
-                          <textarea
-                            value={editingText}
-                            onChange={(e) => setEditingText(e.target.value)}
-                            className="w-full p-3 rounded-xl bg-white text-gray-900 border-2 border-amber-300 focus:ring-2 focus:ring-[#E07A5F] text-xs sm:text-sm font-sans outline-none resize-y min-h-[110px] shadow-sm leading-relaxed"
-                            rows={4}
-                            autoFocus
-                            placeholder={lang === 'hi' ? 'अपना प्रश्न लिखें...' : 'Type your question...'}
-                          />
-                          <div className="flex items-center gap-2 justify-end pt-1">
-                            <button
-                              type="button"
-                              onClick={handleCancelEditMessage}
-                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/20 text-white hover:bg-white/30 transition-colors cursor-pointer"
-                            >
-                              {lang === 'hi' ? 'रद्द करें' : 'Cancel'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSaveAndResubmitEdit(msg.id)}
-                              disabled={!editingText.trim()}
-                              className="px-4 py-1.5 rounded-lg text-xs font-bold bg-[#E07A5F] text-white hover:bg-[#d0694e] flex items-center gap-1.5 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                              <span>{lang === 'hi' ? 'सहेजें और पुनः भेजें' : 'Save & Resubmit'}</span>
-                            </button>
+                        <div className="space-y-3 mt-1 w-full max-w-full sm:min-w-[400px] text-gray-900">
+                          <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-3">
+                            <label className="block text-[10px] font-black text-white/90 uppercase tracking-widest">
+                              {lang === 'hi' ? 'अपना प्रश्न संपादित करें:' : 'Edit Your Question'}
+                            </label>
+                            <textarea
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              className="w-full p-4 rounded-xl bg-white text-gray-850 border-none focus:ring-2 focus:ring-amber-400 text-sm sm:text-base font-sans outline-none resize-y min-h-[120px] shadow-lg leading-relaxed"
+                              rows={4}
+                              autoFocus
+                              placeholder={lang === 'hi' ? 'अपना प्रश्न लिखें...' : 'Type your question...'}
+                            />
+                            <div className="flex flex-wrap items-center gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={handleCancelEditMessage}
+                                className="px-4 py-2 rounded-xl text-[10px] font-bold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer border border-white/10 uppercase tracking-tight"
+                              >
+                                {lang === 'hi' ? 'रद्द करें' : 'Cancel'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveAndResubmitEdit(msg.id)}
+                                disabled={!editingText.trim()}
+                                className="px-5 py-2 rounded-xl text-[10px] font-black bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 flex items-center gap-2 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer uppercase tracking-tight"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                                <span>{lang === 'hi' ? 'सहेजें और पुनः भेजें' : 'Save & Resubmit'}</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ) : (
                         (() => {
                           const parsed = parseMessageContent(msg.text);
                           return (
-                            <>
-                              <p className="leading-relaxed whitespace-pre-wrap">{parsed.text}</p>
+                            <div className="markdown-content w-full overflow-hidden break-words text-sm sm:text-base">
+                              <ReactMarkdown>{parsed.text}</ReactMarkdown>
                               {parsed.diagram && (
                                 <InteractiveDiagram data={parsed.diagram} lang={lang} />
                               )}
-                            </>
+                            </div>
                           );
                         })()
                       )}
@@ -2380,7 +2383,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={replyingTo ? (lang === 'hi' ? 'उत्तर लिखें...' : 'Type your reply...') : isDragging ? (DRAG_DROP_PLACEHOLDER_LABELS[lang] || DRAG_DROP_PLACEHOLDER_LABELS['en']) : (INPUT_PLACEHOLDER_LABELS[lang] || INPUT_PLACEHOLDER_LABELS['en']).replace("AI companion", selectedChar.name.split(' ')[0])}
-              className="w-full pl-3.5 pr-12 py-3 bg-white rounded-xl border border-gray-200 text-xs sm:text-sm font-sans placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]"
+              className="w-full pl-3.5 pr-12 py-3.5 bg-white rounded-xl border border-gray-200 text-sm sm:text-base font-sans placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]"
             />
             <div className="absolute right-2.5 top-2.5">
               <SpeechInputButton

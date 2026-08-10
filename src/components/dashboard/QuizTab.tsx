@@ -2615,7 +2615,7 @@ JSON Schema:
                       <span className="text-rose-600">🌱 {EXPLANATION_HEADER_LABELS[lang] || "Study Point Explanation"}</span>
                     )}
                   </div>
-                  <p className="text-gray-650 leading-relaxed text-xs">
+                  <p className="text-gray-650 leading-relaxed text-sm sm:text-base">
                     {activeQuiz.questions[currentQuestionIndex].explanation}
                   </p>
 

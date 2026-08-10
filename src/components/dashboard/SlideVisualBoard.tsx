@@ -477,7 +477,7 @@ export default function SlideVisualBoard({
             </h4>
           </div>
 
-          <p className="text-xs text-gray-200 font-sans leading-relaxed">
+          <p className="text-sm sm:text-base text-gray-200 font-sans leading-relaxed">
             {slide.content}
           </p>
 
@@ -486,7 +486,7 @@ export default function SlideVisualBoard({
             {slide.bullets && slide.bullets.map((bullet, idx) => (
               <div 
                 key={idx} 
-                className={`flex items-start gap-2 text-[10px] sm:text-xs font-medium font-sans leading-relaxed text-gray-350 transition-all duration-300 ${
+                className={`flex items-start gap-2 text-xs sm:text-sm font-medium font-sans leading-relaxed text-gray-350 transition-all duration-300 ${
                   isPlaying ? 'translate-x-0.5 text-white' : ''
                 }`}
                 style={{ transitionDelay: `${idx * 150}ms` }}
@@ -505,7 +505,7 @@ export default function SlideVisualBoard({
               <Sparkles className="h-2.5 w-2.5" />
               <span>DID YOU KNOW?</span>
             </div>
-            <p className="text-[10px] sm:text-xs font-sans text-[#F2CC8F] font-bold leading-relaxed mt-1">
+            <p className="text-xs sm:text-sm font-sans text-[#F2CC8F] font-bold leading-relaxed mt-1">
               {slide.keyFact}
             </p>
           </div>

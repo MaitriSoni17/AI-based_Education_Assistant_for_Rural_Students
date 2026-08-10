@@ -193,7 +193,7 @@ export default function App() {
 
   // Background study timer: tracks actual active dashboard time in real-time
   useEffect(() => {
-    if (!user || user.role === 'admin' || adminUser || currentView === 'admin-dashboard' || currentView === 'admin-auth') return;
+    if (!user || user.role === 'admin' || adminUser || currentView === 'admin-dashboard' || currentView === 'admin-login') return;
 
     let activeSecs = 0;
     const interval = setInterval(() => {
@@ -394,7 +394,7 @@ export default function App() {
       />
 
       {/* Main Viewport Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-1.5 sm:px-6 lg:px-8 py-4 sm:py-8">
         
         {/* Render Active Screen Panel */}
         <div id="active-viewport-card" className="w-full animate-fade-in">

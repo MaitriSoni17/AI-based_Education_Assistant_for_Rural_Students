@@ -50,7 +50,7 @@ export default function FeaturesView({ lang }: FeaturesViewProps) {
                 </p>
               </div>*/}
             </div>
-            <div className="text-center bg-[#FAF8F4] border border-[#F2CC8F]/20 rounded-xl py-2 px-3 text-xs text-[#3D405B] font-mono flex items-center justify-center gap-1.5">
+            <div className="text-left bg-[#FAF8F4] border border-[#F2CC8F]/20 rounded-xl py-2 px-3 text-xs text-[#3D405B] font-mono flex items-center justify-center gap-1.5">
               <BatteryCharging className="h-4 w-4 text-[#E07A5F]" />
               <span>Optimized for solar charging screens & e-learning tabs</span>
             </div>

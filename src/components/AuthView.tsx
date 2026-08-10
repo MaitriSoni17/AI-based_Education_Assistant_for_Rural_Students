@@ -316,8 +316,8 @@ export default function AuthView({
                 </>
               ) : (
                 <>
-                  <Send className="h-4.5 w-4.5" />
-                  <span>{t.sendOTP}</span>
+                  <Send className="h-4.5 w-4.5 text-sm" />
+                  <span className="text-sm">{t.sendOTP}</span>
                 </>
               )}
             </button>
@@ -377,7 +377,7 @@ export default function AuthView({
                 type="submit"
                 id="auth-btn-verify-otp"
                 disabled={isVerifying}
-                className="w-2/3 py-3 bg-[#3D405B] hover:bg-[#2D2F44] text-white font-sans font-bold text-sm sm:text-base rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                className="w-2/3 py-3 bg-[#3D405B] hover:bg-[#2D2F44] text-white font-sans font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
                 {isVerifying ? (
                   <>

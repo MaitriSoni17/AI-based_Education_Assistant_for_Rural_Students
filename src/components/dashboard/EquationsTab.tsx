@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { LanguageCode, User } from '../../types';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { 
@@ -4655,20 +4656,20 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
       ) : (
         <>
           {/* AI SOLVER CHATBOT WORKSPACE */}
-        <div className="bg-white rounded-3xl border border-gray-150 shadow-2xs overflow-hidden flex flex-col h-[520px] sm:h-[580px] animate-fade-in mb-6">
+        <div className="bg-white rounded-3xl border border-gray-150 shadow-2xs overflow-hidden flex flex-col h-[calc(100vh-140px)] sm:h-[680px] animate-fade-in mb-6">
           
           {/* MAIN CHAT WORKSPACE */}
           <div className="w-full flex-1 flex flex-col min-h-0">
             
             {/* CHAT HEADER */}
-            <div className="border-b border-gray-100 p-4 bg-gray-50/60 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <div className="border-b border-gray-100 p-3 sm:p-4 bg-gray-50/60 flex flex-col sm:flex-row justify-between sm:items-center gap-2 sm:gap-3">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-rose-50 text-[#E07A5F] rounded-2xl border border-rose-100 flex items-center justify-center shadow-3xs">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div className="text-left">
                   <h3 className="font-display font-extrabold text-sm text-gray-900 leading-snug">
-                    {chatbotLang === 'hi' ? 'एआई गणित और विज्ञान सॉल्वर' : chatbotLang === 'gu' ? 'AI ગણિત અને વિજ્ઞાન સોલ્વર' : chatbotLang === 'mr' ? 'AI गणित आणि विज्ञान सॉल्वर' : chatbotLang === 'bn' ? 'AI গণিত ও বিজ্ঞান সমাধানকারী' : chatbotLang === 'ta' ? 'AI கணிதம் & அறிவியல் தீர்வு' : chatbotLang === 'te' ? 'AI గణితం & సైన్స్ సాల్వర్' : 'AI Math & Science Calculations Solver'}
+                    {chatbotLang === 'hi' ? 'स्मार्ट सॉल्वर' : chatbotLang === 'gu' ? 'સ્માર્ટ સોલ્વર' : chatbotLang === 'mr' ? 'स्मार्ट सॉल्वर' : chatbotLang === 'bn' ? 'স্মার্ট সমাধানকারী' : chatbotLang === 'ta' ? 'ஸ்மார்ட் தீர்வு' : chatbotLang === 'te' ? 'స్మార్ట్ సాల్వర్' : 'Smart Solver'}
                   </h3>
                   <p className="text-[10px] text-emerald-600 font-mono font-bold flex items-center gap-1 mt-0.5">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -4692,7 +4693,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                     : translations.searchHistory}
                 >
                   <BookOpen className={`h-3.5 w-3.5`} style={{color: showHistory ? '#E07A5F' : '#3D405B'}} />
-                  <span>
+                  <span className="hidden sm:inline">
                     {showHistory 
                       ? translations.activeChat
                       : translations.searchHistory}
@@ -4710,13 +4711,13 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                   title={translations.newChat}
                 >
                   <Plus className="h-3.5 w-3.5 text-white" />
-                  <span>{translations.newChat}</span>
+                  <span className="hidden sm:inline">{translations.newChat}</span>
                 </button>
               </div>
             </div>
 
             {/* CHAT MESSAGES STREAM OR HISTORY PANEL */}
-            <div className="flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-3 bg-white/50 min-h-0">
+            <div className="flex-1 p-3 sm:p-4 overflow-y-auto space-y-7 bg-white/50 min-h-0">
               {showHistory ? (
                 /* INLINE FULL SEARCH HISTORY VIEW WITH NATIVE CHAT BUBBLES */
                 <div className="space-y-6 animate-fade-in text-left">
@@ -5018,7 +5019,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                                   return (
                                     <div 
                                       key={msg.id || idx}
-                                      className={`flex gap-3 max-w-[85%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
+                                      className={`flex gap-3 max-w-[96%] sm:max-w-[88%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
                                     >
                                       {/* Sender Avatar indicator */}
                                       <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
@@ -5031,7 +5032,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
                                       {/* Bubble content */}
                                       <div className="space-y-1">
-                                        <div className={`p-3 rounded-xl relative shadow-3xs text-xs sm:text-[13px] text-left border ${
+                                        <div className={`p-3 rounded-xl relative shadow-3xs text-sm sm:text-base text-left border ${
                                           isMe 
                                             ? 'bg-[#E07A5F] text-white rounded-tr-none' 
                                             : 'bg-slate-50 border-slate-150 rounded-tl-none'
@@ -5111,7 +5112,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                     className={`flex gap-3 group relative ${
                       editingMessageId === msg.id 
                         ? 'w-full max-w-2xl mx-auto' 
-                        : `max-w-[85%] ${msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`
+                        : `max-w-[96%] sm:max-w-[88%] ${msg.sender === 'user' ? 'ml-auto flex-row-reverse' : ''}`
                     }`}
                   >
                     {/* Sender Avatar indicator */}
@@ -5123,7 +5124,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                       {msg.sender === 'user' ? <UserIcon className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                     </div>
 
-                    <div className={`p-3 rounded-xl text-left shadow-3xs relative text-xs sm:text-[13px] ${
+                    <div className={`p-3.5 rounded-xl text-left shadow-3xs relative text-sm sm:text-base ${
                       msg.sender === 'user'
                         ? 'bg-[#E07A5F] text-white rounded-tr-none'
                         : 'bg-slate-50 border border-slate-150 rounded-tl-none'
@@ -5134,7 +5135,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                           <button
                             type="button"
                             onClick={() => handleStartEditMessage(msg)}
-                            className="p-1.5 rounded-full bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-slate-50 shadow-sm border border-slate-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
+                            className="p-1.5 rounded-full bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-slate-50 shadow-sm border border-slate-200 transition-all opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
                             title={chatbotLang === 'hi' ? 'प्रश्न संपादित करें' : 'Edit question'}
                           >
                             <Pencil className="h-3 w-3" />
@@ -5145,7 +5146,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                               setReplyingTo(msg);
                               setTimeout(() => inputRef.current?.focus(), 100);
                             }}
-                            className="p-1.5 rounded-full bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-rose-50 shadow-sm border border-slate-200 transition-all opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
+                            className="p-1.5 rounded-full bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-rose-50 shadow-sm border border-slate-200 transition-all opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
                             title={chatbotLang === 'hi' ? 'उत्तर दें (Reply)' : 'Reply to message'}
                           >
                             <CornerUpLeft className="h-3 w-3" />
@@ -5195,40 +5196,44 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                       )}
 
                       {msg.sender === 'user' && editingMessageId === msg.id ? (
-                        <div className="space-y-3 mt-1 w-full min-w-[280px] sm:min-w-[480px] md:min-w-[560px] text-slate-900">
-                          <label className="block text-xs font-bold text-white mb-1">
-                            {chatbotLang === 'hi' ? 'अपना प्रश्न संपादित करें:' : 'Edit Your Question:'}
-                          </label>
-                          <textarea
-                            value={editingText}
-                            onChange={(e) => setEditingText(e.target.value)}
-                            className="w-full p-3 rounded-xl bg-white text-slate-900 border-2 border-amber-400 focus:ring-2 focus:ring-[#E07A5F] text-xs sm:text-sm font-sans outline-none resize-y min-h-[110px] shadow-sm leading-relaxed"
-                            rows={4}
-                            autoFocus
-                            placeholder={chatbotLang === 'hi' ? 'अपना प्रश्न लिखें...' : 'Type your question...'}
-                          />
-                          <div className="flex items-center gap-2 justify-end pt-1">
-                            <button
-                              type="button"
-                              onClick={handleCancelEditMessage}
-                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/20 text-white hover:bg-white/30 transition-colors cursor-pointer"
-                            >
-                              {chatbotLang === 'hi' ? 'रद्द करें' : 'Cancel'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSaveAndResubmitEdit(msg.id)}
-                              disabled={!editingText.trim()}
-                              className="px-4 py-1.5 rounded-lg text-xs font-bold bg-white text-[#E07A5F] hover:bg-rose-50 flex items-center gap-1.5 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                              <span>{chatbotLang === 'hi' ? 'सहेजें और पुनः हल करें' : 'Save & Resolve'}</span>
-                            </button>
+                        <div className="space-y-3 mt-1 w-full max-w-full sm:min-w-[400px] text-slate-900">
+                          <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-3">
+                            <label className="block text-[10px] font-black text-white/90 uppercase tracking-widest">
+                              {chatbotLang === 'hi' ? 'अपना प्रश्न संपादित करें:' : 'Edit Your Question'}
+                            </label>
+                            <textarea
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              className="w-full p-4 rounded-xl bg-white text-slate-900 border-none focus:ring-2 focus:ring-amber-400 text-sm sm:text-base font-sans outline-none resize-y min-h-[120px] shadow-lg leading-relaxed"
+                              rows={4}
+                              autoFocus
+                              placeholder={chatbotLang === 'hi' ? 'अपना प्रश्न लिखें...' : 'Type your question...'}
+                            />
+                            <div className="flex flex-wrap items-center gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={handleCancelEditMessage}
+                                className="px-4 py-2 rounded-xl text-[10px] font-bold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer border border-white/10 uppercase tracking-tight"
+                              >
+                                {chatbotLang === 'hi' ? 'रद्द करें' : 'Cancel'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveAndResubmitEdit(msg.id)}
+                                disabled={!editingText.trim()}
+                                className="px-5 py-2 rounded-xl text-[10px] font-black bg-white text-[#E07A5F] hover:bg-rose-50 flex items-center gap-2 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer uppercase tracking-tight"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                                <span>{chatbotLang === 'hi' ? 'सहेजें और पुनः हल करें' : 'Save & Resolve'}</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ) : (
-                        <div className="space-y-1.5 break-words">
-                          {formatMessageText(msg.text, msg.sender === 'user')}
+                        <div className="markdown-content w-full overflow-hidden break-words text-sm sm:text-base leading-relaxed">
+                          <ReactMarkdown>
+                            {msg.text}
+                          </ReactMarkdown>
                         </div>
                       )}
 
@@ -5329,7 +5334,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
               {/* Loader indicator */}
               {!showHistory && isSending && (
-                <div className="flex gap-3 max-w-[85%] animate-pulse">
+                <div className="flex gap-3 max-w-[96%] sm:max-w-[88%] animate-pulse">
                   <div className="h-8 w-8 rounded-full bg-rose-100 text-[#E07A5F] flex items-center justify-center shrink-0">
                     <Bot className="h-4 w-4" />
                   </div>
@@ -5379,8 +5384,8 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
               ) : (
                 <div className="space-y-2">
                   {/* Formatting Toolbar */}
-                  <div className="flex flex-col gap-1 text-left select-none bg-white p-2 rounded-xl border border-gray-150 shadow-3xs">
-                    <div className="flex items-center justify-between text-[9px] font-mono text-gray-400 font-bold uppercase tracking-wider select-none pb-1 border-b border-gray-100 mb-1">
+                  <div className="flex flex-col gap-0.5 text-left select-none bg-white p-1.5 sm:p-2 rounded-xl border border-gray-150 shadow-3xs">
+                    <div className="flex items-center justify-between text-[9px] font-mono text-gray-400 font-bold uppercase tracking-wider select-none pb-0.5 border-b border-gray-100 mb-0.5">
                       <span className="flex items-center gap-1 text-gray-500">
                         <span>📝</span> Formatting Helper:
                       </span>
@@ -5388,7 +5393,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         scroll vertically to see all symbols
                       </span>
                     </div>
-                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-1 max-h-[44px] overflow-y-auto pr-1">
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide no-scrollbar">
                       {FORMULA_SYMBOLS.map((sym, idx) => (
                         <button
                           key={idx}
@@ -5403,7 +5408,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                             }
                           }}
                           title={sym.desc}
-                          className="py-1 bg-gray-50 hover:bg-[#FAF8F4] active:bg-amber-50 border border-gray-200 hover:border-[#F2CC8F]/60 text-[11px] text-gray-700 font-bold rounded transition-all cursor-pointer text-center"
+                          className="px-2.5 py-1 bg-white hover:bg-amber-50 border border-gray-200 text-xs text-gray-700 font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap"
                         >
                           {sym.label || sym.char}
                         </button>
@@ -5467,7 +5472,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                             ? (translations.placeholderFile || "Ask a query about this file...")
                             : (translations.placeholder || "Type math equations, balance formulas, or select files...")
                         }
-                        className="w-full bg-white border border-gray-200 focus:border-[#E07A5F] focus:ring-1 focus:ring-[#E07A5F] rounded-2xl pl-4 pr-12 py-3.5 text-xs sm:text-sm focus:outline-none transition-all placeholder-gray-450 shadow-3xs"
+                        className="w-full bg-white border border-gray-200 focus:border-[#E07A5F] focus:ring-1 focus:ring-[#E07A5F] rounded-2xl pl-4 pr-12 py-4 text-sm sm:text-base focus:outline-none transition-all placeholder-gray-400 shadow-3xs"
                       />
                       <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
                         <SpeechInputButton

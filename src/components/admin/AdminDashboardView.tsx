@@ -1791,13 +1791,13 @@ startxref
         setUsersList(remoteUsers);
       } else {
         // Mock fallback list if offline or empty
-        const fallbackUsers = [
+        const fallbackUsers: User[] = ([
           { mobile: adminUser.mobile, name: adminUser.name, defaultLanguage: 'en', role: 'admin', signupDate: '2026-01-01', village: 'HQ', streakDays: 99, totalPoints: 5000, studyMins: 1200 },
-          { mobile: '9876543210', name: 'Aarav Patel', defaultLanguage: 'hi', role: 'student', signupDate: '2026-06-15', village: 'Anand', school: 'Govt School Anand', standard: 'Std 8', streakDays: 14, totalPoints: 420, studyMins: 380 },
-          { mobile: '9812345678', name: 'Priya Sharma', defaultLanguage: 'gu', role: 'student', signupDate: '2026-07-02', village: 'Mehsana', school: 'Adarsh Primary School', standard: 'Std 9', streakDays: 8, totalPoints: 310, studyMins: 290 },
-          { mobile: '9765432109', name: 'Ramesh Patel', defaultLanguage: 'gu', role: 'teacher', signupDate: '2026-05-10', village: 'Mehsana', school: 'Adarsh Primary School', standard: 'Teacher', streakDays: 25, totalPoints: 890, studyMins: 950 }
-        ].filter((u) => !deletedMobiles.includes(u.mobile));
-        setUsersList(fallbackUsers);
+          { mobile: '9876543210', name: 'Aarav Patel', defaultLanguage: 'hi' as LanguageCode, role: 'student', signupDate: '2026-06-15', village: 'Anand', school: 'Govt School Anand', standard: 'Std 8', streakDays: 14, totalPoints: 420, studyMins: 380 },
+          { mobile: '9812345678', name: 'Priya Sharma', defaultLanguage: 'gu' as LanguageCode, role: 'student', signupDate: '2026-07-02', village: 'Mehsana', school: 'Adarsh Primary School', standard: 'Std 9', streakDays: 8, totalPoints: 310, studyMins: 290 },
+          { mobile: '9765432109', name: 'Ramesh Patel', defaultLanguage: 'gu' as LanguageCode, role: 'teacher', signupDate: '2026-05-10', village: 'Mehsana', school: 'Adarsh Primary School', standard: 'Teacher', streakDays: 25, totalPoints: 890, studyMins: 950 }
+        ] as User[]).filter((u) => !deletedMobiles.includes(u.mobile));
+        setUsersList(fallbackUsers as any);
       }
     } catch (e) {
       console.error("Failed to load users for admin:", e);

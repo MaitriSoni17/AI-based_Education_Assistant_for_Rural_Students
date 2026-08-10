@@ -2594,7 +2594,7 @@ JSON Schema:
           </div>
         )}
 
-        <div className="flex gap-2 w-full items-center">
+        <div className="md:flex gap-2 w-full items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3.5 h-4 w-4 text-[#81B29A]" />
             <input
@@ -2637,7 +2637,7 @@ JSON Schema:
           <button
             type="submit"
             id="submit-classroom-query"
-            className="bg-[#3D405B] hover:bg-[#2D2F44] text-white px-5 py-3 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 self-stretch"
+            className="mt-4 md:mt-0 bg-[#3D405B] hover:bg-[#2D2F44] text-white px-5 py-3 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 self-stretch"
           >
             <Sparkles className="h-4 w-4 text-[#F2CC8F]" />
             <span>{lang === 'hi' ? 'पाठ उत्पन्न करें' : 'Generate Lesson'}</span>
@@ -3312,7 +3312,7 @@ JSON Schema:
                       </div>
 
                       {/* Line-by-Line Transcript List */}
-                      <div className="w-full bg-slate-900/60 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/5 flex flex-col gap-2 max-h-[220px] overflow-y-auto custom-scrollbar">
+                      <div className="w-full bg-slate-900/60 backdrop-blur-md rounded-xl p-1.5 sm:p-4 border border-white/5 flex flex-col gap-2 max-h-[220px] overflow-y-auto custom-scrollbar">
                         <span className="text-[8px] font-mono font-bold text-[#F2CC8F] block uppercase tracking-wider mb-1">
                           📋 Interactive Lecture Transcript (Line by Line)
                         </span>
@@ -3328,7 +3328,7 @@ JSON Schema:
                                   setCurrentSlideIndex(idx);
                                   playSlideVoice(idx);
                                 }}
-                                className={`w-full text-left p-2.5 rounded-lg border transition-all text-xs sm:text-sm flex gap-3 cursor-pointer items-start ${
+                                className={`w-full text-left p-3.5 sm:p-4.5 rounded-lg border transition-all text-sm sm:text-base flex gap-3 cursor-pointer items-start ${
                                   isActive 
                                     ? 'bg-[#E07A5F]/15 border-[#E07A5F]/40 text-[#F4F1DE] font-semibold' 
                                     : 'bg-white/[0.02] border-white/[0.04] text-slate-400 hover:text-slate-200 hover:bg-white/[0.05]'
@@ -3519,7 +3519,7 @@ JSON Schema:
                         key={oIdx}
                         disabled={selectedQuizAnswer !== null}
                         onClick={() => handleAnswerSubmit(oIdx)}
-                        className={`w-full p-2.5 text-left rounded-xl border text-xs sm:text-sm font-sans transition-all cursor-pointer ${btnStyle}`}
+                        className={`w-full p-2.5 text-left rounded-xl border text-sm sm:text-base font-sans transition-all cursor-pointer ${btnStyle}`}
                       >
                         <span className="font-bold mr-1.5 font-mono">
                           {String.fromCharCode(65 + oIdx)}.
@@ -3539,7 +3539,7 @@ JSON Schema:
                         <span className="text-rose-600">🌱 Learning spot explanation:</span>
                       )}
                     </div>
-                    <p className="text-gray-650 leading-normal text-xs sm:text-sm">
+                    <p className="text-gray-650 leading-normal text-sm sm:text-base">
                       {selectedLesson.quiz[currentQuizIndex].explanation}
                     </p>
                     

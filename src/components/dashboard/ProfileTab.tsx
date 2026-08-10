@@ -577,14 +577,14 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         
         {/* Weekly Study Area Chart */}
         <div className="bg-white p-5 rounded-2xl border border-gray-150 shadow-3xs text-left">
-          <div className="flex justify-between items-center mb-4">
+          <div className="md:flex justify-between items-center mb-4">
             <div>
               <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider flex items-center gap-2">
                 Weekly Learning Area
               </h3>
               <p className="text-[11px] text-gray-400">Minutes of customized voice lessons & reading logs</p>
             </div>
-            <div className="text-right">
+            <div className="text-left">
               <span className="text-xs font-mono font-bold text-[#E07A5F] bg-[#FAF8F4] px-2 py-1 rounded-sm border border-[#F2CC8F]/40 uppercase">
                 {lang === 'hi' ? 'औसत' : 'Avg'}: {formatStudyTime(Math.round(totalWeeklyMins / 7), lang === 'hi')}/{lang === 'hi' ? 'दिन' : 'day'}
               </span>
@@ -639,8 +639,8 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
       <div className="bg-white p-6 rounded-3xl border border-gray-150 shadow-3xs space-y-4 text-left">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
           <div>
-            <h3 className="font-display font-extrabold text-[#3D405B] text-base uppercase tracking-wider flex items-center gap-2">
-              <Flame className="h-5 w-5 text-[#E07A5F] animate-pulse" />
+            <h3 className="font-display font-extrabold text-[#3D405B] text-base uppercase tracking-wider flex items-center gap-2 text-sm">
+              {/*<Flame className="h-5 w-5 text-[#E07A5F] animate-pulse" />*/}
               {lang === 'hi' ? 'दैनिक अध्ययन निरंतरता पथ' : 'Daily Consistency Streak Path'}
             </h3>
             <p className="text-xs text-gray-500 font-sans">
@@ -656,7 +656,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                 <span>{lang === 'hi' ? 'आज की स्ट्रीक स्वतः स्वीकृत (+15 XP)' : 'Today\'s Streak Accepted (+15 XP)'}</span>
               </span>
             ) : (
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-col items-left gap-1">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-800 text-xs font-black rounded-xl border border-amber-200">
                   <Clock className="h-4 w-4 text-amber-600 animate-spin" style={{ animationDuration: '3s' }} />
                   <span>{lang === 'hi' ? `अध्ययन करें: ${user.todayMins ?? 0} / 5 मिनट` : `Study: ${user.todayMins ?? 0} / 5 Mins`}</span>
@@ -670,21 +670,21 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         </div>
 
         {/* 7-Day sequence map with actual calendar dates */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-center pt-2">
+        <div className="flex flex-row sm:grid sm:grid-cols-4 md:grid-cols-7 gap-2 text-center pt-2 overflow-x-auto snap-x snap-mandatory">
           {currentWeekDateObjs.map((dateObj) => {
             const info = formatDateInfo(dateObj, lang);
             const dateStr = info.dateStr;
-
+            
             // Determine actual recorded time for this date:
             const dayMinsRecorded = info.isToday 
               ? Math.max(loggedMinutesToday(), dailyStudyLogMap[dateStr] ?? 0)
               : (dailyStudyLogMap[dateStr] ?? 0);
-
+            
             // Determine if checked in strictly based on actual records or >=5 mins logged:
             const isExplicitCheckIn = checkInDatesList.includes(dateStr) || dayMinsRecorded >= 5;
             const isDayCompleted = isExplicitCheckIn || (info.isToday && hasCheckedInToday);
             const isToday = info.isToday;
-
+            
             return (
               <div 
                 key={dateStr} 
@@ -693,7 +693,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                     handleDailyCheckIn();
                   }
                 }}
-                className={`p-2.5 rounded-xl border flex flex-col items-center justify-between transition-all duration-300 ${
+                className={`p-2.5 rounded-xl border flex flex-col items-center justify-between transition-all duration-300 flex-none w-28 sm:w-auto snap-start ${
                   isToday && !hasCheckedInToday ? 'cursor-pointer hover:border-[#E07A5F] hover:shadow-md' : ''
                 } ${
                   isDayCompleted 
@@ -766,7 +766,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-gray-100 pb-3">
           <div>
             <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider flex items-center gap-1.5">
-              <Trophy className="h-4.5 w-4.5 text-amber-500" />
+              {/*<Trophy className="h-4.5 w-4.5 text-amber-500" />*/}
               {lang === 'hi' ? 'मेरा पदक और बैज शोकेस' : 'Milestones & Badges Showcase'}
             </h3>
             <p className="text-[11px] text-gray-400 font-sans">
@@ -799,7 +799,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         </div>
 
         {/* Badge grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div className="flex flex-row sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 p-5 overflow-x-auto snap-x snap-mandatory">
           {filteredBadges.map((badge) => (
             <div 
               key={badge.id}
@@ -809,7 +809,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                   fireConfetti();
                 }
               }}
-              className={`p-3.5 rounded-2xl border text-center relative flex flex-col justify-between items-center cursor-pointer transition-all duration-300 group hover:scale-103 ${
+              className={`p-3.5 rounded-2xl border text-center relative flex flex-col justify-between items-center cursor-pointer transition-all duration-300 group md:hover:scale-103 flex-none w-36 sm:w-auto snap-start ${
                 badge.unlocked 
                   ? 'bg-gradient-to-br from-white to-amber-50/10 border-amber-250 shadow-3xs' 
                   : 'bg-gray-50/70 border-gray-200 opacity-60'

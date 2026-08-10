@@ -425,14 +425,6 @@ export default function Navbar({
                 </span>
               </div>
               <button
-                id="nav-mobile-admin-login-student"
-                onClick={() => handleNavClick('admin-login')}
-                className="block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-bold text-sm bg-amber-100 text-amber-900 flex items-center space-x-2"
-              >
-                <Shield className="h-4 w-4 text-amber-600" />
-                <span>Admin</span>
-              </button>
-              <button
                 id="nav-mobile-logout"
                 onClick={() => {
                   onLogout();
@@ -478,14 +470,6 @@ export default function Navbar({
                 }`}
               >
                 {t.navFeatures}
-              </button>
-              <button
-                id="nav-mobile-admin-login"
-                onClick={() => handleNavClick('admin-login')}
-                className="block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-bold text-sm bg-amber-500 text-slate-950 flex items-center space-x-2"
-              >
-                <Shield className="h-4 w-4" />
-                <span>Admin</span>
               </button>
               <div className="border-t border-gray-100 pt-2 space-y-1.5">
                 <button
