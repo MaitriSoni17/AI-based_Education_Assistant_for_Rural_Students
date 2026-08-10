@@ -314,7 +314,7 @@ export default function InteractiveDiagram({ data, lang }: InteractiveDiagramPro
         <div className="p-4 sm:p-5 overflow-x-auto">
           {data.type === 'flowchart' ? (
             /* FLOWCHART TABLE LIST */
-            <table className="w-full text-xs text-left border-collapse">
+            <table className="w-full min-w-[500px] text-xs text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-400 font-mono text-[10px] uppercase">
                   <th className="py-2.5 px-3">Step</th>

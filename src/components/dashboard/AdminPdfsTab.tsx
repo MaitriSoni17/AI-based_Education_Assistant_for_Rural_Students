@@ -873,16 +873,16 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
 
       {/* 6. IMMERSIVE PDF READER & AI STUDY MODAL */}
       {activePdfFile && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in">
-          <div className="bg-white w-full max-w-5xl h-[92vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-700">
+        <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col h-screen w-screen overflow-hidden animate-fade-in">
+          <div className="bg-white w-full h-full flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-rose-500/20 text-rose-400 rounded-xl">
+            <div className="p-3 sm:p-4 bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="p-2 bg-rose-500/20 text-rose-400 rounded-xl shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm text-white line-clamp-1">{activePdfFile.name}</h3>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-sm text-white truncate">{activePdfFile.name}</h3>
                   <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
                     <span>{activePdfFile.subject}</span>
                     <span>•</span>
@@ -892,7 +892,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <button
                   onClick={() => {
                     if (isPdfSpeaking) {
@@ -904,7 +904,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
                       speakText(speechTextContent, 'en');
                     }
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
                     isPdfSpeaking ? 'bg-rose-500 text-white animate-pulse' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                   }`}
                 >
@@ -914,7 +914,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
 
                 <button
                   onClick={() => handleDownloadFileToDevice(activePdfFile)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
                   <Download className="w-3.5 h-3.5 text-amber-400" />
                   <span>Save</span>
@@ -926,7 +926,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
                     setIsPdfSpeaking(false);
                     setActivePdfFile(null);
                   }}
-                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white cursor-pointer"
+                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white cursor-pointer shrink-0 ml-auto sm:ml-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -934,10 +934,10 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
             </div>
 
             {/* Modal Tabs Bar */}
-            <div className="flex flex-wrap bg-slate-100 p-1.5 gap-2 border-b border-slate-200 shrink-0">
+            <div className="flex overflow-x-auto no-scrollbar sm:flex-wrap bg-slate-100 p-1.5 gap-2 border-b border-slate-200 shrink-0">
               <button
                 onClick={() => setPdfWorkspaceTab('reader')}
-                className={`flex-1 min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-[110px] sm:min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                   pdfWorkspaceTab === 'reader' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -947,7 +947,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
 
               <button
                 onClick={() => setPdfWorkspaceTab('translate')}
-                className={`flex-1 min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-[110px] sm:min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                   pdfWorkspaceTab === 'translate' ? 'bg-white text-sky-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -957,7 +957,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
 
               <button
                 onClick={() => setPdfWorkspaceTab('solve')}
-                className={`flex-1 min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-[110px] sm:min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                   pdfWorkspaceTab === 'solve' ? 'bg-white text-emerald-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -967,7 +967,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
               
               <button
                 onClick={() => setPdfWorkspaceTab('summary')}
-                className={`flex-1 min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-[110px] sm:min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                   pdfWorkspaceTab === 'summary' ? 'bg-white text-purple-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -977,7 +977,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
 
               <button
                 onClick={() => setPdfWorkspaceTab('notes')}
-                className={`flex-1 min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-[110px] sm:min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                   pdfWorkspaceTab === 'notes' ? 'bg-white text-amber-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >

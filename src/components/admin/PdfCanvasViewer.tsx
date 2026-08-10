@@ -738,10 +738,10 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       </div>
 
       {/* Performance Footer */}
-      <div className="px-5 py-2.5 bg-slate-950 border-t border-slate-800/80 text-[10px] text-slate-500 font-mono flex items-center justify-between shrink-0 z-10">
+      {/*<div className="px-5 py-2.5 bg-slate-950 border-t border-slate-800/80 text-[10px] text-slate-500 font-mono flex items-center justify-between shrink-0 z-10">
         <span>GyaanBot Virtualized Continuous Reader</span>
         <span>Low-Memory Rendering (Active: {activePageNum}/{numPages})</span>
-      </div>
+      </div>*/}
     </div>
   );
 };

@@ -2045,7 +2045,7 @@ startxref
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <h1 className="text-xl sm:text-sm font-black text-white tracking-tight">
                 Gramin Shiksha Admin Dashboard
               </h1>
               <span className="bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase">
@@ -2767,8 +2767,11 @@ startxref
                       </div>
                     )}
 
-                    <div className="overflow-visible border border-slate-200/85 rounded-2xl bg-white shadow-xs">
-                      <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto border border-slate-200/85 rounded-2xl bg-white shadow-xs">
+                      <div className="text-[10px] text-slate-400 font-mono px-4 py-2 bg-slate-50 border-b border-slate-100 sm:hidden flex items-center gap-1">
+                        <span>↔️ Swipe horizontally to view full table details</span>
+                      </div>
+                      <table className="w-full min-w-[750px] text-left border-collapse">
                         <thead className="bg-slate-50/75 border-b border-slate-200/60">
                           <tr>
                             <th className="p-4 w-10">
@@ -3828,8 +3831,11 @@ startxref
           </div>
 
           {/* Certificate Table */}
-          <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white">
+            <div className="text-[10px] text-slate-400 font-mono px-4 py-2 bg-slate-50 border-b border-slate-100 sm:hidden flex items-center gap-1">
+              <span>↔️ Swipe horizontally to view full table details</span>
+            </div>
+            <table className="w-full min-w-[700px] text-left text-xs">
               <thead className="bg-slate-900 text-white font-mono uppercase text-[10px]">
                 <tr>
                   <th className="p-3.5">Cert ID</th>
@@ -4021,8 +4027,11 @@ startxref
           </div>
 
           {/* User Accounts Table */}
-          <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white">
+            <div className="text-[10px] text-slate-400 font-mono px-4 py-2 bg-slate-50 border-b border-slate-100 sm:hidden flex items-center gap-1">
+              <span>↔️ Swipe horizontally to view full table details</span>
+            </div>
+            <table className="w-full min-w-[700px] text-left text-xs">
               <thead className="bg-slate-900 text-white font-mono uppercase text-[10px]">
                 <tr>
                   <th className="p-3.5">Student / User</th>
