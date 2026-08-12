@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
 import { LanguageCode, User } from '../types';
 import SpeakButton from './SpeakButton';
-import { Smartphone, Lock, UserCheck, Globe, RefreshCw, Send } from 'lucide-react';
+import { Smartphone, Lock, UserCheck, Globe, RefreshCw, Send, ChevronDown, Check, Search, GraduationCap, MapPin, School, BookOpen } from 'lucide-react';
 import { getFirebaseUser, setFirebaseUser } from '../lib/firebase';
 import { getSafeDateString } from '../utils/dateUtils';
+import { STATES, STANDARDS, BOARDS } from '../data/educationData';
 
 interface AuthViewProps {
   mode: 'login' | 'signup';
@@ -26,9 +27,20 @@ export default function AuthView({
   // Form states
   const [mobile, setMobile] = useState('');
   const [name, setName] = useState('');
-  const [otp, setOtp] = useState('');
+  const [state, setState] = useState('Gujarat');
+  const [village, setVillage] = useState('');
+  const [school, setSchool] = useState('');
+  const [standard, setStandard] = useState('');
+  const [board, setBoard] = useState('');
 
-  // UI Flow states
+  // Dropdown UI states
+  const [isStateOpen, setIsStateOpen] = useState(false);
+  const [isStandardOpen, setIsStandardOpen] = useState(false);
+  const [isBoardOpen, setIsBoardOpen] = useState(false);
+  const [boardSearch, setBoardSearch] = useState('');
+
+  // OTP Flow states
+  const [otp, setOtp] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [isSimulated, setIsSimulated] = useState(false);
@@ -71,12 +83,12 @@ export default function AuthView({
         if (!dbUser) {
           onSwitchMode('signup');
           const msgs = {
-            hi: 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया जारी रखने के लिए अपना पूरा नाम दर्ज करें।',
+            hi: 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया जारी रखने के लिए अपना विवरण दर्ज करें।',
             gu: 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને આગળ વધવા માટે તમારું નામ લખો.',
             mr: 'या मोबाईल नंबरवर कोणतेही खाते आढळले नाही. आम्ही तुम्हाला नोंदणी पृष्ठावर पाठवले आहे. कृपया पुढे जाण्यासाठी तुमचे पूर्ण नाव प्रविष्ट करा.',
-            ta: 'இந்த மொபைல் எண்ணில் கணக்கு எதுவும் இல்லை. நாங்கள் உங்களை பதிவுப் பக்கத்திற்கு அனுப்பியுள்ளோம். தயவுசெய்து தொடர உங்கள் முழு பெயரை உள்ளிடவும்.',
-            te: 'ఈ మొబైల్ నంబర్‌తో ఎటువంటి ఖాతా కనుగొనబడలేదు. మేము మిమ్మల్ని రిజిస్ట్రేషన్ పేజీకి మళ్లించాము. దయచేసి కొనసాగించడానికి మీ పూర్తి పేరును నమోదు చేయండి.',
-            en: 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your full name to continue!'
+            ta: 'இந்த மொபைல் எண்ணில் கணக்கு எதுவும் இல்லை. நாங்கள் உங்களை பதிவுப் பக்கத்திற்கு அனுப்பியுள்ளோம். தயவுசெய்து தொடர உங்கள் விவரங்களை உள்ளிடவும்.',
+            te: 'ఈ మొబైల్ నంబర్‌తో ఎటువంటి ఖాతా కనుగొనబడలేదు. మేము మిమ్మల్ని రిజిస్ట్రేషన్ పేజీకి మళ్లించాము. దయచేసి కొనసాగించడానికి మీ వివరాలను నమోదు చేయండి.',
+            en: 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your details to continue!'
           };
           setErrorMessage(msgs[lang as keyof typeof msgs] || msgs.en);
           setSendingOtp(false);
@@ -140,12 +152,27 @@ export default function AuthView({
 
       if (response.ok && data.success && data.verified) {
         if (mode === 'signup') {
-          // Register user profile in Firebase Firestore
-          await setFirebaseUser(mobile, {
+          // Register user profile in Firebase Firestore with all school/location details
+          const newUserPayload = {
             name: name.trim(),
             defaultLanguage: lang,
             signupDate: data.user.signupDate || getSafeDateString(),
-          });
+            state: state.trim() || 'Gujarat',
+            village: village.trim(),
+            school: school.trim(),
+            standard: standard,
+            board: board,
+          };
+
+          await setFirebaseUser(mobile, newUserPayload);
+
+          try {
+            localStorage.setItem(`${mobile}_profile_state`, state);
+            localStorage.setItem(`${mobile}_profile_village`, village);
+            localStorage.setItem(`${mobile}_profile_school`, school);
+            localStorage.setItem(`${mobile}_profile_standard`, standard);
+            localStorage.setItem(`${mobile}_profile_board`, board);
+          } catch(e) {}
           
           const dbUser = await getFirebaseUser(mobile);
           if (dbUser) {
@@ -153,9 +180,7 @@ export default function AuthView({
           } else {
             onSuccess({
               mobile,
-              name: name.trim(),
-              defaultLanguage: lang,
-              signupDate: data.user.signupDate || getSafeDateString(),
+              ...newUserPayload
             });
           }
         } else {
@@ -168,8 +193,8 @@ export default function AuthView({
               hi: 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया अपना नाम दर्ज करें और नया कोड प्राप्त करें।',
               gu: 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને તમારું નામ લખો અને નવો કોડ મેળવો.',
               mr: 'या मोबाईल नंबरवर कोणतेही खाते आढळले नाही. आम्ही तुम्हाला नोंदणी पृष्ठावर पाठवले आहे. कृपया तुमचे नाव प्रविष्ट करा आणि नवीन कोड मिळवा.',
-              ta: 'இந்த மொபைல் எண்ணில் கணக்கு எதுவும் இல்லை. நாங்கள் உங்களை பதிவுப் பக்கத்திற்கு அனுப்பியுள்ளோம். தயవుசெய்து உங்கள் பெயரை உள்ளிட்டு புதிய குறியீட்டைப் பெறவும்.',
-              te: 'ఈ మొబైల్ నంబర్‌తో ఎటువంటి ఖాతా కనుగొనబడలేదు. మేము మిమ్మల్ని రిజిస్ట్రేషన్ పేజీకి మళ్లించాము. దయచేసి మీ పేరును నమోదు చేసి, కొత్త కోడ్‌ని పొందండి.',
+              ta: 'இந்த மொபைல் எண்ணில் கணக்கு எதுவும் இல்லை. நாங்கள் உங்களை பதிவுப் பக்கத்திற்கு அனுப்பியுள்ளோம். தயவுசெய்து உங்கள் பெயரை உள்ளிட்டு புதிய குறியீட்டைப் பெறவும்.',
+              te: 'ఈ మొబైల్ నంబర్‌తో ఎటువంటి ఖాతా కనుగొనబడలేదు. మేము మిమ్మల్ని రిజిస్ట్రేશન పేజీకి మళ్లించాము. దయచేసి మీ పేరును నమోదు చేసి, కొత్త కోడ్‌ని పొందండి.',
               en: 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your name and request a code to register.'
             };
             setErrorMessage(verifyFailMsgs[lang as keyof typeof verifyFailMsgs] || verifyFailMsgs.en);
@@ -195,8 +220,18 @@ export default function AuthView({
     setIsSimulated(false);
   };
 
+  const filteredBoards = BOARDS.filter(b => 
+    b.label.toLowerCase().includes(boardSearch.toLowerCase()) || 
+    b.group.toLowerCase().includes(boardSearch.toLowerCase())
+  );
+
   return (
-    <div id="auth-view-card" className="max-w-md mx-auto bg-white rounded-[32px] border border-[#F2CC8F]/30 shadow-xl overflow-hidden my-6">
+    <div 
+      id="auth-view-card" 
+      className={`mx-auto bg-white rounded-[32px] border border-[#F2CC8F]/30 shadow-xl overflow-hidden my-6 transition-all duration-300 ${
+        mode === 'signup' ? 'max-w-xl' : 'max-w-md'
+      }`}
+    >
       {/* Visual Header Banner */}
       <div className="bg-[#3D405B] p-6 text-white text-center relative border-b border-[#F2CC8F]/20">
         <div className="absolute right-4 top-4">
@@ -213,7 +248,7 @@ export default function AuthView({
           {mode === 'signup' ? t.signupTitle : t.loginTitle}
         </h2>
         <p className="text-xs text-[#F2CC8F] font-mono tracking-wide mt-1 uppercase">
-          Simple Rural Mobile Verification
+          {mode === 'signup' ? 'Student Registration & Academy Profile' : 'Simple Rural Mobile Verification'}
         </p>
       </div>
 
@@ -258,31 +293,213 @@ export default function AuthView({
 
         {/* Form elements */}
         {!isOtpSent ? (
-          /* SECTION 1: Phone submission */
+          /* SECTION 1: Details and phone submission */
           <form onSubmit={handleSendOTP} className="space-y-4">
             
-            {/* If in Signup mode, request Student Name */}
+            {/* If in Signup mode, request full student registration info */}
             {mode === 'signup' && (
-              <div className="space-y-1.5 text-left">
-                <label className="block text-xs font-display font-black text-gray-750 uppercase tracking-widest">
-                  {t.fullNameLabel}
-                </label>
-                <input
-                  type="text"
-                  required
-                  id="auth-input-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t.fullNamePlaceholder}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] font-sans"
-                />
+              <div className="space-y-4 animate-fade-in">
+                {/* 1. Full Name */}
+                <div className="space-y-1.5 text-left">
+                  <label className="block text-xs font-display font-black text-gray-750 uppercase tracking-widest">
+                    {t.fullNameLabel} <span className="text-[#E07A5F]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    id="auth-input-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t.fullNamePlaceholder}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] font-sans text-sm"
+                  />
+                </div>
+
+                {/* 2. State & Village / City Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* State Dropdown */}
+                  <div className="space-y-1.5 text-left relative">
+                    <label className="block text-xs font-display font-black text-gray-750 uppercase tracking-widest">
+                      {lang === 'hi' ? 'राज्य / संघ क्षेत्र' : 'State / Territory'}
+                    </label>
+                    <button
+                      type="button"
+                      id="auth-select-state"
+                      onClick={() => {
+                        setIsStateOpen(!isStateOpen);
+                        setIsStandardOpen(false);
+                        setIsBoardOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs sm:text-sm font-sans font-semibold text-gray-800 transition-all hover:bg-gray-50 cursor-pointer text-left"
+                    >
+                      <span className="truncate">{state || 'Select State'}</span>
+                      <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${isStateOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isStateOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-2xl border border-gray-200 shadow-xl z-50 max-h-52 overflow-y-auto p-1.5 space-y-0.5 animate-fade-in text-left">
+                        {STATES.map((st) => (
+                          <button
+                            key={st}
+                            type="button"
+                            onClick={() => {
+                              setState(st);
+                              setIsStateOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors cursor-pointer text-left ${
+                              state === st ? 'bg-[#E07A5F]/10 text-[#E07A5F] font-bold' : 'hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <span className="truncate">{st}</span>
+                            {state === st && <Check className="h-3.5 w-3.5 text-[#E07A5F] shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Village / City */}
+                  <div className="space-y-1.5 text-left">
+                    <label className="block text-xs font-display font-black text-gray-750 uppercase tracking-widest">
+                      {lang === 'hi' ? 'गांव / शहर' : 'Village / City'}
+                    </label>
+                    <input
+                      type="text"
+                      id="auth-input-village"
+                      value={village}
+                      onChange={(e) => setVillage(e.target.value)}
+                      placeholder={lang === 'hi' ? 'उदा. आनंद' : 'e.g. Anand'}
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] font-sans text-xs sm:text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. High School / Institution */}
+                <div className="space-y-1.5 text-left">
+                  <label className="block text-xs font-display font-black text-gray-750 uppercase tracking-widest">
+                    {lang === 'hi' ? 'स्कूल / संस्थान का नाम' : 'High School / Institution'}
+                  </label>
+                  <input
+                    type="text"
+                    id="auth-input-school"
+                    value={school}
+                    onChange={(e) => setSchool(e.target.value)}
+                    placeholder={lang === 'hi' ? 'उदा. राजकीय उच्च विद्यालय' : 'e.g. Govt Higher Secondary School'}
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] font-sans text-xs sm:text-sm"
+                  />
+                </div>
+
+                {/* 4. Standard & Board Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  
+                  {/* Standard / Grade Class */}
+                  <div className="space-y-1.5 text-left relative">
+                    <label className="block text-xs font-display font-black text-gray-750 uppercase tracking-widest">
+                      {lang === 'hi' ? 'कक्षा (Standard)' : 'Standard / Class'}
+                    </label>
+                    <button
+                      type="button"
+                      id="auth-select-standard"
+                      onClick={() => {
+                        setIsStandardOpen(!isStandardOpen);
+                        setIsStateOpen(false);
+                        setIsBoardOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs sm:text-sm font-sans font-semibold text-gray-800 transition-all hover:bg-gray-50 cursor-pointer text-left"
+                    >
+                      <span className="truncate">{standard || (lang === 'hi' ? 'कक्षा चुनें' : 'Select Class')}</span>
+                      <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${isStandardOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isStandardOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-2xl border border-gray-200 shadow-xl z-50 max-h-52 overflow-y-auto p-1.5 space-y-0.5 animate-fade-in text-left">
+                        {STANDARDS.map((std) => (
+                          <button
+                            key={std.value}
+                            type="button"
+                            onClick={() => {
+                              setStandard(std.value);
+                              setIsStandardOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-sans font-medium transition-colors cursor-pointer text-left ${
+                              standard === std.value ? 'bg-[#E07A5F]/10 text-[#E07A5F] font-bold' : 'hover:bg-gray-50 text-gray-700'
+                            }`}
+                          >
+                            <span className="truncate">{std.label}</span>
+                            {standard === std.value && <Check className="h-3.5 w-3.5 text-[#E07A5F] shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Board / Syllabus */}
+                  <div className="space-y-1.5 text-left relative">
+                    <label className="block text-xs font-display font-black text-gray-750 uppercase tracking-widest">
+                      {lang === 'hi' ? 'शिक्षा बोर्ड (Board)' : 'Academic Board'}
+                    </label>
+                    <button
+                      type="button"
+                      id="auth-select-board"
+                      onClick={() => {
+                        setIsBoardOpen(!isBoardOpen);
+                        setIsStateOpen(false);
+                        setIsStandardOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 bg-white rounded-xl border border-gray-200 text-xs sm:text-sm font-sans font-semibold text-gray-800 transition-all hover:bg-gray-50 cursor-pointer text-left"
+                    >
+                      <span className="truncate">{board || (lang === 'hi' ? 'बोर्ड चुनें' : 'Select Board')}</span>
+                      <ChevronDown className={`h-4 w-4 text-gray-400 shrink-0 transition-transform ${isBoardOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isBoardOpen && (
+                      <div className="absolute top-full right-0 left-0 sm:left-auto sm:w-72 mt-1 bg-white rounded-2xl border border-gray-200 shadow-xl z-50 max-h-60 overflow-hidden flex flex-col animate-fade-in text-left">
+                        <div className="p-2 border-b border-gray-100 bg-gray-50">
+                          <div className="relative">
+                            <Search className="h-3.5 w-3.5 text-gray-400 absolute left-2.5 top-2.5" />
+                            <input
+                              type="text"
+                              value={boardSearch}
+                              onChange={(e) => setBoardSearch(e.target.value)}
+                              placeholder="Search board (CBSE, GSEB...)..."
+                              className="w-full pl-8 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-sans text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#E07A5F]"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="overflow-y-auto p-1.5 space-y-0.5">
+                          {filteredBoards.map((b) => (
+                            <button
+                              key={b.value}
+                              type="button"
+                              onClick={() => {
+                                setBoard(b.value);
+                                setIsBoardOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-sans transition-colors cursor-pointer text-left ${
+                                board === b.value ? 'bg-[#E07A5F]/10 text-[#E07A5F] font-bold' : 'hover:bg-gray-50 text-gray-700'
+                              }`}
+                            >
+                              <div className="truncate">
+                                <div>{b.label}</div>
+                                <div className="text-[9px] text-gray-400">{b.group}</div>
+                              </div>
+                              {board === b.value && <Check className="h-3.5 w-3.5 text-[#E07A5F] shrink-0" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
               </div>
             )}
 
             {/* Mobile Input */}
             <div className="space-y-1.5 text-left">
               <label className="block text-xs font-display font-black text-gray-750 uppercase tracking-widest">
-                {t.mobileLabel}
+                {t.mobileLabel} <span className="text-[#E07A5F]">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -307,7 +524,7 @@ export default function AuthView({
               type="submit"
               id="auth-btn-send-otp"
               disabled={sendingOtp}
-              className="w-full py-3.5 px-4 bg-[#3D405B] hover:bg-[#2D2F44] text-white font-sans font-bold text-base rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3.5 px-4 bg-[#3D405B] hover:bg-[#2D2F44] text-white font-sans font-bold text-base rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
             >
               {sendingOtp ? (
                 <>
@@ -332,15 +549,6 @@ export default function AuthView({
                 <span className="animate-pulse w-2 h-2 rounded-full bg-[#E07A5F]" />
                 {t.otpSentMessage}
               </div>
-              {/*<p className="font-mono text-xs text-[#3D405B]/85">
-                OTP code sent to <strong>+91 {mobile}</strong> is:{' '}
-                <span className="bg-[#F2CC8F]/30 px-2.5 py-0.5 rounded font-bold text-[#8B6E32] text-sm border border-[#F2CC8F]/40">
-                  {generatedOtp}
-                </span>
-              </p>*/}
-              {/*<p className="text-[10px] text-gray-500 font-mono italic">
-                (You can also use developer code <span className="underline font-bold">123456</span> to bypass)
-              </p>*/}
             </div>
 
             <div className="space-y-1.5 text-left">

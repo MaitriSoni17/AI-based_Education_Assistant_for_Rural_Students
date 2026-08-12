@@ -1770,6 +1770,7 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
   });
 
   const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [showFormattingHelper, setShowFormattingHelper] = useState<boolean>(true);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingSessionTitle, setEditingSessionTitle] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -5385,35 +5386,47 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                 <div className="space-y-2">
                   {/* Formatting Toolbar */}
                   <div className="flex flex-col gap-0.5 text-left select-none bg-white p-1.5 sm:p-2 rounded-xl border border-gray-150 shadow-3xs">
-                    <div className="flex items-center justify-between text-[9px] font-mono text-gray-400 font-bold uppercase tracking-wider select-none pb-0.5 border-b border-gray-100 mb-0.5">
+                    <div 
+                      className="flex items-center justify-between text-[9px] font-mono text-gray-400 font-bold uppercase tracking-wider select-none pb-0.5 border-b border-gray-100 mb-0.5 cursor-pointer hover:bg-gray-50 transition-colors rounded-t-lg group"
+                      onClick={() => setShowFormattingHelper(!showFormattingHelper)}
+                    >
                       <span className="flex items-center gap-1 text-gray-500">
                         <span>📝</span> Formatting Helper:
+                        {showFormattingHelper ? <ChevronDown className="h-3 w-3 inline ml-0.5 group-hover:translate-y-0.5 transition-transform" /> : <ChevronUp className="h-3 w-3 inline ml-0.5 group-hover:-translate-y-0.5 transition-transform" />}
                       </span>
-                      <span className="text-[8px] text-gray-400 font-normal italic lowercase hidden sm:inline">
-                        scroll vertically to see all symbols
+                      {showFormattingHelper && (
+                        <span className="text-[8px] text-gray-400 font-normal italic lowercase hidden sm:inline">
+                          scroll vertically to see all symbols
+                        </span>
+                      )}
+                      <span className="bg-gray-100 px-1.5 py-0.5 rounded text-[7px] text-gray-400 group-hover:bg-gray-200 transition-colors">
+                        {showFormattingHelper ? (lang === 'hi' ? 'छिपाएं' : 'Hide') : (lang === 'hi' ? 'दिखाएं' : 'Show')}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide no-scrollbar">
-                      {FORMULA_SYMBOLS.map((sym, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            if (sym.type === 'super') {
-                              applyFormatting('super');
-                            } else if (sym.type === 'sub') {
-                              applyFormatting('sub');
-                            } else {
-                              applyFormatting('symbol', sym.char);
-                            }
-                          }}
-                          title={sym.desc}
-                          className="px-2.5 py-1 bg-white hover:bg-amber-50 border border-gray-200 text-xs text-gray-700 font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap"
-                        >
-                          {sym.label || sym.char}
-                        </button>
-                      ))}
-                    </div>
+                    
+                    {showFormattingHelper && (
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide no-scrollbar animate-fade-in">
+                        {FORMULA_SYMBOLS.map((sym, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              if (sym.type === 'super') {
+                                applyFormatting('super');
+                              } else if (sym.type === 'sub') {
+                                applyFormatting('sub');
+                              } else {
+                                applyFormatting('symbol', sym.char);
+                              }
+                            }}
+                            title={sym.desc}
+                            className="px-2.5 py-1 bg-white hover:bg-amber-50 border border-gray-200 text-xs text-gray-700 font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap"
+                          >
+                            {sym.label || sym.char}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Replying banner preview above Form area */}

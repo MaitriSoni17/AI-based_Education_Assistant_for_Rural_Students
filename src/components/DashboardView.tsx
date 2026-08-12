@@ -25,7 +25,7 @@ import PuzzleGameTab from './dashboard/PuzzleGameTab';
 import { 
   User as UserIcon, MessageSquare, BookOpen, GraduationCap, 
   HelpCircle, Sparkles, Award, Settings as SettingsIcon, LogOut, Download, Globe, Menu, X,
-  RefreshCw, Wifi, WifiOff, Flame, Clock, Binary, Puzzle, FileText
+  RefreshCw, Wifi, WifiOff, Flame, Clock, Binary, Puzzle, FileText, ChevronDown, Check, Grid, Layers
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -38,6 +38,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
   // Navigation active tab controller: default to 'profile' as requested for the overview
   const [activeTab, setActiveTab] = useState<'profile' | 'admin-pdfs' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations' | 'puzzle-game'>('profile');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobilePageDrawerOpen, setIsMobilePageDrawerOpen] = useState(false);
 
   // Scroll to top of page whenever activeTab changes
   useEffect(() => {
@@ -299,20 +300,22 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
   }, [activeTab]);
 
   const sidebarItems = [
-    { id: 'profile', label: 'My Profile Overview', icon: UserIcon, color: 'text-blue-500 bg-blue-50' },
-    { id: 'ai-assistant', label: 'AI Study Chatbot', icon: MessageSquare, color: 'text-emerald-500 bg-emerald-50' },
-    { id: 'tutor', label: 'Mascot Class Tutor', icon: BookOpen, color: 'text-[#81B29A] bg-[#81B29A]/10' },
-    { id: 'equations', label: 'Smart Equation Hub', icon: Binary, color: 'text-orange-500 bg-orange-55' },
-    { id: 'admin-pdfs', label: 'Study Materials', icon: FileText, color: 'text-rose-600 bg-rose-50' },
-    { id: 'puzzle-game', label: 'Puzzle Game', icon: Puzzle, color: 'text-purple-600 bg-purple-50' },
-    { id: 'quiz', label: 'Topic Play Quizzes', icon: HelpCircle, color: 'text-amber-500 bg-amber-50' },
-    { id: 'certificates', label: 'My Certificates', icon: GraduationCap, color: 'text-amber-600 bg-amber-50' },
-    { id: 'exam', label: 'Competitive Exams', icon: Award, color: 'text-rose-500 bg-rose-50' },
-    { id: 'career', label: 'Career Guidance', icon: Sparkles, color: 'text-purple-500 bg-purple-50' },
-    { id: 'settings', label: 'System Settings', icon: SettingsIcon, color: 'text-gray-500 bg-gray-50' },
+    { id: 'profile', label: 'My Profile Overview', category: 'Account & Settings', icon: UserIcon, color: 'text-blue-500 bg-blue-50' },
+    { id: 'ai-assistant', label: 'AI Study Chatbot', category: 'AI Learning Tools', icon: MessageSquare, color: 'text-emerald-500 bg-emerald-50' },
+    { id: 'tutor', label: 'Mascot Class Tutor', category: 'AI Learning Tools', icon: BookOpen, color: 'text-[#81B29A] bg-[#81B29A]/10' },
+    { id: 'equations', label: 'Smart Equation Hub', category: 'AI Learning Tools', icon: Binary, color: 'text-orange-500 bg-orange-50' },
+    { id: 'admin-pdfs', label: 'Study Materials', category: 'Curriculum & Prep', icon: FileText, color: 'text-rose-600 bg-rose-50' },
+    { id: 'quiz', label: 'Topic Play Quizzes', category: 'Practice & Rewards', icon: HelpCircle, color: 'text-amber-500 bg-amber-50' },
+    { id: 'puzzle-game', label: 'Puzzle Game', category: 'Practice & Rewards', icon: Puzzle, color: 'text-purple-600 bg-purple-50' },
+    { id: 'certificates', label: 'My Certificates', category: 'Practice & Rewards', icon: GraduationCap, color: 'text-amber-600 bg-amber-50' },
+    { id: 'exam', label: 'Competitive Exams', category: 'Curriculum & Prep', icon: Award, color: 'text-rose-500 bg-rose-50' },
+    { id: 'career', label: 'Career Guidance', category: 'Curriculum & Prep', icon: Sparkles, color: 'text-purple-500 bg-purple-50' },
+    { id: 'settings', label: 'System Settings', category: 'Account & Settings', icon: SettingsIcon, color: 'text-gray-500 bg-gray-50' },
   ] as const;
 
   const activeLabel = sidebarItems.find(i => i.id === activeTab)?.label || 'Dashboard';
+  const currentActiveItem = sidebarItems.find(i => i.id === activeTab) || sidebarItems[0];
+  const CurrentActiveIcon = currentActiveItem.icon;
 
   return (
     <div id="school-workspace-dashboard" className="max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-2 md:py-6 space-y-6 pb-16">
@@ -406,9 +409,34 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
           </nav>
         </aside>
 
-        {/* MOBILE HORIZONTAL SCROLL NAV & TABS SHELTER */}
-        <div className="lg:hidden shrink-0">
-          <div className="flex overflow-x-auto gap-2 pb-2.5 px-1 scrollbar-thin select-none">
+        {/* MOBILE NAVIGATION BAR & PAGE SELECTOR */}
+        <div className="lg:hidden shrink-0 space-y-2">
+          {/* Active Page Header Card with "All Pages" Button */}
+          <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between gap-3 text-left">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`p-2 rounded-xl shrink-0 ${currentActiveItem.color}`}>
+                <CurrentActiveIcon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider block">Active Page</span>
+                <h2 className="text-xs sm:text-sm font-extrabold text-gray-850 truncate">{currentActiveItem.label}</h2>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              id="mobile-btn-open-all-pages"
+              onClick={() => setIsMobilePageDrawerOpen(true)}
+              className="px-3 py-2 bg-[#3D405B] hover:bg-[#2D2F44] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer active:scale-95 transition-all"
+            >
+              <Grid className="h-3.5 w-3.5 text-[#F2CC8F]" />
+              <span>All Pages ({sidebarItems.length})</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {/* Clean Horizontal Quick Pills (Without default browser scrollbars) */}
+          <div className="flex overflow-x-auto gap-2 pb-1 pt-0.5 select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {sidebarItems.map(item => {
               const IconComp = item.icon;
               const isSelected = activeTab === item.id;
@@ -416,18 +444,134 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`p-2.5 px-4 rounded-full font-sans text-xs font-extrabold whitespace-nowrap flex items-center gap-2 transition-all duration-200 cursor-pointer border hover-scale-sm text-left ${
+                  className={`p-2 px-3.5 rounded-xl font-sans text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all duration-150 cursor-pointer border text-left shrink-0 ${
                     isSelected
-                      ? 'bg-[#3D405B] text-white border-transparent shadow'
-                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-55'
+                      ? 'bg-[#3D405B] text-white border-transparent shadow-xs'
+                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <IconComp className="h-4 w-4 shrink-0" />
-                  <span className="text-left">{item.label}</span>
+                  <IconComp className="h-3.5 w-3.5 shrink-0" />
+                  <span>{item.label}</span>
                 </button>
               );
             })}
           </div>
+        </div>
+
+        {/* FULL PAGE SELECTION DRAWER MODAL (MOBILE) */}
+        {isMobilePageDrawerOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-fade-in">
+            <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-gray-200 shadow-2xl max-h-[85vh] flex flex-col overflow-hidden text-left">
+              {/* Drawer Title Header */}
+              <div className="p-4 border-b border-gray-150 flex items-center justify-between bg-gray-50/80">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-[#E07A5F]/15 rounded-xl">
+                    <Grid className="h-5 w-5 text-[#E07A5F]" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-gray-800">
+                      Classroom Pages ({sidebarItems.length})
+                    </h3>
+                    <p className="text-xs text-gray-500 font-sans">Tap any page to navigate instantly</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  id="mobile-drawer-close-btn"
+                  onClick={() => setIsMobilePageDrawerOpen(false)}
+                  className="p-2 rounded-full hover:bg-gray-200 text-gray-500 cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Categorized Pages List */}
+              <div className="p-4 overflow-y-auto space-y-4">
+                {['AI Learning Tools', 'Curriculum & Prep', 'Practice & Rewards', 'Account & Settings'].map(catName => {
+                  const itemsInCat = sidebarItems.filter(i => i.category === catName);
+                  if (itemsInCat.length === 0) return null;
+                  return (
+                    <div key={catName} className="space-y-2">
+                      <h4 className="text-[10px] font-mono font-black text-gray-400 uppercase tracking-widest px-1">
+                        {catName}
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {itemsInCat.map(item => {
+                          const IconComp = item.icon;
+                          const isSelected = activeTab === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => {
+                                setActiveTab(item.id);
+                                setIsMobilePageDrawerOpen(false);
+                              }}
+                              className={`p-3 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#3D405B] text-white border-transparent shadow-md'
+                                  : 'bg-gray-50/80 border-gray-200 text-gray-800 hover:bg-gray-100'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={`p-2 rounded-xl shrink-0 ${isSelected ? 'bg-white/20 text-white' : item.color}`}>
+                                  <IconComp className="h-4.5 w-4.5" />
+                                </div>
+                                <div className="min-w-0 text-left">
+                                  <div className="text-xs font-bold truncate">{item.label}</div>
+                                </div>
+                              </div>
+                              {isSelected && (
+                                <Check className="h-4 w-4 text-[#F2CC8F] shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STICKY BOTTOM QUICK DOCK (MOBILE THUMB NAV) */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200 p-1.5 px-2 shadow-lg flex justify-around items-center">
+          {[
+            { id: 'profile', label: 'Profile', icon: UserIcon },
+            { id: 'ai-assistant', label: 'AI Chat', icon: MessageSquare },
+            { id: 'tutor', label: 'Tutor', icon: BookOpen },
+            { id: 'admin-pdfs', label: 'Study', icon: FileText },
+          ].map((dockItem) => {
+            const DockIcon = dockItem.icon;
+            const isDockSelected = activeTab === dockItem.id;
+            return (
+              <button
+                key={dockItem.id}
+                type="button"
+                onClick={() => setActiveTab(dockItem.id as any)}
+                className={`flex flex-col items-center justify-center p-1.5 px-3 rounded-xl transition-all cursor-pointer ${
+                  isDockSelected
+                    ? 'text-[#E07A5F] font-extrabold'
+                    : 'text-gray-500 hover:text-gray-800 font-medium'
+                }`}
+              >
+                <DockIcon className={`h-4.5 w-4.5 ${isDockSelected ? 'text-[#E07A5F]' : 'text-gray-500'}`} />
+                <span className="text-[10px] mt-0.5">{dockItem.label}</span>
+              </button>
+            );
+          })}
+
+          {/* Menu Drawer Toggle Button in Bottom Dock */}
+          <button
+            type="button"
+            onClick={() => setIsMobilePageDrawerOpen(true)}
+            className="flex flex-col items-center justify-center p-1.5 px-3 rounded-xl text-gray-500 hover:text-gray-800 font-medium cursor-pointer"
+          >
+            <Grid className="h-4.5 w-4.5 text-[#3D405B]" />
+            <span className="text-[10px] mt-0.5">All ({sidebarItems.length})</span>
+          </button>
         </div>
 
         {/* ACTIVE MAIN VIEWPORT CONTAINER */}

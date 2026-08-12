@@ -14,6 +14,7 @@ export interface User {
   defaultLanguage: LanguageCode;
   signupDate: string;
   role?: 'student' | 'teacher' | 'admin';
+  state?: string;
   village?: string;
   school?: string;
   standard?: string;

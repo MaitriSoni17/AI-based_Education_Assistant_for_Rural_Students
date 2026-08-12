@@ -90,6 +90,7 @@ export interface FirestoreUser {
   defaultLanguage: 'en' | 'hi' | 'gu' | 'mr' | 'ta' | 'te';
   signupDate: string;
   role?: 'student' | 'teacher' | 'admin';
+  state?: string;
   village?: string;
   school?: string;
   standard?: string;
@@ -138,6 +139,7 @@ export async function getFirebaseUser(mobile: string): Promise<FirestoreUser | n
     return null;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
+    return null;
   }
 }
 
@@ -196,6 +198,22 @@ export async function syncFirebaseUserWithLWW(
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+    const fallbackUser: FirestoreUser = {
+      mobile,
+      name: localUser.name || "Student",
+      defaultLanguage: localUser.defaultLanguage || "en",
+      signupDate: localUser.signupDate || getSafeDateString(),
+      avatar: getDeterministicAvatar(localUser.name || "Student", mobile),
+      streakDays: localUser.streakDays || 1,
+      totalPoints: localUser.totalPoints || 15,
+      studyMins: localUser.studyMins || 30,
+      village: localUser.village || "",
+      school: localUser.school || "",
+      standard: localUser.standard || "",
+      lastCheckedInDate: localUser.lastCheckedInDate || getSafeDateString(),
+      ...localUser
+    };
+    return { resolvedUser: fallbackUser, conflictResolved: false, source: 'local' };
   }
 }
 

@@ -27,6 +27,10 @@
           "enum": ["student", "teacher", "admin"],
           "description": "Privilege and operational role of the user."
         },
+        "state": {
+          "type": "string",
+          "description": "Associated state or Union Territory."
+        },
         "village": {
           "type": "string",
           "description": "Associated village or digital hub location."

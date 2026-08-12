@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, useRef, FormEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { LanguageCode, User, QuizQuestion, OfflineResource } from '../../types';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../../data/translations';
@@ -28,6 +28,512 @@ interface LessonQuery {
   slides?: any[];
   starred?: boolean;
 }
+
+export interface BoardSubjectMascot {
+  id: string;
+  boardKey: string;
+  boardName: string;
+  subjectTitle: Record<string, string>;
+  avatarChar: string;
+  avatarName: string;
+  tagline: Record<string, string>;
+  badge: string;
+  themeGradient: string;
+  sampleQuery: Record<string, string>;
+  explanation: Record<string, string>;
+  slides: Record<string, { title: string; content: string; keyPoints: string[] }[]>;
+  quiz: Record<string, QuizQuestion[]>;
+}
+
+const BOARD_MASCOT_ROSTER: BoardSubjectMascot[] = [
+  // --- 1. GSEB (Gujarat Secondary Education Board) ---
+  {
+    id: 'gseb-math',
+    boardKey: 'GSEB',
+    boardName: 'GSEB (ગુજરાત બોર્ડ)',
+    subjectTitle: {
+      en: "Mathematics 📐",
+      gu: "ગણિત 📐",
+      hi: "गणित 📐"
+    },
+    avatarChar: "🦊 Chanda AI",
+    avatarName: "Chanda AI (Smart Fox Tutor)",
+    tagline: {
+      en: "GSEB Vedic Math & Algebra Genius",
+      gu: "વૈદિક ગણિત અને બીજગણિતના માસ્ટર ટ્યુટર",
+      hi: "वैदिक गणित और बीजगणित के एक्सपर्ट गुरु"
+    },
+    badge: "GSEB Core",
+    themeGradient: "from-orange-500 to-amber-600",
+    sampleQuery: {
+      en: "How do we simplify algebraic fractions quickly?",
+      gu: "અપૂર્ણાંકના સાદા સરવાળા-બાદબાકી ઝડપથી કેવી રીતે કરવા?",
+      hi: "बीजगणितीय भिन्नों को आसानी से कैसे हल करें?"
+    },
+    explanation: {
+      en: "Algebraic fractions become super easy when you find the common denominator! Chanda AI breaks down equations into simple steps using fun fox shortcuts.",
+      gu: "અપૂર્ણાંકના સરવાળા-બાદબાકી માટે છેદ સરખો (લઘુત્તમ સામાન્ય અવયવ) કરવો પડે! ચંદા AI તમને ફન શોર્ટક્ટ્સથી ગણિત શીખવશે.",
+      hi: "बीजगणितीय भिन्नों को हल करने के लिए सबसे पहले हर को समान करते हैं! चंदा AI आपको सरल ट्रिक्स से गणित सिखाएंगी।"
+    },
+    slides: {
+      en: [
+        { title: "Algebraic Fractions 101", content: "Learn how to simplify numerators and denominators.", keyPoints: ["Find LCM", "Multiply factors", "Simplify final fraction"] }
+      ],
+      gu: [
+        { title: "અપૂર્ણાંક ગણિત ૧૦૧", content: "અંશ અને છેદને સરળ બનાવવાની શ્રેષ્ઠ રીત.", keyPoints: ["લસાઅ શોધો", "સમાન છેદ બનાવો", "સરળ સ્વરૂપ આપો"] }
+      ],
+      hi: [
+        { title: "बीजगणितीय भिन्न १०१", content: "अंश और हर को सरल करने का आसान तरीका।", keyPoints: ["एलसीएम ज्ञात करें", "हर समान करें", "सरल उत्तर प्राप्त करें"] }
+      ]
+    },
+    quiz: {
+      en: [
+        { id: 'gq1', question: "What is 1/2 + 1/4?", options: ["2/6", "3/4", "1/6", "2/4"], answerIndex: 1, explanation: "Convert 1/2 to 2/4, then add 1/4 to get 3/4!" }
+      ],
+      gu: [
+        { id: 'gq1', question: "૧/૨ + ૧/૪ નો જવાબ શું થાય?", options: ["૨/૬", "૩/૪", "૧/૬", "૨/૪"], answerIndex: 1, explanation: "૧/૨ ને ૨/૪ બનાવીને ૧/૪ ઉમેરતા ૩/૪ મળે!" }
+      ],
+      hi: [
+        { id: 'gq1', question: "१/२ + १/४ का उत्तर क्या होगा?", options: ["२/६", "३/४", "१/६", "२/४"], answerIndex: 1, explanation: "१/२ को २/४ में बदलकर १/४ जोड़ने पर ३/४ मिलता है!" }
+      ]
+    }
+  },
+  {
+    id: 'gseb-sci',
+    boardKey: 'GSEB',
+    boardName: 'GSEB (ગુજરાત બોર્ડ)',
+    subjectTitle: {
+      en: "Science & Tech 🔬",
+      gu: "વિજ્ઞાન અને ટેકનોલોજી 🔬",
+      hi: "विज्ञान एवं प्रौद्योगिकी 🔬"
+    },
+    avatarChar: "🤖 Swami AI",
+    avatarName: "Swami AI (Cyber Robot)",
+    tagline: {
+      en: "GCERT Physics, Chemistry & Space Guide",
+      gu: "ભૌતિક, રસાયણ અને અવકાશ વિજ્ઞાનના સાથી",
+      hi: "भौतिकी, रसायन और अंतरिक्ष विज्ञान के गाइड"
+    },
+    badge: "GCERT Science",
+    themeGradient: "from-cyan-500 to-blue-700",
+    sampleQuery: {
+      en: "How do plants perform Photosynthesis in sunlight?",
+      gu: "સૂર્યપ્રકાશમાં વનસ્પતિ પ્રકાશસંશ્લેષણ કેવી રીતે કરે છે?",
+      hi: "पौधे सूर्य के प्रकाश में प्रकाश संश्लेषण कैसे करते हैं?"
+    },
+    explanation: {
+      en: "Plants absorb sunlight through green Chlorophyll, take water from roots, and draw Carbon Dioxide to create Glucose food & pure Oxygen!",
+      gu: "વનસ્પતિના લીલાં પાંદડાં ક્લોરોફિલની મદદથી સૂર્યપ્રકાશ, પાણી અને હવામાંથી કાર્બન ડાયોક્સાઈડ મેળવીને ખોરાક બનાવે છે અને ઓક્સિજન આપે છે!",
+      hi: "पौधे क्लोरोफिल की मदद से धूप, पानी और कार्बन डाइऑक्साइड लेकर भोजन बनाते हैं और ऑक्सीजन छोड़ते हैं!"
+    },
+    slides: {
+      en: [{ title: "Photosynthesis Engine", content: "Sunlight + Water + CO2 = Glucose + Oxygen", keyPoints: ["Sunlight energy", "Chlorophyll role", "Oxygen release"] }],
+      gu: [{ title: "પ્રકાશસંશ્લેષણ પ્રક્રિયા", content: "સૂર્યપ્રકાશ + પાણી + CO2 = ખોરાક + ઓક્સિજન", keyPoints: ["સૂર્યઊર્જા ગ્રહણ", "ક્લોરોફિલ કાર્ય", "ઓક્સિજન મુક્તિ"] }],
+      hi: [{ title: "प्रकाश संश्लेषण प्रक्रिया", content: "धूप + पानी + CO2 = भोजन + ऑक्सीजन", keyPoints: ["सौर ऊर्जा", "क्लोरोफिल की भूमिका", "ऑक्सीजन निष्कासन"] }]
+    },
+    quiz: {
+      en: [{ id: 'gsq1', question: "Which pigment absorbs sunlight in leaves?", options: ["Melanin", "Chlorophyll", "Hemoglobin", "Carotene"], answerIndex: 1, explanation: "Chlorophyll is the green pigment that traps solar energy!" }],
+      gu: [{ id: 'gsq1', question: "વનસ્પતિમાં સૂર્યપ્રકાશ શોષવાનું કામ કોણ કરે છે?", options: ["મેલેનિન", "ક્લોરોફિલ", "હિમોગ્લોબિન", "કેરોટીન"], answerIndex: 1, explanation: "ક્લોરોફિલ લીલું રંજકદ્રવ્ય છે જે સૂર્યઊર્જા શોષે છે!" }],
+      hi: [{ id: 'gsq1', question: "पत्तियों में धूप को अवशोषित करने वाला वर्णक कौन सा है?", options: ["मेलेनिन", "क्लोरोफिल", "हीमोग्लोबिन", "कैरोटीन"], answerIndex: 1, explanation: "क्लोरोफिल हरा वर्णक है जो सौर ऊर्जा सोखता है!" }]
+    }
+  },
+  {
+    id: 'gseb-ss',
+    boardKey: 'GSEB',
+    boardName: 'GSEB (ગુજરાત બોર્ડ)',
+    subjectTitle: {
+      en: "Social Science 🏛️",
+      gu: "સામાજિક વિજ્ઞાન 🏛️",
+      hi: "सामाजिक विज्ञान 🏛️"
+    },
+    avatarChar: "👵 Dadi AI",
+    avatarName: "Dadi AI (Village Elder)",
+    tagline: {
+      en: "Indian History, Heritage & Civics Storyteller",
+      gu: "ગુજરાતી સંસ્કૃતિ, ઇતિહાસ અને નાગરિકશાસ્ત્રના વડીલ",
+      hi: "भारतीय इतिहास, संस्कृति और नागरिक शास्त्र की कथावाचक"
+    },
+    badge: "Heritage Master",
+    themeGradient: "from-rose-500 to-amber-700",
+    sampleQuery: {
+      en: "How do monsoon winds bring rain to Gujarat & India?",
+      gu: "ચોમાસાના પવનો ગુજરાતમાં વરસાદ કેવી રીતે લાવે છે?",
+      hi: "मानसूनी हवाएं भारत में बारिश कैसे लाती हैं?"
+    },
+    explanation: {
+      en: "Dadi AI explains how summer heat warms the Indian Ocean, forming moisture-laden South-West monsoon winds that rain over Gujarat and India!",
+      gu: "દાદી AI સમજાવે છે કે ઉનાળામાં અરબી સમુદ્રનું પાણી ગરમ થતાં ભેજવાળા પવનો હિંદ મહાસાગર પરથી ગુજરાત તરફ વાઈને મીઠો વરસાદ લાવે છે!",
+      hi: "दादी AI बताती हैं कि गर्मी में अरब सागर से नमी वाली मानसूनी हवाएं गुजरात और भारत में झूमकर बारिश करती हैं!"
+    },
+    slides: {
+      en: [{ title: "Monsoon Mechanism", content: "South-West Monsoon winds bring life-giving rains.", keyPoints: ["Sea breeze moisture", "Western Ghats rainfall", "Agricultural importance"] }],
+      gu: [{ title: "ચોમાસાની પ્રક્રિયા", content: "નૈઋત્યના પવનો વરસાદ લાવે છે.", keyPoints: ["સમુદ્રી ભેજ", "દરિયાકાંઠાનો વરસાદ", "ખેતી માટે મહત્વ"] }],
+      hi: [{ title: "मानसून की प्रक्रिया", content: "दक्षिण-पश्चिम मानसूनी हवाएं वर्षा लाती हैं।", keyPoints: ["समुद्री नमी", "वर्षा वितरण", "कृषि में महत्व"] }]
+    },
+    quiz: {
+      en: [{ id: 'gss1', question: "Which direction do rain-bearing winds come from in monsoon?", options: ["North-East", "South-West", "North-West", "South-East"], answerIndex: 1, explanation: "South-West monsoon winds bring the primary rainy season!" }],
+      gu: [{ id: 'gss1', question: "ચોમાસામાં વરસાદી પવનો કઈ દિશામાંથી આવે છે?", options: ["ઈશાન", "નૈઋત્ય", "વાયવ્ય", "અગ્નિ"], answerIndex: 1, explanation: "નૈઋત્યના પવનો સમુદ્ર પરથી ભેજ લઈને વરસાદ લાવે છે!" }],
+      hi: [{ id: 'gss1', question: "मानसून में बारिश लाने वाली हवाएं किस दिशा से आती हैं?", options: ["उत्तर-पूर्व", "दक्षिण-पश्चिम", "उत्तर-पश्चिम", "दक्षिण-पूर्व"], answerIndex: 1, explanation: "दक्षिण-पश्चिम मानसूनी हवाएं भारत में प्रमुख वर्षा लाती हैं!" }]
+    }
+  },
+  {
+    id: 'gseb-guj',
+    boardKey: 'GSEB',
+    boardName: 'GSEB (ગુજરાત બોર્ડ)',
+    subjectTitle: {
+      en: "Gujarati Literature 📜",
+      gu: "ગુજરાતી સાહિત્ય 📜",
+      hi: "गुजराती साहित्य 📜"
+    },
+    avatarChar: "📜 Kavi Narmad AI",
+    avatarName: "Kavi Narmad AI (Sahitya Scholar)",
+    tagline: {
+      en: "Gujarati Grammar, Prose & Poetics Master",
+      gu: "જય જય ગરવી ગુજરાત! વ્યાકરણ અને કાવ્ય રસધારા",
+      hi: "गुजराती काव्य, गद्य एवं व्याकरण विद्वान"
+    },
+    badge: "Gujarati Sahitya",
+    themeGradient: "from-amber-500 to-orange-600",
+    sampleQuery: {
+      en: "Why is Mother Tongue (માતૃભાષા) essential for deep thinking?",
+      gu: "વિચારોની સ્પષ્ટતા માટે માતૃભાષાનું શું મહત્વ છે?",
+      hi: "विचारों की गहराई के लिए मातृभाषा का क्या महत्व है?"
+    },
+    explanation: {
+      en: "Kavi Narmad AI shares how learning in Mother Tongue develops highest cognitive abilities, emotional depth, and poetic creativity!",
+      gu: "કવિ નર્મદ AI ગર્વથી કહે છે - 'જય જય ગરવી ગુજરાત!' માતૃભાષામાં ભણવાથી બાળકનું મન મુક્ત રીતે વિચારો કરી શકે છે અને સર્જનાત્મક બને છે!",
+      hi: "कवि नर्मद AI बताते हैं कि मातृभाषा में सीखने से बच्चों की सोच और मौलिकता सबसे ज्यादा निखरती है!"
+    },
+    slides: {
+      en: [{ title: "Pride of Gujarati Literature", content: "Narmad, Meghani, and Dalpatram's literary rich heritage.", keyPoints: ["Poetic rhythm", "Grammar purity", "Cultural roots"] }],
+      gu: [{ title: "ગુજરાતી સાહિત્યનો ગૌરવવંત વારસો", content: "નર્મદ, મેઘાણી અને દલપતરામની અમર કૃતિઓ.", keyPoints: ["કાવ્ય લય", "વ્યાકરણ શુદ્ધતા", "સંસ્કૃતિ પ્રેમ"] }],
+      hi: [{ title: "गुजराती साहित्य की विरासत", content: "नर्मद और मेघानी की अमर रचनाएं।", keyPoints: ["काव्य लय", "व्याकरण", "सांस्कृतिक संबंध"] }]
+    },
+    quiz: {
+      en: [{ id: 'ggq1', question: "Who composed the famous poem 'Jai Jai Garvi Gujarat'?", options: ["Dalpatram", "Kavi Narmad", "Umashankar Joshi", "Zaverchand Meghani"], answerIndex: 1, explanation: "Kavi Narmad wrote the anthem 'Jai Jai Garvi Gujarat'!" }],
+      gu: [{ id: 'ggq1', question: "'જય જય ગરવી ગુજરાત' કાવ્ય કોણે રચ્યું હતું?", options: ["દલપતરામ", "કવિ નર્મદ", "ઉમાશંકર જોશી", "ઝવેરચંદ મેઘાણી"], answerIndex: 1, explanation: "કવિ નર્મદે અમર કાવ્ય 'જય જય ગરવી ગુજરાત' રચ્યું હતું!" }],
+      hi: [{ id: 'ggq1', question: "'जय जय गरवी गुजरात' कविता के रचयिता कौन हैं?", options: ["दलपतराम", "कवि नर्मद", "उमाशंकर जोशी", "झवेरचंद मेघाणी"], answerIndex: 1, explanation: "कवि नर्मद ने 'जय जय गरवी गुजरात' की रचना की थी!" }]
+    }
+  },
+  {
+    id: 'gseb-eng',
+    boardKey: 'GSEB',
+    boardName: 'GSEB (ગુજરાત બોર્ડ)',
+    subjectTitle: {
+      en: "English Language 🦅",
+      gu: "અંગ્રેજી ભાષા 🦅",
+      hi: "अंग्रेजी भाषा 🦅"
+    },
+    avatarChar: "🦅 William AI",
+    avatarName: "William AI (Grammar Eagle)",
+    tagline: {
+      en: "English Vocabulary, Tenses & Story Composition",
+      gu: "અંગ્રેજી વ્યાકરણ અને સ્પોકન ઇંગ્લિશ ટ્યુટર",
+      hi: "अंग्रेजी व्याकरण और वाक्य रचना विशेषज्ञ"
+    },
+    badge: "English Core",
+    themeGradient: "from-indigo-500 to-purple-700",
+    sampleQuery: {
+      en: "How do Active & Passive Voice sentences differ?",
+      gu: "Active અને Passive Voice વચ્ચે શો તફાવત છે?",
+      hi: "Active और Passive Voice में क्या अंतर है?"
+    },
+    explanation: {
+      en: "In Active Voice, the Subject does the action (e.g. 'The eagle catches fish'). In Passive Voice, the object receives the action (e.g. 'Fish is caught by the eagle').",
+      gu: "Active Voice માં કર્તા મુખ્ય હોય છે (દા.ત. 'કૂતરો દોડે છે'), જ્યારે Passive Voice માં કર્મ પર ભાર મૂકવામાં આવે છે!",
+      hi: "Active Voice में कर्ता प्रधान होता है, जबकि Passive Voice में कर्म को प्रमुखता दी जाती है!"
+    },
+    slides: {
+      en: [{ title: "Voice & Sentence Logic", content: "Master Active vs Passive transformations.", keyPoints: ["Subject focus", "Object focus", "Past participle verb"] }],
+      gu: [{ title: "વાક્ય રચના વિજ્ઞાન", content: "Active અને Passive નો સરળ પ્રયોગ.", keyPoints: ["કર્તા પ્રધાન", "કર્મ પ્રધાન", "ભૂતકૃદંત રૂપ"] }],
+      hi: [{ title: "वाक्य संरचना नियम", content: "Active और Passive Voice का प्रयोग।", keyPoints: ["कर्ता की प्रधानता", "कर्म की प्रधानता", "Verb 3rd form"] }]
+    },
+    quiz: {
+      en: [{ id: 'geq1', question: "Convert 'Rohan eats an apple' to Passive Voice:", options: ["An apple ate Rohan", "An apple is eaten by Rohan", "Rohan is eating apple", "An apple was eat"], answerIndex: 1, explanation: "'An apple is eaten by Rohan' correctly uses past participle!" }],
+      gu: [{ id: 'geq1', question: "'Rohan eats an apple' નું Passive Voice શું થાય?", options: ["An apple ate Rohan", "An apple is eaten by Rohan", "Rohan is eating apple", "An apple was eat"], answerIndex: 1, explanation: "'An apple is eaten by Rohan' યોગ્ય પેસિવ રૂપ છે!" }],
+      hi: [{ id: 'geq1', question: "'Rohan eats an apple' का Passive Voice क्या होगा?", options: ["An apple ate Rohan", "An apple is eaten by Rohan", "Rohan is eating apple", "An apple was eat"], answerIndex: 1, explanation: "'An apple is eaten by Rohan' सही Passive वाक्य है!" }]
+    }
+  },
+  {
+    id: 'gseb-comp',
+    boardKey: 'GSEB',
+    boardName: 'GSEB (ગુજરાત બોર્ડ)',
+    subjectTitle: {
+      en: "Computer Studies 💻",
+      gu: "કમ્પ્યુટર અધ્યયન 💻",
+      hi: "कंप्यूटर अध्ययन 💻"
+    },
+    avatarChar: "💻 Turing AI",
+    avatarName: "Turing AI (Cyber Panther)",
+    tagline: {
+      en: "Coding, Binary Logic & Artificial Intelligence",
+      gu: "કોડિંગ, ઇન્ટરનેટ અને એઆઈ રોબોટિક્સ ગાઇડ",
+      hi: "कोडिंग, इंटरनेट और एआई एक्सपर्ट"
+    },
+    badge: "Tech & Coding",
+    themeGradient: "from-violet-600 to-indigo-900",
+    sampleQuery: {
+      en: "How does Artificial Intelligence process natural human speech?",
+      gu: "કમ્પ્યુટર અને AI માણસની ભાષા કેવી રીતે સમજે છે?",
+      hi: "कंप्यूटर और AI इंसान की बोली कैसे समझते हैं?"
+    },
+    explanation: {
+      en: "AI breaks spoken sentences into digital tokens, converts them into numeric matrices, and predicts the best logical response using deep neural networks!",
+      gu: "એઆઈ માણસના શબ્દોને ડિજિટલ ટોકન્સ અને ગણિતીય કોડમાં ફેરવીને ન્યુરલ નેટવર્ક દ્વારા તેનો અર્થ સમજીને જવાબ આપે છે!",
+      hi: "एआई इंसानी बोली को डिजिटल टोकन और गणितीय कोड में बदलकर न्यूरल नेटवर्क की मदद से उत्तर देता है!"
+    },
+    slides: {
+      en: [{ title: "AI Speech Processing", content: "Sound Waves -> Digital Tokens -> Neural Response", keyPoints: ["Audio digitization", "Language models", "Real-time synthesis"] }],
+      gu: [{ title: "AI વાણી પ્રક્રિયા", content: "ધ્વનિ તરંગો -> ડિજિટલ કોડ -> સ્માર્ટ જવાબ", keyPoints: ["ડિજિટાઇઝેશન", "લેંગ્વેજ મોડેલ", "રિયલ ટાઈમ વોઈસ"] }],
+      hi: [{ title: "AI वाणी प्रक्रिया", content: "ध्वनि तरंगें -> डिजिटल कोड -> स्मार्ट उत्तर", keyPoints: ["डिजिटलाइजेशन", "भाषा मॉडल", "रियल टाइम वॉयस"] }]
+    },
+    quiz: {
+      en: [{ id: 'gcq1', question: "What is the basic binary unit of computer memory?", options: ["Pixel", "Bit", "Ampere", "Watt"], answerIndex: 1, explanation: "A Bit (0 or 1) is the fundamental binary unit of computers!" }],
+      gu: [{ id: 'gcq1', question: "કમ્પ્યુટર મેમરીનો સૌથી નાનો બાઈનરી એકમ કયો છે?", options: ["પિક્સેલ", "બિટ (Bit)", "એમ્પિયર", "વોટ"], answerIndex: 1, explanation: "બિટ (0 અથવા 1) કમ્પ્યુટર મેમરીનો પાયાનો એકમ છે!" }],
+      hi: [{ id: 'gcq1', question: "कंप्यूटर मेमोरी की सबसे छोटी बाइनरी इकाई कौन सी है?", options: ["पिक्सेल", "बिट (Bit)", "एम्पीयर", "वाट"], answerIndex: 1, explanation: "बिट (0 या 1) कंप्यूटर की मूल बाइनरी इकाई है!" }]
+    }
+  },
+
+  // --- 2. CBSE (Central Board of Secondary Education) ---
+  {
+    id: 'cbse-math',
+    boardKey: 'CBSE',
+    boardName: 'CBSE (National Board)',
+    subjectTitle: {
+      en: "Core Mathematics 📐",
+      gu: "ગણિત અને બીજગણિત 📐",
+      hi: "गणित एवं बीजगणित 📐"
+    },
+    avatarChar: "📐 Ramanujan AI",
+    avatarName: "Ramanujan AI (Math Genius)",
+    tagline: {
+      en: "CBSE Standard Algebra, Geometry & Equations",
+      gu: "બીજગણિત, ભૂમિતિ અને સમીકરણોના નિષ્ણાત",
+      hi: "बीजगणित, ज्यामिति और समीकरणों के जीनियस"
+    },
+    badge: "CBSE Standard",
+    themeGradient: "from-orange-500 to-red-600",
+    sampleQuery: {
+      en: "Why is Pythagoras Theorem (a² + b² = c²) essential?",
+      gu: "પાયથાગોરસ પ્રમેયનું વ્યવહારુ ગણિતમાં શું મહત્વ છે?",
+      hi: "पाइथागोरस प्रमेय (a² + b² = c²) का क्या महत्व है?"
+    },
+    explanation: {
+      en: "Ramanujan AI demonstrates how right-angled triangles help architects, GPS navigation, and game developers measure exact distances accurately!",
+      gu: "રામાનુજન AI બતાવે છે કે કાટકોણ ત્રિકોણમાં કર્ણનો વર્ગ બાકીની બે બાજુઓના વર્ગોના સરવાળા જેટલો હોય છે, જે નકશા અને ઇજનેરીમાં ઉપયોગી છે!",
+      hi: "रामानुजन AI समझाते हैं कि समकोण त्रिभुज में कर्ण का वर्ग अन्य दो भुजाओं के वर्गों के योग के बराबर होता है!"
+    },
+    slides: {
+      en: [{ title: "Pythagorean Principle", content: "In right triangles: hypotenuse² = base² + height²", keyPoints: ["Right angle property", "Distance formula", "Real-world engineering"] }],
+      gu: [{ title: "પાયથાગોરસનો સિદ્ધાંત", content: "કાટકોણ ત્રિકોણમાં: કર્ણ² = પાયો² + વેધ²", keyPoints: ["કાટકોણ ગુણધર્મ", "અંતર સૂત્ર", "એન્જિનિયરિંગ ઉપયોગ"] }],
+      hi: [{ title: "पाइथागोरस का नियम", content: "समकोण त्रिभुज में: कर्ण² = आधार² + लंब²", keyPoints: ["समकोण गुणधर्म", "दूरी सूत्र", "इंजीनियरिंग में उपयोग"] }]
+    },
+    quiz: {
+      en: [{ id: 'cq1', question: "If base = 3 and height = 4 in a right triangle, what is hypotenuse?", options: ["5", "7", "12", "25"], answerIndex: 0, explanation: "3² + 4² = 9 + 16 = 25. Square root of 25 is 5!" }],
+      gu: [{ id: 'cq1', question: "જો કાટકોણ ત્રિકોણમાં પાયો = ૩ અને વેધ = ૪ હોય તો કર્ણ કેટલો થાય?", options: ["૫", "૭", "૧૨", "૨૫"], answerIndex: 0, explanation: "૩² + ૪² = ૯ + ૧૬ = ૨૫. ૨૫ નું વર્ગમૂળ ૫ થાય!" }],
+      hi: [{ id: 'cq1', question: "यदि समकोण त्रिभुज का आधार = ३ और लंब = ४ है, तो कर्ण क्या होगा?", options: ["५", "७", "१२", "२५"], answerIndex: 0, explanation: "३² + ४² = ९ + १६ = २५. २५ का वर्गमूल ५ है!" }]
+    }
+  },
+  {
+    id: 'cbse-phy',
+    boardKey: 'CBSE',
+    boardName: 'CBSE (National Board)',
+    subjectTitle: {
+      en: "Physics & Space 🚀",
+      gu: "ભૌતિક વિજ્ઞાન અને સ્પેસ 🚀",
+      hi: "भौतिकी एवं अंतरिक्ष विज्ञान 🚀"
+    },
+    avatarChar: "🚀 Dr. APJ Rocket AI",
+    avatarName: "Dr. APJ Rocket AI (Cosmic Scientist)",
+    tagline: {
+      en: "Newton Laws, Rocket Propulsion & Astronomy",
+      gu: "ન્યૂટનના નિયમો, રોકેટ વિજ્ઞાન અને ખગોળશાસ્ત્ર",
+      hi: "न्यूटन के नियम, रॉकेट विज्ञान और खगोलशास्त्र"
+    },
+    badge: "Cosmic Physics",
+    themeGradient: "from-sky-500 to-indigo-700",
+    sampleQuery: {
+      en: "How do rockets escape Earth's gravity to reach Moon & Mars?",
+      gu: "રોકેટ પૃથ્વીનું ગુરુત્વાકર્ષણ છોડીને અવકાશમાં કેવી રીતે જાય છે?",
+      hi: "रॉकेट पृथ्वी के गुरुत्वाकर्षण को पार करके अंतरिक्ष में कैसे जाते हैं?"
+    },
+    explanation: {
+      en: "Dr. APJ Rocket AI explains Newton's Third Law: Hot exhaust gas blasts downwards with enormous force, pushing the rocket upwards into space at Escape Velocity (11.2 km/s)!",
+      gu: "ડૉ. એપીજે રોકેટ AI ન્યૂટનના ગતિના ત્રીજા નિયમ દ્વારા સમજાવે છે: રોકેટ પાછળથી પ્રચંડ વાયુઓ છોડે છે, જેથી સામેની દિશામાં બળ લાગતા રોકેટ અવકાશમાં ધકેલાય છે!",
+      hi: "डॉ. एपीजे रॉकेट AI न्यूटन के तीसरे नियम द्वारा बताते हैं: रॉकेट के पीछे से निकलने वाली गैस की प्रतिक्रिया रॉकेट को एस्केप वेलोसिटी (11.2 किमी/सेकंड) पर ऊपर ढकेलती है!"
+    },
+    slides: {
+      en: [{ title: "Rocket Propulsion Mechanics", content: "Action & Reaction force propels rockets into orbit.", keyPoints: ["Escape Velocity", "Newton 3rd Law", "Multistage fuel"] }],
+      gu: [{ title: "રોકેટ ગતિશાસ્ત્ર", content: "ક્રિયાબળ અને પ્રતિક્રિયાબળ અવકાશમાં લઈ જાય છે.", keyPoints: ["એસ્કેપ વેલોસિટી", "ન્યૂટન નો ૩જો નિયમ", "મલ્ટિસ્ટેજ બળતણ"] }],
+      hi: [{ title: "रॉकेट प्रणोदन सिद्धांत", content: "क्रिया और प्रतिक्रिया बल रॉकेट को कक्षा में भेजता है।", keyPoints: ["पलायन वेग", "न्यूटन का तीसरा नियम", "ईंधन चरण"] }]
+    },
+    quiz: {
+      en: [{ id: 'cpq1', question: "What is Earth's approximate Escape Velocity?", options: ["5.0 km/s", "11.2 km/s", "50.0 km/s", "100 km/s"], answerIndex: 1, explanation: "Earth's escape velocity is ~11.2 km per second!" }],
+      gu: [{ id: 'cpq1', question: "પૃથ્વીનો એસ્કેપ વેલોસિટી (નિષ્ક્રમણ વેગ) અંદાજે કેટલો છે?", options: ["૫.૦ કિમી/સે", "૧૧.૨ કિમી/સે", "૫૦.૦ કિમી/સે", "૧૦૦ કિમી/સે"], answerIndex: 1, explanation: "પૃથ્વીનું ગુરુત્વાકર્ષણ પાર કરવા ૧૧.૨ કિમી/સેકન્ડની ઝડપ જોઈએ!" }],
+      hi: [{ id: 'cpq1', question: "पृथ्वी का पलायन वेग (Escape Velocity) लगभग कितना है?", options: ["५.० किमी/सेकंड", "११.२ किमी/सेकंड", "५०.० किमी/सेकंड", "१०० किमी/सेकंड"], answerIndex: 1, explanation: "पृथ्वी से बाहर निकलने के लिए ११.२ किमी/सेकंड की गति चाहिए!" }]
+    }
+  },
+  {
+    id: 'cbse-bio',
+    boardKey: 'CBSE',
+    boardName: 'CBSE (National Board)',
+    subjectTitle: {
+      en: "Biology & Health 🧪",
+      gu: "જીવવિજ્ઞાન અને આરોગ્ય 🧪",
+      hi: "जीवविज्ञान एवं स्वास्थ्य 🧪"
+    },
+    avatarChar: "🧪 Dr. Anandi AI",
+    avatarName: "Dr. Anandi AI (Bio-Medical Expert)",
+    tagline: {
+      en: "Cell Biology, Human Organs & Health Science",
+      gu: "કોષ વિજ્ઞાન, માનવ અંગો અને આરોગ્ય વિજ્ઞાન",
+      hi: "कोशिका विज्ञान, मानव अंग एवं स्वास्थ्य विज्ञान"
+    },
+    badge: "Bio Expert",
+    themeGradient: "from-emerald-500 to-cyan-700",
+    sampleQuery: {
+      en: "How do Red Blood Cells deliver oxygen to muscles?",
+      gu: "લાલ રક્તકણો શરીરમાં ઓક્સિજન કેવી રીતે પહોંચાડે છે?",
+      hi: "लाल रक्त कोशिकाएं शरीर में ऑक्सीजन कैसे पहुंचाती हैं?"
+    },
+    explanation: {
+      en: "Dr. Anandi AI shows how Hemoglobin protein inside Red Blood Cells binds to oxygen in lungs and carries it to millions of working muscle cells!",
+      gu: "ડૉ. આનંદી AI સમજાવે છે કે લાલ રક્તકણોમાં રહેલું હિમોગ્લોબિન ફેફસાંમાંથી ઓક્સિજન પકડીને શરીરના દરેક કોષ સુધી પહોંચાડે છે!",
+      hi: "डॉ. आनंदी AI बताती हैं कि लाल रक्त कोशिकाओं में मौजूद हीमोग्लोबिन फेफड़ों से ऑक्सीजन बांधकर शरीर की हर कोशिका तक पहुंचाता है!"
+    },
+    slides: {
+      en: [{ title: "Circulatory Oxygen Engine", content: "Hemoglobin + Oxygen = Oxyhemoglobin", keyPoints: ["Red Blood Cells", "Lungs gas exchange", "Cellular respiration"] }],
+      gu: [{ title: "રક્ત પરિભ્રમણ અને ઓક્સિજન", content: "હિમોગ્લોબિન + ઓક્સિજન = ઓક્સીહિમોગ્લોબિન", keyPoints: ["લાલ રક્તકણો", "ફેફસાંમાં વાયુ વિનિમય", "કોષીય શ્વસન"] }],
+      hi: [{ title: "रक्त परिसंचरण तंत्र", content: "हीमोग्लोबिन + ऑक्सीजन = ऑक्सीहीमोग्लोबिन", keyPoints: ["लाल रक्त कोशिकाएं", "फेफड़ों में गैस विनिमय", "कोशिकीय श्वसन"] }]
+    },
+    quiz: {
+      en: [{ id: 'cbq1', question: "Which protein in blood carries oxygen?", options: ["Keratin", "Hemoglobin", "Insulin", "Collagen"], answerIndex: 1, explanation: "Hemoglobin is the iron-rich protein that binds oxygen!" }],
+      gu: [{ id: 'cbq1', question: "લોહીમાં ઓક્સિજન વહન કરતું પ્રોટીન કયું છે?", options: ["કેરેટિન", "હિમોગ્લોબિન", "ઇન્સ્યુલિન", "કોલેજન"], answerIndex: 1, explanation: "હિમોગ્લોબિન ઓક્સિજન વહન કરવાનું મહત્વનું કામ કરે છે!" }],
+      hi: [{ id: 'cbq1', question: "रक्त में ऑक्सीजन ले जाने वाला प्रोटीन कौन सा है?", options: ["केराटिन", "हीमोग्लोबिन", "इंसुलिन", "कोलेजन"], answerIndex: 1, explanation: "हीमोग्लोबिन ऑक्सीजन को फेफड़ों से शरीर में ले जाता है!" }]
+    }
+  },
+  {
+    id: 'cbse-hist',
+    boardKey: 'CBSE',
+    boardName: 'CBSE (National Board)',
+    subjectTitle: {
+      en: "History & Civics 🛡️",
+      gu: "ઇતિહાસ અને નાગરિકશાસ્ત્ર 🛡️",
+      hi: "इतिहास एवं नागरिक शास्त्र 🛡️"
+    },
+    avatarChar: "🛡️ Rani Laxmi AI",
+    avatarName: "Rani Laxmi AI (History Legend)",
+    tagline: {
+      en: "Indian Freedom Movements, Constitution & Democracy",
+      gu: "સ્વાતંત્ર્ય સંગ્રામ, બંધારણ અને લોકશાહીના ઇતિહાસકાર",
+      hi: "स्वतंत्रता संग्राम, संविधान और लोकतंत्र की महान योद्धा"
+    },
+    badge: "Freedom Legend",
+    themeGradient: "from-rose-600 to-amber-600",
+    sampleQuery: {
+      en: "Why is the Indian Constitution considered the backbone of democracy?",
+      gu: "ભારતનું બંધારણ લોકશાહીનો આત્મા કેમ કહેવાય છે?",
+      hi: "भारतीय संविधान लोकतंत्र की रीढ़ क्यों माना जाता है?"
+    },
+    explanation: {
+      en: "Rani Laxmi AI narrates how Dr. B.R. Ambedkar & the drafting committee created the world's longest written constitution to guarantee Fundamental Rights, Equality, and Justice to all citizens!",
+      gu: "રાણી લક્ષ્મી AI જણાવે છે કે ડૉ. બાબાસાહેબ આંબેડકર અને કમિટીએ દરેક નાગરિકને સમાનતા અને મૂળભૂત અધિકારો આપવા વિશ્વનું સૌથી મોટું લિખિત બંધારણ રચ્યું!",
+      hi: "रानी लक्ष्मी AI बताती हैं कि डॉ. बी.आर. आंबेडकर और समिति ने हर नागरिक को समानता और मौलिक अधिकार देने के लिए विश्व का सबसे बड़ा लिखित संविधान बनाया!"
+    },
+    slides: {
+      en: [{ title: "Preamble & Rights", content: "Justice, Liberty, Equality, Fraternity for all.", keyPoints: ["Fundamental Rights", "Dr. B.R. Ambedkar", "Democratic Republic"] }],
+      gu: [{ title: "બંધારણ અને મૂળભૂત અધિકારો", content: "ન્યાય, સ્વતંત્રતા, સમાનતા અને બંધુતા.", keyPoints: ["મૂળભૂત હક્કો", "ડૉ. બી.આર. આંબેડકર", "લોકશાહી પ્રજાસત્તાક"] }],
+      hi: [{ title: "संविधान एवं मौलिक अधिकार", content: "न्याय, स्वतंत्रता, समानता और बंधुता।", keyPoints: ["मौलिक अधिकार", "डॉ. बी.आर. आंबेडकर", "लोकतांत्रिक गणराज्य"] }]
+    },
+    quiz: {
+      en: [{ id: 'chq1', question: "Who was the Chairman of the Constitution Drafting Committee?", options: ["Mahatma Gandhi", "Dr. B.R. Ambedkar", "Jawaharlal Nehru", "Sardar Patel"], answerIndex: 1, explanation: "Dr. B.R. Ambedkar was the Father & Drafting Chairman of Constitution!" }],
+      gu: [{ id: 'chq1', question: "બંધારણ ખરડા સમિતિના અધ્યક્ષ કોણ હતા?", options: ["મહાત્મા ગાંધી", "ડૉ. બી.આર. આંબેડકર", "જવાહરલાલ નેહરુ", "સરદાર પટેલ"], answerIndex: 1, explanation: "ડૉ. બાબાસાહેબ આંબેડકર બંધારણ સમિતિના અધ્યક્ષ હતા!" }],
+      hi: [{ id: 'chq1', question: "संविधान प्रारूप समिति के अध्यक्ष कौन थे?", options: ["महात्मा गांधी", "डॉ. बी.आर. आंबेडकर", "जवाहरलाल नेहरू", "सरदार पटेल"], answerIndex: 1, explanation: "डॉ. बी.आर. आंबेडकर संविधान प्रारूप समिति के अध्यक्ष थे!" }]
+    }
+  },
+
+  // --- 3. ICSE (Council for the Indian School Certificate Examinations) ---
+  {
+    id: 'icse-phy',
+    boardKey: 'ICSE',
+    boardName: 'ICSE Board',
+    subjectTitle: {
+      en: "Physics & Mechanics 🍎",
+      gu: "ભૌતિકશાસ્ત્ર અને મિકેનિક્સ 🍎",
+      hi: "भौतिक विज्ञान एवं यांत्रिकी 🍎"
+    },
+    avatarChar: "🍎 Newton AI",
+    avatarName: "Newton AI (Physics Wizard)",
+    tagline: {
+      en: "Gravitation, Motion Laws & Energy Optics",
+      gu: "ગુરુત્વાકર્ષણ, ગતિના નિયમો અને પ્રકાશ વિજ્ઞાન",
+      hi: "गुरुत्वाकर्षण, गति के नियम और प्रकाश विज्ञान"
+    },
+    badge: "ICSE Honors",
+    themeGradient: "from-amber-600 to-rose-700",
+    sampleQuery: {
+      en: "How does Universal Gravitation keep planets orbiting the Sun?",
+      gu: "સૂર્યની આસપાસ ગ્રહો ગુરુત્વાકર્ષણથી કેવી રીતે ફરે છે?",
+      hi: "गुरुत्वाकर्षण बल के कारण ग्रह सूर्य की परिक्रमा कैसे करते हैं?"
+    },
+    explanation: {
+      en: "Newton AI explains how mass creates gravitational pull proportional to m1*m2 / r², pulling planets in curved orbital ellipses!",
+      gu: "ન્યૂટન AI સમજાવે છે કે સૂર્યનું પ્રચંડ દ્રવ્યમાન ગ્રહોને પોતાની તરફ ખેંચે છે, જેનાથી ગ્રહો ચોક્કસ ભ્રમણકક્ષામાં ફરે છે!",
+      hi: "न्यूटन AI समझाते हैं कि सूर्य का द्रव्यमान ग्रहों को आकर्षित करता है, जिससे वे निश्चित कक्षा में घूमते हैं!"
+    },
+    slides: {
+      en: [{ title: "Law of Gravitation", content: "F = G * (m1 * m2) / r²", keyPoints: ["Mass attraction", "Inverse square law", "Orbital motion"] }],
+      gu: [{ title: "ગુરુત્વાકર્ષણ નિયમ", content: "બળ = G * (m૧ * m૨) / r²", keyPoints: ["દ્રવ્યમાન આકર્ષણ", "અંતર વર્ગ નિયમ", "ભ્રમણકક્ષા ગતિ"] }],
+      hi: [{ title: "गुरुत्वाकर्षण नियम", content: "बल = G * (m१ * m२) / r²", keyPoints: ["द्रव्यमान आकर्षण", "व्युत्क्रम वर्ग नियम", "कक्षीय गति"] }]
+    },
+    quiz: {
+      en: [{ id: 'iq1', question: "What happens to gravitational force if distance is doubled?", options: ["Doubles", "Halves", "Becomes 1/4th", "Quadruples"], answerIndex: 2, explanation: "By inverse square law, 2² = 4, so force becomes 1/4th!" }],
+      gu: [{ id: 'iq1', question: "જો બે પદાર્થો વચ્ચેનું અંતર બમણું કરવામાં આવે તો ગુરુત્વાકર્ષણ બળ કેટલું થાય?", options: ["બમણું", "અડધું", "૧/૪ ભાગનું", "ચાર ગણું"], answerIndex: 2, explanation: "અંતર બમણું થતાં અંતરનો વર્ગ (૨² = ૪) થવાથી બળ ૧/૪ ભાગનું રહે છે!" }],
+      hi: [{ id: 'iq1', question: "यदि दो वस्तुओं के बीच की दूरी दोगुनी कर दी जाए, तो गुरुत्वाकर्षण बल कितना होगा?", options: ["दोगुना", "आधा", "१/४ भाग", "चार गुना"], answerIndex: 2, explanation: "दूरी दोगुनी होने पर inverse square नियम से बल १/४ हो जाता है!" }]
+    }
+  },
+
+  // --- 4. UP Board (Uttar Pradesh MSP) ---
+  {
+    id: 'up-agri',
+    boardKey: 'UP',
+    boardName: 'UP Board (उत्तर प्रदेश)',
+    subjectTitle: {
+      en: "Agri Tech & Science 🌾",
+      gu: "કૃષિ વિજ્ઞાન અને કમ્પ્યુટર 🌾",
+      hi: "कृषि विज्ञान एवं कंप्यूटर 🌾"
+    },
+    avatarChar: "🌾 Kisan Tech AI",
+    avatarName: "Kisan Tech AI (Agri Guide)",
+    tagline: {
+      en: "Modern Agriculture, Soil Health & Drone Farming",
+      gu: "આધુનિક ખેતી, જમીન આરોગ્ય અને સ્માર્ટ કૃષિ",
+      hi: "आधुनिक खेती, मृदा स्वास्थ्य एवं ड्रोन तकनीक"
+    },
+    badge: "Agri Robotics",
+    themeGradient: "from-emerald-600 to-amber-600",
+    sampleQuery: {
+      en: "How do soil testing & drip irrigation maximize crop yield?",
+      gu: "જમીન ચકાસણી અને ટપક સિંચાઈથી પાક ઉત્પાદન કેવી રીતે વધે છે?",
+      hi: "मिट्टी परीक्षण और टपक सिंचाई से फसल पैदावार कैसे बढ़ती है?"
+    },
+    explanation: {
+      en: "Kisan Tech AI explains how NPK soil testing tells farmers exact fertilizer needs, while Drip Irrigation delivers water directly to roots saving 60% water!",
+      gu: "કિસાન ટેક AI સમજાવે છે કે જમીન ચકાસણીથી સાચું ખાતર પસંદ થાય છે અને ટપક સિંચાઈથી ૬૦% પાણી બચે છે અને પાક બમણો થાય છે!",
+      hi: "किसान टेक AI बताते हैं कि मिट्टी परीक्षण से सही खाद का पता चलता है और टपक सिंचाई से ६०% पानी बचता है व पैदावार बढ़ती है!"
+    },
+    slides: {
+      en: [{ title: "Smart Soil & Drip Tech", content: "Targeted nutrients + direct root watering.", keyPoints: ["NPK Soil Test", "Drip Irrigation", "Yield Boost"] }],
+      gu: [{ title: "સ્માર્ટ કૃષિ ટેકનોલોજી", content: "જમીન આરોગ્ય + મૂળમાં સીધું પાણી.", keyPoints: ["માટી પરીક્ષણ", "ટપક સિંચાઈ", "પાક વૃદ્ધિ"] }],
+      hi: [{ title: "स्मार्ट कृषि तकनीक", content: "मृदा स्वास्थ्य + जड़ों में सीधा पानी।", keyPoints: ["मिट्टी परीक्षण", "टपक सिंचाई", "पैदावार वृद्धि"] }]
+    },
+    quiz: {
+      en: [{ id: 'uq1', question: "Which irrigation technique saves up to 60% water by watering roots directly?", options: ["Flood Irrigation", "Drip Irrigation", "Rain Gun", "Canal Water"], answerIndex: 1, explanation: "Drip Irrigation drops water precisely at root zones!" }],
+      gu: [{ id: 'uq1', question: "છોડના મૂળમાં જ પાણી આપી ૬૦% પાણી બચાવતી સિંચાઈ પદ્ધતિ કઈ છે?", options: ["ધોરિયા પીયત", "ટપક સિંચાઈ", "ફુવારા પદ્ધતિ", "નહેર પીયત"], answerIndex: 1, explanation: "ટપક સિંચાઈ સીધા મૂળ પાસે પાણી આપી બગાડ અટકાવે છે!" }],
+      hi: [{ id: 'uq1', question: "जड़ों में सीधा पानी देकर ६०% पानी बचाने वाली सिंचाई पद्धति कौन सी है?", options: ["नेहर सिंचाई", "टपक (ड्रिप) सिंचाई", "फव्वारा सिंचाई", "बाढ़ सिंचाई"], answerIndex: 1, explanation: "टपक (ड्रिप) सिंचाई जड़ों तक सीधा पानी पहुंचाती है!" }]
+    }
+  }
+];
 
 const SAMPLE_LESSONS: Record<LanguageCode, LessonQuery[]> = {
   en: [
@@ -701,6 +1207,168 @@ export default function TutorTab({
   const [selectedLesson, setSelectedLesson] = useState<LessonQuery>(currentLanguageLessons[0]);
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
   const [customQuery, setCustomQuery] = useState('');
+
+  // --- HELPER TO NORMALIZE SETTINGS BOARD STRING TO MASCOT BOARD KEY ---
+  const normalizeBoardKey = (rawBoard: string | undefined | null): string => {
+    if (!rawBoard) return '';
+    const str = rawBoard.trim().toUpperCase();
+    if (str.includes('GSEB') || str.includes('GUJARAT')) return 'GSEB';
+    if (str.includes('CBSE') || str.includes('NCERT')) return 'CBSE';
+    if (str.includes('ICSE') || str.includes('CISCE')) return 'ICSE';
+    if (str.includes('UPMSP') || str.includes('UTTAR PRADESH') || str.includes('UP BOARD') || str === 'UP') return 'UP';
+    if (str.includes('MPBSE') || str.includes('MADHYA PRADESH') || str.includes('MP BOARD') || str === 'MP') return 'MP';
+    if (['GSEB', 'CBSE', 'ICSE', 'UP', 'MP'].includes(str)) return str;
+    return 'GSEB';
+  };
+
+  // --- MASCOT BOARD & CHARACTER ROSTER STATE ---
+  const rawSettingsBoard = user.board || localStorage.getItem(`${user.mobile}_profile_board`) || '';
+  const isSettingsBoardBlank = !rawSettingsBoard || !rawSettingsBoard.trim();
+  const fetchedBoardKey = isSettingsBoardBlank ? '' : normalizeBoardKey(rawSettingsBoard);
+
+  const [selectedBoard, setSelectedBoard] = useState<string>(() => {
+    return fetchedBoardKey || 'GSEB';
+  });
+
+  const [showManualBoardPicker, setShowManualBoardPicker] = useState<boolean>(isSettingsBoardBlank);
+
+  // Sync automatically when settings change
+  useEffect(() => {
+    if (!isSettingsBoardBlank) {
+      const newKey = normalizeBoardKey(rawSettingsBoard);
+      if (newKey) {
+        setSelectedBoard(newKey);
+      }
+    } else {
+      setShowManualBoardPicker(true);
+    }
+  }, [user.board, rawSettingsBoard, isSettingsBoardBlank]);
+
+  const handleSelectBoard = (boardKey: string) => {
+    setSelectedBoard(boardKey);
+    try {
+      localStorage.setItem(`${user.mobile}_profile_board`, boardKey);
+    } catch (e) {
+      console.warn("Failed to set profile board:", e);
+    }
+    if (onUpdateUser) {
+      onUpdateUser({ board: boardKey });
+    }
+  };
+
+  const [selectedMascotId, setSelectedMascotId] = useState<string | null>(null);
+  const mascotCarouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollMascotCarouselLeft = () => {
+    if (mascotCarouselRef.current) {
+      mascotCarouselRef.current.scrollBy({ left: -280, behavior: 'smooth' });
+    }
+  };
+
+  const scrollMascotCarouselRight = () => {
+    if (mascotCarouselRef.current) {
+      mascotCarouselRef.current.scrollBy({ left: 280, behavior: 'smooth' });
+    }
+  };
+
+  const filteredMascots = BOARD_MASCOT_ROSTER.filter(m => m.boardKey === selectedBoard);
+
+  // --- SMART MASCOT AUTO-MATCHER FOR UNSELECTED QUERIES ---
+  const detectMascotForQuery = (query: string, boardKey: string): BoardSubjectMascot => {
+    const boardMascots = BOARD_MASCOT_ROSTER.filter(m => m.boardKey === boardKey);
+    const fallback = boardMascots[0] || BOARD_MASCOT_ROSTER[0];
+    if (!query || !query.trim()) return fallback;
+
+    const q = query.toLowerCase();
+
+    // 1. Math / Algebra / Geometry / Equations
+    if (/math|algebra|geometry|pythagoras|trigonometry|equation|square|fraction|calculus|number|arithmetic|ગણિત|બીજગણિત|ભૂમિતિ|સમીકરણ|સંખ્યા|गणित|बीजगणित|ज्यामिति|समीकरण|संख्या/.test(q)) {
+      const match = boardMascots.find(m => m.id.includes('math') || m.avatarChar.includes('📐') || m.avatarChar.includes('🦊'));
+      if (match) return match;
+    }
+
+    // 2. Physics / Space / Gravity / Motion / Rocket / Optics / Energy
+    if (/physics|space|gravity|rocket|planet|orbit|motion|force|optics|light|energy|atom|speed|ભૌતિક|સ્પેસ|રોકેટ|ગુરુત્વાકર્ષણ|અવકાશ|પ્રકાશ|ઉર્જા|भौतिक|अंतरिक्ष|रॉकेट|गुरुत्वाकर्षण|प्रकाश|ऊर्जा|गति/.test(q)) {
+      const match = boardMascots.find(m => m.id.includes('phy') || m.avatarChar.includes('🚀') || m.avatarChar.includes('🍎') || m.avatarChar.includes('🤖'));
+      if (match) return match;
+    }
+
+    // 3. Biology / Health / Human Body / Blood / Cell / Plant / Organ / Photosynthesis
+    if (/biology|bio|cell|blood|organ|heart|plant|photosynthesis|health|disease|doctor|medicine|જીવવિજ્ઞાન|કોષ|ઓક્સિજન|હૃદય|વનસ્પતિ|આરોગ્ય|દવા|जीवविज्ञान|कोशिका|रक्त|ऑक्सीजन|हृदय|पौधे|स्वास्थ्य/.test(q)) {
+      const match = boardMascots.find(m => m.id.includes('bio') || m.avatarChar.includes('🧪') || m.avatarChar.includes('🤖'));
+      if (match) return match;
+    }
+
+    // 4. Science / Chemistry / Experiment
+    if (/science|chemistry|acid|base|reaction|element|વિજ્ઞાન|રસાયણ|પ્રયોગ|તત્વ|તત્વો|विज्ञान|रसायन|प्रयोग|तत्व/.test(q)) {
+      const match = boardMascots.find(m => m.id.includes('sci') || m.avatarChar.includes('🤖') || m.avatarChar.includes('🧪'));
+      if (match) return match;
+    }
+
+    // 5. History / Civics / Social Science / Freedom / Constitution / Democracy
+    if (/history|civics|constitution|democracy|freedom|ambedkar|laxmi|gandhi|war|dynasty|government|rights|ઇતિહાસ|નાગરિક|બંધારણ|લોકશાહી|સ્વાતંત્ર્ય|ઇતિહાસ|इतिहास|नागरिक|संविधान|लोकतंत्र|स्वतंत्रता/.test(q)) {
+      const match = boardMascots.find(m => m.id.includes('hist') || m.avatarChar.includes('👵') || m.avatarChar.includes('🛡️'));
+      if (match) return match;
+    }
+
+    // 6. Gujarati / Literature / Poetry / Sahitya / Grammar / Vyakaran
+    if (/gujarati|sahitya|vyakaran|kavita|grammar|narmad|કવિતા|સાહિત્ય|વ્યાકરણ|ગુજરાતી|કવિ|સાહિત્યકાર/.test(q)) {
+      const match = boardMascots.find(m => m.id.includes('guj') || m.avatarChar.includes('📜'));
+      if (match) return match;
+    }
+
+    // 7. English / Vocabulary / Tense / Essay / Grammar
+    if (/english|grammar|vocabulary|tense|essay|poem|english|અંગ્રેજી|વ્યાકરણ|શબ્દો|अंग्रेजी|व्याकरण|शब्द/.test(q)) {
+      const match = boardMascots.find(m => m.id.includes('eng') || m.avatarChar.includes('🦅'));
+      if (match) return match;
+    }
+
+    // 8. Computer Science / Coding / Python / Binary / AI / Tech
+    if (/computer|code|coding|binary|bit|byte|python|algorithm|software|tech|ai|કમ્પ્યુટર|કોડિંગ|બાઈનરી|સૉફ્ટવેર|कंप्यूटर|कोडिंग|बाइनरी|सॉफ्टवेयर/.test(q)) {
+      const match = boardMascots.find(m => m.id.includes('cs') || m.avatarChar.includes('💻'));
+      if (match) return match;
+    }
+
+    // 9. Agriculture / Farming / Crop / Soil / Drip
+    if (/agri|agriculture|crop|farm|soil|kisan|drip|fertilizer|ખેતી|પાક|જમીન|કૃષિ|ખાતર|खेती|फसल|मिट्टी|कृषि|खाद/.test(q)) {
+      const match = boardMascots.find(m => m.id.includes('agri') || m.avatarChar.includes('🌾'));
+      if (match) return match;
+    }
+
+    return fallback;
+  };
+
+  const handleSelectMascotCharacter = (mascot: BoardSubjectMascot) => {
+    // TOGGLE DESELECT: If clicking already selected mascot, unselect it!
+    if (selectedMascotId === mascot.id) {
+      setSelectedMascotId(null);
+      return;
+    }
+
+    setSelectedMascotId(mascot.id);
+    const queryStr = mascot.sampleQuery[lang] || mascot.sampleQuery['en'];
+    const explanationStr = mascot.explanation[lang] || mascot.explanation['en'];
+    const subjectStr = mascot.subjectTitle[lang] || mascot.subjectTitle['en'];
+    const slidesArr = mascot.slides[lang] || mascot.slides['en'] || [
+      { title: subjectStr, content: explanationStr, keyPoints: ["Key Topic 1", "Key Topic 2", "Key Topic 3"] }
+    ];
+    const quizArr = mascot.quiz[lang] || mascot.quiz['en'] || [];
+
+    const newLesson: LessonQuery = {
+      id: mascot.id,
+      query: queryStr,
+      subject: subjectStr,
+      avatarChar: mascot.avatarChar,
+      avatarName: mascot.avatarName,
+      explanation: explanationStr,
+      videoThumbColor: mascot.themeGradient,
+      slides: slidesArr,
+      quiz: quizArr
+    };
+
+    setSelectedLesson(newLesson);
+    setIsPlayingVideo(false);
+  };
 
   // --- VIDEO EXPORT GENERATOR STATES ---
   const [showDownloadSelectionModal, setShowDownloadSelectionModal] = useState(false);
@@ -1583,39 +2251,22 @@ export default function TutorTab({
             {
               id: 'rain-s1',
               title: "भाग 1: वाफ होणे (बाष्पीभवन) 💧☀️",
-              content: "जेव्हा सूर्य नद्या आणि तलावांचे पाणी गरम करतो, तेव्हा पाण्याचे रूपांतर अदृश्य वाफेमध्ये होते! ही हलकी वाफ आकाशात वर जाते.",
-              bullets: ["सूर्य नैसर्गिक हिटरचे काम करतो", "पाण्याचे रूपांतर वाफेमध्ये होते", "उष्ण हवा वाफेला वर घेऊन जाते"],
-              keyFact: "☀️ सूर्याच्या उष्णतेशिवाय जलचक्र आणि पाऊस शक्य नाही!",
+              content: "जेव्हा सूर्य नद्या आणि तलावांचे पाणी गरम करतो, तेव्हा पाण्याचे वाफेमध्ये रूपांतर होते!",
+              bullets: ["सूर्य नैसर्गिक हिटरसारखे काम करतो", "पाणी वाफेमध्ये बदलते", "गरम हवा वाफ वर घेऊन जाते"],
+              keyFact: "☀️ सूर्याच्या उष्णतेशिवाय जलचक्र शक्य नाही!",
               visualLayout: "water-cycle",
-              visualAttributes: { stage: 'evaporation' }
-            },
-            {
-              id: 'rain-s2',
-              title: "भाग 2: ढग तयार होणे (संघनन) ☁️❄️",
-              content: "जशी वाफ वर जाते, तशी हवा थंड होते. थंड हवा वाफेचे रूपांतर पाण्याच्या लहान थेंबांमध्ये करते आणि हे थेंब एकत्र येऊन ढग बनतात!",
-              bullets: ["उंचीवर हवा अतिशय थंड असते", "वाफ थंड होऊन पाण्याचे थेंब बनतात", "करोडो थेंब मिळून ढग बनतात"],
-              keyFact: "☁️ एका मोठ्या ढगाचे वजन १०० हत्तींच्या बरोबर असू शकते!",
-              visualLayout: "water-cycle",
-              visualAttributes: { stage: 'condensation' }
-            },
-            {
-              id: 'rain-s3',
-              title: "भाग 3: पाऊस पडणे (वर्षा) 🌧️🌍",
-              content: "ढगाच्या आत हे लहान थेंब एकत्र येऊन मोठे आणि जड होतात! जेव्हा ढग जास्त जड होतात, तेव्हा ते जमिनीवर पाऊस म्हणून पडतात!",
-              bullets: ["थेंब एकत्र येऊन मोठे व जड बनतात", "पाणी साठल्याने ढग काळे होतात", "गुरुत्वाकर्षण जड थेंबांना खाली खेचते"],
-              keyFact: "🌧️ जर खाली खूप थंडी असेल, तर पाऊस बर्फाच्या स्वरूपात पडतो!",
-              visualLayout: "water-cycle",
-              visualAttributes: { stage: 'precipitation' }
+              visualAttributes: { stage: "evaporation" }
             }
           ];
-        case 'ta':
+
+case 'ta':
           return [
             {
               id: 'rain-s1',
-              title: "பகுதி 1: மேலே செல்லுதல் (ஆவியாதல்) 💧☀️",
-              content: "சூரியனின் வெப்பத்தால் ஏரிகள் மற்றும் ஆறுகளிலுள்ள நீர் சூடாகி நீராவியாக மாறி வான்வெளிக்கு மேலே செல்கிறது.",
-              bullets: ["சூரியன் இயற்கை சூடாக்கியாக செயல்படுகிறது", "நீரானது வாயுவாக மாறுகிறது", "வெப்ப காற்று நீராவியை மேலே கொண்டு செல்கிறது"],
-              keyFact: "☀️ சூரிய வெப்பம் இல்லாவிட்டால் நீர் சுழற்சியும் மழையும் இல்லை!",
+              title: "பகுதி 1: ஆவியாதல் (நீராவி) 💧☀️",
+              content: "சூரிய வெப்பத்தால் நீர்நிலைகளின் நீர் நீராவியாக மாறி மேலே செல்கிறது!",
+              bullets: ["சூரியன் இயற்கை ஹீட்டராக செயல்படுகிறது", "நீர் நீராவியாக மாறுகிறது", "சூடான காற்று நீராவியை மேலே கொண்டு செல்கிறது"],
+              keyFact: "☀️ சூரியனின் வெப்பம் இல்லாமல் நீர் சுழற்சி சாத்தியமில்லை!",
               visualLayout: "water-cycle",
               visualAttributes: { stage: 'evaporation' }
             },
@@ -2568,6 +3219,246 @@ JSON Schema:
   return (
     <div className="flex flex-col gap-6 text-left w-full">
       
+      {/* 0. Mascot Board & Subject Character Selector */}
+      <div id="mascot-board-selector" className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-2xs flex flex-col gap-4">
+        {/* Header Title, Board Tabs & Carousel Controls */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+          <div>
+            <h2 className="font-bold text-sm sm:text-base text-gray-900 flex items-center gap-2">
+              <span>{lang === 'gu' ? 'મસ્કોટ ક્લાસ ટ્યુટર્સ' : lang === 'hi' ? 'मस्कट क्लास ट्यूटर' : 'Mascot Class Tutors'}</span>
+              <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-semibold px-2 py-0.5 rounded-md uppercase">
+                {selectedBoard}
+              </span>
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {lang === 'gu' 
+                ? 'વિષય પસંદ કરો અથવા કોઈ પણ પ્રશ્ન પૂછો — AI આપમેળે યોગ્ય ટ્યુટર પસંદ કરશે:' 
+                : lang === 'hi' 
+                ? 'विषय चुनें या कोई भी प्रश्न पूछें — AI स्वचालित रूप से सही ट्यूटर चुनेगा:' 
+                : 'Select a subject tutor or ask any question to let AI auto-match:'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            {/* Carousel navigation controls for mobile */}
+            <div className="flex md:hidden items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80">
+              <button
+                type="button"
+                onClick={scrollMascotCarouselLeft}
+                className="w-6 h-6 rounded bg-white shadow-2xs flex items-center justify-center text-slate-700 hover:text-slate-900 active:scale-95 transition-all text-sm font-bold"
+                title="Previous"
+              >
+                ‹
+              </button>
+              <span className="text-[10px] font-medium text-slate-500 px-1">
+                {lang === 'hi' ? 'Tutor' : lang === 'gu' ? 'Tutor' : 'Tutor'}
+              </span>
+              <button
+                type="button"
+                onClick={scrollMascotCarouselRight}
+                className="w-6 h-6 rounded bg-white shadow-2xs flex items-center justify-center text-slate-700 hover:text-slate-900 active:scale-95 transition-all text-sm font-bold"
+                title="Next"
+              >
+                ›
+              </button>
+            </div>
+
+            {/* Board Selector Tabs */}
+            {!isSettingsBoardBlank && !showManualBoardPicker ? (
+              <button
+                type="button"
+                onClick={() => setShowManualBoardPicker(true)}
+                className="text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1"
+              >
+                <span>⚙️</span>
+                <span>{lang === 'gu' ? 'બોર્ડ બદલો' : lang === 'hi' ? 'बोर्ड बदलें' : 'Change Board'}</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 md:pb-0 scrollbar-none">
+                {[
+                  { key: 'GSEB', label: 'GSEB' },
+                  { key: 'CBSE', label: 'CBSE' },
+                  { key: 'ICSE', label: 'ICSE' },
+                  { key: 'UP', label: 'UP Board' },
+                  { key: 'MP', label: 'MP Board' },
+                ].map((b) => (
+                  <button
+                    key={b.key}
+                    type="button"
+                    onClick={() => handleSelectBoard(b.key)}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 border ${
+                      selectedBoard === b.key
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 1. Mobile Carousel Container (Clean horizontal snap-scroll) */}
+        <div
+          ref={mascotCarouselRef}
+          className="flex md:hidden gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none py-1 px-0.5 scroll-smooth"
+        >
+          {filteredMascots.map((mascot) => {
+            const isSelected = selectedMascotId === mascot.id;
+            const currentSubjectName = mascot.subjectTitle[lang] || mascot.subjectTitle['en'];
+            const currentTagline = mascot.tagline[lang] || mascot.tagline['en'];
+
+            return (
+              <button
+                key={`mobile-${mascot.id}`}
+                type="button"
+                onClick={() => handleSelectMascotCharacter(mascot)}
+                className={`w-56 shrink-0 snap-start p-3.5 rounded-xl border text-left flex flex-col justify-between gap-3 transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#3D405B] text-white border-[#3D405B] shadow-sm'
+                    : 'bg-white hover:bg-slate-50/80 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden border ${
+                      isSelected ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200/80'
+                    }`}>
+                      <InteractiveAITeacher
+                        avatarChar={mascot.avatarChar}
+                        avatarName={mascot.avatarName}
+                        minimal={true}
+                        className="w-9 h-9"
+                      />
+                    </div>
+                    <span className={`text-[11px] font-medium leading-tight truncate ${isSelected ? 'text-slate-300' : 'text-gray-500'}`}>
+                      {mascot.avatarName}
+                    </span>
+                  </div>
+
+                  <h3 className={`font-bold text-xs sm:text-sm leading-snug break-words ${isSelected ? 'text-white' : 'text-gray-900'}`}>
+                    {currentSubjectName}
+                  </h3>
+                </div>
+
+                <div className={`border-t pt-2 ${isSelected ? 'border-slate-700' : 'border-gray-100'}`}>
+                  <p className={`text-[10.5px] line-clamp-2 leading-tight ${isSelected ? 'text-slate-300' : 'text-gray-400'}`}>
+                    {currentTagline}
+                  </p>
+                  <div className="flex items-center justify-between text-[11px] font-medium mt-2">
+                    <span className={isSelected ? 'text-emerald-400 font-bold' : 'text-[#E07A5F] font-semibold'}>
+                      {isSelected
+                        ? (lang === 'hi' ? 'चयनित ✓' : lang === 'gu' ? 'પસંદ કરેલ ✓' : 'Selected ✓')
+                        : (lang === 'hi' ? 'ट्यूटर चुनें →' : lang === 'gu' ? 'ટ્યુટર પસંદ કરો →' : 'Select Tutor →')}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 2. Desktop Grid Container (Responsive grid where full titles display clearly) */}
+        <div className="hidden md:grid md:grid-cols-3 xl:grid-cols-6 gap-3.5">
+          {filteredMascots.map((mascot) => {
+            const isSelected = selectedMascotId === mascot.id;
+            const currentSubjectName = mascot.subjectTitle[lang] || mascot.subjectTitle['en'];
+            const currentTagline = mascot.tagline[lang] || mascot.tagline['en'];
+
+            return (
+              <button
+                key={`desktop-${mascot.id}`}
+                type="button"
+                onClick={() => handleSelectMascotCharacter(mascot)}
+                className={`p-3.5 rounded-xl border text-left flex flex-col justify-between gap-3 transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#3D405B] text-white border-[#3D405B] shadow-sm'
+                    : 'bg-white hover:bg-slate-50/80 border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden border ${
+                      isSelected ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200/80'
+                    }`}>
+                      <InteractiveAITeacher
+                        avatarChar={mascot.avatarChar}
+                        avatarName={mascot.avatarName}
+                        minimal={true}
+                        className="w-9 h-9"
+                      />
+                    </div>
+                    <span className={`text-[11px] font-medium leading-tight truncate ${isSelected ? 'text-slate-300' : 'text-gray-500'}`}>
+                      {mascot.avatarName}
+                    </span>
+                  </div>
+
+                  <h3 className={`font-bold text-xs sm:text-sm leading-snug break-words ${isSelected ? 'text-white' : 'text-gray-900'}`}>
+                    {currentSubjectName}
+                  </h3>
+                </div>
+
+                <div className={`border-t pt-2 ${isSelected ? 'border-slate-700' : 'border-gray-100'}`}>
+                  <p className={`text-[10.5px] line-clamp-2 leading-tight ${isSelected ? 'text-slate-300' : 'text-gray-400'}`}>
+                    {currentTagline}
+                  </p>
+                  <div className="flex items-center justify-between text-[11px] font-medium mt-2">
+                    <span className={isSelected ? 'text-emerald-400 font-bold' : 'text-[#E07A5F] font-semibold'}>
+                      {isSelected
+                        ? (lang === 'hi' ? 'चयनित ✓' : lang === 'gu' ? 'પસંદ કરેલ ✓' : 'Selected ✓')
+                        : (lang === 'hi' ? 'ट्यूटर चुनें →' : lang === 'gu' ? 'ટ્યુટર પસંદ કરો →' : 'Select Tutor →')}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Active Selection / AI Auto-Match Status Banner */}
+      {/*<div className="w-full">
+        {selectedMascotId ? (
+          <div className="flex items-center justify-between bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="font-semibold text-slate-100">
+                {lang === 'hi' ? 'चयनित ट्यूटर:' : lang === 'gu' ? 'પસંદ કરેલ ટ્યુટર:' : 'Active Tutor:'}{' '}
+                <span className="text-white font-bold">{filteredMascots.find(m => m.id === selectedMascotId)?.avatarName}</span>
+                <span className="text-slate-300 ml-1">
+                  ({filteredMascots.find(m => m.id === selectedMascotId)?.subjectTitle[lang] || filteredMascots.find(m => m.id === selectedMascotId)?.subjectTitle['en']})
+                </span>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedMascotId(null)}
+              className="text-[11px] font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+            >
+              {lang === 'hi' ? 'हटाएं (ऑटो AI)' : lang === 'gu' ? 'દૂર કરો (ઓટો AI)' : 'Deselect (Use Auto AI)'} ✕
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-xl text-xs text-slate-700 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 font-bold">✨</span>
+              <span className="font-medium">
+                {lang === 'hi'
+                  ? "स्मार्ट AI मोड: कोई भी प्रश्न पूछें — AI विषय समझकर उपयुक्त मस्कट शिक्षक चुनेगा"
+                  : lang === 'gu'
+                  ? "સ્માર્ટ AI મોડ: કોઈપણ પ્રશ્ન પૂછો — AI વિષય સમજીને યોગ્ય ટ્યુટર પસંદ કરશે"
+                  : "Smart Auto-Match: Ask any question — AI will detect subject & assign the best tutor"}
+              </span>
+            </div>
+            <span className="text-[10px] font-semibold text-slate-600 bg-slate-200/60 border border-slate-300/60 px-2 py-0.5 rounded-md shrink-0">
+              Auto-Select
+            </span>
+          </div>
+        )}
+      </div>*/}
+
       {/* 1. Custom AI query input bar (Full width) with PDF/image support */}
       <form 
         onSubmit={handleAskCustomQuery} 
@@ -2602,7 +3493,11 @@ JSON Schema:
               id="custom-classroom-query"
               value={customQuery}
               onChange={(e) => setCustomQuery(e.target.value)}
-              placeholder={lang === 'hi' ? "मुझसे कोई भी विज्ञान या गणित का प्रश्न पूछें... (जैसे, हवा ठंडी क्यों होती है?)" : "Ask me any science or math question... (e.g., Why is wind cold?)"}
+              placeholder={
+                selectedMascotId
+                  ? (lang === 'hi' ? `${filteredMascots.find(m => m.id === selectedMascotId)?.avatarName} से सवाल पूछें...` : `Ask ${filteredMascots.find(m => m.id === selectedMascotId)?.avatarName} anything...`)
+                  : (lang === 'hi' ? "कोई भी प्रश्न पूछें — AI स्वचालित रूप से सही मस्कट शिक्षक चुनेगा... (जैसे, पाइथागोरस प्रमेय क्या है?)" : "Ask any question — AI will auto-detect subject & match the right Mascot Tutor...")
+              }
               className="w-full pl-9 pr-24 py-3 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]"
             />
             

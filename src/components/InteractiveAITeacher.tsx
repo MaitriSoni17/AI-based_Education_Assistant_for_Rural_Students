@@ -4,8 +4,8 @@ import { Sparkles, Lightbulb } from 'lucide-react';
 interface InteractiveAITeacherProps {
   avatarChar: string;
   avatarName: string;
-  action: 'idle' | 'explaining' | 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think';
-  isPlaying: boolean;
+  action?: 'idle' | 'explaining' | 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think';
+  isPlaying?: boolean;
   themeColor?: string;
   className?: string;
   minimal?: boolean;
@@ -14,8 +14,8 @@ interface InteractiveAITeacherProps {
 export default function InteractiveAITeacher({
   avatarChar,
   avatarName,
-  action,
-  isPlaying,
+  action = 'idle',
+  isPlaying = false,
   className = "",
   minimal = false
 }: InteractiveAITeacherProps) {
@@ -25,13 +25,26 @@ export default function InteractiveAITeacher({
   const [earTwitch, setEarTwitch] = useState(false);
 
   // Parse teacher type
-  let teacherType: 'dadi' | 'swami' | 'chanda' | 'generic' = 'generic';
-  if (avatarChar.includes('👵') || avatarName.toLowerCase().includes('dadi')) {
+  let teacherType: 'dadi' | 'swami' | 'chanda' | 'rocket' | 'scholar' | 'legend' | 'poet' | 'eagle' | 'nature' | 'generic' = 'generic';
+  const charLower = (avatarChar + " " + avatarName).toLowerCase();
+  if (avatarChar.includes('👵') || charLower.includes('dadi')) {
     teacherType = 'dadi';
-  } else if (avatarChar.includes('🤖') || avatarName.toLowerCase().includes('swami')) {
+  } else if (avatarChar.includes('🤖') || charLower.includes('swami') || charLower.includes('turing') || charLower.includes('kisan')) {
     teacherType = 'swami';
-  } else if (avatarChar.includes('🦊') || avatarName.toLowerCase().includes('chanda')) {
+  } else if (avatarChar.includes('🦊') || charLower.includes('chanda')) {
     teacherType = 'chanda';
+  } else if (avatarChar.includes('🚀') || charLower.includes('rocket') || charLower.includes('cosmic')) {
+    teacherType = 'rocket';
+  } else if (avatarChar.includes('📜') || avatarChar.includes('📖') || avatarChar.includes('✍️') || charLower.includes('narmad') || charLower.includes('premchand') || charLower.includes('tulsi') || charLower.includes('kavi')) {
+    teacherType = 'scholar';
+  } else if (avatarChar.includes('🛡️') || charLower.includes('laxmi') || charLower.includes('shivaji') || charLower.includes('ashoka')) {
+    teacherType = 'legend';
+  } else if (avatarChar.includes('🦚') || charLower.includes('shakespeare') || charLower.includes('poet') || charLower.includes('wordsworth')) {
+    teacherType = 'poet';
+  } else if (avatarChar.includes('🦅') || charLower.includes('william') || charLower.includes('eagle')) {
+    teacherType = 'eagle';
+  } else if (avatarChar.includes('🌿') || avatarChar.includes('🦌') || charLower.includes('prakriti') || charLower.includes('flora')) {
+    teacherType = 'nature';
   }
 
   // Periodic Blink cycle
@@ -512,12 +525,30 @@ export default function InteractiveAITeacher({
     );
   };
 
-  // 4. Render Generic AI Teacher Face - High quality Human avatar
+  // 4. Render Generic/Specialized AI Teacher Face - High quality Human avatar with dynamic mascot badge pin
   const renderGenericFace = () => {
+    const avatarEmoji = avatarChar.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|👵|🤖|🦊|🚀|📜|🛡️|🦅|🧪|📐|🦚|🌿|📈|💻|🕉️|✍️|🎓|🔢|🍎|🦁|🗺️/u)?.[0] || '🎓';
+    
+    // Choose dynamic shirt gradient based on character avatarChar or avatarName
+    let shirtBg = "from-indigo-600 via-indigo-700 to-indigo-600";
+    if (avatarChar.includes('🚀') || avatarChar.includes('🔬') || avatarChar.includes('🍎')) shirtBg = "from-sky-600 via-blue-700 to-sky-600";
+    if (avatarChar.includes('📜') || avatarChar.includes('📖') || avatarChar.includes('✍️')) shirtBg = "from-amber-600 via-amber-700 to-amber-600";
+    if (avatarChar.includes('🛡️') || avatarChar.includes('🏛️')) shirtBg = "from-rose-600 via-red-700 to-rose-600";
+    if (avatarChar.includes('🌿') || avatarChar.includes('🍃')) shirtBg = "from-emerald-600 via-teal-700 to-emerald-600";
+    if (avatarChar.includes('🦚') || avatarChar.includes('🦅')) shirtBg = "from-purple-600 via-violet-700 to-purple-600";
+    if (avatarChar.includes('📐') || avatarChar.includes('🔢')) shirtBg = "from-orange-600 via-amber-600 to-orange-600";
+    if (avatarChar.includes('📈') || avatarChar.includes('💻')) shirtBg = "from-cyan-600 via-[#3D405B] to-cyan-600";
+
     return (
       <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
+        {/* Mascot Emoji Badge Pin Floating above Head */}
+        <div className="absolute top-0 z-20 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded-full shadow-md border border-amber-300 text-xs flex items-center gap-1 animate-bounce">
+          <span>{avatarEmoji}</span>
+          <span className="text-[8px] font-mono font-bold text-slate-800 uppercase tracking-tighter truncate max-w-16">{avatarName.split(' ')[0]}</span>
+        </div>
+
         {/* Slick neat stylized top hairstyle with gradients */}
-        <div className="absolute top-1 w-24 h-12 bg-gradient-to-b from-amber-950 via-[#332211] to-amber-950 rounded-b-2xl rounded-t-3xl z-0" />
+        <div className="absolute top-2.5 w-24 h-11 bg-gradient-to-b from-amber-950 via-[#332211] to-amber-950 rounded-b-2xl rounded-t-3xl z-0" />
 
         {/* Head Canvas with elegant shading */}
         <div className="relative w-28 h-28 bg-[#FDF0D5] rounded-full border-3 border-white shadow-xl flex flex-col items-center overflow-visible z-10 transition-transform duration-300">
@@ -562,10 +593,10 @@ export default function InteractiveAITeacher({
           {renderInteractiveMouth()}
         </div>
 
-        {/* Polished shoulders with classic striped polo shirt */}
-        <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-600 rounded-t-3xl border-t-2 border-white shadow-md flex items-start justify-center z-5">
+        {/* Polished shoulders with subject themed polo shirt */}
+        <div className={`absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r ${shirtBg} rounded-t-3xl border-t-2 border-white shadow-md flex items-start justify-center z-5`}>
           {/* Collar shirt flap overlay */}
-          <div className="w-12 h-4.5 bg-white rounded-b-xl flex justify-between px-1 shadow-xs border-x border-emerald-150">
+          <div className="w-12 h-4.5 bg-white rounded-b-xl flex justify-between px-1 shadow-xs border-x border-slate-150">
             <div className="w-4 h-full bg-white border-r border-gray-150 rotate-15 cursor-pointer" />
             <div className="w-4 h-full bg-white border-l border-gray-150 -rotate-15 cursor-pointer" />
           </div>
@@ -580,33 +611,36 @@ export default function InteractiveAITeacher({
   };
 
   if (minimal) {
+    const renderFaceForType = () => {
+      switch (teacherType) {
+        case 'dadi':
+          return renderDadiFace();
+        case 'swami':
+          return renderSwamiFace();
+        case 'chanda':
+          return renderChandaFace();
+        default:
+          return renderGenericFace();
+      }
+    };
+
     return (
-      <div className={`relative flex items-center justify-center select-none ${className}`}>
-        {/* Dynamic Keyframes injected into DOM for gorgeous breathing rhythm & twitches */}
+      <div className={`relative flex items-center justify-center select-none overflow-hidden rounded-full ${className}`}>
+        {/* Dynamic Keyframes injected into DOM for subtle breathing rhythm */}
         <style>{`
           @keyframes natural-breathe {
             0%, 100% { transform: translateY(0px) scale(1); }
-            50% { transform: translateY(-4px) scale(1.015); }
-          }
-          @keyframes subtle-shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            50% { transform: translateY(-2px) scale(1.015); }
           }
           .ai-breath-cycle {
             animation: natural-breathe 4.5s ease-in-out infinite;
           }
-          .animate-shimmer {
-            animation: subtle-shimmer 2s linear infinite;
-          }
         `}</style>
         
-        {/* Minimal rounded container that clips any overflowing shoulders, centered cleanly */}
-        <div className="relative w-36 h-36 rounded-full flex items-center justify-center ai-breath-cycle overflow-hidden bg-slate-900/50">
-          <div className="absolute inset-0 flex items-center justify-center">
-            {teacherType === 'dadi' && renderDadiFace()}
-            {teacherType === 'swami' && renderSwamiFace()}
-            {teacherType === 'chanda' && renderChandaFace()}
-            {teacherType === 'generic' && renderGenericFace()}
+        {/* Minimal rounded container with scaled face centered cleanly */}
+        <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-transparent">
+          <div className="absolute inset-0 flex items-center justify-center scale-[0.34] pointer-events-none ai-breath-cycle">
+            {renderFaceForType()}
           </div>
         </div>
       </div>

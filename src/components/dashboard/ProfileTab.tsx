@@ -424,8 +424,8 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                   <MapPin className="h-3.5 w-3.5 text-[#E07A5F]" />
                   <span>
                     {village 
-                      ? `${village}, India` 
-                      : (lang === 'hi' ? 'कोई स्थान निर्दिष्ट नहीं' : 'No location specified')}
+                      ? `${village}${user.state ? `, ${user.state}` : ''}, India` 
+                      : (user.state ? `${user.state}, India` : (lang === 'hi' ? 'कोई स्थान निर्दिष्ट नहीं' : 'No location specified'))}
                   </span>
                 </p>
               ) : (

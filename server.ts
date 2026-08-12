@@ -2037,6 +2037,204 @@ Guidelines for formatting the JSON fields:
     }
   });
 
+  // API ROUTE: DYNAMIC AI PUZZLE GENERATOR
+  app.post("/api/gemini/generate-puzzle", async (req, res) => {
+    try {
+      const { gameId, group, lang, topic } = req.body;
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({
+          success: false,
+          message: "GEMINI_API_KEY environment variable is missing."
+        });
+      }
+
+      const { GoogleGenAI, Type } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const userLang = lang || "en";
+      const userGroup = group || 2;
+      const targetTopic = topic || "General Educational Science, Math & Social Studies";
+
+      let prompt = `You are an expert educational game designer creating an interactive puzzle for school students (Group ${userGroup}, Classes ${userGroup === 1 ? '1-5' : userGroup === 2 ? '6-9' : '10-12'}).
+Target game type: '${gameId}'
+Requested Topic / Concept: '${targetTopic}'
+Language Code: '${userLang}' (en=English, hi=Hindi, gu=Gujarati, mr=Marathi, ta=Tamil, te=Telugu).
+
+Generate a brand new, highly accurate, creative, educational puzzle JSON. All text, titles, clues, and explanations must be written in language '${userLang}'.
+`;
+
+      let schemaProperties: any = {};
+      let requiredFields: string[] = [];
+
+      if (gameId === 'history-timeline') {
+        prompt += `Generate 4 historical events in chronological order. Make sure event titles include dates/years e.g. Dandi March (1930).`;
+        schemaProperties = {
+          title: { type: Type.STRING, description: "Title of the historical timeline" },
+          items: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.INTEGER },
+                title: { type: Type.STRING, description: "Title of event with year e.g. Dandi March (1930)" }
+              },
+              required: ["id", "title"]
+            }
+          },
+          solutionIds: {
+            type: Type.ARRAY,
+            items: { type: Type.INTEGER },
+            description: "IDs in chronological order e.g. [1, 2, 3, 4]"
+          },
+          explanation: { type: Type.STRING, description: "Chronological explanation string" }
+        };
+        requiredFields = ["title", "items", "solutionIds", "explanation"];
+      } else if (gameId === 'sequence-builder') {
+        prompt += `Generate 4 sequential stages of a scientific or natural process.`;
+        schemaProperties = {
+          title: { type: Type.STRING, description: "Title of the process sequence" },
+          items: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.INTEGER },
+                title: { type: Type.STRING, description: "Stage title with emoji e.g., Evaporation" }
+              },
+              required: ["id", "title"]
+            }
+          },
+          solutionIds: {
+            type: Type.ARRAY,
+            items: { type: Type.INTEGER },
+            description: "IDs in correct sequential order e.g. [1, 2, 3, 4]"
+          },
+          explanation: { type: Type.STRING, description: "Sequential explanation string" }
+        };
+        requiredFields = ["title", "items", "solutionIds", "explanation"];
+      } else if (gameId === 'crossword') {
+        prompt += `Generate a science crossword with 1 Across clue and 1 Down clue. Answers must be UPPERCASE single English words (e.g. PHOTOSYNTHESIS, CELL, GRAVITATION, FORCE, ATOM). Clues can be in language '${userLang}'.`;
+        schemaProperties = {
+          title: { type: Type.STRING, description: "Title of crossword topic" },
+          across: { type: Type.STRING, description: "Across clue text" },
+          acrossAns: { type: Type.STRING, description: "UPPERCASE single word answer for Across" },
+          down: { type: Type.STRING, description: "Down clue text" },
+          downAns: { type: Type.STRING, description: "UPPERCASE single word answer for Down" }
+        };
+        requiredFields = ["title", "across", "acrossAns", "down", "downAns"];
+      } else if (gameId === 'number-grid') {
+        prompt += `Generate 3 connected arithmetic or algebraic math chain questions with numerical string answers.`;
+        schemaProperties = {
+          title: { type: Type.STRING, description: "Title of the math chain set" },
+          q1: { type: Type.STRING, description: "First math expression e.g. '12 + 18 = ?'" },
+          a1: { type: Type.STRING, description: "Numerical string answer for q1 e.g. '30'" },
+          q2: { type: Type.STRING, description: "Second math expression e.g. '30 ÷ 5 = ?'" },
+          a2: { type: Type.STRING, description: "Numerical string answer for q2 e.g. '6'" },
+          q3: { type: Type.STRING, description: "Third math expression e.g. '6 × 7 = ?'" },
+          a3: { type: Type.STRING, description: "Numerical string answer for q3 e.g. '42'" }
+        };
+        requiredFields = ["title", "q1", "a1", "q2", "a2", "q3", "a3"];
+      } else if (gameId === 'odd-one-out') {
+        prompt += `Generate an Odd One Out question with 4 options where 3 items belong to a specific scientific group and 1 item (solutionId) does NOT belong.`;
+        schemaProperties = {
+          title: { type: Type.STRING, description: "Category/Family title" },
+          question: { type: Type.STRING, description: "Question text asking to identify the odd one out" },
+          items: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.INTEGER },
+                name: { type: Type.STRING, description: "Item label with emoji" }
+              },
+              required: ["id", "name"]
+            }
+          },
+          solutionId: { type: Type.INTEGER, description: "The ID (1, 2, 3, or 4) of the item that is the odd one out" },
+          explanation: { type: Type.STRING, description: "Explanation of why solutionId is the odd one out" }
+        };
+        requiredFields = ["title", "question", "items", "solutionId", "explanation"];
+      } else {
+        prompt += `Generate a 5-organism Food Chain from producer to top predator.`;
+        schemaProperties = {
+          title: { type: Type.STRING, description: "Food chain title" },
+          items: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                key: { type: Type.STRING },
+                name: { type: Type.STRING }
+              },
+              required: ["key", "name"]
+            }
+          },
+          solutionKeys: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+          },
+          explanation: { type: Type.STRING }
+        };
+        requiredFields = ["title", "items", "solutionKeys", "explanation"];
+      }
+
+      const modelsToTry = ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"];
+      let response: any = null;
+      let success = false;
+      let lastError: any = null;
+
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`[PUZZLE AI GENERATOR] Querying model ${modelName} for game '${gameId}'...`);
+          response = await ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+            config: {
+              temperature: 0.8,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: schemaProperties,
+                required: requiredFields
+              }
+            }
+          });
+          success = true;
+          break;
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`[PUZZLE AI GENERATOR] Model ${modelName} failed:`, err?.message || err);
+        }
+      }
+
+      if (!success && lastError) {
+        throw lastError;
+      }
+
+      const resultData = JSON.parse(response?.text || "{}");
+      return res.json({
+        success: true,
+        puzzle: resultData
+      });
+
+    } catch (error: any) {
+      console.error("[GLOBAL SERVER ERROR IN /api/gemini/generate-puzzle]:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Failed to generate AI puzzle."
+      });
+    }
+  });
+
   // Serve Vite or static compilation
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
