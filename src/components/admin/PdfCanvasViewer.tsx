@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -10,8 +11,24 @@ import {
   AlertCircle, 
   Maximize2, 
   Search, 
-  X 
+  X,
+  Copy,
+  Check,
+  Sparkles,
+  Send,
+  Bot,
+  Wand2,
+  HelpCircle,
+  FileText,
+  Volume2,
+  VolumeX,
+  Globe,
+  CheckCircle2,
+  Layers,
+  MessageSquare,
+  ArrowRight
 } from 'lucide-react';
+import { speakText, stopSpeaking } from '../../utils/speech';
 
 interface PdfCanvasViewerProps {
   fileId: string;
@@ -28,8 +45,19 @@ interface PdfPageItemProps {
   scale: number;
   rotation: number;
   pageSize: { width: number; height: number };
+  searchQuery: string;
+  currentActiveMatchPage?: number;
+  activeMatchSnippet?: string;
   onPageVisible: (page: number) => void;
   setRef: (page: number, el: HTMLDivElement | null) => void;
+}
+
+interface TextOverlayItem {
+  str: string;
+  left: number;
+  top: number;
+  fontSize: number;
+  width: number;
 }
 
 const PdfPageItem: React.FC<PdfPageItemProps> = ({
@@ -38,24 +66,28 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
   scale,
   rotation,
   pageSize,
+  searchQuery,
+  currentActiveMatchPage,
+  activeMatchSnippet,
   onPageVisible,
   setRef,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [textOverlayItems, setTextOverlayItems] = useState<TextOverlayItem[]>([]);
+  const [pageFullText, setPageFullText] = useState<string>('');
+
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const renderTaskRef = useRef<any>(null);
 
-  // High performance virtualization via two observers:
-  // 1. Large margin observer for lazy-rendering page contents (prevents white flashes)
-  // 2. Focused observer for tracking which page is actively filling the viewport
+  // High performance virtualization observers
   useEffect(() => {
     const renderObserver = new IntersectionObserver(
       ([entry]) => {
         setIsVisible(entry.isIntersecting);
       },
       {
-        rootMargin: '500px 0px 500px 0px', // render ahead before page scrolls into view
+        rootMargin: '500px 0px 500px 0px',
         threshold: 0.01,
       }
     );
@@ -67,7 +99,7 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
         }
       },
       {
-        threshold: 0.35, // active page is when 35% of the page is visible in view
+        threshold: 0.35,
       }
     );
 
@@ -87,7 +119,19 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
     };
   }, [pageNum, onPageVisible]);
 
-  // Handle PDF rendering
+  // Matrix multiplier helper for exact PDF coordinate transform
+  const transformMatrix = (m1: number[], m2: number[]): number[] => {
+    return [
+      m1[0] * m2[0] + m1[2] * m2[1],
+      m1[1] * m2[0] + m1[3] * m2[1],
+      m1[0] * m2[2] + m1[2] * m2[3],
+      m1[1] * m2[2] + m1[3] * m2[3],
+      m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+      m1[1] * m2[4] + m1[3] * m2[5] + m1[5],
+    ];
+  };
+
+  // Handle PDF Canvas rendering & text layer extraction
   useEffect(() => {
     if (!isVisible || !pdfDoc) {
       if (renderTaskRef.current) {
@@ -125,6 +169,45 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
         renderTaskRef.current = renderTask;
 
         await renderTask.promise;
+
+        // Fetch Text Layer Content for overlay, copy selection & highlight rendering
+        if (isMounted) {
+          const textContent = await page.getTextContent();
+          const items: TextOverlayItem[] = [];
+          let fullTxt = '';
+
+          const pdfjsUtil = (window as any).pdfjsLib?.Util;
+
+          for (const item of textContent.items) {
+            if (!item.str || !item.transform) continue;
+            fullTxt += item.str + ' ';
+
+            let tx: number[];
+            if (pdfjsUtil && typeof pdfjsUtil.transform === 'function') {
+              tx = pdfjsUtil.transform(viewport.transform, item.transform);
+            } else {
+              tx = transformMatrix(viewport.transform, item.transform);
+            }
+
+            const fontSize = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
+            const left = tx[4];
+            const top = tx[5] - fontSize * 0.82; // baseline offset
+            const width = item.width ? item.width * scale : fontSize * item.str.length * 0.55;
+
+            items.push({
+              str: item.str,
+              left,
+              top,
+              fontSize,
+              width,
+            });
+          }
+
+          if (isMounted) {
+            setTextOverlayItems(items);
+            setPageFullText(fullTxt.trim());
+          }
+        }
       } catch (err: any) {
         if (err.name !== 'RenderingCancelledException' && isMounted) {
           console.error(`Page ${pageNum} rendering failed:`, err);
@@ -146,6 +229,115 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
   const width = (isRotatedLandscape ? pageSize.height : pageSize.width) * scale;
   const height = (isRotatedLandscape ? pageSize.width : pageSize.height) * scale;
 
+  // Helper to render text item with on-canvas keyword search highlight
+  const renderHighlightedTextItem = (item: TextOverlayItem, index: number) => {
+    const { str, left, top, fontSize, width } = item;
+    const query = searchQuery.trim();
+
+    if (!query) {
+      return (
+        <span
+          key={`txt-item-${index}`}
+          style={{
+            position: 'absolute',
+            left: `${left}px`,
+            top: `${top}px`,
+            fontSize: `${fontSize}px`,
+            lineHeight: '1.1',
+            whiteSpace: 'pre',
+            color: 'transparent',
+            cursor: 'text',
+          }}
+          className="select-text hover:text-slate-900/10 transition-colors"
+        >
+          {str}
+        </span>
+      );
+    }
+
+    const lowerStr = str.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+
+    if (!lowerStr.includes(lowerQuery)) {
+      return (
+        <span
+          key={`txt-item-${index}`}
+          style={{
+            position: 'absolute',
+            left: `${left}px`,
+            top: `${top}px`,
+            fontSize: `${fontSize}px`,
+            lineHeight: '1.1',
+            whiteSpace: 'pre',
+            color: 'transparent',
+            cursor: 'text',
+          }}
+          className="select-text hover:text-slate-900/10 transition-colors"
+        >
+          {str}
+        </span>
+      );
+    }
+
+    // Split string into non-matching parts and highlight mark parts
+    const parts: React.ReactNode[] = [];
+    let lastIdx = 0;
+    let matchIdx = lowerStr.indexOf(lowerQuery, lastIdx);
+
+    const isCurrentActivePage = currentActiveMatchPage === pageNum;
+
+    while (matchIdx !== -1) {
+      if (matchIdx > lastIdx) {
+        parts.push(str.substring(lastIdx, matchIdx));
+      }
+
+      const matchText = str.substring(matchIdx, matchIdx + query.length);
+      const isFocusedMatch = isCurrentActivePage && activeMatchSnippet?.toLowerCase().includes(lowerStr);
+
+      parts.push(
+        <mark
+          key={`m-${matchIdx}`}
+          className={`px-0.5 rounded-2xs font-bold font-sans inline-block transition-all ${
+            isFocusedMatch
+              ? 'bg-amber-400 text-slate-950 ring-2 ring-rose-500 animate-pulse shadow-md font-extrabold z-20 scale-105'
+              : 'bg-amber-300 text-slate-950 shadow-2xs z-10'
+          }`}
+          style={{
+            fontSize: `${Math.max(10, fontSize)}px`,
+            lineHeight: '1',
+          }}
+        >
+          {matchText}
+        </mark>
+      );
+
+      lastIdx = matchIdx + query.length;
+      matchIdx = lowerStr.indexOf(lowerQuery, lastIdx);
+    }
+
+    if (lastIdx < str.length) {
+      parts.push(str.substring(lastIdx));
+    }
+
+    return (
+      <span
+        key={`txt-item-${index}`}
+        style={{
+          position: 'absolute',
+          left: `${left}px`,
+          top: `${top}px`,
+          fontSize: `${fontSize}px`,
+          lineHeight: '1.1',
+          whiteSpace: 'pre',
+          cursor: 'text',
+        }}
+        className="select-text"
+      >
+        {parts}
+      </span>
+    );
+  };
+
   return (
     <div
       ref={(el) => {
@@ -153,10 +345,25 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
         setRef(pageNum, el);
       }}
       style={{ width: `${width}px`, height: `${height}px` }}
-      className="relative bg-white border border-slate-200 shadow-lg rounded-xl overflow-hidden flex items-center justify-center select-none shrink-0"
+      className="relative bg-white border border-slate-200 shadow-xl rounded-2xl overflow-hidden flex items-center justify-center shrink-0 group transition-all"
     >
+      {/* Top Page Banner Action Overlay */}
+      <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-700/60 shadow-lg text-white select-none">
+        <span className="text-[10px] font-mono font-bold text-slate-300">Page {pageNum}</span>
+      </div>
+
       {isVisible ? (
-        <canvas ref={canvasRef} className="w-full h-full block bg-white" />
+        <>
+          <canvas ref={canvasRef} className="w-full h-full block bg-white" />
+
+          {/* Accessible Selectable Text Layer Overlay with Search Word Highlighting */}
+          <div
+            className="absolute inset-0 overflow-hidden pointer-events-auto select-text z-10"
+            style={{ width: `${width}px`, height: `${height}px` }}
+          >
+            {textOverlayItems.map((item, idx) => renderHighlightedTextItem(item, idx))}
+          </div>
+        </>
       ) : (
         <div className="text-center space-y-2 text-slate-500">
           <Loader2 className="h-6 w-6 text-emerald-500 animate-spin mx-auto" />
@@ -193,6 +400,28 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   const [searchResults, setSearchResults] = useState<{ pageNum: number; snippet: string }[]>([]);
   const [currentSearchResultIndex, setCurrentSearchResultIndex] = useState<number>(-1);
 
+  // Copy Feedback Toast
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Selection Popover Floating Menu
+  const [selectedText, setSelectedText] = useState<string>('');
+  const [selectionPos, setSelectionPos] = useState<{ x: number; y: number } | null>(null);
+
+  // AI Task Assistant State
+  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
+  const [targetLanguage, setTargetLanguage] = useState<string>('Hindi');
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [aiMessages, setAiMessages] = useState<{ id: string; sender: 'user' | 'assistant'; text: string; timestamp: string }[]>([
+    {
+      id: 'ai-welcome',
+      sender: 'assistant',
+      text: `Hello! I am your **AI Study Task Assistant** for **${fileName}**. You can ask me to summarize pages, extract key formulas, generate quizzes, or answer questions!`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
+  ]);
+  const [aiPromptInput, setAiPromptInput] = useState<string>('');
+  const aiChatScrollRef = useRef<HTMLDivElement | null>(null);
+
   const pageRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -204,7 +433,44 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     setActivePageNum(page);
   }, []);
 
-  // Synchronous page jump helper
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Selection change listener for Floating Copy & AI Popover Menu
+  useEffect(() => {
+    const handleMouseUp = () => {
+      const sel = window.getSelection();
+      const text = sel ? sel.toString().trim() : '';
+
+      if (text.length > 2) {
+        setSelectedText(text);
+        try {
+          const range = sel?.getRangeAt(0);
+          const rect = range?.getBoundingClientRect();
+          if (rect) {
+            setSelectionPos({
+              x: Math.max(10, Math.min(window.innerWidth - 220, rect.left + rect.width / 2 - 100)),
+              y: Math.max(10, rect.top - 50)
+            });
+          }
+        } catch {
+          setSelectionPos(null);
+        }
+      } else {
+        setSelectedText('');
+        setSelectionPos(null);
+      }
+    };
+
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  // Jump to page helper
   const jumpToPage = useCallback((page: number) => {
     const element = pageRefs.current[page];
     if (element) {
@@ -212,7 +478,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     }
   }, []);
 
-  // Compute standard responsive fit-to-width factor with balanced padding
+  // Fit width calculation
   const handleFitWidth = useCallback(() => {
     if (scrollContainerRef.current && pageSize.width > 0) {
       const containerWidth = scrollContainerRef.current.clientWidth;
@@ -224,17 +490,13 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     }
   }, [pageSize.width]);
 
-  // Automatically trigger Fit Width once loaded or when window size/orientation changes
   useEffect(() => {
     if (!loading && pdfDoc) {
       const timer = setTimeout(() => {
         handleFitWidth();
       }, 150);
 
-      const handleResize = () => {
-        handleFitWidth();
-      };
-
+      const handleResize = () => handleFitWidth();
       window.addEventListener('resize', handleResize);
       return () => {
         clearTimeout(timer);
@@ -243,7 +505,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     }
   }, [loading, pdfDoc, handleFitWidth]);
 
-  // Fetch and boot PDF.js engine
+  // Load PDF Engine
   useEffect(() => {
     let isMounted = true;
 
@@ -316,13 +578,11 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
           loadingTask = pdfjsLib.getDocument({ data: bytes });
         } else {
-          // Attempt loading as URL directly
           loadingTask = pdfjsLib.getDocument({ url: dataUrlToUse });
         }
 
         const pdf = await loadingTask.promise;
 
-        // Get standard dimensions from the first page
         const firstPage = await pdf.getPage(1);
         const viewport = firstPage.getViewport({ scale: 1 });
 
@@ -334,41 +594,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           setLoading(false);
         }
       } catch (err: any) {
-        console.warn("Primary PDF loading failed, attempting local fallback:", err);
-        try {
-          const fallbackDataUrl = await onGetFileLocal(fileId);
-          if (fallbackDataUrl && fallbackDataUrl !== fileDataUrl) {
-            const pdfjsLib = (window as any).pdfjsLib;
-            if (pdfjsLib) {
-              let loadingTask: any;
-              if (fallbackDataUrl.startsWith('http') || fallbackDataUrl.startsWith('blob:')) {
-                loadingTask = pdfjsLib.getDocument({ url: fallbackDataUrl });
-              } else {
-                const base64 = fallbackDataUrl.split(',')[1]?.replace(/[\s\r\n]/g, '') || '';
-                const binaryString = atob(base64);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                  bytes[i] = binaryString.charCodeAt(i);
-                }
-                loadingTask = pdfjsLib.getDocument({ data: bytes });
-              }
-              const pdf = await loadingTask.promise;
-              const firstPage = await pdf.getPage(1);
-              const viewport = firstPage.getViewport({ scale: 1 });
-              if (isMounted) {
-                setPageSize({ width: viewport.width, height: viewport.height });
-                setPdfDoc(pdf);
-                setNumPages(pdf.numPages);
-                setActivePageNum(1);
-                setLoading(false);
-                return;
-              }
-            }
-          }
-        } catch (fbErr) {
-          console.warn("Fallback PDF loading failed:", fbErr);
-        }
-
+        console.warn("Primary PDF loading failed:", err);
         if (isMounted) {
           setError(err.message || 'Error processing the PDF document stream.');
           setLoading(false);
@@ -383,7 +609,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     };
   }, [fileId, fileDataUrl]);
 
-  // Background Text Indexing process
+  // Indexing text for searching and AI tasks
   useEffect(() => {
     if (!pdfDoc) return;
     let isMounted = true;
@@ -436,7 +662,6 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     pagesText.forEach(({ pageNum, text }) => {
       const index = text.toLowerCase().indexOf(lowerQuery);
       if (index !== -1) {
-        // Create an elegant snippet around the match
         const start = Math.max(0, index - 45);
         const end = Math.min(text.length, index + lowerQuery.length + 55);
         let snippet = text.substring(start, end).replace(/\s+/g, ' ');
@@ -456,24 +681,149 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     }
   }, [pagesText, jumpToPage]);
 
-  // Adjust zoom scales dynamically
-  const zoomIn = () => {
-    setScale((prev) => Math.min(prev + 0.15, 2.0));
+  // Copy page / document helper
+  const handleCopyPageText = (pageNum: number, text: string) => {
+    navigator.clipboard.writeText(text);
+    triggerToast(`Copied text of Page ${pageNum} to clipboard!`);
   };
 
-  const zoomOut = () => {
-    setScale((prev) => Math.max(prev - 0.15, 0.65));
+  const handleCopyFullDocumentText = () => {
+    const fullText = pagesText.map(p => `--- PAGE ${p.pageNum} ---\n${p.text}`).join('\n\n');
+    if (!fullText) {
+      triggerToast('Document text layer is still indexing, please try again in a moment.');
+      return;
+    }
+    navigator.clipboard.writeText(fullText);
+    triggerToast(`Copied complete text of all ${numPages} pages!`);
   };
 
-  const rotate = () => {
-    setRotation((prev) => (prev + 90) % 360);
+  const handleCopySelectedText = () => {
+    if (selectedText) {
+      navigator.clipboard.writeText(selectedText);
+      triggerToast(`Copied selected text to clipboard!`);
+      setSelectedText('');
+      setSelectionPos(null);
+    }
   };
 
-  const pagesArray = useMemo(() => {
-    return Array.from({ length: numPages }, (_, i) => i + 1);
-  }, [numPages]);
+  // AI Task execution handler
+  const handleRunAiTask = async (
+    taskType: 'translate_page' | 'translate_doc' | 'summarize_page' | 'summarize_doc' | 'solve_questions' | 'short_notes' | 'key_concepts' | 'quiz' | 'simplify' | 'explain_selection' | 'chat',
+    customPrompt?: string
+  ) => {
+    setAiLoading(true);
+    setShowAiAssistant(true);
 
-  // Highlighting keyword match helper
+    const currentPageText = pagesText.find(p => p.pageNum === activePageNum)?.text || '';
+    const fullDocText = pagesText.map(p => `[Page ${p.pageNum}]: ${p.text}`).join('\n').slice(0, 8000);
+
+    let promptText = '';
+    let userDisplayMsg = '';
+
+    switch (taskType) {
+      case 'translate_page':
+        userDisplayMsg = `Translate Page ${activePageNum} (${targetLanguage})`;
+        promptText = `Translate the entire text content of Page ${activePageNum} of the study material "${fileName}" into ${targetLanguage}. Maintain accurate educational terminology, clear headings, and structured bullet formatting.\n\nPage Content:\n${currentPageText || fullDocText}`;
+        break;
+      case 'translate_doc':
+        userDisplayMsg = `Translate PDF Document (${targetLanguage})`;
+        promptText = `Translate the key topics and content of the PDF document "${fileName}" into ${targetLanguage}. Maintain accurate educational terminology, clear headings, and structured bullet formatting.\n\nDocument Content:\n${fullDocText}`;
+        break;
+      case 'summarize_page':
+        userDisplayMsg = `Summarize Page ${activePageNum}`;
+        promptText = `Please provide a clear, structured bulleted summary of Page ${activePageNum} of the study material "${fileName}".\n\nPage Text Content:\n${currentPageText}`;
+        break;
+      case 'summarize_doc':
+        userDisplayMsg = `Summarize entire PDF document`;
+        promptText = `Please provide an executive summary, key takeaways, and chapter breakdown for the PDF study material "${fileName}".\n\nDocument Content:\n${fullDocText}`;
+        break;
+      case 'solve_questions':
+        userDisplayMsg = `Solve Questions on Page ${activePageNum}`;
+        promptText = `Identify and solve all practice questions, exercises, or numerical problems found in Page ${activePageNum} of "${fileName}". Provide step-by-step solutions, formulas used, and final answers clearly formatted in markdown.\n\nPage Content:\n${currentPageText || fullDocText}`;
+        break;
+      case 'short_notes':
+        userDisplayMsg = `Create Revision Short Notes`;
+        promptText = `Create concise, high-yield revision short notes, formula cheat sheet, and memory key points for Page ${activePageNum} of "${fileName}".\n\nPage Content:\n${currentPageText || fullDocText}`;
+        break;
+      case 'key_concepts':
+        userDisplayMsg = `Extract key concepts & formulas`;
+        promptText = `Extract all key definitions, formulas, rules, and core concepts from Page ${activePageNum} (and document overview) of "${fileName}". Present them clearly with bullet points and bold headers.\n\nContext:\n${currentPageText || fullDocText}`;
+        break;
+      case 'quiz':
+        userDisplayMsg = `Generate 5 Practice Questions`;
+        promptText = `Create 5 multiple choice questions (with options A, B, C, D and detailed correct answer explanations) based on Page ${activePageNum} of "${fileName}".\n\nContent:\n${currentPageText || fullDocText}`;
+        break;
+      case 'simplify':
+        userDisplayMsg = `Simplify language for students`;
+        promptText = `Rewrite and explain the concepts in Page ${activePageNum} of "${fileName}" in simple, friendly, easy-to-understand language suitable for school students.\n\nContent:\n${currentPageText}`;
+        break;
+      case 'explain_selection':
+        userDisplayMsg = `Explain selected text: "${selectedText.slice(0, 60)}..."`;
+        promptText = `Explain the following selected text excerpt from "${fileName}" (Page ${activePageNum}) in detail with simple analogies:\n\n"${selectedText}"`;
+        break;
+      case 'chat':
+        userDisplayMsg = customPrompt || 'Question about PDF';
+        promptText = `Study Material Document: "${fileName}"\nActive Page: ${activePageNum}\n\nContext Page Text:\n${currentPageText}\n\nStudent Question: ${customPrompt}`;
+        break;
+    }
+
+    const newUserMsg = {
+      id: 'usr-' + Date.now(),
+      sender: 'user' as const,
+      text: userDisplayMsg,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setAiMessages(prev => [...prev, newUserMsg]);
+
+    try {
+      const response = await fetch('/api/gemini/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: promptText,
+          systemInstruction: `You are GyaanBot's expert PDF AI Task Assistant. Help the student understand the study material document "${fileName}". Provide clear, well-structured educational explanations with markdown formatting.`,
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        const aiMsg = {
+          id: 'ai-' + Date.now(),
+          sender: 'assistant' as const,
+          text: data.text,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setAiMessages(prev => [...prev, aiMsg]);
+      } else {
+        throw new Error(data.message || 'Failed to generate response');
+      }
+    } catch (err: any) {
+      setAiMessages(prev => [
+        ...prev,
+        {
+          id: 'ai-err-' + Date.now(),
+          sender: 'assistant',
+          text: `I had trouble connecting to the AI Assistant engine: ${err.message || 'Network error'}. Please try again!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    } finally {
+      setAiLoading(false);
+      setTimeout(() => {
+        if (aiChatScrollRef.current) {
+          aiChatScrollRef.current.scrollTop = aiChatScrollRef.current.scrollHeight;
+        }
+      }, 100);
+    }
+  };
+
+  const zoomIn = () => setScale((prev) => Math.min(prev + 0.15, 2.2));
+  const zoomOut = () => setScale((prev) => Math.max(prev - 0.15, 0.65));
+  const rotate = () => setRotation((prev) => (prev + 90) % 360);
+
+  const pagesArray = useMemo(() => Array.from({ length: numPages }, (_, i) => i + 1), [numPages]);
+
   const renderSnippetWithHighlights = (snippet: string, query: string) => {
     if (!query) return snippet;
     const parts = snippet.split(new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi'));
@@ -489,63 +839,100 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full flex-1 min-h-0 bg-slate-900 border border-slate-800 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl relative w-full">
-      {/* Dynamic Reader Control Panel */}
-      <div className="flex flex-wrap items-center justify-between px-5 py-3 bg-slate-950 border-b border-slate-800 text-xs text-slate-300 gap-4 shrink-0 z-10">
+    <div className="flex flex-col h-full flex-1 min-h-0 bg-slate-900 border border-slate-800 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl relative w-full select-none">
+      
+      {/* Toast Feedback Popup */}
+      {toastMessage && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-bold text-xs px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 border border-emerald-400/30 animate-bounce">
+          <Check className="w-4 h-4 text-emerald-200" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Floating Selection AI Menu Popover */}
+      {selectedText && selectionPos && (
+        <div
+          style={{ left: `${selectionPos.x}px`, top: `${selectionPos.y}px` }}
+          className="fixed z-50 bg-slate-950 border border-slate-700/80 shadow-2xl rounded-2xl p-1.5 flex items-center gap-1 text-white animate-fade-in select-none"
+        >
+          <button
+            onClick={() => handleRunAiTask('explain_selection')}
+            className="px-2.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer text-white shadow-sm"
+            title="Explain selection with AI"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Ask AI</span>
+          </button>
+          <button
+            onClick={() => speakText(selectedText, 'en')}
+            className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer"
+            title="Read Selection Aloud"
+          >
+            <Volume2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => { setSelectedText(''); setSelectionPos(null); }}
+            className="p-1 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Top Reader Control Panel */}
+      <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-slate-950 border-b border-slate-800 text-xs text-slate-300 gap-3 shrink-0 z-20">
         
-        {/* Left Side: Page navigation controls */}
+        {/* Left: Page navigation */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
             disabled={activePageNum <= 1}
-            className="p-2 hover:bg-slate-800 rounded-xl disabled:opacity-20 disabled:hover:bg-transparent transition-colors cursor-pointer text-slate-400 hover:text-white"
+            className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
             title="Previous Page"
           >
-            <ChevronLeft className="h-4.5 w-4.5" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="font-mono text-xs select-none bg-slate-900 px-3.5 py-1.5 rounded-lg border border-slate-800">
+          <span className="font-mono text-xs select-none bg-slate-900 px-3 py-1 rounded-lg border border-slate-800 whitespace-nowrap">
             Page <strong className="text-emerald-400 font-extrabold">{activePageNum}</strong> of <strong className="text-slate-400">{numPages || '?'}</strong>
           </span>
           <button
             onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
             disabled={activePageNum >= numPages}
-            className="p-2 hover:bg-slate-800 rounded-xl disabled:opacity-20 disabled:hover:bg-transparent transition-colors cursor-pointer text-slate-400 hover:text-white"
+            className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
             title="Next Page"
           >
-            <ChevronRight className="h-4.5 w-4.5" />
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Middle: Elegant Text Search field */}
-        <div className="flex items-center gap-3 flex-1 max-w-sm min-w-[200px] relative">
+        {/* Middle: Word Search field */}
+        <div className="flex items-center gap-2 flex-1 max-w-xs min-w-[160px] relative">
           <div className="relative w-full">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+            <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-slate-500" />
             <input
               type="text"
-              placeholder="Search text in document..."
+              placeholder="Search word in PDF..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => handleSearch('')}
-                className="absolute right-2.5 top-2.5 text-slate-500 hover:text-white cursor-pointer"
-                title="Clear Search"
+                className="absolute right-2 top-2 text-slate-500 hover:text-white cursor-pointer"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
           {indexingText && (
-            <div className="absolute right-3 top-2.5 flex items-center" title="Indexing pages for search...">
-              <Loader2 className="h-3.5 w-3.5 text-emerald-500 animate-spin" />
-            </div>
+            <span title="Indexing text...">
+              <Loader2 className="h-3.5 w-3.5 text-emerald-500 animate-spin shrink-0" />
+            </span>
           )}
 
-          {/* Quick jump between match indicators */}
           {searchResults.length > 0 && (
-            <div className="flex items-center gap-1 shrink-0 bg-slate-900 px-2 py-1 rounded-lg border border-slate-800">
+            <div className="flex items-center gap-1 shrink-0 bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800">
               <span className="text-[10px] text-slate-400 font-mono select-none">
                 {currentSearchResultIndex + 1}/{searchResults.length}
               </span>
@@ -555,10 +942,9 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   setCurrentSearchResultIndex(nextIdx);
                   jumpToPage(searchResults[nextIdx].pageNum);
                 }}
-                className="p-1 hover:bg-slate-800 rounded cursor-pointer text-slate-400 hover:text-white animate-fade-in"
-                title="Previous Match"
+                className="p-0.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
               >
-                <ChevronLeft className="h-3.5 w-3.5" />
+                <ChevronLeft className="h-3 w-3" />
               </button>
               <button
                 onClick={() => {
@@ -566,123 +952,129 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   setCurrentSearchResultIndex(nextIdx);
                   jumpToPage(searchResults[nextIdx].pageNum);
                 }}
-                className="p-1 hover:bg-slate-800 rounded cursor-pointer text-slate-400 hover:text-white animate-fade-in"
-                title="Next Match"
+                className="p-0.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
               >
-                <ChevronRight className="h-3.5 w-3.5" />
+                <ChevronRight className="h-3 w-3" />
               </button>
             </div>
           )}
         </div>
 
-        {/* Right Side: View options & downloads */}
-        <div className="flex items-center gap-2">
+        {/* Right Side: Zoom, Integrated AI Tools & Download */}
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
           <button
             onClick={zoomOut}
-            className="p-2 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer text-slate-400 hover:text-white"
+            className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white cursor-pointer"
             title="Zoom Out"
           >
             <ZoomOut className="h-4 w-4" />
           </button>
-          <span className="font-mono text-xs select-none text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+          <span className="font-mono text-xs text-slate-400 bg-slate-900 px-2 py-1 rounded-lg border border-slate-800 select-none">
             {Math.round(scale * 100)}%
           </span>
           <button
             onClick={zoomIn}
-            className="p-2 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer text-slate-400 hover:text-white"
+            className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white cursor-pointer"
             title="Zoom In"
           >
             <ZoomIn className="h-4 w-4" />
           </button>
+
+          <div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block" />
+
+          {/* Integrated Quick PDF AI Action Shortcuts */}
           <button
-            onClick={handleFitWidth}
-            className="p-2 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer text-slate-400 hover:text-white flex items-center gap-1.5"
-            title="Fit to Width"
+            onClick={() => handleRunAiTask('translate_page')}
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-sky-950/80 hover:bg-sky-900 border border-sky-800/80 text-sky-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+            title="Translate PDF content"
           >
-            <Maximize2 className="h-4 w-4 text-emerald-400" />
-            <span className="text-[10px] uppercase font-bold tracking-wider hidden lg:inline">Fit Width</span>
+            <Globe className="w-3.5 h-3.5 text-sky-400" />
+            <span className="hidden md:inline">Translate</span>
           </button>
+
           <button
-            onClick={rotate}
-            className="p-2 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer text-slate-400 hover:text-white"
-            title="Rotate 90°"
+            onClick={() => handleRunAiTask('summarize_page')}
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-purple-950/80 hover:bg-purple-900 border border-purple-800/80 text-purple-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+            title="Summarize page/doc"
           >
-            <RotateCw className="h-4 w-4" />
+            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <span className="hidden md:inline">Summarize</span>
           </button>
+
+          <button
+            onClick={() => handleRunAiTask('solve_questions')}
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800/80 text-emerald-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+            title="Solve questions in PDF"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden lg:inline">Solve Questions</span>
+          </button>
+
+          <button
+            onClick={() => handleRunAiTask('short_notes')}
+            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-amber-950/80 hover:bg-amber-900 border border-amber-800/80 text-amber-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+            title="Create short revision notes"
+          >
+            <FileText className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden lg:inline">Short Notes</span>
+          </button>
+
+          {/* AI Task Assistant Toggle Button */}
+          <button
+            onClick={() => setShowAiAssistant(!showAiAssistant)}
+            className={`px-3 py-1.5 font-bold rounded-xl flex items-center gap-1.5 transition-all text-xs cursor-pointer ${
+              showAiAssistant
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
+                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white'
+            }`}
+          >
+            <Bot className="h-3.5 w-3.5 text-amber-300" />
+            <span className="hidden sm:inline">AI Assistant</span>
+          </button>
+
           <button
             onClick={onDownload}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center gap-1.5 transition-all text-xs cursor-pointer shadow-sm shadow-emerald-900/30 active:scale-97"
+            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-xl flex items-center gap-1 cursor-pointer transition-colors"
+            title="Download PDF"
           >
             <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Download PDF</span>
           </button>
         </div>
       </div>
 
-      {/* Main Workspace: Collapsible Sidebar + Canvas Render Container */}
+      {/* Main Container: Sidebar + Canvas Viewport + AI Assistant Panel */}
       <div className="flex-1 flex min-h-0 relative w-full overflow-hidden">
         
-        {/* Collapsible Left Search Sidebar */}
+        {/* Search Results Sidebar */}
         {searchQuery.trim() !== '' && (
-          <div className="w-80 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 select-none h-full overflow-hidden transition-all duration-300">
-            <div className="p-4 border-b border-slate-850 bg-slate-950 flex items-center justify-between shrink-0">
-              <div className="flex flex-col gap-0.5">
-                <span className="font-sans font-bold text-slate-200 text-xs">Search Matches</span>
-                <span className="font-mono text-[10px] text-slate-500 uppercase tracking-wider">
-                  {searchResults.length} occurrences found
-                </span>
-              </div>
-              <button
-                onClick={() => handleSearch('')}
-                className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors cursor-pointer"
-                title="Close Search Sidebar"
-              >
+          <div className="w-72 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 h-full overflow-hidden">
+            <div className="p-3 border-b border-slate-850 flex items-center justify-between shrink-0">
+              <span className="font-bold text-slate-200 text-xs">Search Matches ({searchResults.length})</span>
+              <button onClick={() => handleSearch('')} className="p-1 text-slate-500 hover:text-white cursor-pointer">
                 <X className="h-4 w-4" />
               </button>
             </div>
-
-            <div className="flex-1 overflow-y-auto p-3 space-y-2.5 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
               {searchResults.length === 0 ? (
-                <div className="py-12 text-center space-y-3 px-4">
-                  <div className="text-3xl text-slate-700">🔍</div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-slate-400 font-bold font-sans">No occurrences found</p>
-                    <p className="text-[11px] text-slate-500 font-sans leading-relaxed">
-                      We couldn't locate any matching words or phrases in this document. Please try a different query.
-                    </p>
-                  </div>
-                </div>
+                <div className="py-8 text-center text-xs text-slate-500">No matching words found</div>
               ) : (
                 searchResults.map((result, idx) => {
                   const isActive = idx === currentSearchResultIndex;
                   return (
                     <button
-                      key={`search-res-${idx}`}
+                      key={`res-${idx}`}
                       onClick={() => {
                         setCurrentSearchResultIndex(idx);
                         jumpToPage(result.pageNum);
                       }}
-                      className={`w-full text-left p-3 rounded-xl transition-all border border-transparent flex flex-col gap-2 cursor-pointer ${
+                      className={`w-full text-left p-2.5 rounded-xl border text-xs cursor-pointer ${
                         isActive
-                          ? 'bg-emerald-950/45 border-emerald-800/40 shadow-md shadow-emerald-950/20'
-                          : 'bg-slate-900/30 hover:bg-slate-900 border-slate-900/40 hover:border-slate-850'
+                          ? 'bg-emerald-950/50 border-emerald-700/50 text-slate-100 font-medium'
+                          : 'bg-slate-900/40 border-slate-900 text-slate-300 hover:bg-slate-900'
                       }`}
                     >
-                      <div className="flex items-center justify-between w-full">
-                        <span className={`font-mono text-[10px] uppercase font-black tracking-wider ${
-                          isActive ? 'text-emerald-400' : 'text-slate-400'
-                        }`}>
-                          Page {result.pageNum}
-                        </span>
-                        {isActive && (
-                          <span className="text-[9px] font-sans font-extrabold text-emerald-400 uppercase tracking-widest bg-emerald-900/30 px-1.5 py-0.5 rounded-md border border-emerald-800/20">
-                            Active Match
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-300 leading-relaxed font-sans line-clamp-3">
-                        {renderSnippetWithHighlights(result.snippet, searchQuery)}
-                      </p>
+                      <div className="font-mono text-[10px] text-emerald-400 font-bold mb-1">Page {result.pageNum}</div>
+                      <p className="line-clamp-2 leading-relaxed">{renderSnippetWithHighlights(result.snippet, searchQuery)}</p>
                     </button>
                   );
                 })
@@ -691,57 +1083,238 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           </div>
         )}
 
-        {/* Right side: Continuous Canvas viewport with full layout height */}
+        {/* Central PDF Canvas Viewport */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-auto bg-slate-950 flex flex-col items-center gap-8 py-8 px-6 scrollbar-thin select-text min-h-0 relative scroll-smooth w-full"
+          className="flex-1 overflow-auto bg-slate-950 flex flex-col items-center gap-8 py-8 px-4 scrollbar-thin select-text min-h-0 relative w-full"
           style={{ height: '100%' }}
         >
           {loading ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/80 z-20">
-              <Loader2 className="h-9 w-9 text-emerald-500 animate-spin" />
-              <div className="text-center">
-                <span className="font-mono text-xs text-slate-400 block font-bold">Booting Virtual Canvas Stage...</span>
-                <span className="text-[10px] text-slate-500 block mt-1 font-sans">Scanning page counts and parsing local PDF buffers</span>
-              </div>
+            <div className="my-auto flex flex-col items-center justify-center gap-3">
+              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+              <span className="font-mono text-xs text-slate-400 font-bold">Rendering Document...</span>
             </div>
           ) : error ? (
-            <div className="my-auto max-w-md bg-rose-950/40 border border-rose-900/30 p-6 rounded-2xl text-center space-y-4">
-              <AlertCircle className="h-12 w-12 text-rose-500 mx-auto animate-bounce" />
-              <div className="space-y-1.5">
-                <h4 className="font-bold text-sm text-rose-300">Continuous Reader Error</h4>
-                <p className="text-xs text-slate-400 leading-relaxed font-sans">{error}</p>
-              </div>
-              <button
-                onClick={onDownload}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <Download className="h-3.5 w-3.5 text-amber-400" />
-                <span>Download File Instead</span>
+            <div className="my-auto max-w-md bg-rose-950/40 border border-rose-900/30 p-6 rounded-2xl text-center space-y-3">
+              <AlertCircle className="h-10 w-10 text-rose-500 mx-auto" />
+              <p className="text-xs text-slate-300">{error}</p>
+              <button onClick={onDownload} className="px-3 py-1.5 bg-slate-800 text-white rounded-xl text-xs font-bold">
+                Download PDF
               </button>
             </div>
           ) : (
-            pagesArray.map((pageNum) => (
-              <PdfPageItem
-                key={`${fileId}-page-${pageNum}`}
-                pdfDoc={pdfDoc}
-                pageNum={pageNum}
-                scale={scale}
-                rotation={rotation}
-                pageSize={pageSize}
-                onPageVisible={handlePageVisible}
-                setRef={setPageRef}
-              />
-            ))
+            pagesArray.map((pageNum) => {
+              const activeMatch = searchResults[currentSearchResultIndex];
+              return (
+                <PdfPageItem
+                  key={`${fileId}-p-${pageNum}`}
+                  pdfDoc={pdfDoc}
+                  pageNum={pageNum}
+                  scale={scale}
+                  rotation={rotation}
+                  pageSize={pageSize}
+                  searchQuery={searchQuery}
+                  currentActiveMatchPage={activeMatch?.pageNum}
+                  activeMatchSnippet={activeMatch?.snippet}
+                  onPageVisible={handlePageVisible}
+                  setRef={setPageRef}
+                />
+              );
+            })
           )}
         </div>
-      </div>
 
-      {/* Performance Footer */}
-      {/*<div className="px-5 py-2.5 bg-slate-950 border-t border-slate-800/80 text-[10px] text-slate-500 font-mono flex items-center justify-between shrink-0 z-10">
-        <span>GyaanBot Virtualized Continuous Reader</span>
-        <span>Low-Memory Rendering (Active: {activePageNum}/{numPages})</span>
-      </div>*/}
+        {/* AI Task Assistant Side Panel */}
+        {showAiAssistant && (
+          <div className="w-80 sm:w-96 bg-slate-950 border-l border-slate-800 flex flex-col shrink-0 h-full overflow-hidden z-30 shadow-2xl animate-fade-in">
+            {/* AI Assistant Header */}
+            <div className="p-3.5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-purple-600/30 rounded-xl border border-purple-500/30 text-purple-300">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-slate-100 flex items-center gap-1.5">
+                    <span>PDF AI Task Assistant</span>
+                    <Sparkles className="w-3 h-3 text-amber-300" />
+                  </h4>
+                  <span className="text-[10px] text-slate-400 font-mono">Page {activePageNum} of {numPages}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAiAssistant(false)}
+                className="p-1 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick AI Task Actions Grid */}
+            <div className="p-3 bg-slate-900/60 border-b border-slate-800 space-y-3 shrink-0">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Integrated AI Tools</span>
+                <div className="flex items-center gap-1 text-[11px] text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded-lg border border-slate-700/60">
+                  <Globe className="w-3 h-3 text-sky-400" />
+                  <select
+                    value={targetLanguage}
+                    onChange={(e) => setTargetLanguage(e.target.value)}
+                    className="bg-transparent font-bold text-sky-300 focus:outline-none cursor-pointer text-[11px]"
+                  >
+                    <option value="Hindi" className="bg-slate-900 text-slate-200">Hindi (हिंदी)</option>
+                    <option value="Gujarati" className="bg-slate-900 text-slate-200">Gujarati (ગુજરાતી)</option>
+                    <option value="Marathi" className="bg-slate-900 text-slate-200">Marathi (मराठी)</option>
+                    <option value="English" className="bg-slate-900 text-slate-200">English</option>
+                    <option value="Hinglish" className="bg-slate-900 text-slate-200">Hinglish</option>
+                    <option value="Bengali" className="bg-slate-900 text-slate-200">Bengali (বাংলা)</option>
+                    <option value="Tamil" className="bg-slate-900 text-slate-200">Tamil (தமிழ்)</option>
+                    <option value="Telugu" className="bg-slate-900 text-slate-200">Telugu (తెలుగు)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                {/* 1. Translate */}
+                <button
+                  onClick={() => handleRunAiTask('translate_page')}
+                  disabled={aiLoading}
+                  className="p-2 bg-sky-950/40 hover:bg-sky-900/60 border border-sky-800/50 rounded-xl text-left text-[11px] font-semibold text-sky-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors"
+                >
+                  <Globe className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <span className="truncate">Translate Page</span>
+                </button>
+
+                {/* 2. Summarize */}
+                <button
+                  onClick={() => handleRunAiTask('summarize_page')}
+                  disabled={aiLoading}
+                  className="p-2 bg-purple-950/40 hover:bg-purple-900/60 border border-purple-800/50 rounded-xl text-left text-[11px] font-semibold text-purple-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <span className="truncate">Summarize Page</span>
+                </button>
+
+                {/* 3. Solve Questions */}
+                <button
+                  onClick={() => handleRunAiTask('solve_questions')}
+                  disabled={aiLoading}
+                  className="p-2 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/50 rounded-xl text-left text-[11px] font-semibold text-emerald-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">Solve Questions</span>
+                </button>
+
+                {/* 4. Short Notes */}
+                <button
+                  onClick={() => handleRunAiTask('short_notes')}
+                  disabled={aiLoading}
+                  className="p-2 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/50 rounded-xl text-left text-[11px] font-semibold text-amber-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">Short Notes</span>
+                </button>
+
+                {/* Secondary Actions */}
+                <button
+                  onClick={() => handleRunAiTask('key_concepts')}
+                  disabled={aiLoading}
+                  className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-[11px] font-medium text-slate-300 flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                >
+                  <Wand2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">Key Formulas</span>
+                </button>
+
+                <button
+                  onClick={() => handleRunAiTask('quiz')}
+                  disabled={aiLoading}
+                  className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-[11px] font-medium text-slate-300 flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <span className="truncate">5 Practice Quiz</span>
+                </button>
+              </div>
+            </div>
+
+            {/* AI Messages Chat History */}
+            <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin">
+              {aiMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex flex-col text-xs leading-relaxed ${
+                    msg.sender === 'user' ? 'items-end' : 'items-start'
+                  }`}
+                >
+                  <div
+                    className={`p-3 rounded-2xl max-w-[92%] space-y-1.5 shadow-sm ${
+                      msg.sender === 'user'
+                        ? 'bg-purple-600 text-white rounded-br-2xs'
+                        : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-2xs'
+                    }`}
+                  >
+                    {msg.sender === 'assistant' ? (
+                      <div className="prose prose-invert prose-xs max-w-none">
+                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p>{msg.text}</p>
+                    )}
+
+                    <div className="flex items-center justify-between text-[9px] text-slate-400 font-mono pt-1">
+                      <span>{msg.timestamp}</span>
+                      {msg.sender === 'assistant' && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => speakText(msg.text, 'en')}
+                            className="hover:text-white cursor-pointer"
+                            title="Speak Response"
+                          >
+                            <Volume2 className="w-3 h-3 text-purple-300" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {aiLoading && (
+                <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-2xl text-xs text-purple-300 border border-purple-900/30">
+                  <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                  <span>AI Assistant analyzing PDF content...</span>
+                </div>
+              )}
+            </div>
+
+            {/* AI Prompt Input Bar */}
+            <div className="p-3 bg-slate-900 border-t border-slate-800 shrink-0">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (aiPromptInput.trim()) {
+                    handleRunAiTask('chat', aiPromptInput.trim());
+                    setAiPromptInput('');
+                  }
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  type="text"
+                  placeholder={`Ask AI about Page ${activePageNum} or full PDF...`}
+                  value={aiPromptInput}
+                  onChange={(e) => setAiPromptInput(e.target.value)}
+                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!aiPromptInput.trim() || aiLoading}
+                  className="p-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white rounded-xl cursor-pointer"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

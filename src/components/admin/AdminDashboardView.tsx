@@ -48,6 +48,7 @@ export interface CurriculumFile {
   folderId: string | null;
   subject: string;
   category: 'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other';
+  materialType?: 'notes' | 'ebook' | 'pyq' | 'practice_questions' | 'other';
   size: string;
   uploadedAt: string;
   fileDataUrl?: string;
@@ -64,6 +65,7 @@ export interface BatchFileItem {
   fileName: string;
   subject: string;
   category: 'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other';
+  materialType?: 'notes' | 'ebook' | 'pyq' | 'practice_questions' | 'other';
   standard: string;
   board: string;
   size: string;
@@ -336,6 +338,7 @@ export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: A
   const [newFileName, setNewFileName] = useState('');
   const [newFileSubject, setNewFileSubject] = useState('Science');
   const [newFileCategory, setNewFileCategory] = useState<'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other'>('pdf');
+  const [newFileMaterialType, setNewFileMaterialType] = useState<'notes' | 'ebook' | 'pyq' | 'practice_questions' | 'other'>('notes');
   const [newFileStandard, setNewFileStandard] = useState('All Standards');
   const [newFileBoard, setNewFileBoard] = useState('State Board');
   const [newFileFolderId, setNewFileFolderId] = useState<string | null>(null);
@@ -359,6 +362,7 @@ export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: A
   const [editingFileName, setEditingFileName] = useState('');
   const [editingFileSubject, setEditingFileSubject] = useState('');
   const [editingFileCategory, setEditingFileCategory] = useState<'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other'>('pdf');
+  const [editingFileMaterialType, setEditingFileMaterialType] = useState<'notes' | 'ebook' | 'pyq' | 'practice_questions' | 'other'>('notes');
   const [editingFileStandard, setEditingFileStandard] = useState('All Standards');
   const [editingFileBoard, setEditingFileBoard] = useState('State Board');
   const [editingFileFolderId, setEditingFileFolderId] = useState<string | null>(null);
@@ -372,6 +376,7 @@ export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: A
   const [showBulkCategorizeModal, setShowBulkCategorizeModal] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [bulkCategory, setBulkCategory] = useState<'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other'>('pdf');
+  const [bulkMaterialType, setBulkMaterialType] = useState<'notes' | 'ebook' | 'pyq' | 'practice_questions' | 'other'>('notes');
   const [bulkSubject, setBulkSubject] = useState('Science');
 
   // PDF Viewer & Read Aloud State
@@ -1070,7 +1075,7 @@ startxref
 
         const data = await res.json();
         if (res.ok && data.success && data.data) {
-          const { title, subject, category, standard, board, description } = data.data;
+          const { title, subject, category, materialType, standard, board, description } = data.data;
 
           setBatchFilesList((prev) =>
             prev.map((it) =>
@@ -1082,6 +1087,9 @@ startxref
                     category: ['pdf', 'video', 'audio', 'quiz', 'document', 'other'].includes(category)
                       ? (category as any)
                       : it.category,
+                    materialType: ['notes', 'ebook', 'pyq', 'practice_questions', 'other'].includes(materialType)
+                      ? (materialType as any)
+                      : it.materialType || 'notes',
                     standard: STANDARD_OPTIONS.includes(standard) ? standard : it.standard,
                     board: INDIAN_BOARD_OPTIONS.includes(board) ? board : it.board,
                     description: description?.trim() || it.description,
@@ -1159,6 +1167,7 @@ startxref
         fileName: cleanName,
         subject: 'General',
         category: cat,
+        materialType: newFileMaterialType || 'notes',
         standard: newFileStandard || 'All Standards',
         board: newFileBoard || 'State Board',
         size: `${sizeMB} MB`,
@@ -1212,6 +1221,7 @@ startxref
           folderId: newFileFolderId !== null ? newFileFolderId : currentFolderId,
           subject: item.subject.trim() || 'General',
           category: item.category,
+          materialType: item.materialType || 'notes',
           standard: item.standard,
           board: item.board,
           size: item.size,

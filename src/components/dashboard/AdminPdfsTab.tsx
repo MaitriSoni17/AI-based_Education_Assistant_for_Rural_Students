@@ -130,6 +130,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [selectedStandard, setSelectedStandard] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedMaterialType, setSelectedMaterialType] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Offline Downloaded PDF Cache Tracker
@@ -312,9 +313,15 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
         return false;
       }
 
+      // Material Type filter
+      if (selectedMaterialType !== 'all') {
+        const itemMatType = f.materialType || 'notes';
+        if (itemMatType !== selectedMaterialType) return false;
+      }
+
       return true;
     });
-  }, [files, currentFolderId, searchQuery, selectedSubject, selectedStandard, selectedCategory]);
+  }, [files, currentFolderId, searchQuery, selectedSubject, selectedStandard, selectedCategory, selectedMaterialType]);
 
   // Unique Subjects List
   const subjectsList = useMemo(() => {
@@ -324,6 +331,22 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
     });
     return Array.from(set);
   }, [files]);
+
+  const getMaterialTypeInfo = (matType?: string) => {
+    switch (matType) {
+      case 'ebook':
+        return { label: 'E-Books & Textbooks', shortLabel: 'E-Book', icon: '📚', badge: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+      case 'pyq':
+        return { label: 'Previous Year Papers (PYQ)', shortLabel: 'PYQ Paper', icon: '📜', badge: 'bg-amber-50 text-amber-800 border-amber-200' };
+      case 'practice_questions':
+        return { label: 'Practice Questions & Worksheets', shortLabel: 'Practice Qs', icon: '✍️', badge: 'bg-purple-50 text-purple-800 border-purple-200' };
+      case 'other':
+        return { label: 'General Resources', shortLabel: 'General', icon: '📂', badge: 'bg-slate-100 text-slate-800 border-slate-200' };
+      case 'notes':
+      default:
+        return { label: 'Notes & Summaries', shortLabel: 'Notes', icon: '📝', badge: 'bg-indigo-50 text-indigo-800 border-indigo-200' };
+    }
+  };
 
   // Toggle download/cache state
   const handleToggleDownload = (fileId: string) => {
@@ -565,8 +588,89 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
           </div>
         </div>
 
+        {/* Material Type Quick Filter Pills */}
+        <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            onClick={() => setSelectedMaterialType('all')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedMaterialType === 'all'
+                ? 'bg-rose-600 text-white shadow-2xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <span>🌟 All Materials</span>
+            <span className="text-[10px] opacity-80 font-mono">({files.length})</span>
+          </button>
+          <button
+            onClick={() => setSelectedMaterialType('notes')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedMaterialType === 'notes'
+                ? 'bg-indigo-600 text-white shadow-2xs'
+                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+            }`}
+          >
+            <span>📝 Notes & Summaries</span>
+          </button>
+          <button
+            onClick={() => setSelectedMaterialType('ebook')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedMaterialType === 'ebook'
+                ? 'bg-emerald-600 text-white shadow-2xs'
+                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+            }`}
+          >
+            <span>📚 E-Books & Textbooks</span>
+          </button>
+          <button
+            onClick={() => setSelectedMaterialType('pyq')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedMaterialType === 'pyq'
+                ? 'bg-amber-600 text-white shadow-2xs'
+                : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+            }`}
+          >
+            <span>📜 Previous Year Papers (PYQ)</span>
+          </button>
+          <button
+            onClick={() => setSelectedMaterialType('practice_questions')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedMaterialType === 'practice_questions'
+                ? 'bg-purple-600 text-white shadow-2xs'
+                : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+            }`}
+          >
+            <span>✍️ Practice Questions</span>
+          </button>
+          <button
+            onClick={() => setSelectedMaterialType('other')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              selectedMaterialType === 'other'
+                ? 'bg-slate-700 text-white shadow-2xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+            }`}
+          >
+            <span>📂 Other Resources</span>
+          </button>
+        </div>
+
         {/* Filter Dropdowns */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+          <div>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Material Type</label>
+            <select
+              value={selectedMaterialType}
+              onChange={(e) => setSelectedMaterialType(e.target.value)}
+              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-rose-500"
+            >
+              <option value="all">All Material Types</option>
+              <option value="notes">📝 Notes & Summaries</option>
+              <option value="ebook">📚 E-Books & Textbooks</option>
+              <option value="pyq">📜 Previous Year Papers (PYQ)</option>
+              <option value="practice_questions">✍️ Practice Questions & Worksheets</option>
+              <option value="other">📂 Other Resources</option>
+            </select>
+          </div>
+
           <div>
             <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Subject Filter</label>
             <select
@@ -598,16 +702,16 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Material Type</label>
+            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">File Format</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-rose-500"
             >
-              <option value="all">All Material Types</option>
-              <option value="pdf">📄 PDF Notes & Worksheets</option>
+              <option value="all">All File Formats</option>
+              <option value="pdf">📄 PDF Documents</option>
               <option value="document">📝 Text Documents</option>
-              <option value="quiz">🎯 Question Banks</option>
+              <option value="quiz">🎯 Worksheets & Quizzes</option>
             </select>
           </div>
         </div>
@@ -720,6 +824,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredFiles.map(file => {
               const isDownloaded = downloadedPdfIds.includes(file.id);
+              const matTypeInfo = getMaterialTypeInfo(file.materialType);
 
               return (
                 <div
@@ -729,9 +834,10 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
                   <div className="space-y-2.5">
                     {/* Top tags */}
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-extrabold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-md uppercase font-mono">
-                          PDF
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${matTypeInfo.badge}`}>
+                          <span>{matTypeInfo.icon}</span>
+                          <span>{matTypeInfo.shortLabel}</span>
                         </span>
                         <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">
                           {file.subject}
@@ -812,6 +918,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
           <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-visible shadow-2xs">
             {filteredFiles.map(file => {
               const isDownloaded = downloadedPdfIds.includes(file.id);
+              const matTypeInfo = getMaterialTypeInfo(file.materialType);
 
               return (
                 <div key={file.id} className="p-4 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -822,8 +929,9 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
 
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-extrabold bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-mono">
-                          PDF
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${matTypeInfo.badge}`}>
+                          <span>{matTypeInfo.icon}</span>
+                          <span>{matTypeInfo.shortLabel}</span>
                         </span>
                         <span className="text-xs font-bold text-slate-800">{file.subject}</span>
                         <span className="text-xs text-slate-400 font-mono">• {file.standard || 'All Standards'}</span>
@@ -933,279 +1041,34 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
               </div>
             </div>
 
-            {/* Modal Tabs Bar */}
-            <div className="flex overflow-x-auto no-scrollbar sm:flex-wrap bg-slate-100 p-1.5 gap-2 border-b border-slate-200 shrink-0">
-              <button
-                onClick={() => setPdfWorkspaceTab('reader')}
-                className={`flex-1 min-w-[110px] sm:min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                  pdfWorkspaceTab === 'reader' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Eye className="w-4 h-4" />
-                <span>Reader</span>
-              </button>
-
-              <button
-                onClick={() => setPdfWorkspaceTab('translate')}
-                className={`flex-1 min-w-[110px] sm:min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                  pdfWorkspaceTab === 'translate' ? 'bg-white text-sky-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Globe className="w-4 h-4" />
-                <span>Translate</span>
-              </button>
-
-              <button
-                onClick={() => setPdfWorkspaceTab('solve')}
-                className={`flex-1 min-w-[110px] sm:min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                  pdfWorkspaceTab === 'solve' ? 'bg-white text-emerald-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Solve Questions</span>
-              </button>
-              
-              <button
-                onClick={() => setPdfWorkspaceTab('summary')}
-                className={`flex-1 min-w-[110px] sm:min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                  pdfWorkspaceTab === 'summary' ? 'bg-white text-purple-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>Summarize</span>
-              </button>
-
-              <button
-                onClick={() => setPdfWorkspaceTab('notes')}
-                className={`flex-1 min-w-[110px] sm:min-w-[120px] py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                  pdfWorkspaceTab === 'notes' ? 'bg-white text-amber-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                <span>Short Notes</span>
-              </button>
-            </div>
-
-            {/* Modal Content Body */}
-            <div className="flex-1 bg-slate-50 overflow-y-auto p-4 flex flex-col">
-              {pdfWorkspaceTab === 'reader' && (
-                <div className="flex-1 min-h-[500px]">
-                  <PdfCanvasViewer
-                    fileId={activePdfFile.id}
-                    fileDataUrl={activePdfFile.fileDataUrl}
-                    fileName={activePdfFile.name}
-                    onGetFileLocal={async (id) => {
-                      if (activePdfFile.fileDataUrl) return activePdfFile.fileDataUrl;
-                      const localUrl = await getFileLocal(id);
-                      if (localUrl) return localUrl;
-                      const lsUrl = localStorage.getItem('gramin_pdf_cache_' + id);
-                      if (lsUrl) return lsUrl;
-                      
-                      const remoteUrl = await getFirebaseCurriculumFileDataUrl(id);
-                      if (remoteUrl) {
-                        await saveFileLocal(id, remoteUrl);
-                        setActivePdfFile(prev => prev && prev.id === id ? { ...prev, fileDataUrl: remoteUrl } : prev);
-                        return remoteUrl;
-                      }
-
-                      if (activePdfFile.externalUrl) return activePdfFile.externalUrl;
-                      return generateStandardPdfDataUrl(activePdfFile.name, activePdfFile.subject, activePdfFile.standard || 'Class 10', activePdfFile.description || '');
-                    }}
-                    onDownload={() => handleDownloadFileToDevice(activePdfFile)}
-                    onPagesTextExtracted={setActivePdfText}
-                  />
-                </div>
-              )}
-
-              {pdfWorkspaceTab !== 'reader' && (
-                <div className="max-w-4xl mx-auto w-full space-y-6 animate-fade-in">
-                  
-                  {/* Action Config Box */}
-                  <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-4">
-                    <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                      <div className={`p-3 rounded-2xl ${
-                        pdfWorkspaceTab === 'translate' ? 'bg-sky-50 text-sky-600' :
-                        pdfWorkspaceTab === 'solve' ? 'bg-emerald-50 text-emerald-600' :
-                        pdfWorkspaceTab === 'summary' ? 'bg-purple-50 text-purple-600' :
-                        'bg-amber-50 text-amber-600'
-                      }`}>
-                        {pdfWorkspaceTab === 'translate' && <Globe className="w-6 h-6" />}
-                        {pdfWorkspaceTab === 'solve' && <CheckCircle2 className="w-6 h-6" />}
-                        {pdfWorkspaceTab === 'summary' && <Sparkles className="w-6 h-6" />}
-                        {pdfWorkspaceTab === 'notes' && <FileText className="w-6 h-6" />}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-lg text-slate-900">
-                          {pdfWorkspaceTab === 'translate' && 'Translate Content'}
-                          {pdfWorkspaceTab === 'solve' && 'Solve Practice Questions'}
-                          {pdfWorkspaceTab === 'summary' && 'Generate Topic Summary'}
-                          {pdfWorkspaceTab === 'notes' && 'Create Revision Short Notes'}
-                        </h4>
-                        <p className="text-sm text-slate-500">
-                          Powered by GyaanBot AI Mentor
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 ml-1">Target Language:</label>
-                        <select 
-                          value={workspaceTargetLang}
-                          onChange={(e) => setWorkspaceTargetLang(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="en">English (Default)</option>
-                          <option value="hi">Hindi (हिंदी)</option>
-                          <option value="gu">Gujarati (ગુજરાતી)</option>
-                          <option value="mr">Marathi (मराठी)</option>
-                          <option value="bn">Bengali (বাংলা)</option>
-                          <option value="ta">Tamil (தமிழ்)</option>
-                          <option value="te">Telugu (తెలుగు)</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-slate-700 ml-1">Custom Context (Optional):</label>
-                        <input 
-                          type="text"
-                          value={workspaceInput}
-                          onChange={(e) => setWorkspaceInput(e.target.value)}
-                          placeholder="E.g. specific page, paragraph, or question number"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
+            {/* Modal Content Body - Direct PDF Reader */}
+            <div className="flex-1 bg-slate-900 overflow-hidden flex flex-col p-2 sm:p-4">
+              <div className="flex-1 h-full min-h-[500px]">
+                <PdfCanvasViewer
+                  fileId={activePdfFile.id}
+                  fileDataUrl={activePdfFile.fileDataUrl}
+                  fileName={activePdfFile.name}
+                  onGetFileLocal={async (id) => {
+                    if (activePdfFile.fileDataUrl) return activePdfFile.fileDataUrl;
+                    const localUrl = await getFileLocal(id);
+                    if (localUrl) return localUrl;
+                    const lsUrl = localStorage.getItem('gramin_pdf_cache_' + id);
+                    if (lsUrl) return lsUrl;
                     
-                    <button
-                      onClick={() => handleWorkspaceAction(pdfWorkspaceTab)}
-                      disabled={workspaceLoading || activePdfText.length === 0}
-                      className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
-                    >
-                      {workspaceLoading ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Processing Document...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-5 h-5" />
-                          <span>Generate Response</span>
-                        </>
-                      )}
-                    </button>
-                    {activePdfText.length === 0 && !workspaceLoading && (
-                      <p className="text-xs font-medium text-amber-600">Please wait for the PDF reader to finish extracting text first.</p>
-                    )}
-                  </div>
+                    const remoteUrl = await getFirebaseCurriculumFileDataUrl(id);
+                    if (remoteUrl) {
+                      await saveFileLocal(id, remoteUrl);
+                      setActivePdfFile(prev => prev && prev.id === id ? { ...prev, fileDataUrl: remoteUrl } : prev);
+                      return remoteUrl;
+                    }
 
-                  {/* Result Area */}
-                  {workspaceResult && (
-                    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xs space-y-6">
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                        <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
-                          <button
-                            onClick={() => setWorkspaceViewMode('text')}
-                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${workspaceViewMode === 'text' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                          >
-                            Text Document
-                          </button>
-                          <button
-                            onClick={() => setWorkspaceViewMode('diagram')}
-                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${workspaceViewMode === 'diagram' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                          >
-                            Flow Diagram
-                          </button>
-                          <button
-                            onClick={() => setWorkspaceViewMode('video')}
-                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${workspaceViewMode === 'video' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                          >
-                            Video Lesson
-                          </button>
-                        </div>
-                        <button
-                          onClick={handleDownloadWorkspacePdf}
-                          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all"
-                        >
-                          <Download className="w-4 h-4 text-amber-400" />
-                          <span>Export PDF</span>
-                        </button>
-                      </div>
-
-                      {/* Mode: TEXT */}
-                      {workspaceViewMode === 'text' && (
-                        <div className="prose prose-sm max-w-none prose-slate prose-headings:text-indigo-950 prose-a:text-indigo-600 text-slate-800">
-                          <div dangerouslySetInnerHTML={{ 
-                            __html: workspaceResult.text
-                              ? workspaceResult.text.replace(/\\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                              : 'No text response generated.' 
-                          }} />
-                        </div>
-                      )}
-
-                      {/* Mode: DIAGRAM */}
-                      {workspaceViewMode === 'diagram' && workspaceResult.diagram && (
-                        <div className="h-[400px] bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden relative">
-                           <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200 shadow-sm font-bold text-sm text-slate-800">
-                             {workspaceResult.diagram.title}
-                           </div>
-                           <InteractiveDiagram data={{ type: 'flowchart', title: workspaceResult.diagram.title, nodes: workspaceResult.diagram.nodes.map((n:any)=>({id:n.id, label:n.label, description:n.description})) }} lang={workspaceTargetLang as LanguageCode} />
-                        </div>
-                      )}
-
-                      {/* Mode: VIDEO */}
-                      {workspaceViewMode === 'video' && workspaceResult.video && workspaceResult.video.slides && workspaceResult.video.slides.length > 0 && (
-                        <div className="h-[500px] rounded-2xl overflow-hidden relative shadow-inner">
-                           <SlideVisualBoard
-                             slide={{
-                               id: `slide-${videoSlideIndex}`,
-                               title: workspaceResult.video.slides[videoSlideIndex].title || 'Concept Slide',
-                               content: '',
-                               bullets: workspaceResult.video.slides[videoSlideIndex].bullets || [],
-                               visualLayout: 'diagram'
-                             }}
-                             currentSlideIndex={videoSlideIndex}
-                             isPlaying={false}
-                             lang={workspaceTargetLang as LanguageCode}
-                           />
-                           
-                           <div className="absolute bottom-6 left-6 right-6 bg-slate-900/90 backdrop-blur-md rounded-2xl p-4 flex items-center justify-between border border-white/10 shadow-xl">
-                             <p className="text-white text-sm flex-1 font-medium italic pr-4">
-                               "{workspaceResult.video.slides[videoSlideIndex].narrative}"
-                             </p>
-                             <div className="flex gap-2 shrink-0">
-                               <button 
-                                 onClick={() => setVideoSlideIndex(Math.max(0, videoSlideIndex - 1))}
-                                 disabled={videoSlideIndex === 0}
-                                 className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white font-bold rounded-xl text-sm transition-all"
-                               >
-                                 Prev
-                               </button>
-                               <button 
-                                 onClick={() => {
-                                   const textToSpeak = workspaceResult.video.slides[videoSlideIndex].narrative;
-                                   if (textToSpeak) speakText(textToSpeak, workspaceTargetLang as LanguageCode);
-                                 }}
-                                 className="w-10 h-10 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg transition-all"
-                               >
-                                 <Volume2 className="w-5 h-5" />
-                               </button>
-                               <button 
-                                 onClick={() => setVideoSlideIndex(Math.min(workspaceResult.video.slides.length - 1, videoSlideIndex + 1))}
-                                 disabled={videoSlideIndex === workspaceResult.video.slides.length - 1}
-                                 className="px-4 py-2 bg-white text-slate-900 hover:bg-slate-100 disabled:opacity-30 font-bold rounded-xl text-sm transition-all"
-                               >
-                                 Next
-                               </button>
-                             </div>
-                           </div>
-                        </div>
-                      )}
-
-                    </div>
-                  )}
-
-                </div>
-              )}
+                    if (activePdfFile.externalUrl) return activePdfFile.externalUrl;
+                    return generateStandardPdfDataUrl(activePdfFile.name, activePdfFile.subject, activePdfFile.standard || 'Class 10', activePdfFile.description || '');
+                  }}
+                  onDownload={() => handleDownloadFileToDevice(activePdfFile)}
+                  onPagesTextExtracted={setActivePdfText}
+                />
+              </div>
             </div>
           </div>
         </div>

@@ -60,12 +60,15 @@ export interface QuizQuestion {
   explanation: string;
 }
 
+export type MaterialType = 'notes' | 'ebook' | 'pyq' | 'practice_questions' | 'other';
+
 export interface OfflineResource {
   id: string;
   title: string;
   subject: string;
   size: string;
   category: 'video' | 'pdf' | 'audio' | 'quiz';
+  materialType?: MaterialType;
   downloaded: boolean;
 }
 
@@ -84,6 +87,7 @@ export interface CurriculumFile {
   folderId: string | null;
   subject: string;
   category: 'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other';
+  materialType?: MaterialType;
   size: string;
   uploadedAt: string;
   fileDataUrl?: string;

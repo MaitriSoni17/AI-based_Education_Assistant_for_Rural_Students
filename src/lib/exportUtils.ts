@@ -21,6 +21,7 @@ export interface CurriculumFileItem {
   name: string;
   subject: string;
   category: string;
+  materialType?: string;
   size: string;
   uploadedAt: string;
   folderId?: string;
@@ -126,8 +127,9 @@ export function exportMasterAnalyticsExcel(payload: ExportDataPayload) {
   const currRows = payload.curriculumFiles.map((f, idx) => ({
     'S.No': idx + 1,
     'File Name': f.name,
+    'Material Type': f.materialType ? (f.materialType === 'notes' ? 'Notes & Summaries' : f.materialType === 'ebook' ? 'E-Books & Textbooks' : f.materialType === 'pyq' ? 'Previous Year Paper' : f.materialType === 'practice_questions' ? 'Practice Questions' : f.materialType) : 'Notes',
     'Subject': f.subject,
-    'Category / Type': f.category,
+    'Category / Format': f.category,
     'File Size': f.size,
     'Upload Date': f.uploadedAt,
     'External Resource Link': f.externalUrl || 'N/A',

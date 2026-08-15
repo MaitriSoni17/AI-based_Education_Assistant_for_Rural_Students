@@ -502,9 +502,9 @@ Note: Respond in the requested language (e.g., English, Hindi, Tamil, Telugu, Ma
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
-        "gemini-3.6-flash",      // Recommended primary model
+        "gemini-3.7-flash",      // Recommended primary latest model
+        "gemini-flash-latest",   // General latest flash alias
         "gemini-3.1-flash-lite", // Fast lightweight model
-        "gemini-flash-latest",   // General flash alias
         "gemini-3.1-pro-preview" // Pro model
       ];
 
@@ -643,9 +643,9 @@ Format your entire response strictly using the exact markers below to allow the 
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
-        "gemini-3.6-flash",      // Recommended primary model
+        "gemini-3.7-flash",      // Recommended primary latest model
+        "gemini-flash-latest",   // General latest flash alias
         "gemini-3.1-flash-lite", // Fast lightweight model
-        "gemini-flash-latest",   // General flash alias
         "gemini-3.1-pro-preview" // Pro model
       ];
 
@@ -823,9 +823,9 @@ Instructions:
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
-        "gemini-3.6-flash",
-        "gemini-3.1-flash-lite",
+        "gemini-3.7-flash",
         "gemini-flash-latest",
+        "gemini-3.1-flash-lite",
         "gemini-3.1-pro-preview"
       ];
 
@@ -1364,9 +1364,9 @@ Board: State Board SCERT Standard
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
-        "gemini-3.6-flash",
-        "gemini-3.1-flash-lite",
+        "gemini-3.7-flash",
         "gemini-flash-latest",
+        "gemini-3.1-flash-lite",
         "gemini-3.1-pro-preview"
       ];
 
@@ -1536,6 +1536,12 @@ Education Board options MUST be matched to one of these EXACT strings:
 
 Category options MUST be one of: ["pdf", "video", "audio", "quiz", "document", "other"]
 
+Material Type options MUST be one of:
+- "notes" (Chapter notes, revision summaries, mind maps, formula cheatsheets)
+- "ebook" (Full e-books, NCERT / State textbooks, reference readers)
+- "pyq" (Previous year question papers, solved board papers, past year exam archives)
+- "practice_questions" (Practice question sets, DPPs, question banks, MCQs, problem worksheets)
+
 Infer the subject precisely (e.g., "Science", "Mathematics", "English", "Social Science", "Physics", "Chemistry", "Biology", "Gujarati", "Hindi", "History", "Geography", "Computer Science", "General Knowledge", etc.).
 Provide a clean, elegant title for the file and a concise 1-2 sentence description summarizing what the document contains.`;
 
@@ -1543,9 +1549,9 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
-        "gemini-3.6-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-flash-latest"
+        "gemini-3.7-flash",
+        "gemini-flash-latest",
+        "gemini-3.1-flash-lite"
       ];
 
       // Try with file content if available
@@ -1570,11 +1576,12 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
                     title: { type: Type.STRING, description: "Clean document title" },
                     subject: { type: Type.STRING, description: "Academic subject name" },
                     category: { type: Type.STRING, description: "Category string" },
+                    materialType: { type: Type.STRING, description: "One of: 'notes', 'ebook', 'pyq', 'practice_questions'" },
                     standard: { type: Type.STRING, description: "Exact Standard string match" },
                     board: { type: Type.STRING, description: "Exact Education Board string match" },
                     description: { type: Type.STRING, description: "Short description summary" }
                   },
-                  required: ["title", "subject", "category", "standard", "board", "description"]
+                  required: ["title", "subject", "category", "materialType", "standard", "board", "description"]
                 }
               }
             });
@@ -1605,11 +1612,12 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
                     title: { type: Type.STRING, description: "Clean document title" },
                     subject: { type: Type.STRING, description: "Academic subject name" },
                     category: { type: Type.STRING, description: "Category string" },
+                    materialType: { type: Type.STRING, description: "One of: 'notes', 'ebook', 'pyq', 'practice_questions'" },
                     standard: { type: Type.STRING, description: "Exact Standard string match" },
                     board: { type: Type.STRING, description: "Exact Education Board string match" },
                     description: { type: Type.STRING, description: "Short description summary" }
                   },
-                  required: ["title", "subject", "category", "standard", "board", "description"]
+                  required: ["title", "subject", "category", "materialType", "standard", "board", "description"]
                 }
               }
             });
@@ -1675,7 +1683,7 @@ Provide a challenging, engaging academic puzzle with 4 multiple choice options (
 Return valid JSON adhering to the requested schema.`;
 
       let responseText = "";
-      const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemini-3.5-flash-lite'];
+      const models = ['gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'];
       for (const modelName of models) {
         try {
           const resp = await ai.models.generateContent({
@@ -1932,9 +1940,9 @@ Guidelines for formatting the JSON fields:
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
-        "gemini-3.6-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-flash-latest"
+        "gemini-3.7-flash",
+        "gemini-flash-latest",
+        "gemini-3.1-flash-lite"
       ];
 
       for (const modelName of modelsToTry) {
@@ -2037,10 +2045,10 @@ Guidelines for formatting the JSON fields:
     }
   });
 
-  // API ROUTE: DYNAMIC AI PUZZLE GENERATOR
+  // API ROUTE: DYNAMIC AI PUZZLE GENERATOR WITH ADAPTIVE GAME MECHANICS
   app.post("/api/gemini/generate-puzzle", async (req, res) => {
     try {
-      const { gameId, group, lang, topic } = req.body;
+      const { gameId, group, lang, topic, studentName, studentClass, subject, puzzleType, difficulty, puzzleNumber } = req.body;
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
@@ -2062,30 +2070,86 @@ Guidelines for formatting the JSON fields:
 
       const userLang = lang || "en";
       const userGroup = group || 2;
-      const targetTopic = topic || "General Educational Science, Math & Social Studies";
+      
+      const themePool = [
+        "Astrophysics, Exoplanets & James Webb Deep Field Discoveries",
+        "Marine Biology, Deep Trench Hydrothermal Vents & Bioluminescence",
+        "Ancient Indian Inventions, Mathematics & World Archaeological Wonders",
+        "Chemical Synthesis, Catalyst Kinetics & Periodic Element Compounds",
+        "Plant Physiology, Stomatal Osmosis & C4 Photosynthesis Pathways",
+        "Electromagnetism, Lorentz Force, Induction & Smart Microgrids",
+        "Ecological Food Webs, Keystone Species & Bio-accumulation",
+        "Microbiology, CRISPR Gene Editing & Bacteriophage Mechanisms",
+        "Human Neurobiology, Synaptic Neurotransmitters & Reflex Arcs",
+        "Plate Tectonics, Seismic Wave Triangulation & Volcanic Geophysics",
+        "Number Theory, Cryptographic Ciphers & Modular Arithmetic Patterns",
+        "Orbital Mechanics, Gravity Assist Trajectories & Satellite Telemetry",
+        "Cellular Mitosis, Epigenetics & Ribosomal Protein Synthesis",
+        "Green Hydrogen Fuel Cells, Solar Photovoltaics & Geothermal Energy",
+        "Quantum Superposition, Photon Polarization & Atomic Orbitals",
+        "Meteorology, Coriolis Force, Jet Streams & Supercell Dynamics"
+      ];
+      const randomTheme = themePool[Math.floor(Math.random() * themePool.length)];
+      const targetTopic = topic && topic.trim().length > 0 ? topic : (subject ? `${subject}: ${topic || 'Core Curriculum'}` : randomTheme);
+      const entropySeed = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
 
-      let prompt = `You are an expert educational game designer creating an interactive puzzle for school students (Group ${userGroup}, Classes ${userGroup === 1 ? '1-5' : userGroup === 2 ? '6-9' : '10-12'}).
-Target game type: '${gameId}'
-Requested Topic / Concept: '${targetTopic}'
-Language Code: '${userLang}' (en=English, hi=Hindi, gu=Gujarati, mr=Marathi, ta=Tamil, te=Telugu).
+      // Select ONE of the 4 Dynamic Mechanics
+      const MECHANIC_CHOICES = [
+        {
+          name: "Decryption/Cipher",
+          desc: "Translating symbolic clues, coded formulas, or encrypted sequences using educational rules."
+        },
+        {
+          name: "Grid/Spatial Reasoning",
+          desc: "Pattern completion, logical coordinate tables, multidimensional matrix relationships, and geometric placement."
+        },
+        {
+          name: "Scenario/Case Study",
+          desc: "Roleplaying a real-world scientific investigation, field expedition, forensic experiment, or engineering crisis."
+        },
+        {
+          name: "Error Detection",
+          desc: "Finding and fixing a deliberate glitch, anomaly, or misconception in an existing system, process, or taxonomy."
+        }
+      ];
+      const selectedMechanic = MECHANIC_CHOICES[Math.floor(Math.random() * MECHANIC_CHOICES.length)];
 
-Generate a brand new, highly accurate, creative, educational puzzle JSON. All text, titles, clues, and explanations must be written in language '${userLang}'.
+      const effectiveGameId = gameId || (puzzleType === 'Picture Puzzle' ? 'shape-puzzle' : puzzleType === 'Number Puzzle' ? 'number-grid' : 'odd-one-out');
+
+      let prompt = `You are an expert educational game designer specializing in dynamic, adaptive puzzles for all the puzzles created in this project.
+
+Objective: Generate a completely unique, highly creative puzzle based on the provided dynamic inputs.
+
+Core Generation Rules:
+1. Zero Repetition: Never default to standard textbook word problems or classic, overused riddle tropes unless given a specific twist.
+2. Dynamic Mechanics: Apply the following selected logic mechanic: "${selectedMechanic.name}" (${selectedMechanic.desc}).
+3. Target Audience: Indian & Global School Students in Group ${userGroup} (Classes ${userGroup === 1 ? '1-5 Primary' : userGroup === 2 ? '6-9 Middle School' : '10-12 High School'}).
+4. Target Game Mode: '${effectiveGameId}'
+5. Topic/Domain: '${targetTopic}'
+6. Target Language: '${userLang}' (en=English, hi=Hindi, gu=Gujarati, mr=Marathi, ta=Tamil, te=Telugu). Ensure all textual titles, clues, item names, and explanations are translated accurately into '${userLang}'.
+7. Unique Entropy Seed: '${entropySeed}'.
+
+Specific Game Format Instructions:
 `;
 
-      let schemaProperties: any = {};
-      let requiredFields: string[] = [];
+      let schemaProperties: any = {
+        mechanic: { type: Type.STRING, description: "The active logic mechanic: " + selectedMechanic.name },
+        creativeTwist: { type: Type.STRING, description: "A 1-sentence summary of the creative twist and scenario applied to this puzzle in " + userLang }
+      };
+      let requiredFields: string[] = ["mechanic", "creativeTwist"];
 
-      if (gameId === 'history-timeline') {
-        prompt += `Generate 4 historical events in chronological order. Make sure event titles include dates/years e.g. Dandi March (1930).`;
+      if (effectiveGameId === 'history-timeline') {
+        prompt += `Generate 4 distinct historical/evolutionary milestones in chronological order for '${targetTopic}'. Include the year/era in event titles e.g. "🏛️ Battle of Plassey (1757)". Ensure solutionIds is [1, 2, 3, 4] matching chronological sequence. Apply the '${selectedMechanic.name}' mechanic into the framing.`;
         schemaProperties = {
-          title: { type: Type.STRING, description: "Title of the historical timeline" },
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Title of the historical timeline with emoji" },
           items: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
                 id: { type: Type.INTEGER },
-                title: { type: Type.STRING, description: "Title of event with year e.g. Dandi March (1930)" }
+                title: { type: Type.STRING, description: "Event title with emoji and date in brackets" }
               },
               required: ["id", "title"]
             }
@@ -2093,22 +2157,23 @@ Generate a brand new, highly accurate, creative, educational puzzle JSON. All te
           solutionIds: {
             type: Type.ARRAY,
             items: { type: Type.INTEGER },
-            description: "IDs in chronological order e.g. [1, 2, 3, 4]"
+            description: "Array of integers [1, 2, 3, 4] representing the chronological sequence"
           },
-          explanation: { type: Type.STRING, description: "Chronological explanation string" }
+          explanation: { type: Type.STRING, description: "Detailed chronological explanation with educational insights" }
         };
-        requiredFields = ["title", "items", "solutionIds", "explanation"];
-      } else if (gameId === 'sequence-builder') {
-        prompt += `Generate 4 sequential stages of a scientific or natural process.`;
+        requiredFields.push("title", "items", "solutionIds", "explanation");
+      } else if (effectiveGameId === 'sequence-builder') {
+        prompt += `Generate 4 sequential stages of a scientific, ecological, or physical process for '${targetTopic}' (e.g. Nitrogen cycle, Star Life Cycle, Cell Mitosis, Cloud Formation, Deep Sea Pressure Equilibration). Apply the '${selectedMechanic.name}' mechanic. Ensure solutionIds is [1, 2, 3, 4] in logical step order.`;
         schemaProperties = {
-          title: { type: Type.STRING, description: "Title of the process sequence" },
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Title of the process sequence with emoji" },
           items: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
                 id: { type: Type.INTEGER },
-                title: { type: Type.STRING, description: "Stage title with emoji e.g., Evaporation" }
+                title: { type: Type.STRING, description: "Stage description with emoji" }
               },
               required: ["id", "title"]
             }
@@ -2116,90 +2181,205 @@ Generate a brand new, highly accurate, creative, educational puzzle JSON. All te
           solutionIds: {
             type: Type.ARRAY,
             items: { type: Type.INTEGER },
-            description: "IDs in correct sequential order e.g. [1, 2, 3, 4]"
+            description: "IDs in correct sequential order [1, 2, 3, 4]"
           },
-          explanation: { type: Type.STRING, description: "Sequential explanation string" }
+          explanation: { type: Type.STRING, description: "Sequential explanation of the complete process" }
         };
-        requiredFields = ["title", "items", "solutionIds", "explanation"];
-      } else if (gameId === 'crossword') {
-        prompt += `Generate a science crossword with 1 Across clue and 1 Down clue. Answers must be UPPERCASE single English words (e.g. PHOTOSYNTHESIS, CELL, GRAVITATION, FORCE, ATOM). Clues can be in language '${userLang}'.`;
+        requiredFields.push("title", "items", "solutionIds", "explanation");
+      } else if (effectiveGameId === 'crossword') {
+        prompt += `Generate a science/math crossword with 1 Across clue and 1 Down clue on '${targetTopic}'. Answers must be UPPERCASE single English words (e.g. PHOTOSYNTHESIS, GRAVITY, CHLOROPLAST, CHROMOSOME, MOLECULE, METEORITE). Clues must be written in language '${userLang}' incorporating the '${selectedMechanic.name}' twist.`;
         schemaProperties = {
-          title: { type: Type.STRING, description: "Title of crossword topic" },
-          across: { type: Type.STRING, description: "Across clue text" },
-          acrossAns: { type: Type.STRING, description: "UPPERCASE single word answer for Across" },
-          down: { type: Type.STRING, description: "Down clue text" },
-          downAns: { type: Type.STRING, description: "UPPERCASE single word answer for Down" }
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Title of crossword with emoji" },
+          across: { type: Type.STRING, description: "Across clue text in specified language" },
+          acrossAns: { type: Type.STRING, description: "UPPERCASE single English word answer for Across" },
+          down: { type: Type.STRING, description: "Down clue text in specified language" },
+          downAns: { type: Type.STRING, description: "UPPERCASE single English word answer for Down" },
+          explanation: { type: Type.STRING, description: "Educational note explaining the answers" }
         };
-        requiredFields = ["title", "across", "acrossAns", "down", "downAns"];
-      } else if (gameId === 'number-grid') {
-        prompt += `Generate 3 connected arithmetic or algebraic math chain questions with numerical string answers.`;
+        requiredFields.push("title", "across", "acrossAns", "down", "downAns");
+      } else if (effectiveGameId === 'number-grid') {
+        prompt += `Generate 3 connected arithmetic or algebraic math chain questions with numerical answers for Group ${userGroup} on topic '${targetTopic}'. E.g., q1: "24 + 36 = ?", a1: "60", q2: "60 ÷ 4 = ?", a2: "15", q3: "15 × 7 = ?", a3: "105". Make sure calculations are 100% mathematically correct and framed with '${selectedMechanic.name}'.`;
         schemaProperties = {
-          title: { type: Type.STRING, description: "Title of the math chain set" },
-          q1: { type: Type.STRING, description: "First math expression e.g. '12 + 18 = ?'" },
-          a1: { type: Type.STRING, description: "Numerical string answer for q1 e.g. '30'" },
-          q2: { type: Type.STRING, description: "Second math expression e.g. '30 ÷ 5 = ?'" },
-          a2: { type: Type.STRING, description: "Numerical string answer for q2 e.g. '6'" },
-          q3: { type: Type.STRING, description: "Third math expression e.g. '6 × 7 = ?'" },
-          a3: { type: Type.STRING, description: "Numerical string answer for q3 e.g. '42'" }
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Title of the math chain challenge" },
+          q1: { type: Type.STRING, description: "First math expression string" },
+          a1: { type: Type.STRING, description: "String integer answer for q1" },
+          q2: { type: Type.STRING, description: "Second math expression string" },
+          a2: { type: Type.STRING, description: "String integer answer for q2" },
+          q3: { type: Type.STRING, description: "Third math expression string" },
+          a3: { type: Type.STRING, description: "String integer answer for q3" },
+          explanation: { type: Type.STRING, description: "Step by step calculation summary" }
         };
-        requiredFields = ["title", "q1", "a1", "q2", "a2", "q3", "a3"];
-      } else if (gameId === 'odd-one-out') {
-        prompt += `Generate an Odd One Out question with 4 options where 3 items belong to a specific scientific group and 1 item (solutionId) does NOT belong.`;
+        requiredFields.push("title", "q1", "a1", "q2", "a2", "q3", "a3");
+      } else if (effectiveGameId === 'odd-one-out') {
+        prompt += `Generate an Odd One Out question for '${targetTopic}' with 4 options (3 belonging to a strict scientific taxonomy and 1 odd one out). Incorporate the '${selectedMechanic.name}' logic. Specify solutionId (1, 2, 3, or 4).`;
         schemaProperties = {
-          title: { type: Type.STRING, description: "Category/Family title" },
-          question: { type: Type.STRING, description: "Question text asking to identify the odd one out" },
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Scientific Category / Concept Title" },
+          question: { type: Type.STRING, description: "Question asking to identify the odd one out in language " + userLang },
           items: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
                 id: { type: Type.INTEGER },
-                name: { type: Type.STRING, description: "Item label with emoji" }
+                name: { type: Type.STRING, description: "Item label with emoji in language " + userLang }
               },
               required: ["id", "name"]
             }
           },
-          solutionId: { type: Type.INTEGER, description: "The ID (1, 2, 3, or 4) of the item that is the odd one out" },
-          explanation: { type: Type.STRING, description: "Explanation of why solutionId is the odd one out" }
+          solutionId: { type: Type.INTEGER, description: "The ID (1, 2, 3, or 4) of the odd item" },
+          explanation: { type: Type.STRING, description: "Clear explanation why this item is the odd one out" }
         };
-        requiredFields = ["title", "question", "items", "solutionId", "explanation"];
-      } else {
-        prompt += `Generate a 5-organism Food Chain from producer to top predator.`;
+        requiredFields.push("title", "question", "items", "solutionId", "explanation");
+      } else if (effectiveGameId === 'shape-puzzle') {
+        prompt += `Generate a geometric shape composition puzzle for blueprint design (options for blueprintId: 'rocket', 'sailboat', 'castle', 'robot', 'train', 'house'). Return 4-5 geometric shape parts required.`;
         schemaProperties = {
-          title: { type: Type.STRING, description: "Food chain title" },
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Title of the shape blueprint" },
+          id: { type: Type.STRING, description: "One of: 'rocket', 'sailboat', 'castle', 'robot', 'train', 'house'" },
           items: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
                 key: { type: Type.STRING },
-                name: { type: Type.STRING }
+                name: { type: Type.STRING, description: "Name of shape with emoji" }
+              },
+              required: ["key", "name"]
+            }
+          },
+          requiredKeys: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: "List of keys that must be placed to complete the shape"
+          },
+          explanation: { type: Type.STRING, description: "Geometric explanation of the structure" }
+        };
+        requiredFields.push("title", "id", "items", "requiredKeys", "explanation");
+      } else if (effectiveGameId === 'word-builder') {
+        prompt += `Generate a vocabulary Word Builder puzzle with 1 Root Word (e.g. BIO, GEO, PHOTO, TELE, THERM, AERO, HYDRO, ASTRO, MICRO, PSYCH, ECO, CHRONO, PHON, SPECT) and 3-4 affixes that combine with the root to form real English words with translated definitions in language '${userLang}'.`;
+        schemaProperties = {
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Title of the word building challenge" },
+          rootWord: { type: Type.STRING, description: "Root word in uppercase e.g. 'BIO'" },
+          rootWordLoc: { type: Type.STRING, description: "Root word translated or explained in " + userLang },
+          affixes: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                affix: { type: Type.STRING, description: "Prefix or suffix e.g. '-logy', 'Micro-', '-sphere'" },
+                word: { type: Type.STRING, description: "Combined word e.g. 'Biology'" },
+                def: { type: Type.STRING, description: "Definition of the word in " + userLang }
+              },
+              required: ["affix", "word", "def"]
+            }
+          },
+          explanation: { type: Type.STRING, description: "Etymological note on word formation" }
+        };
+        requiredFields.push("title", "rootWord", "rootWordLoc", "affixes", "explanation");
+      } else if (effectiveGameId === 'circuit-puzzle') {
+        prompt += `Generate an interactive electric circuit challenge on '${targetTopic}' (e.g. Solar Photovoltaic Loop, Electromagnet Relay, LED Resistor Circuit, Electric Bell Circuit, DC Motor Fan, Light Sensor Alarm). Provide 3-4 essential electrical components needed to complete the closed circuit translated into '${userLang}'.`;
+        schemaProperties = {
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Title of the circuit challenge with emoji" },
+          circuitType: { type: Type.STRING, description: "Type of circuit description" },
+          components: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                key: { type: Type.STRING, description: "Component identifier e.g. battery, switch, bulb, motor, buzzer, resistor, solar, led" },
+                name: { type: Type.STRING, description: "Component name with emoji in language " + userLang },
+                icon: { type: Type.STRING, description: "Single emoji icon for component e.g. 🔋, 🔘, 💡, 🌀, 🔔, ☀️, ⚡, 🧲" }
+              },
+              required: ["key", "name", "icon"]
+            },
+            description: "List of 3 to 4 required components to build this functional circuit"
+          },
+          explanation: { type: Type.STRING, description: "Physics explanation of circuit current flow and closed loop operation" }
+        };
+        requiredFields.push("title", "circuitType", "components", "explanation");
+      } else if (effectiveGameId === 'memory-match' || effectiveGameId === 'formula-match') {
+        prompt += `Generate 4 matching pairs of educational concepts for '${targetTopic}' (e.g. SI Units and Physical quantities, Chemical Formula and Compound name, Organelle and Function, Historical Leader and Contribution, Physics Law and Formula).`;
+        schemaProperties = {
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Title of the memory matching game" },
+          pairs: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                pairId: { type: Type.INTEGER },
+                symbol: { type: Type.STRING, description: "Symbol, formula, or short term with emoji" },
+                text: { type: Type.STRING, description: "Full concept or law in language " + userLang }
+              },
+              required: ["pairId", "symbol", "text"]
+            }
+          },
+          explanation: { type: Type.STRING, description: "Educational takeaway on the matched concepts" }
+        };
+        requiredFields.push("title", "pairs", "explanation");
+      } else if (effectiveGameId === 'assertion-reason') {
+        prompt += `Generate a senior secondary Assertion and Reason question for Class 10-12 on '${targetTopic}'.
+Assertion (A) is a scientific statement.
+Reason (R) is a supporting statement.
+solutionId should be:
+1: Both A and R are true and R is the correct explanation of A.
+2: Both A and R are true but R is NOT the correct explanation of A.
+3: A is true but R is false.
+4: A is false but R is true.`;
+        schemaProperties = {
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Assertion & Reason Challenge Title" },
+          assertion: { type: Type.STRING, description: "Assertion (A) statement in language " + userLang },
+          reason: { type: Type.STRING, description: "Reason (R) statement in language " + userLang },
+          solutionId: { type: Type.INTEGER, description: "Integer 1, 2, 3, or 4" },
+          explanation: { type: Type.STRING, description: "Detailed scientific explanation of Assertion and Reason" }
+        };
+        requiredFields.push("title", "assertion", "reason", "solutionId", "explanation");
+      } else {
+        // Default: food-chain
+        prompt += `Generate a 5-organism Food Chain for biome '${targetTopic}' from producer to apex predator. Format items with unique keys and localized names in '${userLang}'.`;
+        schemaProperties = {
+          ...schemaProperties,
+          title: { type: Type.STRING, description: "Food chain title with emoji in language " + userLang },
+          items: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                key: { type: Type.STRING, description: "Unique English key identifier e.g. Phytoplankton" },
+                name: { type: Type.STRING, description: "Organism name with emoji in language " + userLang }
               },
               required: ["key", "name"]
             }
           },
           solutionKeys: {
             type: Type.ARRAY,
-            items: { type: Type.STRING }
+            items: { type: Type.STRING },
+            description: "Keys in order from producer to top predator"
           },
-          explanation: { type: Type.STRING }
+          explanation: { type: Type.STRING, description: "Ecology explanation of energy transfer" }
         };
-        requiredFields = ["title", "items", "solutionKeys", "explanation"];
+        requiredFields.push("title", "items", "solutionKeys", "explanation");
       }
 
-      const modelsToTry = ["gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"];
+      const modelsToTry = ["gemini-3.7-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-3.1-pro-preview"];
       let response: any = null;
       let success = false;
       let lastError: any = null;
 
       for (const modelName of modelsToTry) {
         try {
-          console.log(`[PUZZLE AI GENERATOR] Querying model ${modelName} for game '${gameId}'...`);
+          console.log(`[PUZZLE AI GENERATOR] Generating dynamic puzzle with model ${modelName} for '${effectiveGameId}' using mechanic '${selectedMechanic.name}' on topic '${targetTopic}'...`);
           response = await ai.models.generateContent({
             model: modelName,
             contents: prompt,
             config: {
-              temperature: 0.8,
+              temperature: 0.95,
               responseMimeType: "application/json",
               responseSchema: {
                 type: Type.OBJECT,
@@ -2223,7 +2403,9 @@ Generate a brand new, highly accurate, creative, educational puzzle JSON. All te
       const resultData = JSON.parse(response?.text || "{}");
       return res.json({
         success: true,
-        puzzle: resultData
+        puzzle: resultData,
+        topic: targetTopic,
+        mechanic: selectedMechanic.name
       });
 
     } catch (error: any) {

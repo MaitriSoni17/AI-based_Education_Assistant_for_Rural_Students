@@ -57,11 +57,16 @@ export interface FirestoreErrorInfo {
   }
 }
 
+let isQuotaExceeded = false;
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): void {
   const errMessage = error instanceof Error ? error.message : String(error);
-  if (errMessage.includes("resource-exhausted") || errMessage.includes("quota")) {
-    console.warn("Firestore Quota Exceeded. Running in offline/local fallback mode.");
-    disableNetwork(db).catch(() => {});
+  if (errMessage.includes("resource-exhausted") || errMessage.includes("quota") || errMessage.includes("Quota limit exceeded")) {
+    if (!isQuotaExceeded) {
+      isQuotaExceeded = true;
+      console.warn("Firestore Quota Exceeded. Running in offline/local fallback mode.");
+      disableNetwork(db).catch(() => {});
+    }
     return;
   }
   const errInfo: FirestoreErrorInfo = {
@@ -221,6 +226,7 @@ export async function syncFirebaseUserWithLWW(
  * Register a new user profile or update existing.
  */
 export async function setFirebaseUser(mobile: string, userData: Partial<FirestoreUser>): Promise<void> {
+  if (isQuotaExceeded) return;
   const path = `users/${mobile}`;
   try {
     const userDocRef = doc(db, "users", mobile);
@@ -255,6 +261,7 @@ export async function setFirebaseUser(mobile: string, userData: Partial<Firestor
  * Update specific fields in user profile.
  */
 export async function updateFirebaseUserFields(mobile: string, fields: Partial<FirestoreUser>): Promise<void> {
+  if (isQuotaExceeded) return;
   const path = `users/${mobile}`;
   try {
     const userDocRef = doc(db, "users", mobile);
@@ -549,6 +556,7 @@ export interface FirestoreCurriculumFile {
   folderId: string | null;
   subject: string;
   category: 'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other';
+  materialType?: 'notes' | 'ebook' | 'pyq' | 'practice_questions' | 'other';
   size: string;
   uploadedAt: string;
   fileDataUrl?: string;
@@ -584,12 +592,17 @@ export async function getAllFirebaseCurriculumFolders(): Promise<FirestoreCurric
  * Save/update a curriculum folder in Firestore
  */
 export async function saveFirebaseCurriculumFolder(folder: FirestoreCurriculumFolder): Promise<void> {
+  if (isQuotaExceeded) return;
   const path = `curriculum_folders/${folder.id}`;
   try {
     const docRef = doc(db, "curriculum_folders", folder.id);
     const cleanPayload = sanitizeFirestorePayload(folder);
     await setDoc(docRef, cleanPayload, { merge: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes("resource-exhausted") || error?.message?.includes("quota")) {
+      isQuotaExceeded = true;
+      disableNetwork(db).catch(() => {});
+    }
     console.warn("Failed to save curriculum folder to Firestore:", error);
   }
 }
@@ -598,11 +611,16 @@ export async function saveFirebaseCurriculumFolder(folder: FirestoreCurriculumFo
  * Delete a curriculum folder from Firestore
  */
 export async function deleteFirebaseCurriculumFolder(id: string): Promise<void> {
+  if (isQuotaExceeded) return;
   const path = `curriculum_folders/${id}`;
   try {
     const docRef = doc(db, "curriculum_folders", id);
     await deleteDoc(docRef);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes("resource-exhausted") || error?.message?.includes("quota")) {
+      isQuotaExceeded = true;
+      disableNetwork(db).catch(() => {});
+    }
     console.warn("Failed to delete curriculum folder from Firestore:", error);
   }
 }
@@ -622,7 +640,11 @@ export async function getAllFirebaseCurriculumFiles(): Promise<FirestoreCurricul
       }
     });
     return result;
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes("resource-exhausted") || error?.message?.includes("quota")) {
+      isQuotaExceeded = true;
+      disableNetwork(db).catch(() => {});
+    }
     console.warn("Failed to fetch curriculum files from Firestore:", error);
     return [];
   }
@@ -656,7 +678,11 @@ export async function getFirebaseCurriculumFileDataUrl(fileId: string): Promise<
       return fileData.fileDataUrl || null;
     }
     return null;
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes("resource-exhausted") || error?.message?.includes("quota")) {
+      isQuotaExceeded = true;
+      disableNetwork(db).catch(() => {});
+    }
     console.warn("Failed to retrieve curriculum file chunks from Firestore:", error);
     return null;
   }
@@ -666,6 +692,7 @@ export async function getFirebaseCurriculumFileDataUrl(fileId: string): Promise<
  * Save/update a curriculum file in Firestore
  */
 export async function saveFirebaseCurriculumFile(file: FirestoreCurriculumFile): Promise<void> {
+  if (isQuotaExceeded) return;
   const path = `curriculum_files/${file.id}`;
   try {
     const payload = { ...file };
@@ -692,7 +719,11 @@ export async function saveFirebaseCurriculumFile(file: FirestoreCurriculumFile):
     const cleanPayload = sanitizeFirestorePayload(payload);
     const docRef = doc(db, "curriculum_files", file.id);
     await setDoc(docRef, cleanPayload, { merge: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes("resource-exhausted") || error?.message?.includes("quota")) {
+      isQuotaExceeded = true;
+      disableNetwork(db).catch(() => {});
+    }
     console.warn("Failed to save curriculum file to Firestore:", error);
   }
 }
@@ -701,6 +732,7 @@ export async function saveFirebaseCurriculumFile(file: FirestoreCurriculumFile):
  * Delete a curriculum file from Firestore
  */
 export async function deleteFirebaseCurriculumFile(id: string): Promise<void> {
+  if (isQuotaExceeded) return;
   const path = `curriculum_files/${id}`;
   try {
     // Delete chunks first if any exist
@@ -714,7 +746,11 @@ export async function deleteFirebaseCurriculumFile(id: string): Promise<void> {
 
     const docRef = doc(db, "curriculum_files", id);
     await deleteDoc(docRef);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes("resource-exhausted") || error?.message?.includes("quota")) {
+      isQuotaExceeded = true;
+      disableNetwork(db).catch(() => {});
+    }
     console.warn("Failed to delete curriculum file from Firestore:", error);
   }
 }
