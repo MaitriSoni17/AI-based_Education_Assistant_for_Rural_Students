@@ -1649,202 +1649,7 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
     }
   });
 
-  // API ROUTE: GENERATE AI PUZZLE FOR CLASS CHANNELS
-  app.post("/api/gemini/generate-puzzle", async (req, res) => {
-    try {
-      const { studentName, studentClass, subject, topic, puzzleType, difficulty, puzzleNumber, lang } = req.body;
 
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({
-          success: false,
-          message: "Gemini API key is not configured."
-        });
-      }
-
-      const { GoogleGenAI, Type } = await import("@google/genai");
-      const ai = new GoogleGenAI({
-        apiKey: apiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
-      });
-
-      const langName = lang === 'hi' ? 'Hindi' : lang === 'gu' ? 'Gujarati' : lang === 'mr' ? 'Marathi' : lang === 'bn' ? 'Bengali' : lang === 'ta' ? 'Tamil' : lang === 'te' ? 'Telugu' : 'English';
-      const prompt = `Generate a high-quality educational puzzle for an Indian school student named ${studentName} in ${studentClass}, studying ${subject} on the topic "${topic}".
-Puzzle Type: ${puzzleType}
-Difficulty: ${difficulty}
-Puzzle Number: ${puzzleNumber}
-Language preference: ${langName}. The puzzle question, options, hint, and explanation MUST be generated in ${langName}.
-
-Provide a challenging, engaging academic puzzle with 4 multiple choice options (or empty array if open response), correct answer, a helpful hint, and a clear detailed explanation. Also identify the student group.
-Return valid JSON adhering to the requested schema.`;
-
-      let responseText = "";
-      const models = ['gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'];
-      for (const modelName of models) {
-        try {
-          const resp = await ai.models.generateContent({
-            model: modelName,
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            config: {
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                  question: { type: Type.STRING, description: "The puzzle question or riddle" },
-                  puzzleType: { type: Type.STRING, description: "Type of puzzle" },
-                  options: { type: Type.ARRAY, items: { type: Type.STRING }, description: "4 multiple choice options" },
-                  correctAnswer: { type: Type.STRING, description: "The correct answer string matching one of options" },
-                  hint: { type: Type.STRING, description: "A helpful hint" },
-                  explanation: { type: Type.STRING, description: "Detailed explanation of why the answer is correct" },
-                  groupIdentified: { type: Type.STRING, description: "System identified group name" },
-                  difficulty: { type: Type.STRING, description: "Difficulty level" }
-                },
-                required: ["question", "puzzleType", "correctAnswer", "hint", "explanation", "groupIdentified", "difficulty"]
-              }
-            }
-          });
-          responseText = resp.text || "";
-          if (responseText) break;
-        } catch (e: any) {
-          console.log(`Model ${modelName} failed or quota exceeded for puzzle gen, trying next...`, e?.message || e);
-        }
-      }
-
-      let puzzleData: any = null;
-      if (responseText) {
-        try {
-          puzzleData = JSON.parse(responseText);
-        } catch (parseErr) {
-          console.warn("Failed to parse AI JSON response, using fallback puzzle");
-        }
-      }
-
-      if (!puzzleData) {
-        let defaultQuestion = `[AI ${puzzleType}] For ${studentClass} studying ${subject} on "${topic}", what is the correct conceptual solution?`;
-        let defaultOptions = [`Optimal Core Principle for ${topic}`, `Secondary Standard Hypothesis`, `Derived Experimental Constant`, `None of the Above`];
-        let defaultCorrect = `Optimal Core Principle for ${topic}`;
-        let defaultHint = `Recall core notes for ${subject} in ${studentClass}.`;
-        let defaultExp = `In ${topic}, applying foundational rules guarantees the correct outcome.`;
-
-        if (puzzleType === 'Picture Puzzle') {
-          if (studentClass.includes('1') || studentClass.includes('2')) {
-            defaultQuestion = `🖼️ [Animal Picture] Which animal is shown in this picture?`;
-            defaultOptions = [`🐶 Dog`, `🐱 Cat`, `🐘 Elephant`, `🦁 Lion`];
-            defaultCorrect = `🐘 Elephant`;
-            defaultHint = `It is a large land animal with a trunk.`;
-            defaultExp = `Elephants are majestic mammals known for their large ears and long trunks.`;
-          } else {
-            defaultQuestion = `🖼️ [Plant Diagram] Which part of the plant absorbs water and minerals from the soil?`;
-            defaultOptions = [`Root`, `Stem`, `Leaf`, `Flower`];
-            defaultCorrect = `Root`;
-            defaultHint = `It grows underground.`;
-            defaultExp = `Roots anchor the plant and absorb essential water and nutrients from the soil.`;
-          }
-        } else if (puzzleType === 'Number Puzzle') {
-          if (studentClass.includes('1')) {
-            defaultQuestion = `🔢 Solve the visual addition: ⭐ + ⭐ = ?`;
-            defaultOptions = [`1`, `2`, `3`, `4`];
-            defaultCorrect = `2`;
-            defaultHint = `Count the stars: 1 plus 1.`;
-            defaultExp = `1 star + 1 star equals 2 stars.`;
-          } else if (studentClass.includes('3')) {
-            defaultQuestion = `🔢 Calculate: 25 + 17 = ?`;
-            defaultOptions = [`32`, `42`, `52`, `37`];
-            defaultCorrect = `42`;
-            defaultHint = `Add 25 and 17 (25 + 10 = 35, 35 + 7 = 42).`;
-            defaultExp = `25 + 17 equals 42.`;
-          } else {
-            defaultQuestion = `🔢 Complete the number pattern: 5 → 10 → 15 → __ → 25`;
-            defaultOptions = [`18`, `20`, `22`, `30`];
-            defaultCorrect = `20`;
-            defaultHint = `Notice the increment of 5 at each step.`;
-            defaultExp = `The sequence increases by 5 each time, so after 15 comes 20.`;
-          }
-        } else if (puzzleType === 'Word Puzzle') {
-          if (studentClass.includes('1')) {
-            defaultQuestion = `🔤 Complete the missing letter: C _ T`;
-            defaultOptions = [`A`, `E`, `I`, `O`];
-            defaultCorrect = `A`;
-            defaultHint = `A small furry pet that says meow.`;
-            defaultExp = `C-A-T spells Cat.`;
-          } else if (studentClass.includes('3')) {
-            defaultQuestion = `🔤 Arrange the jumbled letters to form a fruit: P P A L E`;
-            defaultOptions = [`APPLE`, `PAPAYA`, `PEACH`, `PLUM`];
-            defaultCorrect = `APPLE`;
-            defaultHint = `An apple a day keeps the doctor away!`;
-            defaultExp = `P-P-A-L-E rearranged spells APPLE 🍎.`;
-          } else {
-            defaultQuestion = `🔤 Find the correct word: A person who teaches students in a school is a ______.`;
-            defaultOptions = [`Doctor`, `Teacher`, `Engineer`, `Pilot`];
-            defaultCorrect = `Teacher`;
-            defaultHint = `Guides students in classrooms.`;
-            defaultExp = `A teacher imparts education and knowledge to students.`;
-          }
-        } else if (puzzleType === 'Jigsaw Puzzle') {
-          defaultQuestion = `🧩 Complete the Solar System: Place the correct celestial object in the 3rd orbit from the Sun.`;
-          defaultOptions = [`☀️ Sun`, `🌍 Earth`, `🪐 Saturn`, `🌙 Moon`];
-          defaultCorrect = `🌍 Earth`;
-          defaultHint = `Our home planet is the third planet from the Sun.`;
-          defaultExp = `Earth is the third planet from the Sun and the only astronomical object known to harbor life.`;
-        } else if (puzzleType === 'Color & Identify') {
-          if (studentClass.includes('1')) {
-            defaultQuestion = `🎨 Find the Red Object from the choices below:`;
-            defaultOptions = [`🍎 Apple`, `🐘 Elephant`, `🍌 Banana`, `🌳 Tree`];
-            defaultCorrect = `🍎 Apple`;
-            defaultHint = `It is a red fruit.`;
-            defaultExp = `An apple is typically bright red in color.`;
-          } else {
-            defaultQuestion = `🎨 Which part of the plant is usually green and performs photosynthesis?`;
-            defaultOptions = [`🌱 Leaf`, `🌰 Seed`, `🪵 Bark`, `🪨 Soil`];
-            defaultCorrect = `🌱 Leaf`;
-            defaultHint = `It contains chlorophyll which makes it green.`;
-            defaultExp = `Leaves contain chlorophyll, which captures sunlight to make food for the plant.`;
-          }
-        }
-
-        puzzleData = {
-          question: defaultQuestion,
-          puzzleType: puzzleType,
-          options: defaultOptions,
-          correctAnswer: defaultCorrect,
-          hint: defaultHint,
-          explanation: defaultExp,
-          groupIdentified: studentClass.includes('1') || studentClass.includes('2') || studentClass.includes('3') || studentClass.includes('4') || studentClass.includes('5') ? 'Group 1 — Fun & Visual Learning' : 'Group 2 — Concept & Skill-Based Learning',
-          difficulty: difficulty
-        };
-      }
-
-      return res.json({
-        success: true,
-        puzzle: {
-          id: `ai-puzzle-${Date.now()}`,
-          ...puzzleData
-        }
-      });
-
-    } catch (error: any) {
-      console.error("[GLOBAL SERVER ERROR IN /api/gemini/generate-puzzle]:", error);
-      // Return a successful fallback puzzle instead of 500 error
-      return res.json({
-        success: true,
-        puzzle: {
-          id: `ai-puzzle-fallback-${Date.now()}`,
-          question: `[AI Fallback Puzzle] What is the key principle in this curriculum topic?`,
-          puzzleType: req.body?.puzzleType || 'Match the Pair',
-          options: ['Primary Correct Choice', 'Alternative Option A', 'Alternative Option B', 'Alternative Option C'],
-          correctAnswer: 'Primary Correct Choice',
-          hint: 'Think about standard classroom teachings.',
-          explanation: 'Primary Correct Choice satisfies all academic criteria.',
-          groupIdentified: 'Standard Identified Group',
-          difficulty: req.body?.difficulty || 'Medium'
-        }
-      });
-    }
-  });
 
   // API ROUTE: AI STUDY WORKSPACE FOR STUDENTS (TRANSLATION, PRACTICE QUESTIONS, SUMMARIES, SHORT NOTES)
   app.post("/api/gemini/pdf-workspace", async (req, res) => {
@@ -2045,16 +1850,633 @@ Guidelines for formatting the JSON fields:
     }
   });
 
-  // API ROUTE: DYNAMIC AI PUZZLE GENERATOR WITH ADAPTIVE GAME MECHANICS
+  // HELPER: IN-MEMORY COMPREHENSIVE PROCEDURAL CATALOG FOR ALL 10 PUZZLE TYPES (INSTANT OFFLINE & FALLBACK ENGINE)
+  function getProceduralPuzzleFallback(puzzleType: string, studentClass: string, subject: string, topic: string, difficulty: string, groupId: string, lang: string) {
+    const isPrimary = groupId === 'group1' || studentClass.includes('1') || studentClass.includes('2') || studentClass.includes('3') || studentClass.includes('4') || studentClass.includes('5');
+    const isMiddle = groupId === 'group2' || studentClass.includes('6') || studentClass.includes('7') || studentClass.includes('8') || studentClass.includes('9');
+    
+    // Normalize puzzle type
+    const normalizedType = puzzleType?.toLowerCase().replace(/[-\s]/g, '_') || 'food_chain';
+
+    if (normalizedType.includes('food_chain')) {
+      const chains = [
+        {
+          title: "Grassland Food Chain",
+          subject: "Science",
+          question: "Arrange the organisms in the correct order to show how energy flows from the primary producer to the apex predator.",
+          whyItHelps: "You learn how solar energy is converted by plants and transferred through ecological trophic levels.",
+          hint: "Start with the green plant that makes food through sunlight, followed by the herbivore, carnivore, and top predator.",
+          explanation: "Grass (Producer) captures sunlight -> Grasshopper (Primary Consumer) eats grass -> Frog (Secondary Consumer) eats grasshopper -> Snake (Tertiary Consumer) eats frog -> Eagle (Apex Predator) eats snake.",
+          items: [
+            { id: "p1", name: "🌿 Green Grass", emoji: "🌿", trophicLevel: "Producer (Autotroph)" },
+            { id: "p2", name: "🦗 Grasshopper", emoji: "🦗", trophicLevel: "Primary Consumer (Herbivore)" },
+            { id: "p3", name: "🐸 Green Frog", emoji: "🐸", trophicLevel: "Secondary Consumer (Carnivore)" },
+            { id: "p4", name: "🐍 Grass Snake", emoji: "🐍", trophicLevel: "Tertiary Consumer" },
+            { id: "p5", name: "🦅 Golden Eagle", emoji: "🦅", trophicLevel: "Apex Predator" }
+          ],
+          correctOrder: ["p1", "p2", "p3", "p4", "p5"]
+        },
+        {
+          title: "Ocean Marine Food Web",
+          subject: "Science",
+          question: "Place marine organisms in the correct sequence to represent the ocean energy pyramid.",
+          whyItHelps: "Helps you master aquatic ecosystems and phytoplankton food chains.",
+          hint: "Microscopic marine plants always begin the chain, eaten by tiny zooplankton.",
+          explanation: "Phytoplankton absorbs light -> Zooplankton grazes on phytoplankton -> Small Fish eats zooplankton -> Tuna eats small fish -> Shark hunts tuna.",
+          items: [
+            { id: "o1", name: "🦠 Phytoplankton", emoji: "🦠", trophicLevel: "Primary Producer" },
+            { id: "o2", name: "🦐 Krill / Zooplankton", emoji: "🦐", trophicLevel: "Primary Consumer" },
+            { id: "o3", name: "🐟 Small Herring", emoji: "🐟", trophicLevel: "Secondary Consumer" },
+            { id: "o4", name: "🐠 Big Tuna", emoji: "🐠", trophicLevel: "Tertiary Consumer" },
+            { id: "o5", name: "🦈 Great White Shark", emoji: "🦈", trophicLevel: "Apex Predator" }
+          ],
+          correctOrder: ["o1", "o2", "o3", "o4", "o5"]
+        },
+        {
+          title: "Forest Forest Ecosystem",
+          subject: "Science",
+          question: "Connect forest organisms in the exact predator-prey chain.",
+          whyItHelps: "Teaches ecological balance and herbivore-carnivore dynamics.",
+          hint: "Berries and acorns provide nutrients for small woodland herbivores.",
+          explanation: "Acorn Tree -> Forest Mouse -> Barn Owl -> Wild Fox -> Apex Wolf.",
+          items: [
+            { id: "f1", name: "🌳 Oak Tree & Berries", emoji: "🌳", trophicLevel: "Producer" },
+            { id: "f2", name: "🐿️ Woodland Squirrel", emoji: "🐿️", trophicLevel: "Primary Consumer" },
+            { id: "f3", name: "🦉 Barn Owl", emoji: "🦉", trophicLevel: "Secondary Predator" },
+            { id: "f4", name: "🦊 Red Fox", emoji: "🦊", trophicLevel: "Tertiary Predator" }
+          ],
+          correctOrder: ["f1", "f2", "f3", "f4"]
+        }
+      ];
+      const pick = chains[Math.floor(Math.random() * chains.length)];
+      // Shuffle items for the puzzle
+      const shuffledItems = [...pick.items].sort(() => Math.random() - 0.5);
+      return {
+        puzzleType: 'food_chain',
+        title: pick.title,
+        subject: pick.subject,
+        topic: topic || "Ecosystems",
+        groupId: groupId || "group1",
+        classLevel: studentClass || "Classes 1-5",
+        difficulty: difficulty || "Medium",
+        question: pick.question,
+        whyItHelps: pick.whyItHelps,
+        hint: pick.hint,
+        explanation: pick.explanation,
+        interactiveData: {
+          items: shuffledItems,
+          correctOrder: pick.correctOrder,
+          energyFlowDesc: "Solar Energy ☀️ ➔ Producers 🌿 ➔ Herbivores 🦗 ➔ Carnivores 🐸 ➔ Apex Predators 🦅"
+        }
+      };
+    }
+
+    if (normalizedType.includes('shape_puzzle')) {
+      const shapes = [
+        {
+          targetShapeName: "Sailboat on Waves",
+          targetShapeDesc: "Assemble the geometric pieces (triangles, squares, and trapezoids) to construct a sturdy sailboat.",
+          whyItHelps: "You practice 2D/3D geometry, spatial rotation, symmetry, and area tessellation.",
+          hint: "Place the large triangle as the main mainsail, the smaller triangle as the jib, and the trapezoid as the boat hull.",
+          explanation: "A sailboat geometry utilizes right triangles for aerodynamic sail lift and a stable trapezoid hull base for buoyancy.",
+          pieces: [
+            { id: "sp1", type: "triangle", label: "Main Sail (Large Triangle)", color: "bg-indigo-500 text-white", points: "0,100 100,100 100,0", rotation: 0 },
+            { id: "sp2", type: "triangle", label: "Jib Sail (Medium Triangle)", color: "bg-sky-400 text-white", points: "0,100 80,100 0,20", rotation: 0 },
+            { id: "sp3", type: "trapezoid", label: "Boat Hull (Trapezoid Base)", color: "bg-amber-600 text-white", points: "20,0 160,0 140,50 40,50", rotation: 0 },
+            { id: "sp4", type: "square", label: "Mast Cabin (Square Box)", color: "bg-emerald-500 text-white", points: "0,0 40,0 40,40 0,40", rotation: 0 }
+          ],
+          slots: [
+            { id: "slot1", label: "Mainsail Slot (Top-Right)", expectedPieceId: "sp1" },
+            { id: "slot2", label: "Jib Slot (Top-Left)", expectedPieceId: "sp2" },
+            { id: "slot3", label: "Cabin Slot (Center Deck)", expectedPieceId: "sp4" },
+            { id: "slot4", label: "Hull Base Slot (Bottom)", expectedPieceId: "sp3" }
+          ]
+        },
+        {
+          targetShapeName: "Cozy Country House",
+          targetShapeDesc: "Combine geometric polygons to construct a balanced architect house with a pitched roof, chimney, and garden wall.",
+          whyItHelps: "Develops modular decomposition of complex objects into elementary polygons.",
+          hint: "Use the equilateral triangle for the roof and the large square for the main house body.",
+          explanation: "Triangles distribute roof load evenly to rectangular load-bearing walls.",
+          pieces: [
+            { id: "hp1", type: "triangle", label: "Pitched Roof (Equilateral Triangle)", color: "bg-rose-500 text-white", points: "50,0 100,100 0,100", rotation: 0 },
+            { id: "hp2", type: "square", label: "House Wall (Large Square)", color: "bg-amber-400 text-slate-900", points: "0,0 100,0 100,100 0,100", rotation: 0 },
+            { id: "hp3", type: "rectangle", label: "Chimney (Vertical Rectangle)", color: "bg-slate-600 text-white", points: "0,0 25,0 25,60 0,60", rotation: 0 },
+            { id: "hp4", type: "parallelogram", label: "Garden Porch (Parallelogram)", color: "bg-teal-500 text-white", points: "20,0 80,0 60,40 0,40", rotation: 0 }
+          ],
+          slots: [
+            { id: "slot1", label: "Roof Apex (Top)", expectedPieceId: "hp1" },
+            { id: "slot2", label: "Chimney Slot (Top Right)", expectedPieceId: "hp3" },
+            { id: "slot3", label: "Main Building (Center)", expectedPieceId: "hp2" },
+            { id: "slot4", label: "Porch Extension (Base)", expectedPieceId: "hp4" }
+          ]
+        },
+        {
+          targetShapeName: "Deep Space Rocket",
+          targetShapeDesc: "Build an aerodynamic spacecraft by combining nose cone, fuselage, and thrust booster fins.",
+          whyItHelps: "Teaches axial symmetry and geometric engineering.",
+          hint: "The sharp triangle leads at the nose cone, followed by the fuselage and wing stabilizers.",
+          explanation: "Aerodynamic conic sections reduce drag in atmospheric flight.",
+          pieces: [
+            { id: "rp1", type: "triangle", label: "Nose Cone (Pointed Triangle)", color: "bg-red-500 text-white", points: "50,0 100,80 0,80", rotation: 0 },
+            { id: "rp2", type: "rectangle", label: "Rocket Fuselage (Body)", color: "bg-blue-600 text-white", points: "0,0 80,0 80,120 0,120", rotation: 0 },
+            { id: "rp3", type: "triangle", label: "Left Stabilizer Fin", color: "bg-orange-500 text-white", points: "0,0 40,60 0,60", rotation: 0 },
+            { id: "rp4", type: "triangle", label: "Right Stabilizer Fin", color: "bg-orange-500 text-white", points: "40,0 40,60 0,60", rotation: 0 }
+          ],
+          slots: [
+            { id: "slot1", label: "Nose Tip (Top)", expectedPieceId: "rp1" },
+            { id: "slot2", label: "Central Stage (Middle)", expectedPieceId: "rp2" },
+            { id: "slot3", label: "Left Wing Fin", expectedPieceId: "rp3" },
+            { id: "slot4", label: "Right Wing Fin", expectedPieceId: "rp4" }
+          ]
+        }
+      ];
+      const pick = shapes[Math.floor(Math.random() * shapes.length)];
+      const shuffledPieces = [...pick.pieces].sort(() => Math.random() - 0.5);
+      return {
+        puzzleType: 'shape_puzzle',
+        title: `Geometry Builder: ${pick.targetShapeName}`,
+        subject: "Math",
+        topic: topic || "Geometry & Spatial Reasoning",
+        groupId: groupId || "group1",
+        classLevel: studentClass || "Classes 1-5",
+        difficulty: difficulty || "Medium",
+        question: pick.targetShapeDesc,
+        whyItHelps: pick.whyItHelps,
+        hint: pick.hint,
+        explanation: pick.explanation,
+        interactiveData: {
+          targetShapeName: pick.targetShapeName,
+          targetShapeDesc: pick.targetShapeDesc,
+          pieces: shuffledPieces,
+          slots: pick.slots
+        }
+      };
+    }
+
+    if (normalizedType.includes('history_timeline') || normalizedType.includes('timeline')) {
+      const timelines = [
+        {
+          title: "India's Freedom Movement Milestones",
+          subject: "Social Studies",
+          question: "Drag and arrange these historic milestones into the correct chronological order on the timeline.",
+          whyItHelps: "You remember historic milestones in the right chronological cause-and-effect sequence.",
+          hint: "Dandi Salt March occurred in 1930, Quit India in 1942, followed by Independence and Constitution.",
+          explanation: "1930 Dandi March ignited civil disobedience -> 1942 Quit India demanded British exit -> 1947 Indian Independence Day -> 1950 Indian Constitution came into effect.",
+          events: [
+            { id: "ev1", title: "🚶 Dandi March (Salt Satyagraha)", year: "1930", era: "Civil Disobedience Movement", description: "Mahatma Gandhi led a 240-mile march to Dandi to break the British salt monopoly." },
+            { id: "ev2", title: "✊ Quit India Movement Launched", year: "1942", era: "Mass Struggle", description: "All India Congress Committee launched the 'Do or Die' call for immediate independence." },
+            { id: "ev3", title: "🇮🇳 Indian Independence Day", year: "1947", era: "Sovereign Nation", description: "India gained independence from British rule on August 15, 1947." },
+            { id: "ev4", title: "📜 Adoption of Indian Constitution", year: "1950", era: "Republic of India", description: "The Constitution came into legal effect on January 26, 1950, establishing India as a Republic." }
+          ],
+          correctOrder: ["ev1", "ev2", "ev3", "ev4"]
+        },
+        {
+          title: "Major Scientific & Technological Inventions",
+          subject: "Social Studies & Science",
+          question: "Order the revolutionary inventions that transformed human civilization by their historical emergence.",
+          whyItHelps: "Connects scientific progress with historical eras.",
+          hint: "The Printing Press was invented before the Steam Engine, followed by Electricity and the World Wide Web.",
+          explanation: "Gutenberg Printing Press (1440) -> Watt Steam Engine (1776) -> Edison Incandescent Bulb (1879) -> Berners-Lee World Wide Web (1989).",
+          events: [
+            { id: "sc1", title: "📰 Gutenberg Movable Type Printing Press", year: "c. 1440", era: "Renaissance", description: "Revolutionized the mass spread of knowledge across Europe and the globe." },
+            { id: "sc2", title: "🚂 James Watt's Steam Engine", year: "1776", era: "Industrial Revolution", description: "Powered factories, steam locomotives, and mechanized production." },
+            { id: "sc3", title: "💡 Practical Incandescent Electric Bulb", year: "1879", era: "Electrical Age", description: "Thomas Edison electrified urban lighting and power distribution." },
+            { id: "sc4", title: "🌐 World Wide Web (WWW)", year: "1989", era: "Information Age", description: "Tim Berners-Lee created HTTP and hypertext protocols connecting the world." }
+          ],
+          correctOrder: ["sc1", "sc2", "sc3", "sc4"]
+        }
+      ];
+      const pick = timelines[Math.floor(Math.random() * timelines.length)];
+      const shuffledEvents = [...pick.events].sort(() => Math.random() - 0.5);
+      return {
+        puzzleType: 'history_timeline',
+        title: pick.title,
+        subject: pick.subject,
+        topic: topic || "History & Civilizations",
+        groupId: groupId || "group2",
+        classLevel: studentClass || "Classes 6-9",
+        difficulty: difficulty || "Medium",
+        question: pick.question,
+        whyItHelps: pick.whyItHelps,
+        hint: pick.hint,
+        explanation: pick.explanation,
+        interactiveData: {
+          events: shuffledEvents,
+          correctOrder: pick.correctOrder
+        }
+      };
+    }
+
+    if (normalizedType.includes('word_builder')) {
+      const words = [
+        {
+          rootWord: "ACT",
+          rootMeaning: "to do, perform, or drive",
+          prefixes: ["Re-", "Inter-", "Pro-", "En-"],
+          suffixes: ["-ion", "-ive", "-or", "-able"],
+          targetWords: [
+            { word: "REACT", prefix: "Re-", root: "ACT", suffix: "", definition: "To respond or show a response to an action or stimulus" },
+            { word: "ACTION", prefix: "", root: "ACT", suffix: "-ion", definition: "The fact or process of doing something" },
+            { word: "ACTOR", prefix: "", root: "ACT", suffix: "-or", definition: "A person who acts or performs in a play or movie" },
+            { word: "INTERACTION", prefix: "Inter-", root: "ACT", suffix: "-ion", definition: "Mutual or reciprocal action or influence" }
+          ],
+          whyItHelps: "You grow your vocabulary and understand how morphology and roots create new words."
+        },
+        {
+          rootWord: "FORM",
+          rootMeaning: "shape, structure, or appearance",
+          prefixes: ["Trans-", "Re-", "Con-", "De-"],
+          suffixes: ["-ation", "-able", "-ula", "-ative"],
+          targetWords: [
+            { word: "TRANSFORM", prefix: "Trans-", root: "FORM", suffix: "", definition: "To make a thorough or dramatic change in form or character" },
+            { word: "REFORM", prefix: "Re-", root: "FORM", suffix: "", definition: "To make changes in order to improve something" },
+            { word: "FORMATION", prefix: "", root: "FORM", suffix: "-ation", definition: "The action of forming or process of being formed" },
+            { word: "DEFORM", prefix: "De-", root: "FORM", suffix: "", definition: "To distort or spoil the natural shape of something" }
+          ],
+          whyItHelps: "Expands word power by mastering prefix and suffix combinations."
+        }
+      ];
+      const pick = words[Math.floor(Math.random() * words.length)];
+      return {
+        puzzleType: 'word_builder',
+        title: `Word Morphology: Root "${pick.rootWord}"`,
+        subject: "Language",
+        topic: topic || "Vocabulary & Etymology",
+        groupId: groupId || "group1",
+        classLevel: studentClass || "Classes 1-5",
+        difficulty: difficulty || "Medium",
+        question: `Combine the root word "${pick.rootWord}" (${pick.rootMeaning}) with prefixes and suffixes to construct target vocabulary words.`,
+        whyItHelps: pick.whyItHelps,
+        hint: `Look at the definition clues. For example, doing an action again uses the prefix 'Re-'.`,
+        explanation: `Roots form the core semantic meaning of words. Prefixes modify direction or time, and suffixes establish grammatical part of speech.`,
+        interactiveData: {
+          rootWord: pick.rootWord,
+          rootMeaning: pick.rootMeaning,
+          prefixes: pick.prefixes.sort(() => Math.random() - 0.5),
+          suffixes: pick.suffixes.sort(() => Math.random() - 0.5),
+          targetWords: pick.targetWords
+        }
+      };
+    }
+
+    if (normalizedType.includes('circuit_puzzle') || normalizedType.includes('circuit')) {
+      const circuits = [
+        {
+          title: "Simple DC Lightbulb Circuit",
+          circuitType: "Series Loop with Switch",
+          question: "Place the missing components in the empty slots so electrical current can flow and light up the bulb.",
+          whyItHelps: "You learn how electricity flows in a closed continuous circuit and what role each component plays.",
+          hint: "An electric circuit needs a voltage source (Battery) to push electrons and a conductive connection (Closed Switch) to complete the loop.",
+          explanation: "In a closed circuit, electrons flow from the negative terminal of the DC battery through the switch and bulb filament, converting electrical energy into radiant light and heat.",
+          availableComponents: [
+            { id: "c_bat", type: "battery", name: "9V DC Battery", icon: "🔋", description: "Provides potential difference (Voltage)" },
+            { id: "c_sw", type: "switch", name: "Closed Knife Switch", icon: "🔌", description: "Closes the loop allowing current to flow" },
+            { id: "c_res", type: "resistor", name: "100Ω Safety Resistor", icon: "⚡", description: "Limits current to protect the filament" },
+            { id: "c_wire", type: "wire", name: "Copper Connecting Wire", icon: "〰️", description: "Conductive electrical path" },
+            { id: "c_wood", type: "insulator", name: "Wooden Stick (Insulator)", icon: "🪵", description: "Blocks electron flow" }
+          ],
+          missingSlots: [
+            { slotIndex: 1, label: "Power Source Slot (Left Side)", correctComponentId: "c_bat" },
+            { slotIndex: 2, label: "Circuit Control Slot (Top Wire)", correctComponentId: "c_sw" }
+          ]
+        },
+        {
+          title: "Solar-Powered Buzzer Alarm",
+          circuitType: "Photovoltaic Loop",
+          question: "Construct a renewable solar buzzer circuit by choosing the correct transducer and energy source.",
+          whyItHelps: "Teaches renewable energy conversion and closed circuit loops.",
+          hint: "The solar cell converts sunlight into current, and the buzzer produces acoustic warning sound.",
+          explanation: "Photovoltaic cells absorb photons to generate direct current, powering acoustic piezo buzzers without grid power.",
+          availableComponents: [
+            { id: "c_solar", type: "solar", name: "Photovoltaic Solar Cell", icon: "☀️", description: "Converts light energy to electric voltage" },
+            { id: "c_buz", type: "buzzer", name: "Piezo Buzzer (Sounder)", icon: "🔔", description: "Produces audio alert tone" },
+            { id: "c_glass", type: "insulator", name: "Glass Rod (Insulator)", icon: "🧊", description: "Non-conductive dielectric" },
+            { id: "c_led", type: "led", name: "Green LED Indicator", icon: "💡", description: "Emits light when forward-biased" }
+          ],
+          missingSlots: [
+            { slotIndex: 1, label: "Energy Source (Top)", correctComponentId: "c_solar" },
+            { slotIndex: 2, label: "Audio Output Slot (Right)", correctComponentId: "c_buz" }
+          ]
+        }
+      ];
+      const pick = circuits[Math.floor(Math.random() * circuits.length)];
+      const shuffledComponents = [...pick.availableComponents].sort(() => Math.random() - 0.5);
+      return {
+        puzzleType: 'circuit_puzzle',
+        title: pick.title,
+        subject: "Physics",
+        topic: topic || "Electricity & Circuits",
+        groupId: groupId || "group1",
+        classLevel: studentClass || "Classes 1-5",
+        difficulty: difficulty || "Medium",
+        question: pick.question,
+        whyItHelps: pick.whyItHelps,
+        hint: pick.hint,
+        explanation: pick.explanation,
+        interactiveData: {
+          circuitType: pick.circuitType,
+          availableComponents: shuffledComponents,
+          missingSlots: pick.missingSlots,
+          circuitSuccessMessage: "⚡ Circuit Closed! Electric current is flowing smoothly."
+        }
+      };
+    }
+
+    if (normalizedType.includes('memory_match') || normalizedType.includes('memory')) {
+      const matchDecks = [
+        {
+          title: "Math Symbols & Formulas Memory Match",
+          subject: "Math",
+          pairs: [
+            { id: "m1", pairId: "pair_pi", label: "π (Pi)", matchLabel: "≈ 3.14159 (Circumference / Diameter)", icon: "📐" },
+            { id: "m2", pairId: "pair_sqrt", label: "√x (Square Root)", matchLabel: "Inverse of Squaring (x^0.5)", icon: "🔢" },
+            { id: "m3", pairId: "pair_sum", label: "∑ (Sigma)", matchLabel: "Summation of a Series", icon: "➕" },
+            { id: "m4", pairId: "pair_delta", label: "Δ (Delta)", matchLabel: "Change or Difference in Value", icon: "🔺" },
+            { id: "m5", pairId: "pair_infinity", label: "∞ (Infinity)", matchLabel: "Endless / Unbounded Value", icon: "♾️" },
+            { id: "m6", pairId: "pair_angle", label: "∠ (Angle)", matchLabel: "Figure formed by two rays", icon: "📐" }
+          ]
+        },
+        {
+          title: "Chemical Elements & Symbols Match",
+          subject: "Chemistry",
+          pairs: [
+            { id: "c1", pairId: "p_au", label: "Au", matchLabel: "Gold (Aurum)", icon: "🪙" },
+            { id: "c2", pairId: "p_ag", label: "Ag", matchLabel: "Silver (Argentum)", icon: "🥈" },
+            { id: "c3", pairId: "p_fe", label: "Fe", matchLabel: "Iron (Ferrum)", icon: "🧲" },
+            { id: "c4", pairId: "p_na", label: "Na", matchLabel: "Sodium (Natrium)", icon: "🧂" },
+            { id: "c5", pairId: "p_k", label: "K", matchLabel: "Potassium (Kalium)", icon: "🍌" },
+            { id: "c6", pairId: "p_cu", label: "Cu", matchLabel: "Copper (Cuprum)", icon: "🥉" }
+          ]
+        }
+      ];
+      const pick = matchDecks[Math.floor(Math.random() * matchDecks.length)];
+      return {
+        puzzleType: 'memory_match',
+        title: pick.title,
+        subject: pick.subject,
+        topic: topic || "Educational Concepts",
+        groupId: groupId || "group1",
+        classLevel: studentClass || "Classes 1-5",
+        difficulty: difficulty || "Medium",
+        question: "Flip cards to find all matching educational concept pairs with the lowest number of moves.",
+        whyItHelps: "Enhances active recall, working memory, and rapid concept recognition.",
+        hint: "Memorize the positions of cards as you turn them over.",
+        explanation: "Active retrieval practice strengthens neural pathways and long-term memory retention.",
+        interactiveData: {
+          pairs: pick.pairs
+        }
+      };
+    }
+
+    if (normalizedType.includes('sequence_builder') || normalizedType.includes('sequence')) {
+      const sequences = [
+        {
+          processName: "The Hydrological Water Cycle",
+          subject: "Science",
+          question: "Reorder the stages of the natural water cycle into their exact chronological sequence.",
+          whyItHelps: "Deepens your understanding of continuous natural cycles and thermodynamic phase changes.",
+          hint: "The cycle starts with sunlight heating water bodies into water vapor (Evaporation).",
+          explanation: "1. Solar radiation evaporates surface water -> 2. Rising water vapor cools and condenses into clouds -> 3. Clouds precipitate as rain/snow -> 4. Runoff collects in rivers and underground aquifers.",
+          steps: [
+            { id: "st1", stepNumber: 1, text: "☀️ Evaporation", detail: "Sun heats ocean & lake water, turning liquid water into invisible water vapor gas." },
+            { id: "st2", stepNumber: 2, text: "☁️ Condensation", detail: "Water vapor cools as it rises into the cold upper atmosphere, forming clouds." },
+            { id: "st3", stepNumber: 3, text: "🌧️ Precipitation", detail: "Droplets inside clouds become too heavy and fall back to earth as rain, snow, or hail." },
+            { id: "st4", stepNumber: 4, text: "🌊 Collection & Runoff", detail: "Rainwater flows into streams, rivers, lakes, and aquifers, restarting the cycle." }
+          ],
+          correctOrder: ["st1", "st2", "st3", "st4"]
+        },
+        {
+          processName: "Plant Seed Germination & Growth",
+          subject: "Biology",
+          question: "Place the stages of plant seed germination and development in chronological order.",
+          whyItHelps: "Teaches plant embryology and cellular differentiation stages.",
+          hint: "Imbibition of water must swell the seed coat before the primary root (radicle) emerges.",
+          explanation: "1. Seed absorbs moisture (Imbibition) -> 2. Radicle root anchors into soil -> 3. Hypocotyl stem arches upward -> 4. True leaves unfold for photosynthesis.",
+          steps: [
+            { id: "sg1", stepNumber: 1, text: "💧 Seed Imbibition", detail: "Dry seed absorbs soil water, swelling and activating metabolic enzymes." },
+            { id: "sg2", stepNumber: 2, text: "🌱 Root (Radicle) Emergence", detail: "Primary root emerges downwards to anchor and absorb minerals." },
+            { id: "sg3", stepNumber: 3, text: "🌿 Shoot Sprouting", detail: "The green hypocotyl shoot emerges above ground reaching towards sunlight." },
+            { id: "sg4", stepNumber: 4, text: "🍃 Foliage Leaf Photosynthesis", detail: "First true green leaves expand to produce sugars via sunlight." }
+          ],
+          correctOrder: ["sg1", "sg2", "sg3", "sg4"]
+        }
+      ];
+      const pick = sequences[Math.floor(Math.random() * sequences.length)];
+      const shuffledSteps = [...pick.steps].sort(() => Math.random() - 0.5);
+      return {
+        puzzleType: 'sequence_builder',
+        title: `Process Sequence: ${pick.processName}`,
+        subject: pick.subject,
+        topic: topic || "Scientific Processes",
+        groupId: groupId || "group2",
+        classLevel: studentClass || "Classes 6-9",
+        difficulty: difficulty || "Medium",
+        question: pick.question,
+        whyItHelps: pick.whyItHelps,
+        hint: pick.hint,
+        explanation: pick.explanation,
+        interactiveData: {
+          processName: pick.processName,
+          steps: shuffledSteps,
+          correctOrder: pick.correctOrder
+        }
+      };
+    }
+
+    if (normalizedType.includes('crossword')) {
+      return {
+        puzzleType: 'crossword',
+        title: "Curriculum Vocabulary Mini-Crossword",
+        subject: "Language & Science",
+        topic: topic || "Vocabulary Literacy",
+        groupId: groupId || "group2",
+        classLevel: studentClass || "Classes 6-9",
+        difficulty: difficulty || "Medium",
+        question: "Use the clues to fill in the crossword grid with standard academic terminology.",
+        whyItHelps: "Strengthens spelling, vocabulary precision, and lateral deductive thinking.",
+        hint: "Check intersecting letters between Across and Down words.",
+        explanation: "Crossword puzzles encourage multi-angle vocabulary recall by combining conceptual definitions with letter constraints.",
+        interactiveData: {
+          gridSize: 5,
+          clues: {
+            across: [
+              { number: 1, clue: "Green pigment in plant leaves that absorbs sunlight for photosynthesis (11 letters)", answer: "CHLOROPHYLL", row: 0, col: 0 },
+              { number: 2, clue: "Force pulling objects toward the center of the Earth (7 letters)", answer: "GRAVITY", row: 2, col: 0 }
+            ],
+            down: [
+              { number: 1, clue: "Basic unit of all living organisms (4 letters)", answer: "CELL", row: 0, col: 0 },
+              { number: 3, clue: "Invisible gas necessary for animal respiration (6 letters)", answer: "OXYGEN", row: 0, col: 4 }
+            ]
+          }
+        }
+      };
+    }
+
+    if (normalizedType.includes('number_grid')) {
+      const grids = [
+        {
+          title: "Arithmetic Chain Grid",
+          gridType: "equation_matrix",
+          question: "Fill in the missing numbers in the grid so all horizontal and vertical equations are mathematically correct.",
+          whyItHelps: "Builds mental arithmetic agility, algebraic balance, and logic grid reasoning.",
+          hint: "Solve row 1 first: 8 + [?] = 15, so the missing number must be 7.",
+          explanation: "Using algebraic balance: Row 1: 8 + 7 = 15; Row 2: 12 - 4 = 8; Column 1: 8 + 12 = 20; Column 2: 7 - 4 = 3.",
+          matrix: [
+            ["8", "+", "?1", "=", "15"],
+            ["+", " ", "-", " ", "+"],
+            ["12", "-", "4", "=", "?2"],
+            ["=", " ", "=", " ", "="],
+            ["20", "+", "3", "=", "23"]
+          ],
+          missingPositions: [
+            { id: "?1", expectedVal: 7, label: "Slot A (Row 1)" },
+            { id: "?2", expectedVal: 8, label: "Slot B (Row 3)" }
+          ],
+          candidateNumbers: [7, 8, 5, 9, 11, 4]
+        },
+        {
+          title: "Multiplication & Factor Matrix",
+          gridType: "multiplication_grid",
+          question: "Find the missing factors and products in the multiplication grid.",
+          whyItHelps: "Reinforces multiplication tables, prime factorizations, and mental math speed.",
+          hint: "6 × [?] = 42, which gives you 7.",
+          explanation: "6 × 7 = 42; 9 × 7 = 63; 6 × 9 = 54.",
+          matrix: [
+            ["×", "6", "9"],
+            ["?1", "42", "63"],
+            ["8", "?2", "72"]
+          ],
+          missingPositions: [
+            { id: "?1", expectedVal: 7, label: "Row Factor" },
+            { id: "?2", expectedVal: 48, label: "Product Slot (8×6)" }
+          ],
+          candidateNumbers: [7, 48, 6, 56, 42, 64]
+        }
+      ];
+      const pick = grids[Math.floor(Math.random() * grids.length)];
+      return {
+        puzzleType: 'number_grid',
+        title: pick.title,
+        subject: "Math",
+        topic: topic || "Number Logic & Operations",
+        groupId: groupId || "group2",
+        classLevel: studentClass || "Classes 6-9",
+        difficulty: difficulty || "Medium",
+        question: pick.question,
+        whyItHelps: pick.whyItHelps,
+        hint: pick.hint,
+        explanation: pick.explanation,
+        interactiveData: {
+          gridType: pick.gridType,
+          matrix: pick.matrix,
+          missingPositions: pick.missingPositions,
+          candidateNumbers: pick.candidateNumbers.sort(() => Math.random() - 0.5)
+        }
+      };
+    }
+
+    // Default: odd_one_out
+    const oddSets = [
+      {
+        title: "Energy Sources Classification",
+        subject: "Science / Physics",
+        category: "Renewable vs Non-Renewable Energy",
+        question: "Analyze the 4 energy sources and identify the Odd One Out.",
+        whyItHelps: "Teaches scientific taxonomy, critical analysis, and environmental science principles.",
+        hint: "Three of these sources naturally replenish within a human lifespan, while one is a finite fossil fuel.",
+        explanation: "Coal is a non-renewable fossil fuel formed over millions of years from compressed ancient plant matter. Solar, Wind, and Hydroelectric are renewable, inexhaustible clean energy sources.",
+        oddItemId: "odd_coal",
+        reason: "Coal is a finite fossil fuel, whereas Solar, Wind, and Hydro are renewable clean energies.",
+        items: [
+          { id: "item_solar", name: "☀️ Solar Energy", detail: "Direct radiant solar energy from the sun", icon: "☀️", isOdd: false },
+          { id: "item_wind", name: "💨 Wind Power", detail: "Kinetic wind energy turning turbines", icon: "💨", isOdd: false },
+          { id: "item_hydro", name: "💧 Hydroelectric", detail: "Gravitational potential of flowing river water", icon: "💧", isOdd: false },
+          { id: "odd_coal", name: "🪨 Anthracite Coal", detail: "Fossilized carbon combustible deposit", icon: "🪨", isOdd: true }
+        ]
+      },
+      {
+        title: "Cell Organelles & Structures",
+        subject: "Biology",
+        category: "Plant vs Animal Cell Structures",
+        question: "Select the organelle that does not belong with the others in terms of animal cell biology.",
+        whyItHelps: "Tests cellular biology, organelle specialization, and evolutionary botany.",
+        hint: "Three of these organelles are found in human and animal cells, but one is unique to photosynthesizing plant cells.",
+        explanation: "Chloroplasts contain chlorophyll and perform photosynthesis; they exist only in plant and algae cells, not animal cells (Mitochondria, Ribosomes, and Nucleus exist in both).",
+        oddItemId: "odd_chloro",
+        reason: "Chloroplast is unique to autotrophic plant cells and absent in animal cells.",
+        items: [
+          { id: "item_mito", name: "⚡ Mitochondria", detail: "Powerhouse producing ATP in all eukaryotic cells", icon: "⚡", isOdd: false },
+          { id: "item_nuc", name: "🧬 Nucleus", detail: "Houses genomic DNA and chromatin", icon: "🧬", isOdd: false },
+          { id: "item_ribo", name: "🔬 Ribosome", detail: "Translates mRNA into proteins", icon: "🔬", isOdd: false },
+          { id: "odd_chloro", name: "🌱 Chloroplast", detail: "Captures sunlight to synthesize glucose", icon: "🌱", isOdd: true }
+        ]
+      },
+      {
+        title: "Fundamental Forces of Nature",
+        subject: "Physics",
+        category: "Four Fundamental Physical Interactions",
+        question: "Identify the force that is a derived contact friction force rather than a fundamental universe force.",
+        whyItHelps: "Sharpens physics fundamentals and force categorization.",
+        hint: "Look for macroscopic surface interaction versus subatomic/universal field interactions.",
+        explanation: "Friction is an electrostatic macroscopic resistance force between contacting surfaces, whereas Gravitational, Electromagnetic, and Strong Nuclear forces are fundamental interactions.",
+        oddItemId: "odd_fric",
+        reason: "Friction is an emergent macroscopic contact force, not one of the 4 fundamental forces of nature.",
+        items: [
+          { id: "item_grav", name: "🌌 Gravitational Force", detail: "Universal attraction between masses", icon: "🌌", isOdd: false },
+          { id: "item_em", name: "⚡ Electromagnetic Force", detail: "Interaction between charged particles", icon: "⚡", isOdd: false },
+          { id: "item_strong", name: "⚛️ Strong Nuclear Force", detail: "Binds quarks and nucleons inside atomic nuclei", icon: "⚛️", isOdd: false },
+          { id: "odd_fric", name: "🛑 Friction Force", detail: "Contact resistance between touching surfaces", icon: "🛑", isOdd: true }
+        ]
+      }
+    ];
+    const pick = oddSets[Math.floor(Math.random() * oddSets.length)];
+    const shuffledItems = [...pick.items].sort(() => Math.random() - 0.5);
+    return {
+      puzzleType: 'odd_one_out',
+      title: pick.title,
+      subject: pick.subject,
+      topic: topic || pick.category,
+      groupId: groupId || "group3",
+      classLevel: studentClass || "Classes 10-12",
+      difficulty: difficulty || "Medium",
+      question: pick.question,
+      whyItHelps: pick.whyItHelps,
+      hint: pick.hint,
+      explanation: pick.explanation,
+      interactiveData: {
+        category: pick.category,
+        items: shuffledItems,
+        oddItemId: pick.oddItemId,
+        reason: pick.reason
+      }
+    };
+  }
+
+  // API ROUTE: DYNAMIC AI PUZZLE GENERATOR (10 EDUCATIONAL PUZZLE TYPES)
   app.post("/api/gemini/generate-puzzle", async (req, res) => {
     try {
-      const { gameId, group, lang, topic, studentName, studentClass, subject, puzzleType, difficulty, puzzleNumber } = req.body;
+      const {
+        puzzleType = "food_chain",
+        studentName = "Student",
+        studentClass = "Classes 1-5",
+        subject = "Science",
+        topic = "General Knowledge",
+        difficulty = "Medium",
+        groupId = "group1",
+        lang = "en",
+        puzzleNumber = 1
+      } = req.body;
 
       const apiKey = process.env.GEMINI_API_KEY;
+
       if (!apiKey) {
-        return res.status(500).json({
-          success: false,
-          message: "GEMINI_API_KEY environment variable is missing."
+        console.warn("[PUZZLE GENERATOR] No GEMINI_API_KEY found. Serving procedural fallback puzzle.");
+        const fallbackPuzzle = getProceduralPuzzleFallback(puzzleType, studentClass, subject, topic, difficulty, groupId, lang);
+        return res.json({
+          success: true,
+          puzzle: fallbackPuzzle,
+          source: "procedural"
         });
       }
 
@@ -2068,351 +2490,292 @@ Guidelines for formatting the JSON fields:
         }
       });
 
-      const userLang = lang || "en";
-      const userGroup = group || 2;
-      
-      const themePool = [
-        "Astrophysics, Exoplanets & James Webb Deep Field Discoveries",
-        "Marine Biology, Deep Trench Hydrothermal Vents & Bioluminescence",
-        "Ancient Indian Inventions, Mathematics & World Archaeological Wonders",
-        "Chemical Synthesis, Catalyst Kinetics & Periodic Element Compounds",
-        "Plant Physiology, Stomatal Osmosis & C4 Photosynthesis Pathways",
-        "Electromagnetism, Lorentz Force, Induction & Smart Microgrids",
-        "Ecological Food Webs, Keystone Species & Bio-accumulation",
-        "Microbiology, CRISPR Gene Editing & Bacteriophage Mechanisms",
-        "Human Neurobiology, Synaptic Neurotransmitters & Reflex Arcs",
-        "Plate Tectonics, Seismic Wave Triangulation & Volcanic Geophysics",
-        "Number Theory, Cryptographic Ciphers & Modular Arithmetic Patterns",
-        "Orbital Mechanics, Gravity Assist Trajectories & Satellite Telemetry",
-        "Cellular Mitosis, Epigenetics & Ribosomal Protein Synthesis",
-        "Green Hydrogen Fuel Cells, Solar Photovoltaics & Geothermal Energy",
-        "Quantum Superposition, Photon Polarization & Atomic Orbitals",
-        "Meteorology, Coriolis Force, Jet Streams & Supercell Dynamics"
+      const entropy = Date.now().toString(36) + "_" + Math.random().toString(36).substring(2, 7);
+
+      const systemPrompt = `You are an elite educational game designer and curriculum developer for Indian and global K-12 students.
+Your task is to generate a rich, unique, scientifically accurate, and age-appropriate puzzle.
+
+Strict Requirements:
+1. Target Puzzle Type: "${puzzleType}" (one of: food_chain, shape_puzzle, history_timeline, word_builder, circuit_puzzle, memory_match, sequence_builder, crossword, number_grid, odd_one_out)
+2. Target Class Group: ${studentClass} (${groupId})
+3. Subject & Topic: ${subject} - ${topic || "Curriculum topic"}
+4. Difficulty Level: ${difficulty}
+5. Language: ${lang}
+6. Entropy Seed: ${entropy} (Ensure zero repetition! Generate a novel variation every single call).
+7. Return JSON ONLY adhering strictly to this schema:
+{
+  "title": "Puzzle Title",
+  "question": "Clear, engaging puzzle instructions",
+  "whyItHelps": "Brief learning objective sentence",
+  "hint": "Pedagogical clue",
+  "explanation": "Detailed solution explanation",
+  "puzzleType": "${puzzleType}",
+  "interactiveData": {
+    // FOR food_chain:
+    // "items": [{"id": "p1", "name": "Grass", "emoji": "🌿", "trophicLevel": "Producer"}, ...],
+    // "correctOrder": ["p1", "p2", "p3", "p4"]
+
+    // FOR history_timeline:
+    // "events": [{"id": "e1", "year": "1857", "title": "...", "description": "..."}, ...],
+    // "correctOrder": ["e1", "e2", "e3"]
+
+    // FOR shape_puzzle:
+    // "targetShapeName": "Sailboat", "targetShapeDesc": "Fit geometric pieces to construct the sailboat",
+    // "pieces": [{"id": "sp1", "label": "Mainsail (Large Triangle)", "type": "triangle"}, {"id": "sp2", "label": "Jib (Small Triangle)", "type": "triangle"}, {"id": "sp3", "label": "Boat Hull (Trapezoid)", "type": "trapezoid"}],
+    // "slots": [{"id": "slot1", "label": "Mainsail Slot (Top)", "expectedPieceId": "sp1"}, {"id": "slot2", "label": "Jib Slot (Front)", "expectedPieceId": "sp2"}, {"id": "slot3", "label": "Hull Slot (Base)", "expectedPieceId": "sp3"}]
+
+    // FOR word_builder:
+    // "rootWord": "STRUCT", "prefixes": ["CON-", "DE-"], "suffixes": ["-ION", "-URE"], "targetWords": [{"word": "CONSTRUCTION"}]
+
+    // FOR circuit_puzzle:
+    // "missingSlots": [{"slotIndex": 0, "label": "Power Slot", "correctComponentId": "comp_bat"}], "availableComponents": [{"id": "comp_bat", "name": "Battery", "icon": "🔋"}]
+
+    // FOR memory_match:
+    // "pairs": [{"pairId": "m1", "label": "Photosynthesis", "matchLabel": "Sunlight to Glucose", "icon": "🌱"}]
+
+    // FOR sequence_builder:
+    // "steps": [{"id": "st1", "text": "Evaporation", "detail": "..."}], "correctOrder": ["st1", "st2"]
+
+    // FOR odd_one_out:
+    // "items": [{"id": "i1", "name": "Solar", "detail": "...", "icon": "☀️"}, ...], "oddItemId": "i4"
+  }
+}`;
+
+      const modelsToTry = [
+        "gemini-3.7-flash",
+        "gemini-flash-latest",
+        "gemini-3.1-flash-lite",
+        "gemini-3.1-pro-preview"
       ];
-      const randomTheme = themePool[Math.floor(Math.random() * themePool.length)];
-      const targetTopic = topic && topic.trim().length > 0 ? topic : (subject ? `${subject}: ${topic || 'Core Curriculum'}` : randomTheme);
-      const entropySeed = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
 
-      // Select ONE of the 4 Dynamic Mechanics
-      const MECHANIC_CHOICES = [
-        {
-          name: "Decryption/Cipher",
-          desc: "Translating symbolic clues, coded formulas, or encrypted sequences using educational rules."
-        },
-        {
-          name: "Grid/Spatial Reasoning",
-          desc: "Pattern completion, logical coordinate tables, multidimensional matrix relationships, and geometric placement."
-        },
-        {
-          name: "Scenario/Case Study",
-          desc: "Roleplaying a real-world scientific investigation, field expedition, forensic experiment, or engineering crisis."
-        },
-        {
-          name: "Error Detection",
-          desc: "Finding and fixing a deliberate glitch, anomaly, or misconception in an existing system, process, or taxonomy."
-        }
-      ];
-      const selectedMechanic = MECHANIC_CHOICES[Math.floor(Math.random() * MECHANIC_CHOICES.length)];
-
-      const effectiveGameId = gameId || (puzzleType === 'Picture Puzzle' ? 'shape-puzzle' : puzzleType === 'Number Puzzle' ? 'number-grid' : 'odd-one-out');
-
-      let prompt = `You are an expert educational game designer specializing in dynamic, adaptive puzzles for all the puzzles created in this project.
-
-Objective: Generate a completely unique, highly creative puzzle based on the provided dynamic inputs.
-
-Core Generation Rules:
-1. Zero Repetition: Never default to standard textbook word problems or classic, overused riddle tropes unless given a specific twist.
-2. Dynamic Mechanics: Apply the following selected logic mechanic: "${selectedMechanic.name}" (${selectedMechanic.desc}).
-3. Target Audience: Indian & Global School Students in Group ${userGroup} (Classes ${userGroup === 1 ? '1-5 Primary' : userGroup === 2 ? '6-9 Middle School' : '10-12 High School'}).
-4. Target Game Mode: '${effectiveGameId}'
-5. Topic/Domain: '${targetTopic}'
-6. Target Language: '${userLang}' (en=English, hi=Hindi, gu=Gujarati, mr=Marathi, ta=Tamil, te=Telugu). Ensure all textual titles, clues, item names, and explanations are translated accurately into '${userLang}'.
-7. Unique Entropy Seed: '${entropySeed}'.
-
-Specific Game Format Instructions:
-`;
-
-      let schemaProperties: any = {
-        mechanic: { type: Type.STRING, description: "The active logic mechanic: " + selectedMechanic.name },
-        creativeTwist: { type: Type.STRING, description: "A 1-sentence summary of the creative twist and scenario applied to this puzzle in " + userLang }
-      };
-      let requiredFields: string[] = ["mechanic", "creativeTwist"];
-
-      if (effectiveGameId === 'history-timeline') {
-        prompt += `Generate 4 distinct historical/evolutionary milestones in chronological order for '${targetTopic}'. Include the year/era in event titles e.g. "🏛️ Battle of Plassey (1757)". Ensure solutionIds is [1, 2, 3, 4] matching chronological sequence. Apply the '${selectedMechanic.name}' mechanic into the framing.`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Title of the historical timeline with emoji" },
-          items: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.INTEGER },
-                title: { type: Type.STRING, description: "Event title with emoji and date in brackets" }
-              },
-              required: ["id", "title"]
-            }
-          },
-          solutionIds: {
-            type: Type.ARRAY,
-            items: { type: Type.INTEGER },
-            description: "Array of integers [1, 2, 3, 4] representing the chronological sequence"
-          },
-          explanation: { type: Type.STRING, description: "Detailed chronological explanation with educational insights" }
-        };
-        requiredFields.push("title", "items", "solutionIds", "explanation");
-      } else if (effectiveGameId === 'sequence-builder') {
-        prompt += `Generate 4 sequential stages of a scientific, ecological, or physical process for '${targetTopic}' (e.g. Nitrogen cycle, Star Life Cycle, Cell Mitosis, Cloud Formation, Deep Sea Pressure Equilibration). Apply the '${selectedMechanic.name}' mechanic. Ensure solutionIds is [1, 2, 3, 4] in logical step order.`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Title of the process sequence with emoji" },
-          items: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.INTEGER },
-                title: { type: Type.STRING, description: "Stage description with emoji" }
-              },
-              required: ["id", "title"]
-            }
-          },
-          solutionIds: {
-            type: Type.ARRAY,
-            items: { type: Type.INTEGER },
-            description: "IDs in correct sequential order [1, 2, 3, 4]"
-          },
-          explanation: { type: Type.STRING, description: "Sequential explanation of the complete process" }
-        };
-        requiredFields.push("title", "items", "solutionIds", "explanation");
-      } else if (effectiveGameId === 'crossword') {
-        prompt += `Generate a science/math crossword with 1 Across clue and 1 Down clue on '${targetTopic}'. Answers must be UPPERCASE single English words (e.g. PHOTOSYNTHESIS, GRAVITY, CHLOROPLAST, CHROMOSOME, MOLECULE, METEORITE). Clues must be written in language '${userLang}' incorporating the '${selectedMechanic.name}' twist.`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Title of crossword with emoji" },
-          across: { type: Type.STRING, description: "Across clue text in specified language" },
-          acrossAns: { type: Type.STRING, description: "UPPERCASE single English word answer for Across" },
-          down: { type: Type.STRING, description: "Down clue text in specified language" },
-          downAns: { type: Type.STRING, description: "UPPERCASE single English word answer for Down" },
-          explanation: { type: Type.STRING, description: "Educational note explaining the answers" }
-        };
-        requiredFields.push("title", "across", "acrossAns", "down", "downAns");
-      } else if (effectiveGameId === 'number-grid') {
-        prompt += `Generate 3 connected arithmetic or algebraic math chain questions with numerical answers for Group ${userGroup} on topic '${targetTopic}'. E.g., q1: "24 + 36 = ?", a1: "60", q2: "60 ÷ 4 = ?", a2: "15", q3: "15 × 7 = ?", a3: "105". Make sure calculations are 100% mathematically correct and framed with '${selectedMechanic.name}'.`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Title of the math chain challenge" },
-          q1: { type: Type.STRING, description: "First math expression string" },
-          a1: { type: Type.STRING, description: "String integer answer for q1" },
-          q2: { type: Type.STRING, description: "Second math expression string" },
-          a2: { type: Type.STRING, description: "String integer answer for q2" },
-          q3: { type: Type.STRING, description: "Third math expression string" },
-          a3: { type: Type.STRING, description: "String integer answer for q3" },
-          explanation: { type: Type.STRING, description: "Step by step calculation summary" }
-        };
-        requiredFields.push("title", "q1", "a1", "q2", "a2", "q3", "a3");
-      } else if (effectiveGameId === 'odd-one-out') {
-        prompt += `Generate an Odd One Out question for '${targetTopic}' with 4 options (3 belonging to a strict scientific taxonomy and 1 odd one out). Incorporate the '${selectedMechanic.name}' logic. Specify solutionId (1, 2, 3, or 4).`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Scientific Category / Concept Title" },
-          question: { type: Type.STRING, description: "Question asking to identify the odd one out in language " + userLang },
-          items: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.INTEGER },
-                name: { type: Type.STRING, description: "Item label with emoji in language " + userLang }
-              },
-              required: ["id", "name"]
-            }
-          },
-          solutionId: { type: Type.INTEGER, description: "The ID (1, 2, 3, or 4) of the odd item" },
-          explanation: { type: Type.STRING, description: "Clear explanation why this item is the odd one out" }
-        };
-        requiredFields.push("title", "question", "items", "solutionId", "explanation");
-      } else if (effectiveGameId === 'shape-puzzle') {
-        prompt += `Generate a geometric shape composition puzzle for blueprint design (options for blueprintId: 'rocket', 'sailboat', 'castle', 'robot', 'train', 'house'). Return 4-5 geometric shape parts required.`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Title of the shape blueprint" },
-          id: { type: Type.STRING, description: "One of: 'rocket', 'sailboat', 'castle', 'robot', 'train', 'house'" },
-          items: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                key: { type: Type.STRING },
-                name: { type: Type.STRING, description: "Name of shape with emoji" }
-              },
-              required: ["key", "name"]
-            }
-          },
-          requiredKeys: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "List of keys that must be placed to complete the shape"
-          },
-          explanation: { type: Type.STRING, description: "Geometric explanation of the structure" }
-        };
-        requiredFields.push("title", "id", "items", "requiredKeys", "explanation");
-      } else if (effectiveGameId === 'word-builder') {
-        prompt += `Generate a vocabulary Word Builder puzzle with 1 Root Word (e.g. BIO, GEO, PHOTO, TELE, THERM, AERO, HYDRO, ASTRO, MICRO, PSYCH, ECO, CHRONO, PHON, SPECT) and 3-4 affixes that combine with the root to form real English words with translated definitions in language '${userLang}'.`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Title of the word building challenge" },
-          rootWord: { type: Type.STRING, description: "Root word in uppercase e.g. 'BIO'" },
-          rootWordLoc: { type: Type.STRING, description: "Root word translated or explained in " + userLang },
-          affixes: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                affix: { type: Type.STRING, description: "Prefix or suffix e.g. '-logy', 'Micro-', '-sphere'" },
-                word: { type: Type.STRING, description: "Combined word e.g. 'Biology'" },
-                def: { type: Type.STRING, description: "Definition of the word in " + userLang }
-              },
-              required: ["affix", "word", "def"]
-            }
-          },
-          explanation: { type: Type.STRING, description: "Etymological note on word formation" }
-        };
-        requiredFields.push("title", "rootWord", "rootWordLoc", "affixes", "explanation");
-      } else if (effectiveGameId === 'circuit-puzzle') {
-        prompt += `Generate an interactive electric circuit challenge on '${targetTopic}' (e.g. Solar Photovoltaic Loop, Electromagnet Relay, LED Resistor Circuit, Electric Bell Circuit, DC Motor Fan, Light Sensor Alarm). Provide 3-4 essential electrical components needed to complete the closed circuit translated into '${userLang}'.`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Title of the circuit challenge with emoji" },
-          circuitType: { type: Type.STRING, description: "Type of circuit description" },
-          components: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                key: { type: Type.STRING, description: "Component identifier e.g. battery, switch, bulb, motor, buzzer, resistor, solar, led" },
-                name: { type: Type.STRING, description: "Component name with emoji in language " + userLang },
-                icon: { type: Type.STRING, description: "Single emoji icon for component e.g. 🔋, 🔘, 💡, 🌀, 🔔, ☀️, ⚡, 🧲" }
-              },
-              required: ["key", "name", "icon"]
-            },
-            description: "List of 3 to 4 required components to build this functional circuit"
-          },
-          explanation: { type: Type.STRING, description: "Physics explanation of circuit current flow and closed loop operation" }
-        };
-        requiredFields.push("title", "circuitType", "components", "explanation");
-      } else if (effectiveGameId === 'memory-match' || effectiveGameId === 'formula-match') {
-        prompt += `Generate 4 matching pairs of educational concepts for '${targetTopic}' (e.g. SI Units and Physical quantities, Chemical Formula and Compound name, Organelle and Function, Historical Leader and Contribution, Physics Law and Formula).`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Title of the memory matching game" },
-          pairs: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                pairId: { type: Type.INTEGER },
-                symbol: { type: Type.STRING, description: "Symbol, formula, or short term with emoji" },
-                text: { type: Type.STRING, description: "Full concept or law in language " + userLang }
-              },
-              required: ["pairId", "symbol", "text"]
-            }
-          },
-          explanation: { type: Type.STRING, description: "Educational takeaway on the matched concepts" }
-        };
-        requiredFields.push("title", "pairs", "explanation");
-      } else if (effectiveGameId === 'assertion-reason') {
-        prompt += `Generate a senior secondary Assertion and Reason question for Class 10-12 on '${targetTopic}'.
-Assertion (A) is a scientific statement.
-Reason (R) is a supporting statement.
-solutionId should be:
-1: Both A and R are true and R is the correct explanation of A.
-2: Both A and R are true but R is NOT the correct explanation of A.
-3: A is true but R is false.
-4: A is false but R is true.`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Assertion & Reason Challenge Title" },
-          assertion: { type: Type.STRING, description: "Assertion (A) statement in language " + userLang },
-          reason: { type: Type.STRING, description: "Reason (R) statement in language " + userLang },
-          solutionId: { type: Type.INTEGER, description: "Integer 1, 2, 3, or 4" },
-          explanation: { type: Type.STRING, description: "Detailed scientific explanation of Assertion and Reason" }
-        };
-        requiredFields.push("title", "assertion", "reason", "solutionId", "explanation");
-      } else {
-        // Default: food-chain
-        prompt += `Generate a 5-organism Food Chain for biome '${targetTopic}' from producer to apex predator. Format items with unique keys and localized names in '${userLang}'.`;
-        schemaProperties = {
-          ...schemaProperties,
-          title: { type: Type.STRING, description: "Food chain title with emoji in language " + userLang },
-          items: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                key: { type: Type.STRING, description: "Unique English key identifier e.g. Phytoplankton" },
-                name: { type: Type.STRING, description: "Organism name with emoji in language " + userLang }
-              },
-              required: ["key", "name"]
-            }
-          },
-          solutionKeys: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "Keys in order from producer to top predator"
-          },
-          explanation: { type: Type.STRING, description: "Ecology explanation of energy transfer" }
-        };
-        requiredFields.push("title", "items", "solutionKeys", "explanation");
-      }
-
-      const modelsToTry = ["gemini-3.7-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-3.1-pro-preview"];
       let response: any = null;
-      let success = false;
       let lastError: any = null;
+      let success = false;
 
       for (const modelName of modelsToTry) {
         try {
-          console.log(`[PUZZLE AI GENERATOR] Generating dynamic puzzle with model ${modelName} for '${effectiveGameId}' using mechanic '${selectedMechanic.name}' on topic '${targetTopic}'...`);
+          console.log(`[PUZZLE GENERATOR] Requesting puzzle with model ${modelName} for '${puzzleType}'...`);
           response = await ai.models.generateContent({
             model: modelName,
-            contents: prompt,
+            contents: `Generate a new, unique ${difficulty} ${puzzleType} puzzle for ${studentClass} about ${subject}: ${topic || 'Core Concept'}. Seed: ${entropy}`,
             config: {
-              temperature: 0.95,
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: Type.OBJECT,
-                properties: schemaProperties,
-                required: requiredFields
-              }
+              systemInstruction: systemPrompt,
+              temperature: 0.9,
+              responseMimeType: "application/json"
             }
           });
           success = true;
           break;
         } catch (err: any) {
           lastError = err;
-          console.warn(`[PUZZLE AI GENERATOR] Model ${modelName} failed:`, err?.message || err);
+          console.warn(`[PUZZLE GENERATOR] Model ${modelName} failed:`, err?.message || err);
         }
       }
 
-      if (!success && lastError) {
-        throw lastError;
+      if (!success || !response?.text) {
+        console.warn("[PUZZLE GENERATOR] AI Generation failed. Serving procedural fallback.");
+        const fallbackPuzzle = getProceduralPuzzleFallback(puzzleType, studentClass, subject, topic, difficulty, groupId, lang);
+        return res.json({
+          success: true,
+          puzzle: fallbackPuzzle,
+          source: "procedural"
+        });
       }
 
-      const resultData = JSON.parse(response?.text || "{}");
+      let generatedData = JSON.parse(response.text.trim());
+      // Ensure required base fields
+      generatedData.puzzleType = generatedData.puzzleType || puzzleType;
+      generatedData.subject = generatedData.subject || subject;
+      generatedData.classLevel = generatedData.classLevel || studentClass;
+      generatedData.groupId = generatedData.groupId || groupId;
+      generatedData.difficulty = generatedData.difficulty || difficulty;
+
+      // Ensure interactiveData exists
+      if (!generatedData.interactiveData || typeof generatedData.interactiveData !== 'object') {
+        generatedData.interactiveData = {};
+      }
+
+      // Lift root-level puzzle properties into interactiveData if missing
+      const rootKeysToMove = [
+        'items', 'organisms', 'events', 'timeline', 'pieces', 'slots', 'steps',
+        'sequences', 'pairs', 'cards', 'clues', 'matrix', 'missingPositions',
+        'candidateNumbers', 'rootWord', 'prefixes', 'suffixes', 'targetWords',
+        'missingSlots', 'availableComponents', 'oddItemId', 'correctOrder'
+      ];
+
+      for (const k of rootKeysToMove) {
+        if (generatedData[k] !== undefined && generatedData.interactiveData[k] === undefined) {
+          generatedData.interactiveData[k] = generatedData[k];
+        }
+      }
+
+      // Check if critical arrays are missing or empty, and fallback if needed
+      const fallback = getProceduralPuzzleFallback(puzzleType, studentClass, subject, topic, difficulty, groupId, lang);
+
+      const type = generatedData.puzzleType || puzzleType;
+      if (type === 'food_chain') {
+        if (!Array.isArray(generatedData.interactiveData.items) || generatedData.interactiveData.items.length === 0) {
+          generatedData.interactiveData.items = fallback.interactiveData.items;
+          generatedData.interactiveData.correctOrder = fallback.interactiveData.correctOrder;
+        }
+      } else if (type === 'history_timeline') {
+        if (!Array.isArray(generatedData.interactiveData.events) || generatedData.interactiveData.events.length === 0) {
+          generatedData.interactiveData.events = fallback.interactiveData.events;
+          generatedData.interactiveData.correctOrder = fallback.interactiveData.correctOrder;
+        }
+      } else if (type === 'shape_puzzle') {
+        if (!Array.isArray(generatedData.interactiveData.pieces) || generatedData.interactiveData.pieces.length === 0) {
+          generatedData.interactiveData.pieces = fallback.interactiveData.pieces;
+          generatedData.interactiveData.slots = fallback.interactiveData.slots;
+          generatedData.interactiveData.targetShapeName = generatedData.interactiveData.targetShapeName || fallback.interactiveData.targetShapeName;
+          generatedData.interactiveData.targetShapeDesc = generatedData.interactiveData.targetShapeDesc || fallback.interactiveData.targetShapeDesc;
+        } else if (!Array.isArray(generatedData.interactiveData.slots) || generatedData.interactiveData.slots.length === 0) {
+          // If pieces exist but slots was omitted by the AI model, generate matching slots from pieces
+          generatedData.interactiveData.slots = generatedData.interactiveData.pieces.map((p: any, idx: number) => ({
+            id: `slot_${idx + 1}`,
+            label: `${p.label || 'Geometric Part ' + (idx + 1)} Target Slot`,
+            expectedPieceId: p.id
+          }));
+        }
+        // Ensure pieces have valid shape identifiers
+        generatedData.interactiveData.pieces = generatedData.interactiveData.pieces.map((p: any, idx: number) => ({
+          ...p,
+          id: p.id || `piece_${idx + 1}`,
+          label: p.label || `Shape Part ${idx + 1}`,
+          type: p.type || p.shape || (p.label?.toLowerCase().includes("triangle") ? "triangle" : p.label?.toLowerCase().includes("circle") ? "circle" : p.label?.toLowerCase().includes("square") ? "square" : p.label?.toLowerCase().includes("trapezoid") ? "trapezoid" : "rectangle")
+        }));
+      } else if (type === 'sequence_builder') {
+        if (!Array.isArray(generatedData.interactiveData.steps) || generatedData.interactiveData.steps.length === 0) {
+          generatedData.interactiveData.steps = fallback.interactiveData.steps;
+          generatedData.interactiveData.correctOrder = fallback.interactiveData.correctOrder;
+        }
+      } else if (type === 'memory_match') {
+        if (!Array.isArray(generatedData.interactiveData.pairs) || generatedData.interactiveData.pairs.length === 0) {
+          generatedData.interactiveData.pairs = fallback.interactiveData.pairs;
+        }
+      } else if (type === 'odd_one_out') {
+        if (!Array.isArray(generatedData.interactiveData.items) || generatedData.interactiveData.items.length === 0) {
+          generatedData.interactiveData.items = fallback.interactiveData.items;
+          generatedData.interactiveData.oddItemId = fallback.interactiveData.oddItemId;
+        }
+      } else if (type === 'word_builder') {
+        if (!generatedData.interactiveData.rootWord || !Array.isArray(generatedData.interactiveData.targetWords) || generatedData.interactiveData.targetWords.length === 0) {
+          generatedData.interactiveData.rootWord = fallback.interactiveData.rootWord;
+          generatedData.interactiveData.prefixes = fallback.interactiveData.prefixes;
+          generatedData.interactiveData.suffixes = fallback.interactiveData.suffixes;
+          generatedData.interactiveData.targetWords = fallback.interactiveData.targetWords;
+        }
+      } else if (type === 'circuit_puzzle') {
+        if (!Array.isArray(generatedData.interactiveData.missingSlots) || generatedData.interactiveData.missingSlots.length === 0) {
+          generatedData.interactiveData.missingSlots = fallback.interactiveData.missingSlots;
+          generatedData.interactiveData.availableComponents = fallback.interactiveData.availableComponents;
+        }
+      } else if (type === 'number_grid') {
+        if (!Array.isArray(generatedData.interactiveData.matrix) || !Array.isArray(generatedData.interactiveData.missingPositions) || generatedData.interactiveData.missingPositions.length === 0) {
+          generatedData.interactiveData.matrix = fallback.interactiveData.matrix;
+          generatedData.interactiveData.missingPositions = fallback.interactiveData.missingPositions;
+          generatedData.interactiveData.candidateNumbers = fallback.interactiveData.candidateNumbers;
+        }
+      } else if (type === 'crossword') {
+        if (!generatedData.interactiveData.clues || (!Array.isArray(generatedData.interactiveData.clues.across) && !Array.isArray(generatedData.interactiveData.clues.down))) {
+          generatedData.interactiveData.clues = fallback.interactiveData.clues;
+        }
+      }
+
       return res.json({
         success: true,
-        puzzle: resultData,
-        topic: targetTopic,
-        mechanic: selectedMechanic.name
+        puzzle: generatedData,
+        source: "ai"
       });
 
     } catch (error: any) {
       console.error("[GLOBAL SERVER ERROR IN /api/gemini/generate-puzzle]:", error);
-      return res.status(500).json({
-        success: false,
-        message: error.message || "Failed to generate AI puzzle."
+      const fallbackPuzzle = getProceduralPuzzleFallback(req.body.puzzleType || 'food_chain', req.body.studentClass || 'Classes 1-5', req.body.subject || 'Science', req.body.topic || '', req.body.difficulty || 'Medium', req.body.groupId || 'group1', req.body.lang || 'en');
+      return res.json({
+        success: true,
+        puzzle: fallbackPuzzle,
+        source: "procedural-error-fallback"
+      });
+    }
+  });
+
+  // API ROUTE: AI PUZZLE SUBMISSION ANALYZER
+  app.post("/api/gemini/analyze-puzzle", async (req, res) => {
+    try {
+      const { puzzle, userSubmission, isCorrect, studentName = "Student", timeTaken = 30 } = req.body;
+
+      const apiKey = process.env.GEMINI_API_KEY;
+
+      if (!apiKey) {
+        return res.json({
+          success: true,
+          analysis: {
+            score: isCorrect ? 100 : 60,
+            badge: isCorrect ? "🏆 Master Thinker" : "🌱 Curious Explorer",
+            feedback: isCorrect
+              ? `Outstanding job, ${studentName}! You solved this ${puzzle?.puzzleType || 'logic'} challenge with precision.`
+              : `Good attempt, ${studentName}! Review the core principles in the explanation to master this concept.`,
+            masteryInsight: puzzle?.explanation || "Reviewing step-by-step logic solidifies foundational intuition.",
+            nextChallengeRecommendation: "Try an advanced variation to test your higher-order cognitive agility!"
+          }
+        });
+      }
+
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const prompt = `You are a warm, encouraging pedagogical coach analyzing a student's puzzle submission.
+Student Name: ${studentName}
+Puzzle Title: ${puzzle?.title || 'Academic Puzzle'}
+Puzzle Type: ${puzzle?.puzzleType}
+Subject: ${puzzle?.subject}
+Topic: ${puzzle?.topic}
+Student Result: ${isCorrect ? 'CORRECT' : 'INCORRECT'}
+Time Taken: ${timeTaken} seconds
+Official Solution/Explanation: ${puzzle?.explanation}
+
+Generate a concise JSON feedback object with this exact structure:
+{
+  "score": ${isCorrect ? 100 : 50},
+  "badge": "Creative emoji badge (e.g. ⚡ Logic Maestro, 🔬 Junior Scientist)",
+  "feedback": "2-3 sentences of positive, motivating personalized feedback directly addressing what the student accomplished.",
+  "masteryInsight": "1-2 key conceptual takeaway sentences explaining WHY the correct solution works.",
+  "nextChallengeRecommendation": "1 sentence recommending the next skill or concept to explore."
+}`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.7-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.7
+        }
+      });
+
+      const analysis = JSON.parse(response?.text || "{}");
+      return res.json({
+        success: true,
+        analysis
+      });
+
+    } catch (error: any) {
+      console.error("[GLOBAL SERVER ERROR IN /api/gemini/analyze-puzzle]:", error);
+      return res.json({
+        success: true,
+        analysis: {
+          score: req.body.isCorrect ? 100 : 60,
+          badge: req.body.isCorrect ? "🌟 Logic Star" : "💡 Dedicated Learner",
+          feedback: `Great effort! Keep practicing to build deep mastery.`,
+          masteryInsight: req.body.puzzle?.explanation || "Practice builds permanent academic mastery.",
+          nextChallengeRecommendation: "Try generating another puzzle to test your skills."
+        }
       });
     }
   });

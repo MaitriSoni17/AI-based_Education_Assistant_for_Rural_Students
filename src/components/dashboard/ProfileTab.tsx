@@ -59,8 +59,289 @@ interface ProfileTabProps {
   onUpdateUser: (fields: Partial<User>) => void;
 }
 
+// Comprehensive multi-language translations for Profile Overview
+const PROFILE_I18N: Record<string, Record<string, string>> = {
+  en: {
+    activeStudent: "Active Student 🌟",
+    noClassSchool: "No school/class specified",
+    noLocation: "No location specified",
+    selectClass: "Select Class / Grade",
+    chooseAvatar: "Choose your AI Animal Character:",
+    level: "Level",
+    scholar: "Rural Scholar",
+    xpHint: "Earn points from quizzes or daily check-ins to level up!",
+    editProfile: "Edit Profile",
+    saveDetails: "Save Details",
+    golden: "Golden",
+    myMedals: "My Medals",
+    unlocked: "Unlocked",
+    locked: "Locked",
+    hot: "Hot",
+    dailyStreak: "Daily Streak",
+    daysStudied: "Days Studied",
+    active: "Active",
+    timeStudied: "Time Studied",
+    weeklyArea: "Weekly Learning Area",
+    weeklySub: "Minutes of customized voice lessons & reading logs",
+    avg: "Avg",
+    perDay: "day",
+    studyTime: "Study Time",
+    streakPath: "Daily Consistency Streak Path",
+    streakSub: "Study for 5 minutes daily to automatically accept today's streak and claim +15 XP bonus!",
+    streakAccepted: "Today's Streak Accepted (+15 XP)",
+    studyProgress: "Study",
+    autoCompletes: "Auto-completes at 5 mins",
+    today: "Today",
+    missed: "Missed",
+    upcoming: "Upcoming",
+    showcaseTitle: "Milestones & Badges Showcase",
+    showcaseSub: "Showcase your subject mastery, caching efforts, and study consistency.",
+    filterAll: "All",
+    filterUnlocked: "Unlocked",
+    filterAcademic: "Academic",
+    filterStreak: "Streak",
+    filterOffline: "Offline",
+    noBadges: "No matching badges found. Keep learning to expand your shelf!",
+    science: "Science 🔬",
+    math: "Mathematics 📐",
+    languages: "Languages 🗣️",
+    gk: "General Knowledge 🧠"
+  },
+  hi: {
+    activeStudent: "सक्रिय छात्र 🌟",
+    noClassSchool: "कोई स्कूल/कक्षा निर्दिष्ट नहीं",
+    noLocation: "कोई स्थान निर्दिष्ट नहीं",
+    selectClass: "अपनी कक्षा चुनें",
+    chooseAvatar: "अपना एआई पशु चरित्र चुनें:",
+    level: "स्तर",
+    scholar: "ग्रामीण अध्येता",
+    xpHint: "लेवल अप करने के लिए क्विज़ या दैनिक चेक-इन से अंक अर्जित करें!",
+    editProfile: "प्रोफ़ाइल संपादित करें",
+    saveDetails: "विवरण सहेजें",
+    golden: "स्वर्ण",
+    myMedals: "मेरे पदक",
+    unlocked: "अनलॉक किया",
+    locked: "लॉक्ड",
+    hot: "सक्रिय",
+    dailyStreak: "दैनिक निरंतरता",
+    daysStudied: "दिन अध्ययन किया",
+    active: "सक्रिय",
+    timeStudied: "अध्ययन का समय",
+    weeklyArea: "साप्ताहिक अध्ययन क्षेत्र",
+    weeklySub: "अनुकूलित आवाज पाठों और पढ़ने का समय",
+    avg: "औसत",
+    perDay: "दिन",
+    studyTime: "अध्ययन का समय",
+    streakPath: "दैनिक अध्ययन निरंतरता पथ",
+    streakSub: "प्रतिदिन 5 मिनट अध्ययन करें और +15 XP बोनस प्राप्त करें!",
+    streakAccepted: "आज की स्ट्रीक स्वीकृत (+15 XP)",
+    studyProgress: "अध्ययन",
+    autoCompletes: "5 मिनट पर स्वतः पूर्ण",
+    today: "आज",
+    missed: "छूटा",
+    upcoming: "आगामी",
+    showcaseTitle: "मेरा पदक और बैज शोकेस",
+    showcaseSub: "अपनी विषय महारत और अध्ययन निरंतरता प्रदर्शित करें।",
+    filterAll: "सभी",
+    filterUnlocked: "अनलॉक",
+    filterAcademic: "शैक्षणिक",
+    filterStreak: "निरंतरता",
+    filterOffline: "ऑफ़लाइन",
+    noBadges: "कोई बैज नहीं मिला। सीखना जारी रखें!",
+    science: "विज्ञान 🔬",
+    math: "गणित 📐",
+    languages: "भाषाएँ 🗣️",
+    gk: "सामान्य ज्ञान 🧠"
+  },
+  gu: {
+    activeStudent: "સક્રિય વિદ્યાર્થી 🌟",
+    noClassSchool: "કોઈ શાળા/ધોરણ દર્શાવેલ નથી",
+    noLocation: "કોઈ સ્થળ દર્શાવેલ નથી",
+    selectClass: "તમારું ધોરણ પસંદ કરો",
+    chooseAvatar: "તમારું AI પ્રાણી પાત્ર પસંદ કરો:",
+    level: "સ્તર",
+    scholar: "ગ્રામીણ વિદ્વાન",
+    xpHint: "લેવલ વધારવા માટે ક્વિઝ અથવા દૈનિક ચેક-ઇનથી પોઇન્ટ મેળવો!",
+    editProfile: "પ્રોફાઇલ સંપાદિત કરો",
+    saveDetails: "વિગતો સાચવો",
+    golden: "સુવર્ણ",
+    myMedals: "મારા ચંદ્રકો",
+    unlocked: "અનલૉક",
+    locked: "લૉક",
+    hot: "સક્રિય",
+    dailyStreak: "દૈનિક સાતત્ય",
+    daysStudied: "દિવસો અભ્યાસ કર્યો",
+    active: "સક્રિય",
+    timeStudied: "અભ્યાસનો સમય",
+    weeklyArea: "સાપ્તાહિક શિક્ષણ ક્ષેત્ર",
+    weeklySub: "અવાજ પાઠ અને વાંચનનો સમયગાળો",
+    avg: "સરેરાશ",
+    perDay: "દિવસ",
+    studyTime: "અભ્યાસ સમય",
+    streakPath: "દૈનિક અભ્યાસ સાતત્ય માર્ગ",
+    streakSub: "દરરોજ 5 મિનિટ અભ્યાસ કરો અને +15 XP બોનસ મેળવો!",
+    streakAccepted: "આજનો સ્ટ્રીક સ્વીકારાયો (+15 XP)",
+    studyProgress: "અભ્યાસ",
+    autoCompletes: "5 મિનિટે સ્વચાલિત પૂર્ણ",
+    today: "આજે",
+    missed: "ચૂકી ગયા",
+    upcoming: "આગામી",
+    showcaseTitle: "મારા મેડલ અને બેજ શોકેસ",
+    showcaseSub: "તમારી વિષય નિપુણતા અને અભ્યાસ સાતત્ય દર્શાવો.",
+    filterAll: "બધા",
+    filterUnlocked: "અનલૉક",
+    filterAcademic: "શૈક્ષણિક",
+    filterStreak: "સાતત્ય",
+    filterOffline: "ઑફલાઇન",
+    noBadges: "કોઈ બેજ મળ્યા નથી. શીખવાનું ચાલુ રાખો!",
+    science: "વિજ્ઞાન 🔬",
+    math: "ગણિત 📐",
+    languages: "ભાષાઓ 🗣️",
+    gk: "સામાન્ય જ્ઞાન 🧠"
+  },
+  mr: {
+    activeStudent: "सक्रिय विद्यार्थी 🌟",
+    noClassSchool: "शाळा/इयत्ता नमूद केलेली नाही",
+    noLocation: "स्थान नमूद केलेले नाही",
+    selectClass: "तुमची इयत्ता निवडा",
+    chooseAvatar: "तुमचे AI प्राणी पात्र निवडा:",
+    level: "पातळी",
+    scholar: "ग्रामीण विद्यार्थी",
+    xpHint: "लेव्हल अप करण्यासाठी क्विझ किंवा दैनंदिन चेक-इनमधून गुण मिळवा!",
+    editProfile: "प्रोफाईल संपादित करा",
+    saveDetails: "माहिती जतन करा",
+    golden: "सुवर्ण",
+    myMedals: "माझी पदके",
+    unlocked: "अनलॉक",
+    locked: "लॉक",
+    hot: "सक्रिय",
+    dailyStreak: "दैनंदिन सातत्य",
+    daysStudied: "दिवस अभ्यास केला",
+    active: "सक्रिय",
+    timeStudied: "अभ्यासाचा वेळ",
+    weeklyArea: "साप्ताहिक शिक्षण क्षेत्र",
+    weeklySub: "व्हॉइस धडे आणि वाचनाचा वेळ",
+    avg: "सरासरी",
+    perDay: "दिवस",
+    studyTime: "अभ्यास वेळ",
+    streakPath: "दैनंदिन अभ्यास सातत्य मार्ग",
+    streakSub: "रोज ५ मिनिटे अभ्यास करा आणि +15 XP बोनस मिळवा!",
+    streakAccepted: "आजचा स्ट्रिक स्वीकारला (+15 XP)",
+    studyProgress: "अभ्यास",
+    autoCompletes: "५ मिनिटांत स्वयंचलित पूर्ण",
+    today: "आज",
+    missed: "चुकले",
+    upcoming: "आगामी",
+    showcaseTitle: "माझे पदक आणि बॅज शोकेस",
+    showcaseSub: "तुमचे विषय प्रभुत्व आणि अभ्यास सातत्य दाखवा.",
+    filterAll: "सर्व",
+    filterUnlocked: "अनलॉक",
+    filterAcademic: "शैक्षणिक",
+    filterStreak: "सातत्य",
+    filterOffline: "ऑफलाईन",
+    noBadges: "कोणतेही बॅज आढळले नाहीत. शिकत राहा!",
+    science: "विज्ञान 🔬",
+    math: "गणित 📐",
+    languages: "भाषा 🗣️",
+    gk: "सामान्य ज्ञान 🧠"
+  },
+  ta: {
+    activeStudent: "சுறுசுறுப்பான மாணவர் 🌟",
+    noClassSchool: "பள்ளி/வகுப்பு குறிப்பிடப்படவில்லை",
+    noLocation: "இடம் குறிப்பிடப்படவில்லை",
+    selectClass: "வகுப்பைத் தேர்ந்தெடுக்கவும்",
+    chooseAvatar: "உங்கள் AI அவதாரத்தைத் தேர்ந்தெடுக்கவும்:",
+    level: "நிலை",
+    scholar: "கிராமப்புற மாணவர்",
+    xpHint: "புள்ளிகள் பெற தினமும் வினாடி வினாக்களில் பங்கேற்கவும்!",
+    editProfile: "சுயவிவரத்தைத் திருத்து",
+    saveDetails: "விவரங்களைச் சேமி",
+    golden: "தங்கம்",
+    myMedals: "என் பதக்கங்கள்",
+    unlocked: "திறக்கப்பட்டது",
+    locked: "பூட்டப்பட்டது",
+    hot: "சிறப்பு",
+    dailyStreak: "தொடர் கற்றல் நாட்கள்",
+    daysStudied: "நாட்கள் படித்தார்",
+    active: "செயலில்",
+    timeStudied: "படித்த நேரம்",
+    weeklyArea: "வாராந்திர கற்றல் வரைபடம்",
+    weeklySub: "குரல் பாடங்கள் மற்றும் வாசிப்பு நேரம்",
+    avg: "சராசரி",
+    perDay: "நாள்",
+    studyTime: "படித்த நேரம்",
+    streakPath: "தினசரி கற்றல் தொடர்ச்சி வழி",
+    streakSub: "தினமும் 5 நிமிடங்கள் படித்து +15 XP போனஸ் பெறுங்கள்!",
+    streakAccepted: "இன்றைய தொடர்ச்சி ஏற்கப்பட்டது (+15 XP)",
+    studyProgress: "படித்தது",
+    autoCompletes: "5 நிமிடத்தில் தானாக முற்றுப்பெறும்",
+    today: "இன்று",
+    missed: "தவறியது",
+    upcoming: "அடுத்தது",
+    showcaseTitle: "என் பதக்கங்கள் & பேட்ஜ்கள்",
+    showcaseSub: "உங்கள் பாடத் திறமையைக் காட்டுங்கள்.",
+    filterAll: "அனைத்தும்",
+    filterUnlocked: "திறக்கப்பட்டது",
+    filterAcademic: "கல்வி",
+    filterStreak: "தொடர்ச்சி",
+    filterOffline: "ஆஃப்லைன்",
+    noBadges: "பேட்ஜ்கள் எதுவும் இல்லை. தொடர்ந்து கற்றுக்கொள்ளுங்கள்!",
+    science: "அறிவியல் 🔬",
+    math: "கணிதம் 📐",
+    languages: "மொழிகள் 🗣️",
+    gk: "பொது அறிவு 🧠"
+  },
+  te: {
+    activeStudent: "యాక్టివ్ విద్యార్థి 🌟",
+    noClassSchool: "పాఠశాల/తరగతి పేర్కొనబడలేదు",
+    noLocation: "స్థలం పేర్కొనబడలేదు",
+    selectClass: "తరగతిని ఎంచుకోండి",
+    chooseAvatar: "మీ AI క్యారెక్టర్‌ను ఎంచుకోండి:",
+    level: "స్థాయి",
+    scholar: "గ్రామీణ విద్యార్థి",
+    xpHint: "లెవెల్ అప్ కావడానికి ప్రతిరోజూ క్విజ్ లేదా చెక్-ఇన్ చేయండి!",
+    editProfile: "ప్రొఫైల్ సవరించు",
+    saveDetails: "వివరాలను సేవ్ చేయి",
+    golden: "స్వర్ణ",
+    myMedals: "నా పతకాలు",
+    unlocked: "అన్‌లాక్ అయింది",
+    locked: "లాక్ అయింది",
+    hot: "హాట్",
+    dailyStreak: "రోజువారీ అధ్యయనం",
+    daysStudied: "రోజులు చదివారు",
+    active: "సక్రియం",
+    timeStudied: "చదివిన సమయం",
+    weeklyArea: "వారపు అభ్యసన ప్రాంతం",
+    weeklySub: "వాయిస్ పాఠాలు మరియు చదివిన సమయం",
+    avg: "సగటు",
+    perDay: "రోజు",
+    studyTime: "అధ్యయన సమయం",
+    streakPath: "రోజువారీ అధ్యయన నిలకడ మార్గం",
+    streakSub: "రోజుకు 5 నిమిషాలు చదివి +15 XP బోనస్ పొందండి!",
+    streakAccepted: "ఈరోజు స్ట్రీక్ ఆమోదించబడింది (+15 XP)",
+    studyProgress: "చదివినది",
+    autoCompletes: "5 నిమిషాల్లో ఆటో-కంప్లీట్ అవుతుంది",
+    today: "ఈరోజు",
+    missed: "మిస్ అయింది",
+    upcoming: "రాబోయేది",
+    showcaseTitle: "నా మెడల్స్ & బ్యాడ్జెస్",
+    showcaseSub: "మీ విషయ పాండిత్యాన్ని ప్రదర్శించండి.",
+    filterAll: "అన్నీ",
+    filterUnlocked: "అన్‌లాక్",
+    filterAcademic: "అకడమిక్",
+    filterStreak: "నిలకడ",
+    filterOffline: "ఆఫ్‌లైన్",
+    noBadges: "బ్యాడ్జెలు ఏవీ లభించలేదు. చదవడం కొనసాగించండి!",
+    science: "సైన్స్ 🔬",
+    math: "గణితం 📐",
+    languages: "భాషలు 🗣️",
+    gk: "సాధారణ పరిజ్ఞానం 🧠"
+  }
+};
+
 export default function ProfileTab({ user, lang, claimedMedals, offlineCount, onNavigateToTab, onUpdateUser }: ProfileTabProps) {
   const t = TRANSLATIONS[lang];
+  const pText = PROFILE_I18N[lang] || PROFILE_I18N.en;
 
   // Load custom student attributes from the user prop for Firebase dynamics
   const [village, setVillage] = useState(() => user.village || '');
@@ -356,7 +637,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                     {user.name}
                   </h2>
                   <span className="inline-flex self-center sm:self-auto items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[#81B29A]/10 text-emerald-700 border border-[#81B29A]/30">
-                    Active Student 🌟
+                    {pText.activeStudent}
                   </span>
                 </div>
                 
@@ -367,7 +648,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                     <span>
                       {standard && school 
                         ? `${standard} • ${school}` 
-                        : standard || school || (lang === 'hi' ? 'कोई स्कूल/कक्षा निर्दिष्ट नहीं' : 'No school/class specified')}
+                        : standard || school || pText.noClassSchool}
                     </span>
                   </p>
                 ) : (
@@ -379,7 +660,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                         onClick={() => setIsStandardOpen(!isStandardOpen)}
                         className="w-full flex items-center justify-between px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-sans text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#E07A5F] cursor-pointer text-left transition-all hover:bg-gray-100"
                       >
-                        <span className="font-medium">{standard || (lang === 'hi' ? 'अपनी कक्षा चुनें' : 'Select Class / Grade')}</span>
+                        <span className="font-medium">{standard || pText.selectClass}</span>
                         <ChevronDown className={`h-3.5 w-3.5 text-gray-500 transition-transform duration-200 ${isStandardOpen ? 'rotate-180' : ''}`} />
                       </button>
 
@@ -425,7 +706,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                   <span>
                     {village 
                       ? `${village}${user.state ? `, ${user.state}` : ''}, India` 
-                      : (user.state ? `${user.state}, India` : (lang === 'hi' ? 'कोई स्थान निर्दिष्ट नहीं' : 'No location specified'))}
+                      : (user.state ? `${user.state}, India` : pText.noLocation)}
                   </span>
                 </p>
               ) : (
@@ -446,7 +727,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                 <div className="flex justify-between items-center w-full max-w-[256px] mb-1">
                   <span className="text-[11px] font-extrabold text-[#E07A5F] flex items-center gap-1.5">
                     <Trophy className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
-                    <span>Level {Math.floor(userPoints / 100) + 1} Rural Scholar</span>
+                    <span>{pText.level} {Math.floor(userPoints / 100) + 1} {pText.scholar}</span>
                   </span>
                   <span className="text-[10px] font-mono text-gray-400 font-extrabold">
                     {userPoints % 100}/100 XP
@@ -459,7 +740,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                   />
                 </div>
                 <span className="text-[9px] text-gray-400 font-sans mt-1">
-                  Earn points from quizzes or daily check-ins to level up!
+                  {pText.xpHint}
                 </span>
               </div>
             </div>
@@ -474,7 +755,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 active:scale-95 text-[#3D405B] font-sans font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Edit3 className="h-3.5 w-3.5" />
-                <span>Edit Profile</span>
+                <span>{pText.editProfile}</span>
               </button>
             ) : (
               <button
@@ -483,7 +764,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                 className="px-4 py-2 bg-gradient-to-r from-[#3D405B] to-[#E07A5F] text-white font-sans font-bold text-xs rounded-xl flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
               >
                 <Save className="h-3.5 w-3.5" />
-                <span>Save Details</span>
+                <span>{pText.saveDetails}</span>
               </button>
             )}
           </div>
@@ -493,7 +774,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         {isEditing && (
           <div className="mt-5 p-4 bg-gray-50/60 rounded-2xl border border-gray-150 text-left space-y-2 animate-fade-in">
             <h4 className="font-display font-black text-xs text-[#3D405B] uppercase tracking-wider">
-              Choose your AI Animal Character:
+              {pText.chooseAvatar}
             </h4>
             <div className="flex flex-wrap gap-3">
               {AVATARS.map(av => (
@@ -528,12 +809,12 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
               <Award className="h-5 w-5" />
             </div>
             <span className="text-[10px] font-mono font-bold text-amber-600 block bg-amber-50 px-1.5 py-0.5 rounded uppercase">
-              Golden
+              {pText.golden}
             </span>
           </div>
           <div>
-            <span className="text-[10px] font-mono text-gray-400 block font-bold uppercase tracking-wider">My Medals</span>
-            <span className="text-xl font-black text-[#3D405B]">{claimedMedals.length} Unlocked</span>
+            <span className="text-[10px] font-mono text-gray-400 block font-bold uppercase tracking-wider">{pText.myMedals}</span>
+            <span className="text-xl font-black text-[#3D405B]">{claimedMedals.length} {pText.unlocked}</span>
           </div>
         </div>
 
@@ -545,12 +826,12 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
               <Flame className="h-5 w-5 animate-pulse" />
             </div>
             <span className="text-[10px] font-mono font-bold text-[#E07A5F] block bg-orange-50 px-1.5 py-0.5 rounded uppercase">
-              Hot
+              {pText.hot}
             </span>
           </div>
           <div>
-            <span className="text-[10px] font-mono text-gray-400 block font-bold uppercase tracking-wider">Daily Streak</span>
-            <span className="text-xl font-black text-[#3D405B]">{streakDays} Days Studied</span>
+            <span className="text-[10px] font-mono text-gray-400 block font-bold uppercase tracking-wider">{pText.dailyStreak}</span>
+            <span className="text-xl font-black text-[#3D405B]">{streakDays} {pText.daysStudied}</span>
           </div>
         </div>
 
@@ -561,11 +842,11 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
               <Clock className="h-5 w-5" />
             </div>
             <span className="text-[10px] font-mono font-bold text-emerald-600 block bg-teal-50 px-1.5 py-0.5 rounded uppercase">
-              Active
+              {pText.active}
             </span>
           </div>
           <div>
-            <span className="text-[10px] font-mono text-gray-400 block font-bold uppercase tracking-wider">Time Studied</span>
+            <span className="text-[10px] font-mono text-gray-400 block font-bold uppercase tracking-wider">{pText.timeStudied}</span>
             <span className="text-xl font-black text-[#3D405B]">{formatStudyTime(Math.max(user.studyMins ?? 30, totalWeeklyMins), lang === 'hi')}</span>
           </div>
         </div>
@@ -580,13 +861,13 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
           <div className="md:flex justify-between items-center mb-4">
             <div>
               <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider flex items-center gap-2">
-                Weekly Learning Area
+                {pText.weeklyArea}
               </h3>
-              <p className="text-[11px] text-gray-400">Minutes of customized voice lessons & reading logs</p>
+              <p className="text-[11px] text-gray-400">{pText.weeklySub}</p>
             </div>
             <div className="text-left">
               <span className="text-xs font-mono font-bold text-[#E07A5F] bg-[#FAF8F4] px-2 py-1 rounded-sm border border-[#F2CC8F]/40 uppercase">
-                {lang === 'hi' ? 'औसत' : 'Avg'}: {formatStudyTime(Math.round(totalWeeklyMins / 7), lang === 'hi')}/{lang === 'hi' ? 'दिन' : 'day'}
+                {pText.avg}: {formatStudyTime(Math.round(totalWeeklyMins / 7), lang === 'hi')}/{pText.perDay}
               </span>
             </div>
           </div>
@@ -640,29 +921,26 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
           <div>
             <h3 className="font-display font-extrabold text-[#3D405B] text-base uppercase tracking-wider flex items-center gap-2 text-sm">
-              {/*<Flame className="h-5 w-5 text-[#E07A5F] animate-pulse" />*/}
-              {lang === 'hi' ? 'दैनिक अध्ययन निरंतरता पथ' : 'Daily Consistency Streak Path'}
+              {pText.streakPath}
             </h3>
             <p className="text-xs text-gray-500 font-sans">
-              {lang === 'hi' 
-                ? 'प्रतिदिन 5 मिनट अध्ययन करने पर आज की स्ट्रीक स्वतः स्वीकृत हो जाती है!' 
-                : 'Study for 5 minutes daily to automatically accept today\'s streak and claim +15 XP bonus!'}
+              {pText.streakSub}
             </p>
           </div>
           <div className="shrink-0">
             {hasCheckedInToday ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-800 text-xs font-black rounded-xl border border-emerald-200">
                 <CheckCircle className="h-4.5 w-4.5 text-emerald-600 animate-pulse" />
-                <span>{lang === 'hi' ? 'आज की स्ट्रीक स्वतः स्वीकृत (+15 XP)' : 'Today\'s Streak Accepted (+15 XP)'}</span>
+                <span>{pText.streakAccepted}</span>
               </span>
             ) : (
               <div className="flex flex-col items-left gap-1">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-800 text-xs font-black rounded-xl border border-amber-200">
                   <Clock className="h-4 w-4 text-amber-600 animate-spin" style={{ animationDuration: '3s' }} />
-                  <span>{lang === 'hi' ? `अध्ययन करें: ${user.todayMins ?? 0} / 5 मिनट` : `Study: ${user.todayMins ?? 0} / 5 Mins`}</span>
+                  <span>{pText.studyProgress}: {user.todayMins ?? 0} / 5 Mins</span>
                 </span>
                 <span className="text-[9px] text-gray-400 font-mono font-bold uppercase tracking-wider">
-                  {lang === 'hi' ? '5 मिनट के बाद स्वतः पूर्ण होगा' : 'Auto-completes at 5 mins'}
+                  {pText.autoCompletes}
                 </span>
               </div>
             )}
@@ -767,21 +1045,21 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
           <div>
             <h3 className="font-display font-extrabold text-[#3D405B] text-sm uppercase tracking-wider flex items-center gap-1.5">
               {/*<Trophy className="h-4.5 w-4.5 text-amber-500" />*/}
-              {lang === 'hi' ? 'मेरा पदक और बैज शोकेस' : 'Milestones & Badges Showcase'}
+              {pText.showcaseTitle}
             </h3>
             <p className="text-[11px] text-gray-400 font-sans">
-              {lang === 'hi' ? 'विशेष विषयों को पार करके और निरंतर अभ्यास से बैज अनलॉक करें।' : 'Showcase your subject mastery, caching efforts, and study consistency.'}
+              {pText.showcaseSub}
             </p>
           </div>
           
           {/* Filters */}
           <div className="flex flex-wrap gap-1">
             {[
-              { id: 'all', label: lang === 'hi' ? 'सभी' : 'All' },
-              { id: 'unlocked', label: lang === 'hi' ? 'अनलॉक' : 'Unlocked' },
-              { id: 'general', label: lang === 'hi' ? 'सामान्य' : 'Academic' },
-              { id: 'streak', label: lang === 'hi' ? 'निरंतरता' : 'Streak' },
-              { id: 'offline', label: lang === 'hi' ? 'ऑफ़लाइन' : 'Offline' }
+              { id: 'all', label: pText.filterAll },
+              { id: 'unlocked', label: pText.filterUnlocked },
+              { id: 'general', label: pText.filterAcademic },
+              { id: 'streak', label: pText.filterStreak },
+              { id: 'offline', label: pText.filterOffline }
             ].map(f => (
               <button
                 key={f.id}
@@ -826,7 +1104,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                   {badge.name}
                 </div>
                 <div className="text-[9px] font-semibold text-gray-400 font-mono tracking-wider line-clamp-1 uppercase">
-                  {badge.unlocked ? (lang === 'hi' ? 'अनलॉक किया' : 'Unlocked') : (lang === 'hi' ? 'लॉक्ड' : 'Locked')}
+                  {badge.unlocked ? pText.unlocked : pText.locked}
                 </div>
               </div>
 
@@ -843,7 +1121,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
 
         {filteredBadges.length === 0 && (
           <p className="text-xs text-gray-400 text-center py-6 font-mono">
-            No matching badges found. Keep learning to expand your shelf!
+            {pText.noBadges}
           </p>
         )}
       </div>

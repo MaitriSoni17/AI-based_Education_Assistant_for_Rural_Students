@@ -170,3 +170,25 @@ button, a {
 .markdown-content th, .markdown-content td { @apply border border-gray-200 p-2 text-left; }
 .markdown-content th { @apply bg-gray-50 font-bold; }
 
+/* PDF Text Layer Selection Overlay - Fixes text jumbling on word selection */
+.pdf-text-layer {
+  line-height: 1;
+}
+
+.pdf-text-layer span {
+  color: transparent !important;
+  transform-origin: 0 0;
+}
+
+.pdf-text-layer span::selection,
+.pdf-text-layer ::selection {
+  background-color: rgba(59, 130, 246, 0.35) !important;
+  color: transparent !important;
+}
+
+.pdf-text-layer span::-moz-selection,
+.pdf-text-layer ::-moz-selection {
+  background-color: rgba(59, 130, 246, 0.35) !important;
+  color: transparent !important;
+}
+

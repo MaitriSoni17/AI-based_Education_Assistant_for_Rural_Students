@@ -26,7 +26,8 @@ import {
   CheckCircle2,
   Layers,
   MessageSquare,
-  ArrowRight
+  ArrowRight,
+  Star
 } from 'lucide-react';
 import { speakText, stopSpeaking } from '../../utils/speech';
 
@@ -34,6 +35,8 @@ interface PdfCanvasViewerProps {
   fileId: string;
   fileDataUrl?: string;
   fileName: string;
+  fullContent?: string;
+  isAiGenerated?: boolean;
   onGetFileLocal: (id: string) => Promise<string | null>;
   onDownload: () => void;
   onPagesTextExtracted?: (pages: { pageNum: number; text: string }[]) => void;
@@ -48,8 +51,15 @@ interface PdfPageItemProps {
   searchQuery: string;
   currentActiveMatchPage?: number;
   activeMatchSnippet?: string;
+  fallbackText?: string;
   onPageVisible: (page: number) => void;
   setRef: (page: number, el: HTMLDivElement | null) => void;
+  onTranslatePage?: (pageNum: number) => void;
+  onSummarizePage?: (pageNum: number) => void;
+  onSolveQuestions?: (pageNum: number) => void;
+  onShortNotes?: (pageNum: number) => void;
+  onAskAiPage?: (pageNum: number) => void;
+  onCopyPageText?: (pageNum: number, text: string) => void;
 }
 
 interface TextOverlayItem {
@@ -69,8 +79,15 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
   searchQuery,
   currentActiveMatchPage,
   activeMatchSnippet,
+  fallbackText,
   onPageVisible,
   setRef,
+  onTranslatePage,
+  onSummarizePage,
+  onSolveQuestions,
+  onShortNotes,
+  onAskAiPage,
+  onCopyPageText,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [textOverlayItems, setTextOverlayItems] = useState<TextOverlayItem[]>([]);
@@ -203,6 +220,38 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
             });
           }
 
+          // Fallback for image-based or AI-generated PDFs where PDF.js extracts 0 text items
+          if (items.length === 0 && fallbackText) {
+            fullTxt = fallbackText;
+            const lines = fallbackText.split('\n').map(l => l.trim()).filter(Boolean);
+            const startY = 60 * scale;
+            const lineHeight = 20 * scale;
+            const startX = 35 * scale;
+            const fontSz = Math.max(10, Math.min(15, 12 * scale));
+
+            lines.forEach((line, lineIdx) => {
+              const words = line.split(/\s+/);
+              let currentX = startX;
+              const currentY = startY + lineIdx * lineHeight;
+
+              words.forEach(word => {
+                if (!word) return;
+                const wordWidth = fontSz * word.length * 0.55;
+                items.push({
+                  str: word + ' ',
+                  left: currentX,
+                  top: currentY,
+                  fontSize: fontSz,
+                  width: wordWidth,
+                });
+                currentX += wordWidth + fontSz * 0.35;
+                if (viewport && currentX > viewport.width - 40 * scale) {
+                  currentX = startX;
+                }
+              });
+            });
+          }
+
           if (isMounted) {
             setTextOverlayItems(items);
             setPageFullText(fullTxt.trim());
@@ -248,7 +297,7 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
             color: 'transparent',
             cursor: 'text',
           }}
-          className="select-text hover:text-slate-900/10 transition-colors"
+          className="select-text"
         >
           {str}
         </span>
@@ -272,19 +321,17 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
             color: 'transparent',
             cursor: 'text',
           }}
-          className="select-text hover:text-slate-900/10 transition-colors"
+          className="select-text"
         >
           {str}
         </span>
       );
     }
 
-    // Split string into non-matching parts and highlight mark parts
+    // Split string into non-matching parts and highlighted mark elements
     const parts: React.ReactNode[] = [];
     let lastIdx = 0;
     let matchIdx = lowerStr.indexOf(lowerQuery, lastIdx);
-
-    const isCurrentActivePage = currentActiveMatchPage === pageNum;
 
     while (matchIdx !== -1) {
       if (matchIdx > lastIdx) {
@@ -292,19 +339,14 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
       }
 
       const matchText = str.substring(matchIdx, matchIdx + query.length);
-      const isFocusedMatch = isCurrentActivePage && activeMatchSnippet?.toLowerCase().includes(lowerStr);
 
       parts.push(
         <mark
           key={`m-${matchIdx}`}
-          className={`px-0.5 rounded-2xs font-bold font-sans inline-block transition-all ${
-            isFocusedMatch
-              ? 'bg-amber-400 text-slate-950 ring-2 ring-rose-500 animate-pulse shadow-md font-extrabold z-20 scale-105'
-              : 'bg-amber-300 text-slate-950 shadow-2xs z-10'
-          }`}
+          className="bg-yellow-300 text-slate-950 font-black px-1 rounded-2xs ring-2 ring-amber-500 shadow-md z-30 inline-block"
           style={{
-            fontSize: `${Math.max(10, fontSize)}px`,
-            lineHeight: '1',
+            fontSize: `${Math.max(11, fontSize)}px`,
+            lineHeight: '1.1',
           }}
         >
           {matchText}
@@ -329,6 +371,7 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
           fontSize: `${fontSize}px`,
           lineHeight: '1.1',
           whiteSpace: 'pre',
+          color: 'transparent',
           cursor: 'text',
         }}
         className="select-text"
@@ -339,39 +382,37 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
   };
 
   return (
-    <div
-      ref={(el) => {
-        containerRef.current = el;
-        setRef(pageNum, el);
-      }}
-      style={{ width: `${width}px`, height: `${height}px` }}
-      className="relative bg-white border border-slate-200 shadow-xl rounded-2xl overflow-hidden flex items-center justify-center shrink-0 group transition-all"
-    >
-      {/* Top Page Banner Action Overlay */}
-      <div className="absolute top-2 right-2 z-30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-700/60 shadow-lg text-white select-none">
-        <span className="text-[10px] font-mono font-bold text-slate-300">Page {pageNum}</span>
-      </div>
+    <div className="flex flex-col items-center shrink-0 w-fit">
+      {/* PDF Page Canvas */}
+      <div
+        ref={(el) => {
+          containerRef.current = el;
+          setRef(pageNum, el);
+        }}
+        style={{ width: `${width}px`, height: `${height}px` }}
+        className="relative bg-white border border-slate-200 shadow-xl rounded-2xl overflow-hidden flex items-center justify-center shrink-0 transition-all"
+      >
+        {isVisible ? (
+          <>
+            <canvas ref={canvasRef} className="w-full h-full block bg-white" />
 
-      {isVisible ? (
-        <>
-          <canvas ref={canvasRef} className="w-full h-full block bg-white" />
-
-          {/* Accessible Selectable Text Layer Overlay with Search Word Highlighting */}
-          <div
-            className="absolute inset-0 overflow-hidden pointer-events-auto select-text z-10"
-            style={{ width: `${width}px`, height: `${height}px` }}
-          >
-            {textOverlayItems.map((item, idx) => renderHighlightedTextItem(item, idx))}
+            {/* Accessible Selectable Text Layer Overlay with Search Word Highlighting */}
+            <div
+              className="absolute inset-0 overflow-hidden pointer-events-auto select-text z-10"
+              style={{ width: `${width}px`, height: `${height}px` }}
+            >
+              {textOverlayItems.map((item, idx) => renderHighlightedTextItem(item, idx))}
+            </div>
+          </>
+        ) : (
+          <div className="text-center space-y-2 text-slate-500">
+            <Loader2 className="h-6 w-6 text-emerald-500 animate-spin mx-auto" />
+            <span className="font-mono text-[10px] uppercase font-black tracking-wider text-slate-400">
+              Page {pageNum}
+            </span>
           </div>
-        </>
-      ) : (
-        <div className="text-center space-y-2 text-slate-500">
-          <Loader2 className="h-6 w-6 text-emerald-500 animate-spin mx-auto" />
-          <span className="font-mono text-[10px] uppercase font-black tracking-wider text-slate-400">
-            Page {pageNum}
-          </span>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
@@ -380,6 +421,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   fileId,
   fileDataUrl,
   fileName,
+  fullContent,
+  isAiGenerated,
   onGetFileLocal,
   onDownload,
   onPagesTextExtracted,
@@ -388,6 +431,18 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   const [activePageNum, setActivePageNum] = useState<number>(1);
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState<number>(1.2);
+
+  const getPageFallbackText = useCallback((pageNum: number, totalPages: number): string => {
+    if (!fullContent) return '';
+    if (totalPages <= 1) return fullContent;
+    
+    const paragraphs = fullContent.split('\n\n').filter(p => p.trim().length > 0);
+    if (paragraphs.length === 0) return fullContent;
+    
+    const pps = Math.ceil(paragraphs.length / totalPages);
+    const start = (pageNum - 1) * pps;
+    return paragraphs.slice(start, start + pps).join('\n\n');
+  }, [fullContent]);
   const [rotation, setRotation] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -570,13 +625,10 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
           const base64 = base64Parts[1].replace(/[\s\r\n]/g, '');
           const binaryString = atob(base64);
-          const len = binaryString.length;
-          const bytes = new Uint8Array(len);
-          for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-
-          loadingTask = pdfjsLib.getDocument({ data: bytes });
+          const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
+          const blob = new Blob([bytes], { type: 'application/pdf' });
+          const blobUrl = URL.createObjectURL(blob);
+          loadingTask = pdfjsLib.getDocument({ url: blobUrl });
         } else {
           loadingTask = pdfjsLib.getDocument({ url: dataUrlToUse });
         }
@@ -623,7 +675,10 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           if (!isMounted) break;
           const page = await pdfDoc.getPage(i);
           const textContent = await page.getTextContent();
-          const text = textContent.items.map((item: any) => item.str).join(' ');
+          let text = textContent.items.map((item: any) => item.str).join(' ').trim();
+          if (!text && fullContent) {
+            text = getPageFallbackText(i, pdfDoc.numPages);
+          }
           extracted.push({ pageNum: i, text });
         }
         if (isMounted) {
@@ -636,6 +691,13 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       } catch (err) {
         console.warn('Failed to extract PDF text layers:', err);
         if (isMounted) {
+          if (fullContent) {
+            const fallbackExtracted = Array.from({ length: pdfDoc.numPages }, (_, idx) => ({
+              pageNum: idx + 1,
+              text: getPageFallbackText(idx + 1, pdfDoc.numPages)
+            }));
+            setPagesText(fallbackExtracted);
+          }
           setIndexingText(false);
         }
       }
@@ -709,12 +771,14 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   // AI Task execution handler
   const handleRunAiTask = async (
     taskType: 'translate_page' | 'translate_doc' | 'summarize_page' | 'summarize_doc' | 'solve_questions' | 'short_notes' | 'key_concepts' | 'quiz' | 'simplify' | 'explain_selection' | 'chat',
-    customPrompt?: string
+    customPrompt?: string,
+    targetPageNum?: number
   ) => {
+    const pageNumToUse = targetPageNum || activePageNum;
     setAiLoading(true);
     setShowAiAssistant(true);
 
-    const currentPageText = pagesText.find(p => p.pageNum === activePageNum)?.text || '';
+    const currentPageText = pagesText.find(p => p.pageNum === pageNumToUse)?.text || '';
     const fullDocText = pagesText.map(p => `[Page ${p.pageNum}]: ${p.text}`).join('\n').slice(0, 8000);
 
     let promptText = '';
@@ -722,48 +786,48 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
     switch (taskType) {
       case 'translate_page':
-        userDisplayMsg = `Translate Page ${activePageNum} (${targetLanguage})`;
-        promptText = `Translate the entire text content of Page ${activePageNum} of the study material "${fileName}" into ${targetLanguage}. Maintain accurate educational terminology, clear headings, and structured bullet formatting.\n\nPage Content:\n${currentPageText || fullDocText}`;
+        userDisplayMsg = `Translate Page ${pageNumToUse} (${targetLanguage})`;
+        promptText = `Translate the entire text content of Page ${pageNumToUse} of the study material "${fileName}" into ${targetLanguage}. Maintain accurate educational terminology, clear headings, and structured bullet formatting.\n\nPage Content:\n${currentPageText || fullDocText}`;
         break;
       case 'translate_doc':
         userDisplayMsg = `Translate PDF Document (${targetLanguage})`;
         promptText = `Translate the key topics and content of the PDF document "${fileName}" into ${targetLanguage}. Maintain accurate educational terminology, clear headings, and structured bullet formatting.\n\nDocument Content:\n${fullDocText}`;
         break;
       case 'summarize_page':
-        userDisplayMsg = `Summarize Page ${activePageNum}`;
-        promptText = `Please provide a clear, structured bulleted summary of Page ${activePageNum} of the study material "${fileName}".\n\nPage Text Content:\n${currentPageText}`;
+        userDisplayMsg = `Summarize Page ${pageNumToUse}`;
+        promptText = `Please provide a clear, structured bulleted summary of Page ${pageNumToUse} of the study material "${fileName}".\n\nPage Text Content:\n${currentPageText}`;
         break;
       case 'summarize_doc':
         userDisplayMsg = `Summarize entire PDF document`;
         promptText = `Please provide an executive summary, key takeaways, and chapter breakdown for the PDF study material "${fileName}".\n\nDocument Content:\n${fullDocText}`;
         break;
       case 'solve_questions':
-        userDisplayMsg = `Solve Questions on Page ${activePageNum}`;
-        promptText = `Identify and solve all practice questions, exercises, or numerical problems found in Page ${activePageNum} of "${fileName}". Provide step-by-step solutions, formulas used, and final answers clearly formatted in markdown.\n\nPage Content:\n${currentPageText || fullDocText}`;
+        userDisplayMsg = `Solve Questions on Page ${pageNumToUse}`;
+        promptText = `Identify and solve all practice questions, exercises, or numerical problems found in Page ${pageNumToUse} of "${fileName}". Provide step-by-step solutions, formulas used, and final answers clearly formatted in markdown.\n\nPage Content:\n${currentPageText || fullDocText}`;
         break;
       case 'short_notes':
-        userDisplayMsg = `Create Revision Short Notes`;
-        promptText = `Create concise, high-yield revision short notes, formula cheat sheet, and memory key points for Page ${activePageNum} of "${fileName}".\n\nPage Content:\n${currentPageText || fullDocText}`;
+        userDisplayMsg = `Create Revision Short Notes for Page ${pageNumToUse}`;
+        promptText = `Create concise, high-yield revision short notes, formula cheat sheet, and memory key points for Page ${pageNumToUse} of "${fileName}".\n\nPage Content:\n${currentPageText || fullDocText}`;
         break;
       case 'key_concepts':
-        userDisplayMsg = `Extract key concepts & formulas`;
-        promptText = `Extract all key definitions, formulas, rules, and core concepts from Page ${activePageNum} (and document overview) of "${fileName}". Present them clearly with bullet points and bold headers.\n\nContext:\n${currentPageText || fullDocText}`;
+        userDisplayMsg = `Extract key concepts & formulas (Page ${pageNumToUse})`;
+        promptText = `Extract all key definitions, formulas, rules, and core concepts from Page ${pageNumToUse} (and document overview) of "${fileName}". Present them clearly with bullet points and bold headers.\n\nContext:\n${currentPageText || fullDocText}`;
         break;
       case 'quiz':
-        userDisplayMsg = `Generate 5 Practice Questions`;
-        promptText = `Create 5 multiple choice questions (with options A, B, C, D and detailed correct answer explanations) based on Page ${activePageNum} of "${fileName}".\n\nContent:\n${currentPageText || fullDocText}`;
+        userDisplayMsg = `Generate 5 Practice Questions (Page ${pageNumToUse})`;
+        promptText = `Create 5 multiple choice questions (with options A, B, C, D and detailed correct answer explanations) based on Page ${pageNumToUse} of "${fileName}".\n\nContent:\n${currentPageText || fullDocText}`;
         break;
       case 'simplify':
-        userDisplayMsg = `Simplify language for students`;
-        promptText = `Rewrite and explain the concepts in Page ${activePageNum} of "${fileName}" in simple, friendly, easy-to-understand language suitable for school students.\n\nContent:\n${currentPageText}`;
+        userDisplayMsg = `Simplify language for students (Page ${pageNumToUse})`;
+        promptText = `Rewrite and explain the concepts in Page ${pageNumToUse} of "${fileName}" in simple, friendly, easy-to-understand language suitable for school students.\n\nContent:\n${currentPageText}`;
         break;
       case 'explain_selection':
         userDisplayMsg = `Explain selected text: "${selectedText.slice(0, 60)}..."`;
-        promptText = `Explain the following selected text excerpt from "${fileName}" (Page ${activePageNum}) in detail with simple analogies:\n\n"${selectedText}"`;
+        promptText = `Explain the following selected text excerpt from "${fileName}" (Page ${pageNumToUse}) in detail with simple analogies:\n\n"${selectedText}"`;
         break;
       case 'chat':
-        userDisplayMsg = customPrompt || 'Question about PDF';
-        promptText = `Study Material Document: "${fileName}"\nActive Page: ${activePageNum}\n\nContext Page Text:\n${currentPageText}\n\nStudent Question: ${customPrompt}`;
+        userDisplayMsg = customPrompt || `Question about Page ${pageNumToUse}`;
+        promptText = `Study Material Document: "${fileName}"\nActive Page: ${pageNumToUse}\n\nContext Page Text:\n${currentPageText}\n\nStudent Question: ${customPrompt}`;
         break;
     }
 
@@ -782,7 +846,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: promptText,
-          systemInstruction: `You are GyaanBot's expert PDF AI Task Assistant. Help the student understand the study material document "${fileName}". Provide clear, well-structured educational explanations with markdown formatting.`,
+          systemInstruction: `You are GyaanBot's expert AI Solver Chatbot. Help the student understand the study material document "${fileName}". Provide clear, well-structured educational explanations with markdown formatting.
+CRITICAL LANGUAGE INSTRUCTION: You MUST respond completely in the ${targetLanguage} language (using the proper native script for ${targetLanguage}).`,
         })
       });
 
@@ -853,15 +918,25 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       {selectedText && selectionPos && (
         <div
           style={{ left: `${selectionPos.x}px`, top: `${selectionPos.y}px` }}
-          className="fixed z-50 bg-slate-950 border border-slate-700/80 shadow-2xl rounded-2xl p-1.5 flex items-center gap-1 text-white animate-fade-in select-none"
+          className="fixed z-50 bg-slate-950 border border-slate-700/80 shadow-2xl rounded-2xl p-1.5 flex items-center gap-1.5 text-white animate-fade-in select-none"
         >
+          {!isAiGenerated && (
+            <button
+              onClick={handleCopySelectedText}
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md"
+              title="Copy Selected Text"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>Copy Text</span>
+            </button>
+          )}
           <button
             onClick={() => handleRunAiTask('explain_selection')}
-            className="px-2.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer text-white shadow-sm"
-            title="Explain selection with AI"
+            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md"
+            title="Explain Selected Text with AI"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Ask AI</span>
+            <Wand2 className="w-3.5 h-3.5 text-amber-300" />
+            <span>Explain</span>
           </button>
           <button
             onClick={() => speakText(selectedText, 'en')}
@@ -906,59 +981,61 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
         </div>
 
         {/* Middle: Word Search field */}
-        <div className="flex items-center gap-2 flex-1 max-w-xs min-w-[160px] relative">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Search word in PDF..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => handleSearch('')}
-                className="absolute right-2 top-2 text-slate-500 hover:text-white cursor-pointer"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+        {!isAiGenerated && (
+          <div className="flex items-center gap-2 flex-1 max-w-xs min-w-[160px] relative">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search word in PDF..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => handleSearch('')}
+                  className="absolute right-2 top-2 text-slate-500 hover:text-white cursor-pointer"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {indexingText && (
+              <span title="Indexing text...">
+                <Loader2 className="h-3.5 w-3.5 text-emerald-500 animate-spin shrink-0" />
+              </span>
+            )}
+
+            {searchResults.length > 0 && (
+              <div className="flex items-center gap-1 shrink-0 bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800">
+                <span className="text-[10px] text-slate-400 font-mono select-none">
+                  {currentSearchResultIndex + 1}/{searchResults.length}
+                </span>
+                <button
+                  onClick={() => {
+                    const nextIdx = (currentSearchResultIndex - 1 + searchResults.length) % searchResults.length;
+                    setCurrentSearchResultIndex(nextIdx);
+                    jumpToPage(searchResults[nextIdx].pageNum);
+                  }}
+                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => {
+                    const nextIdx = (currentSearchResultIndex + 1) % searchResults.length;
+                    setCurrentSearchResultIndex(nextIdx);
+                    jumpToPage(searchResults[nextIdx].pageNum);
+                  }}
+                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
             )}
           </div>
-          {indexingText && (
-            <span title="Indexing text...">
-              <Loader2 className="h-3.5 w-3.5 text-emerald-500 animate-spin shrink-0" />
-            </span>
-          )}
-
-          {searchResults.length > 0 && (
-            <div className="flex items-center gap-1 shrink-0 bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800">
-              <span className="text-[10px] text-slate-400 font-mono select-none">
-                {currentSearchResultIndex + 1}/{searchResults.length}
-              </span>
-              <button
-                onClick={() => {
-                  const nextIdx = (currentSearchResultIndex - 1 + searchResults.length) % searchResults.length;
-                  setCurrentSearchResultIndex(nextIdx);
-                  jumpToPage(searchResults[nextIdx].pageNum);
-                }}
-                className="p-0.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
-              >
-                <ChevronLeft className="h-3 w-3" />
-              </button>
-              <button
-                onClick={() => {
-                  const nextIdx = (currentSearchResultIndex + 1) % searchResults.length;
-                  setCurrentSearchResultIndex(nextIdx);
-                  jumpToPage(searchResults[nextIdx].pageNum);
-                }}
-                className="p-0.5 hover:bg-slate-800 rounded text-slate-400 hover:text-white cursor-pointer"
-              >
-                <ChevronRight className="h-3 w-3" />
-              </button>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Right Side: Zoom, Integrated AI Tools & Download */}
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
@@ -982,43 +1059,6 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
           <div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block" />
 
-          {/* Integrated Quick PDF AI Action Shortcuts */}
-          <button
-            onClick={() => handleRunAiTask('translate_page')}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-sky-950/80 hover:bg-sky-900 border border-sky-800/80 text-sky-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
-            title="Translate PDF content"
-          >
-            <Globe className="w-3.5 h-3.5 text-sky-400" />
-            <span className="hidden md:inline">Translate</span>
-          </button>
-
-          <button
-            onClick={() => handleRunAiTask('summarize_page')}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-purple-950/80 hover:bg-purple-900 border border-purple-800/80 text-purple-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
-            title="Summarize page/doc"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            <span className="hidden md:inline">Summarize</span>
-          </button>
-
-          <button
-            onClick={() => handleRunAiTask('solve_questions')}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800/80 text-emerald-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
-            title="Solve questions in PDF"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden lg:inline">Solve Questions</span>
-          </button>
-
-          <button
-            onClick={() => handleRunAiTask('short_notes')}
-            className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-amber-950/80 hover:bg-amber-900 border border-amber-800/80 text-amber-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
-            title="Create short revision notes"
-          >
-            <FileText className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden lg:inline">Short Notes</span>
-          </button>
-
           {/* AI Task Assistant Toggle Button */}
           <button
             onClick={() => setShowAiAssistant(!showAiAssistant)}
@@ -1030,6 +1070,31 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           >
             <Bot className="h-3.5 w-3.5 text-amber-300" />
             <span className="hidden sm:inline">AI Assistant</span>
+          </button>
+
+          {/* Copy Full Document Text Button */}
+          {!isAiGenerated && (
+            <button
+              onClick={handleCopyFullDocumentText}
+              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer border border-slate-700 transition-colors text-xs"
+              title="Copy Full Document Text"
+            >
+              <Copy className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="hidden md:inline">Copy Text</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              if (onDownload) onDownload();
+              setToastMessage('⭐ Saved into My Saved Material!');
+              setTimeout(() => setToastMessage(null), 3000);
+            }}
+            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl flex items-center gap-1.5 cursor-pointer border border-amber-500/40 transition-colors text-xs"
+            title="Save to My Saved Material"
+          >
+            <Star className="h-3.5 w-3.5 text-amber-300 fill-amber-300" />
+            <span className="hidden sm:inline">Save</span>
           </button>
 
           <button
@@ -1116,8 +1181,15 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   searchQuery={searchQuery}
                   currentActiveMatchPage={activeMatch?.pageNum}
                   activeMatchSnippet={activeMatch?.snippet}
+                  fallbackText={getPageFallbackText(pageNum, numPages)}
                   onPageVisible={handlePageVisible}
                   setRef={setPageRef}
+                  onCopyPageText={handleCopyPageText}
+                  onTranslatePage={(pg) => handleRunAiTask('translate_page', undefined, pg)}
+                  onSummarizePage={(pg) => handleRunAiTask('summarize_page', undefined, pg)}
+                  onSolveQuestions={(pg) => handleRunAiTask('solve_questions', undefined, pg)}
+                  onShortNotes={(pg) => handleRunAiTask('short_notes', undefined, pg)}
+                  onAskAiPage={(pg) => handleRunAiTask('chat', `Can you explain the key concepts on Page ${pg}?`, pg)}
                 />
               );
             })
@@ -1135,10 +1207,10 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 </div>
                 <div>
                   <h4 className="font-bold text-xs text-slate-100 flex items-center gap-1.5">
-                    <span>PDF AI Task Assistant</span>
+                    <span>AI Solver Chatbot</span>
                     <Sparkles className="w-3 h-3 text-amber-300" />
                   </h4>
-                  <span className="text-[10px] text-slate-400 font-mono">Page {activePageNum} of {numPages}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">Multi-Language • Page {activePageNum} of {numPages}</span>
                 </div>
               </div>
               <button
@@ -1152,68 +1224,39 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             {/* Quick AI Task Actions Grid */}
             <div className="p-3 bg-slate-900/60 border-b border-slate-800 space-y-3 shrink-0">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Integrated AI Tools</span>
-                <div className="flex items-center gap-1 text-[11px] text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded-lg border border-slate-700/60">
-                  <Globe className="w-3 h-3 text-sky-400" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Chatbot Language</span>
+                <div className="flex items-center gap-1 text-[11px] text-slate-300 bg-purple-950/60 px-2.5 py-1 rounded-xl border border-purple-700/50 shadow-2xs">
+                  <Globe className="w-3.5 h-3.5 text-amber-300" />
                   <select
                     value={targetLanguage}
                     onChange={(e) => setTargetLanguage(e.target.value)}
-                    className="bg-transparent font-bold text-sky-300 focus:outline-none cursor-pointer text-[11px]"
+                    className="bg-transparent font-bold text-amber-200 focus:outline-none cursor-pointer text-[11px]"
                   >
-                    <option value="Hindi" className="bg-slate-900 text-slate-200">Hindi (हिंदी)</option>
-                    <option value="Gujarati" className="bg-slate-900 text-slate-200">Gujarati (ગુજરાતી)</option>
-                    <option value="Marathi" className="bg-slate-900 text-slate-200">Marathi (मराठी)</option>
-                    <option value="English" className="bg-slate-900 text-slate-200">English</option>
-                    <option value="Hinglish" className="bg-slate-900 text-slate-200">Hinglish</option>
-                    <option value="Bengali" className="bg-slate-900 text-slate-200">Bengali (বাংলা)</option>
-                    <option value="Tamil" className="bg-slate-900 text-slate-200">Tamil (தமிழ்)</option>
-                    <option value="Telugu" className="bg-slate-900 text-slate-200">Telugu (తెలుగు)</option>
+                    <option value="English" className="bg-slate-900 text-slate-200">🇬🇧 English</option>
+                    <option value="Hindi" className="bg-slate-900 text-slate-200">🇮🇳 Hindi (हिंदी)</option>
+                    <option value="Gujarati" className="bg-slate-900 text-slate-200">🇮🇳 Gujarati (ગુજરાતી)</option>
+                    <option value="Marathi" className="bg-slate-900 text-slate-200">🇮🇳 Marathi (मराठी)</option>
+                    <option value="Tamil" className="bg-slate-900 text-slate-200">🇮🇳 Tamil (தமிழ்)</option>
+                    <option value="Telugu" className="bg-slate-900 text-slate-200">🇮🇳 Telugu (తెలుగు)</option>
+                    <option value="Bengali" className="bg-slate-900 text-slate-200">🇮🇳 Bengali (বাংলা)</option>
+                    <option value="Kannada" className="bg-slate-900 text-slate-200">🇮🇳 Kannada (ಕನ್ನಡ)</option>
+                    <option value="Malayalam" className="bg-slate-900 text-slate-200">🇮🇳 Malayalam (മലയാളം)</option>
+                    <option value="Punjabi" className="bg-slate-900 text-slate-200">🇮🇳 Punjabi (ਪੰਜਾਬੀ)</option>
+                    <option value="Odia" className="bg-slate-900 text-slate-200">🇮🇳 Odia (ଓଡ଼ିଆ)</option>
+                    <option value="Assamese" className="bg-slate-900 text-slate-200">🇮🇳 Assamese (অসমীয়া)</option>
+                    <option value="Urdu" className="bg-slate-900 text-slate-200">🇮🇳 Urdu (اردو)</option>
+                    <option value="Sanskrit" className="bg-slate-900 text-slate-200">🇮🇳 Sanskrit (संस्कृतम्)</option>
+                    <option value="Hinglish" className="bg-slate-900 text-slate-200">🇮🇳 Hinglish</option>
+                    <option value="Spanish" className="bg-slate-900 text-slate-200">🇪🇸 Spanish (Español)</option>
+                    <option value="French" className="bg-slate-900 text-slate-200">🇫🇷 French (Français)</option>
+                    <option value="German" className="bg-slate-900 text-slate-200">🇩🇪 German (Deutsch)</option>
+                    <option value="Arabic" className="bg-slate-900 text-slate-200">🇸🇦 Arabic (العربية)</option>
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-1.5">
-                {/* 1. Translate */}
-                <button
-                  onClick={() => handleRunAiTask('translate_page')}
-                  disabled={aiLoading}
-                  className="p-2 bg-sky-950/40 hover:bg-sky-900/60 border border-sky-800/50 rounded-xl text-left text-[11px] font-semibold text-sky-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors"
-                >
-                  <Globe className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                  <span className="truncate">Translate Page</span>
-                </button>
-
-                {/* 2. Summarize */}
-                <button
-                  onClick={() => handleRunAiTask('summarize_page')}
-                  disabled={aiLoading}
-                  className="p-2 bg-purple-950/40 hover:bg-purple-900/60 border border-purple-800/50 rounded-xl text-left text-[11px] font-semibold text-purple-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span className="truncate">Summarize Page</span>
-                </button>
-
-                {/* 3. Solve Questions */}
-                <button
-                  onClick={() => handleRunAiTask('solve_questions')}
-                  disabled={aiLoading}
-                  className="p-2 bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-800/50 rounded-xl text-left text-[11px] font-semibold text-emerald-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate">Solve Questions</span>
-                </button>
-
-                {/* 4. Short Notes */}
-                <button
-                  onClick={() => handleRunAiTask('short_notes')}
-                  disabled={aiLoading}
-                  className="p-2 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/50 rounded-xl text-left text-[11px] font-semibold text-amber-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors"
-                >
-                  <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span className="truncate">Short Notes</span>
-                </button>
-
-                {/* Secondary Actions */}
+                {/* 1. Key Formulas */}
                 <button
                   onClick={() => handleRunAiTask('key_concepts')}
                   disabled={aiLoading}
@@ -1223,6 +1266,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   <span className="truncate">Key Formulas</span>
                 </button>
 
+                {/* 2. Practice Quiz */}
                 <button
                   onClick={() => handleRunAiTask('quiz')}
                   disabled={aiLoading}
