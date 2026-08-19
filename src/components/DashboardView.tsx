@@ -19,12 +19,14 @@ import SettingsTab from './dashboard/SettingsTab';
 import OfflineLibraryTab from './dashboard/OfflineLibraryTab';
 import CertificatesTab from './dashboard/CertificatesTab';
 import EquationsTab from './dashboard/EquationsTab';
+import PuzzleGamesTab from './dashboard/PuzzleGamesTab';
 
 // Icons
 import { 
   User as UserIcon, MessageSquare, BookOpen, GraduationCap, 
   HelpCircle, Sparkles, Award, Settings as SettingsIcon, LogOut, Download, Globe, Menu, X,
-  RefreshCw, Wifi, WifiOff, Flame, Clock, Binary, FileText, ChevronDown, Check, Grid, Layers
+  RefreshCw, Wifi, WifiOff, Flame, Clock, Binary, FileText, ChevronDown, Check, Grid, Layers,
+  Gamepad2
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -35,7 +37,7 @@ interface DashboardViewProps {
 
 export default function DashboardView({ user, lang, onUpdateUser }: DashboardViewProps) {
   // Navigation active tab controller: default to 'profile' as requested for the overview
-  const [activeTab, setActiveTab] = useState<'profile' | 'admin-pdfs' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'admin-pdfs' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations' | 'puzzles'>('profile');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobilePageDrawerOpen, setIsMobilePageDrawerOpen] = useState(false);
 
@@ -305,6 +307,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
     { id: 'equations', label: 'Smart Equation Hub', category: 'AI Learning Tools', icon: Binary, color: 'text-orange-500 bg-orange-50' },
     { id: 'admin-pdfs', label: 'Study Materials', category: 'Curriculum & Prep', icon: FileText, color: 'text-rose-600 bg-rose-50' },
     { id: 'quiz', label: 'Topic Play Quizzes', category: 'Practice & Rewards', icon: HelpCircle, color: 'text-amber-500 bg-amber-50' },
+    { id: 'puzzles', label: 'AI Puzzle Arena', category: 'Practice & Rewards', icon: Gamepad2, color: 'text-violet-600 bg-violet-50' },
     { id: 'certificates', label: 'My Certificates', category: 'Practice & Rewards', icon: GraduationCap, color: 'text-amber-600 bg-amber-50' },
     { id: 'exam', label: 'Competitive Exams', category: 'Curriculum & Prep', icon: Award, color: 'text-rose-500 bg-rose-50' },
     { id: 'career', label: 'Career Guidance', category: 'Curriculum & Prep', icon: Sparkles, color: 'text-purple-500 bg-purple-50' },
@@ -659,6 +662,14 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
 
             {activeTab === 'equations' && (
               <EquationsTab
+                user={localUser}
+                lang={lang}
+                onUpdateUser={handleUpdateLocalUser}
+              />
+            )}
+
+            {activeTab === 'puzzles' && (
+              <PuzzleGamesTab
                 user={localUser}
                 lang={lang}
                 onUpdateUser={handleUpdateLocalUser}

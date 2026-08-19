@@ -55,7 +55,7 @@ interface ProfileTabProps {
   lang: LanguageCode;
   claimedMedals: string[];
   offlineCount: number;
-  onNavigateToTab: (tab: 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'profile' | 'certificates') => void;
+  onNavigateToTab: (tab: 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'profile' | 'certificates' | 'equations' | 'puzzles' | 'admin-pdfs') => void;
   onUpdateUser: (fields: Partial<User>) => void;
 }
 

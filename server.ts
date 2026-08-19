@@ -502,9 +502,9 @@ Note: Respond in the requested language (e.g., English, Hindi, Tamil, Telugu, Ma
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
-        "gemini-3.7-flash",      // Recommended primary latest model
+        "gemini-3.1-flash-lite", // Fast lightweight model with highest free-tier quota
+        "gemini-3.7-flash",      // Latest primary model
         "gemini-flash-latest",   // General latest flash alias
-        "gemini-3.1-flash-lite", // Fast lightweight model
         "gemini-3.1-pro-preview" // Pro model
       ];
 
@@ -529,29 +529,32 @@ Note: Respond in the requested language (e.g., English, Hindi, Tamil, Telugu, Ma
              console.log(`[EXAM EVALUATION] Attempt ${attempt} for model ${modelName} failed:`, { message: errText, status: errStatus, code: errCode });
              
              const errMsg = errText.toLowerCase();
-             const isZeroQuota = errMsg.includes("limit: 0") || errMsg.includes("limit:0");
+             const isQuotaExhausted = 
+               errMsg.includes("limit: 0") || 
+               errMsg.includes("limit:0") || 
+               errMsg.includes("exceeded your current quota") ||
+               errMsg.includes("quota exceeded") ||
+               errStatus.toLowerCase().includes("exhausted") ||
+               errCode === 429;
+
+             if (isQuotaExhausted) {
+               console.log(`[EXAM EVALUATION] Quota exceeded on ${modelName}, immediately switching to next available model...`);
+               break; // Immediately move to next model without wasting retries
+             }
              
              const isRetryable = 
-               !isZeroQuota && (
-                 errMsg.includes("503") || 
-                 errMsg.includes("500") ||
-                 errMsg.includes("429") ||
-                 errMsg.includes("unavailable") || 
-                 errMsg.includes("high demand") || 
-                 errMsg.includes("resource") || 
-                 errMsg.includes("limit") || 
-                 errMsg.includes("rate") ||
-                 errMsg.includes("busy") ||
-                 errMsg.includes("quota") ||
-                 errStatus.toLowerCase().includes("unavailable") ||
-                 errStatus.toLowerCase().includes("exhausted") ||
-                 errCode === 503 ||
-                 errCode === 429 ||
-                 errCode === 500
-               );
+               errMsg.includes("503") || 
+               errMsg.includes("500") ||
+               errMsg.includes("unavailable") || 
+               errMsg.includes("high demand") || 
+               errMsg.includes("resource") || 
+               errMsg.includes("busy") ||
+               errStatus.toLowerCase().includes("unavailable") ||
+               errCode === 503 ||
+               errCode === 500;
 
              if (attempt < maxRetries && isRetryable) {
-               const delay = 400;
+               const delay = 300;
                console.log(`Retrying model ${modelName} in ${delay}ms...`);
                await new Promise(resolve => setTimeout(resolve, delay));
              } else {
@@ -823,9 +826,9 @@ Instructions:
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
+        "gemini-3.1-flash-lite",
         "gemini-3.7-flash",
         "gemini-flash-latest",
-        "gemini-3.1-flash-lite",
         "gemini-3.1-pro-preview"
       ];
 
@@ -1549,9 +1552,9 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
+        "gemini-3.1-flash-lite",
         "gemini-3.7-flash",
-        "gemini-flash-latest",
-        "gemini-3.1-flash-lite"
+        "gemini-flash-latest"
       ];
 
       // Try with file content if available
@@ -1745,9 +1748,9 @@ Guidelines for formatting the JSON fields:
       let lastError: any = null;
       let success = false;
       const modelsToTry = [
+        "gemini-3.1-flash-lite",
         "gemini-3.7-flash",
-        "gemini-flash-latest",
-        "gemini-3.1-flash-lite"
+        "gemini-flash-latest"
       ];
 
       for (const modelName of modelsToTry) {
@@ -1850,7 +1853,9 @@ Guidelines for formatting the JSON fields:
     }
   });
 
-  // HELPER: IN-MEMORY COMPREHENSIVE PROCEDURAL CATALOG FOR ALL 10 PUZZLE TYPES (INSTANT OFFLINE & FALLBACK ENGINE)
+  // HELPER: IN-MEMORY COMPREHENSIVE PROCEDURAL CATALOG FOR ALL PUZZLE TYPES (ANTI-REPETITION + DYNAMIC MATH ENGINE)
+  const lastServedIndices: Record<string, number> = {};
+
   function getProceduralPuzzleFallback(puzzleType: string, studentClass: string, subject: string, topic: string, difficulty: string, groupId: string, lang: string) {
     const isPrimary = groupId === 'group1' || studentClass.includes('1') || studentClass.includes('2') || studentClass.includes('3') || studentClass.includes('4') || studentClass.includes('5');
     const isMiddle = groupId === 'group2' || studentClass.includes('6') || studentClass.includes('7') || studentClass.includes('8') || studentClass.includes('9');
@@ -1858,10 +1863,28 @@ Guidelines for formatting the JSON fields:
     // Normalize puzzle type
     const normalizedType = puzzleType?.toLowerCase().replace(/[-\s]/g, '_') || 'food_chain';
 
+    // Anti-repetition picker helper
+    function pickNonRepeating<T>(key: string, list: T[]): T {
+      if (!list || list.length === 0) return list[0];
+      if (list.length === 1) return list[0];
+      const lastIdx = lastServedIndices[key] ?? -1;
+      let newIdx = Math.floor(Math.random() * list.length);
+      let attempts = 0;
+      while (newIdx === lastIdx && attempts < 10) {
+        newIdx = Math.floor(Math.random() * list.length);
+        attempts++;
+      }
+      if (newIdx === lastIdx) {
+        newIdx = (lastIdx + 1) % list.length;
+      }
+      lastServedIndices[key] = newIdx;
+      return list[newIdx];
+    }
+
     if (normalizedType.includes('food_chain')) {
       const chains = [
         {
-          title: "Grassland Food Chain",
+          title: "Grassland Savanna Food Chain",
           subject: "Science",
           question: "Arrange the organisms in the correct order to show how energy flows from the primary producer to the apex predator.",
           whyItHelps: "You learn how solar energy is converted by plants and transferred through ecological trophic levels.",
@@ -1877,7 +1900,7 @@ Guidelines for formatting the JSON fields:
           correctOrder: ["p1", "p2", "p3", "p4", "p5"]
         },
         {
-          title: "Ocean Marine Food Web",
+          title: "Ocean Marine Coral Web",
           subject: "Science",
           question: "Place marine organisms in the correct sequence to represent the ocean energy pyramid.",
           whyItHelps: "Helps you master aquatic ecosystems and phytoplankton food chains.",
@@ -1893,29 +1916,76 @@ Guidelines for formatting the JSON fields:
           correctOrder: ["o1", "o2", "o3", "o4", "o5"]
         },
         {
-          title: "Forest Forest Ecosystem",
+          title: "Temperate Oak Forest Ecosystem",
           subject: "Science",
-          question: "Connect forest organisms in the exact predator-prey chain.",
-          whyItHelps: "Teaches ecological balance and herbivore-carnivore dynamics.",
-          hint: "Berries and acorns provide nutrients for small woodland herbivores.",
-          explanation: "Acorn Tree -> Forest Mouse -> Barn Owl -> Wild Fox -> Apex Wolf.",
+          question: "Connect forest organisms in the exact predator-prey sequence.",
+          whyItHelps: "Teaches ecological balance and woodland herbivore-carnivore dynamics.",
+          hint: "Oak acorns provide initial nutrition for woodland herbivores.",
+          explanation: "Acorn Tree -> Forest Squirrel -> Barn Owl -> Red Fox -> Gray Wolf.",
           items: [
-            { id: "f1", name: "🌳 Oak Tree & Berries", emoji: "🌳", trophicLevel: "Producer" },
+            { id: "f1", name: "🌳 Oak Tree (Acorns)", emoji: "🌳", trophicLevel: "Producer" },
             { id: "f2", name: "🐿️ Woodland Squirrel", emoji: "🐿️", trophicLevel: "Primary Consumer" },
             { id: "f3", name: "🦉 Barn Owl", emoji: "🦉", trophicLevel: "Secondary Predator" },
-            { id: "f4", name: "🦊 Red Fox", emoji: "🦊", trophicLevel: "Tertiary Predator" }
+            { id: "f4", name: "🦊 Red Fox", emoji: "🦊", trophicLevel: "Tertiary Predator" },
+            { id: "f5", name: "🐺 Apex Timber Wolf", emoji: "🐺", trophicLevel: "Apex Predator" }
           ],
-          correctOrder: ["f1", "f2", "f3", "f4"]
+          correctOrder: ["f1", "f2", "f3", "f4", "f5"]
+        },
+        {
+          title: "Arctic Tundra Energy Chain",
+          subject: "Science",
+          question: "Order the Arctic organisms from base vegetation to top carnivore.",
+          whyItHelps: "Demonstrates cold-climate adaptations and simple food chains.",
+          hint: "Arctic mosses and lichens sustain herbivores in sub-zero climates.",
+          explanation: "Arctic Moss -> Lemming -> Arctic Fox -> Snowy Owl -> Polar Bear.",
+          items: [
+            { id: "a1", name: "🌱 Arctic Moss & Lichen", emoji: "🌱", trophicLevel: "Primary Producer" },
+            { id: "a2", name: "🐹 Arctic Lemming", emoji: "🐹", trophicLevel: "Herbivore" },
+            { id: "a3", name: "🦊 Arctic Fox", emoji: "🦊", trophicLevel: "Small Predator" },
+            { id: "a4", name: "🐻‍❄️ Polar Bear", emoji: "🐻‍❄️", trophicLevel: "Apex Carnivore" }
+          ],
+          correctOrder: ["a1", "a2", "a3", "a4"]
+        },
+        {
+          title: "Freshwater River Pond Trophic Loop",
+          subject: "Science",
+          question: "Trace the transfer of energy in a freshwater wetland wetland pond.",
+          whyItHelps: "Explains aquatic photosynthesis, insects, and wetland birds.",
+          hint: "Freshwater algae produces the base biomass for water insects and fish.",
+          explanation: "Algae -> Water Beetle Larva -> Pond Perch Fish -> Great Blue Heron -> Crocodile.",
+          items: [
+            { id: "r1", name: "🌿 Pond Algae & Duckweed", emoji: "🌿", trophicLevel: "Autotroph" },
+            { id: "r2", name: "🪲 Water Beetle Larva", emoji: "🪲", trophicLevel: "Primary Consumer" },
+            { id: "r3", name: "🐟 River Perch", emoji: "🐟", trophicLevel: "Secondary Consumer" },
+            { id: "r4", name: "🦩 River Heron", emoji: "🦩", trophicLevel: "Tertiary Consumer" },
+            { id: "r5", name: "🐊 Wetland Crocodile", emoji: "🐊", trophicLevel: "Apex Predator" }
+          ],
+          correctOrder: ["r1", "r2", "r3", "r4", "r5"]
+        },
+        {
+          title: "Tropical Rainforest Canopy Food Web",
+          subject: "Science",
+          question: "Construct the multi-tier predator chain of the Amazon jungle.",
+          whyItHelps: "Illustrates mega-biodiversity and complex jungle trophic levels.",
+          hint: "Tropical fruit trees nourish seed-eating insects and primates.",
+          explanation: "Fig Tree Fruit -> Leafcutter Ants -> Poison Dart Frog -> Tree Boa Constrictor -> Jaguar.",
+          items: [
+            { id: "t1", name: "🌴 Fig Tree & Nectar", emoji: "🌴", trophicLevel: "Canopy Producer" },
+            { id: "t2", name: "🐜 Leafcutter Ants", emoji: "🐜", trophicLevel: "Primary Consumer" },
+            { id: "t3", name: "🐸 Poison Dart Frog", emoji: "🐸", trophicLevel: "Secondary Consumer" },
+            { id: "t4", name: "🐍 Tree Boa", emoji: "🐍", trophicLevel: "Tertiary Predator" },
+            { id: "t5", name: "🐆 Black Jaguar", emoji: "🐆", trophicLevel: "Apex Predator" }
+          ],
+          correctOrder: ["t1", "t2", "t3", "t4", "t5"]
         }
       ];
-      const pick = chains[Math.floor(Math.random() * chains.length)];
-      // Shuffle items for the puzzle
+      const pick = pickNonRepeating('food_chain', chains);
       const shuffledItems = [...pick.items].sort(() => Math.random() - 0.5);
       return {
         puzzleType: 'food_chain',
         title: pick.title,
         subject: pick.subject,
-        topic: topic || "Ecosystems",
+        topic: topic || "Ecosystems & Energy Flow",
         groupId: groupId || "group1",
         classLevel: studentClass || "Classes 1-5",
         difficulty: difficulty || "Medium",
@@ -1927,89 +1997,6 @@ Guidelines for formatting the JSON fields:
           items: shuffledItems,
           correctOrder: pick.correctOrder,
           energyFlowDesc: "Solar Energy ☀️ ➔ Producers 🌿 ➔ Herbivores 🦗 ➔ Carnivores 🐸 ➔ Apex Predators 🦅"
-        }
-      };
-    }
-
-    if (normalizedType.includes('shape_puzzle')) {
-      const shapes = [
-        {
-          targetShapeName: "Sailboat on Waves",
-          targetShapeDesc: "Assemble the geometric pieces (triangles, squares, and trapezoids) to construct a sturdy sailboat.",
-          whyItHelps: "You practice 2D/3D geometry, spatial rotation, symmetry, and area tessellation.",
-          hint: "Place the large triangle as the main mainsail, the smaller triangle as the jib, and the trapezoid as the boat hull.",
-          explanation: "A sailboat geometry utilizes right triangles for aerodynamic sail lift and a stable trapezoid hull base for buoyancy.",
-          pieces: [
-            { id: "sp1", type: "triangle", label: "Main Sail (Large Triangle)", color: "bg-indigo-500 text-white", points: "0,100 100,100 100,0", rotation: 0 },
-            { id: "sp2", type: "triangle", label: "Jib Sail (Medium Triangle)", color: "bg-sky-400 text-white", points: "0,100 80,100 0,20", rotation: 0 },
-            { id: "sp3", type: "trapezoid", label: "Boat Hull (Trapezoid Base)", color: "bg-amber-600 text-white", points: "20,0 160,0 140,50 40,50", rotation: 0 },
-            { id: "sp4", type: "square", label: "Mast Cabin (Square Box)", color: "bg-emerald-500 text-white", points: "0,0 40,0 40,40 0,40", rotation: 0 }
-          ],
-          slots: [
-            { id: "slot1", label: "Mainsail Slot (Top-Right)", expectedPieceId: "sp1" },
-            { id: "slot2", label: "Jib Slot (Top-Left)", expectedPieceId: "sp2" },
-            { id: "slot3", label: "Cabin Slot (Center Deck)", expectedPieceId: "sp4" },
-            { id: "slot4", label: "Hull Base Slot (Bottom)", expectedPieceId: "sp3" }
-          ]
-        },
-        {
-          targetShapeName: "Cozy Country House",
-          targetShapeDesc: "Combine geometric polygons to construct a balanced architect house with a pitched roof, chimney, and garden wall.",
-          whyItHelps: "Develops modular decomposition of complex objects into elementary polygons.",
-          hint: "Use the equilateral triangle for the roof and the large square for the main house body.",
-          explanation: "Triangles distribute roof load evenly to rectangular load-bearing walls.",
-          pieces: [
-            { id: "hp1", type: "triangle", label: "Pitched Roof (Equilateral Triangle)", color: "bg-rose-500 text-white", points: "50,0 100,100 0,100", rotation: 0 },
-            { id: "hp2", type: "square", label: "House Wall (Large Square)", color: "bg-amber-400 text-slate-900", points: "0,0 100,0 100,100 0,100", rotation: 0 },
-            { id: "hp3", type: "rectangle", label: "Chimney (Vertical Rectangle)", color: "bg-slate-600 text-white", points: "0,0 25,0 25,60 0,60", rotation: 0 },
-            { id: "hp4", type: "parallelogram", label: "Garden Porch (Parallelogram)", color: "bg-teal-500 text-white", points: "20,0 80,0 60,40 0,40", rotation: 0 }
-          ],
-          slots: [
-            { id: "slot1", label: "Roof Apex (Top)", expectedPieceId: "hp1" },
-            { id: "slot2", label: "Chimney Slot (Top Right)", expectedPieceId: "hp3" },
-            { id: "slot3", label: "Main Building (Center)", expectedPieceId: "hp2" },
-            { id: "slot4", label: "Porch Extension (Base)", expectedPieceId: "hp4" }
-          ]
-        },
-        {
-          targetShapeName: "Deep Space Rocket",
-          targetShapeDesc: "Build an aerodynamic spacecraft by combining nose cone, fuselage, and thrust booster fins.",
-          whyItHelps: "Teaches axial symmetry and geometric engineering.",
-          hint: "The sharp triangle leads at the nose cone, followed by the fuselage and wing stabilizers.",
-          explanation: "Aerodynamic conic sections reduce drag in atmospheric flight.",
-          pieces: [
-            { id: "rp1", type: "triangle", label: "Nose Cone (Pointed Triangle)", color: "bg-red-500 text-white", points: "50,0 100,80 0,80", rotation: 0 },
-            { id: "rp2", type: "rectangle", label: "Rocket Fuselage (Body)", color: "bg-blue-600 text-white", points: "0,0 80,0 80,120 0,120", rotation: 0 },
-            { id: "rp3", type: "triangle", label: "Left Stabilizer Fin", color: "bg-orange-500 text-white", points: "0,0 40,60 0,60", rotation: 0 },
-            { id: "rp4", type: "triangle", label: "Right Stabilizer Fin", color: "bg-orange-500 text-white", points: "40,0 40,60 0,60", rotation: 0 }
-          ],
-          slots: [
-            { id: "slot1", label: "Nose Tip (Top)", expectedPieceId: "rp1" },
-            { id: "slot2", label: "Central Stage (Middle)", expectedPieceId: "rp2" },
-            { id: "slot3", label: "Left Wing Fin", expectedPieceId: "rp3" },
-            { id: "slot4", label: "Right Wing Fin", expectedPieceId: "rp4" }
-          ]
-        }
-      ];
-      const pick = shapes[Math.floor(Math.random() * shapes.length)];
-      const shuffledPieces = [...pick.pieces].sort(() => Math.random() - 0.5);
-      return {
-        puzzleType: 'shape_puzzle',
-        title: `Geometry Builder: ${pick.targetShapeName}`,
-        subject: "Math",
-        topic: topic || "Geometry & Spatial Reasoning",
-        groupId: groupId || "group1",
-        classLevel: studentClass || "Classes 1-5",
-        difficulty: difficulty || "Medium",
-        question: pick.targetShapeDesc,
-        whyItHelps: pick.whyItHelps,
-        hint: pick.hint,
-        explanation: pick.explanation,
-        interactiveData: {
-          targetShapeName: pick.targetShapeName,
-          targetShapeDesc: pick.targetShapeDesc,
-          pieces: shuffledPieces,
-          slots: pick.slots
         }
       };
     }
@@ -2032,22 +2019,67 @@ Guidelines for formatting the JSON fields:
           correctOrder: ["ev1", "ev2", "ev3", "ev4"]
         },
         {
-          title: "Major Scientific & Technological Inventions",
+          title: "Major Scientific & Technological Revolutions",
           subject: "Social Studies & Science",
           question: "Order the revolutionary inventions that transformed human civilization by their historical emergence.",
           whyItHelps: "Connects scientific progress with historical eras.",
           hint: "The Printing Press was invented before the Steam Engine, followed by Electricity and the World Wide Web.",
           explanation: "Gutenberg Printing Press (1440) -> Watt Steam Engine (1776) -> Edison Incandescent Bulb (1879) -> Berners-Lee World Wide Web (1989).",
           events: [
-            { id: "sc1", title: "📰 Gutenberg Movable Type Printing Press", year: "c. 1440", era: "Renaissance", description: "Revolutionized the mass spread of knowledge across Europe and the globe." },
+            { id: "sc1", title: "📰 Gutenberg Printing Press", year: "c. 1440", era: "Renaissance", description: "Revolutionized the mass spread of knowledge across Europe and the globe." },
             { id: "sc2", title: "🚂 James Watt's Steam Engine", year: "1776", era: "Industrial Revolution", description: "Powered factories, steam locomotives, and mechanized production." },
-            { id: "sc3", title: "💡 Practical Incandescent Electric Bulb", year: "1879", era: "Electrical Age", description: "Thomas Edison electrified urban lighting and power distribution." },
+            { id: "sc3", title: "💡 Practical Electric Bulb", year: "1879", era: "Electrical Age", description: "Thomas Edison electrified urban lighting and power distribution." },
             { id: "sc4", title: "🌐 World Wide Web (WWW)", year: "1989", era: "Information Age", description: "Tim Berners-Lee created HTTP and hypertext protocols connecting the world." }
           ],
           correctOrder: ["sc1", "sc2", "sc3", "sc4"]
+        },
+        {
+          title: "Space Exploration Epochs",
+          subject: "Astronomy & History",
+          question: "Place human spaceflight and lunar exploration breakthroughs in chronological order.",
+          whyItHelps: "Builds knowledge of aerospace engineering and space race achievements.",
+          hint: "Sputnik orbit came first, followed by Yuri Gagarin, Apollo 11 moon landing, and Mars rovers.",
+          explanation: "Sputnik 1 (1957) -> Vostok 1 (1961) -> Apollo 11 Moon Landing (1969) -> Curiosity Rover on Mars (2012).",
+          events: [
+            { id: "sp1", title: "🛰️ Sputnik 1 Artificial Satellite", year: "1957", era: "Space Age Dawn", description: "First artificial Earth satellite launched into orbit." },
+            { id: "sp2", title: "👨‍🚀 Yuri Gagarin First Human in Space", year: "1961", era: "Manned Spaceflight", description: "Vostok 1 completed a full orbit around Earth." },
+            { id: "sp3", title: "🌕 Apollo 11 Lunar Moon Landing", year: "1969", era: "Lunar Epoch", description: "Neil Armstrong and Buzz Aldrin walked on the Moon." },
+            { id: "sp4", title: "🚀 Curiosity Rover Lands on Mars", year: "2012", era: "Planetary Exploration", description: "NASA rover touched down in Gale Crater to investigate Martian habitability." }
+          ],
+          correctOrder: ["sp1", "sp2", "sp3", "sp4"]
+        },
+        {
+          title: "Ancient Indian Dynasties & Empires",
+          subject: "History",
+          question: "Order the ancient and medieval Indian dynasties chronologically.",
+          whyItHelps: "Develops an accurate historical timeline of the Indian subcontinent.",
+          hint: "The Indus Valley Civilization preceded the Mauryan Empire, followed by the Guptas and Mughals.",
+          explanation: "Indus Valley (c. 2500 BCE) -> Mauryan Empire (322 BCE) -> Gupta Golden Age (320 CE) -> Mughal Empire (1526 CE).",
+          events: [
+            { id: "in1", title: "🏛️ Harappan Indus Valley Cities", year: "c. 2500 BCE", era: "Bronze Age", description: "Urban planning with advanced drainage in Harappa & Mohenjo-daro." },
+            { id: "in2", title: "👑 Mauryan Empire & Emperor Ashoka", year: "322 BCE", era: "Classical India", description: "Unified majority of India with Ashoka's Edicts of Dhamma." },
+            { id: "in3", title: "✨ Gupta Empire Golden Age", year: "320 CE", era: "Golden Age", description: "Flourishing of Sanskrit literature, mathematics (Aryabhata), and astronomy." },
+            { id: "in4", title: "🏰 Mughal Empire Founded", year: "1526 CE", era: "Early Modern Era", description: "Babur founded the dynasty after the First Battle of Panipat." }
+          ],
+          correctOrder: ["in1", "in2", "in3", "in4"]
+        },
+        {
+          title: "Medical & Life Science Breakthroughs",
+          subject: "Science & Medicine",
+          question: "Arrange the revolutionary milestones in medical science in historical order.",
+          whyItHelps: "Connects biology discoveries with public health revolutions.",
+          hint: "Edward Jenner's smallpox vaccine came first, followed by germ theory and DNA structure.",
+          explanation: "Smallpox Vaccine (1796) -> Germ Theory of Disease (1860s) -> Penicillin Antibiotic (1928) -> DNA Double Helix (1953).",
+          events: [
+            { id: "md1", title: "💉 Smallpox Vaccine (Edward Jenner)", year: "1796", era: "Immunology", description: "Pioneered inoculation using cowpox matter to immunize against smallpox." },
+            { id: "md2", title: "🔬 Germ Theory of Disease (Pasteur)", year: "1860s", era: "Microbiology", description: "Proved that microscopic organisms cause disease and fermentation." },
+            { id: "md3", title: "💊 Penicillin Discovered (Fleming)", year: "1928", era: "Antibiotic Era", description: "Discovered the first natural antibacterial wonder-drug from mold." },
+            { id: "md4", title: "🧬 DNA Double Helix Discovered", year: "1953", era: "Genomics", description: "Watson, Crick, and Rosalind Franklin mapped the molecular structure of genetic heredity." }
+          ],
+          correctOrder: ["md1", "md2", "md3", "md4"]
         }
       ];
-      const pick = timelines[Math.floor(Math.random() * timelines.length)];
+      const pick = pickNonRepeating('history_timeline', timelines);
       const shuffledEvents = [...pick.events].sort(() => Math.random() - 0.5);
       return {
         puzzleType: 'history_timeline',
@@ -2068,62 +2100,10 @@ Guidelines for formatting the JSON fields:
       };
     }
 
-    if (normalizedType.includes('word_builder')) {
-      const words = [
-        {
-          rootWord: "ACT",
-          rootMeaning: "to do, perform, or drive",
-          prefixes: ["Re-", "Inter-", "Pro-", "En-"],
-          suffixes: ["-ion", "-ive", "-or", "-able"],
-          targetWords: [
-            { word: "REACT", prefix: "Re-", root: "ACT", suffix: "", definition: "To respond or show a response to an action or stimulus" },
-            { word: "ACTION", prefix: "", root: "ACT", suffix: "-ion", definition: "The fact or process of doing something" },
-            { word: "ACTOR", prefix: "", root: "ACT", suffix: "-or", definition: "A person who acts or performs in a play or movie" },
-            { word: "INTERACTION", prefix: "Inter-", root: "ACT", suffix: "-ion", definition: "Mutual or reciprocal action or influence" }
-          ],
-          whyItHelps: "You grow your vocabulary and understand how morphology and roots create new words."
-        },
-        {
-          rootWord: "FORM",
-          rootMeaning: "shape, structure, or appearance",
-          prefixes: ["Trans-", "Re-", "Con-", "De-"],
-          suffixes: ["-ation", "-able", "-ula", "-ative"],
-          targetWords: [
-            { word: "TRANSFORM", prefix: "Trans-", root: "FORM", suffix: "", definition: "To make a thorough or dramatic change in form or character" },
-            { word: "REFORM", prefix: "Re-", root: "FORM", suffix: "", definition: "To make changes in order to improve something" },
-            { word: "FORMATION", prefix: "", root: "FORM", suffix: "-ation", definition: "The action of forming or process of being formed" },
-            { word: "DEFORM", prefix: "De-", root: "FORM", suffix: "", definition: "To distort or spoil the natural shape of something" }
-          ],
-          whyItHelps: "Expands word power by mastering prefix and suffix combinations."
-        }
-      ];
-      const pick = words[Math.floor(Math.random() * words.length)];
-      return {
-        puzzleType: 'word_builder',
-        title: `Word Morphology: Root "${pick.rootWord}"`,
-        subject: "Language",
-        topic: topic || "Vocabulary & Etymology",
-        groupId: groupId || "group1",
-        classLevel: studentClass || "Classes 1-5",
-        difficulty: difficulty || "Medium",
-        question: `Combine the root word "${pick.rootWord}" (${pick.rootMeaning}) with prefixes and suffixes to construct target vocabulary words.`,
-        whyItHelps: pick.whyItHelps,
-        hint: `Look at the definition clues. For example, doing an action again uses the prefix 'Re-'.`,
-        explanation: `Roots form the core semantic meaning of words. Prefixes modify direction or time, and suffixes establish grammatical part of speech.`,
-        interactiveData: {
-          rootWord: pick.rootWord,
-          rootMeaning: pick.rootMeaning,
-          prefixes: pick.prefixes.sort(() => Math.random() - 0.5),
-          suffixes: pick.suffixes.sort(() => Math.random() - 0.5),
-          targetWords: pick.targetWords
-        }
-      };
-    }
-
     if (normalizedType.includes('circuit_puzzle') || normalizedType.includes('circuit')) {
       const circuits = [
         {
-          title: "Simple DC Lightbulb Circuit",
+          title: "Simple DC Lightbulb Loop",
           circuitType: "Series Loop with Switch",
           question: "Place the missing components in the empty slots so electrical current can flow and light up the bulb.",
           whyItHelps: "You learn how electricity flows in a closed continuous circuit and what role each component plays.",
@@ -2158,9 +2138,45 @@ Guidelines for formatting the JSON fields:
             { slotIndex: 1, label: "Energy Source (Top)", correctComponentId: "c_solar" },
             { slotIndex: 2, label: "Audio Output Slot (Right)", correctComponentId: "c_buz" }
           ]
+        },
+        {
+          title: "LED Brightness Dimmer Loop",
+          circuitType: "Variable Resistance Circuit",
+          question: "Assemble a current-controlled LED circuit using a potentiometer and power cell.",
+          whyItHelps: "Teaches Ohm's Law (V = IR) and how variable resistance modulates current.",
+          hint: "The potentiometer varies resistance to control electron flow to the LED.",
+          explanation: "Higher resistance in the potentiometer drops more voltage, dimming the current reaching the LED diode.",
+          availableComponents: [
+            { id: "c_pot", type: "potentiometer", name: "10kΩ Potentiometer", icon: "🎛️", description: "Adjustable rheostat to dial resistance" },
+            { id: "c_led_b", type: "led", name: "Blue High-Bright LED", icon: "💡", description: "Semiconductor light emitter" },
+            { id: "c_bat_12", type: "battery", name: "12V Power Cell", icon: "🔋", description: "Constant voltage source" },
+            { id: "c_rubber", type: "insulator", name: "Rubber Band", icon: "🪢", description: "High dielectric insulator" }
+          ],
+          missingSlots: [
+            { slotIndex: 1, label: "Current Controller Slot", correctComponentId: "c_pot" },
+            { slotIndex: 2, label: "Light Emitter Slot", correctComponentId: "c_led_b" }
+          ]
+        },
+        {
+          title: "DC Motor Speed Controller Circuit",
+          circuitType: "Inductive Electromechanical Loop",
+          question: "Place the drive component and safety diode to build a spinning DC motor circuit.",
+          whyItHelps: "Explains electromagnetic induction, rotational kinetic energy, and flyback protection.",
+          hint: "The DC motor converts electrical power into rotational torque.",
+          explanation: "Electric current in the armature coil creates a magnetic field that interacts with permanent magnets, generating rotational torque.",
+          availableComponents: [
+            { id: "c_motor", type: "motor", name: "DC Geared Motor", icon: "⚙️", description: "Converts electrical energy to mechanical rotation" },
+            { id: "c_diode", type: "diode", name: "Flyback Protection Diode", icon: "🔺", description: "Protects against inductive voltage spikes" },
+            { id: "c_fuse", type: "fuse", name: "Safety Fuse Link", icon: "⚡", description: "Melts on overcurrent" },
+            { id: "c_plastic", type: "insulator", name: "Plastic Spacer", icon: "🧱", description: "Insulating structural support" }
+          ],
+          missingSlots: [
+            { slotIndex: 1, label: "Mechanical Actuator Slot", correctComponentId: "c_motor" },
+            { slotIndex: 2, label: "Inductive Protection Slot", correctComponentId: "c_diode" }
+          ]
         }
       ];
-      const pick = circuits[Math.floor(Math.random() * circuits.length)];
+      const pick = pickNonRepeating('circuit_puzzle', circuits);
       const shuffledComponents = [...pick.availableComponents].sort(() => Math.random() - 0.5);
       return {
         puzzleType: 'circuit_puzzle',
@@ -2198,7 +2214,7 @@ Guidelines for formatting the JSON fields:
           ]
         },
         {
-          title: "Chemical Elements & Symbols Match",
+          title: "Chemical Elements & Latin Symbols",
           subject: "Chemistry",
           pairs: [
             { id: "c1", pairId: "p_au", label: "Au", matchLabel: "Gold (Aurum)", icon: "🪙" },
@@ -2208,9 +2224,41 @@ Guidelines for formatting the JSON fields:
             { id: "c5", pairId: "p_k", label: "K", matchLabel: "Potassium (Kalium)", icon: "🍌" },
             { id: "c6", pairId: "p_cu", label: "Cu", matchLabel: "Copper (Cuprum)", icon: "🥉" }
           ]
+        },
+        {
+          title: "Human Organ Systems & Biological Functions",
+          subject: "Biology",
+          pairs: [
+            { id: "b1", pairId: "p_heart", label: "🫀 Heart", matchLabel: "Pumps oxygenated blood through arteries", icon: "🫀" },
+            { id: "b2", pairId: "p_lungs", label: "🫁 Lungs", matchLabel: "Gas exchange (Oxygen in, CO2 out)", icon: "🫁" },
+            { id: "b3", pairId: "p_brain", label: "🧠 Brain", matchLabel: "Central nervous processing & synaptic control", icon: "🧠" },
+            { id: "b4", pairId: "p_kidney", label: "Kidneys", matchLabel: "Filters metabolic waste from bloodstream", icon: "🩸" },
+            { id: "b5", pairId: "p_liver", label: "Liver", matchLabel: "Detoxifies chemicals and synthesizes bile", icon: "🧪" }
+          ]
+        },
+        {
+          title: "Physics Quantities & SI Units",
+          subject: "Physics",
+          pairs: [
+            { id: "u1", pairId: "p_force", label: "Force (F)", matchLabel: "Newton (N = kg·m/s²)", icon: "💪" },
+            { id: "u2", pairId: "p_energy", label: "Energy / Work (W)", matchLabel: "Joule (J = N·m)", icon: "⚡" },
+            { id: "u3", pairId: "p_power", label: "Power (P)", matchLabel: "Watt (W = J/s)", icon: "💡" },
+            { id: "u4", pairId: "p_pressure", label: "Pressure (P)", matchLabel: "Pascal (Pa = N/m²)", icon: "🌡️" },
+            { id: "u5", pairId: "p_freq", label: "Frequency (f)", matchLabel: "Hertz (Hz = 1/s)", icon: "〰️" }
+          ]
+        },
+        {
+          title: "Computer Science Core Fundamentals",
+          subject: "Computer Science",
+          pairs: [
+            { id: "cs1", pairId: "p_cpu", label: "CPU", matchLabel: "Central Processing Unit executing instructions", icon: "💻" },
+            { id: "cs2", pairId: "p_ram", label: "RAM", matchLabel: "Volatile High-Speed Working Memory", icon: "⚡" },
+            { id: "cs3", pairId: "p_algo", label: "Algorithm", matchLabel: "Step-by-step logic to solve a computational problem", icon: "📐" },
+            { id: "cs4", pairId: "p_bin", label: "Binary Code", matchLabel: "Base-2 numeric system (0 and 1)", icon: "0️⃣" }
+          ]
         }
       ];
-      const pick = matchDecks[Math.floor(Math.random() * matchDecks.length)];
+      const pick = pickNonRepeating('memory_match', matchDecks);
       return {
         puzzleType: 'memory_match',
         title: pick.title,
@@ -2229,151 +2277,139 @@ Guidelines for formatting the JSON fields:
       };
     }
 
-    if (normalizedType.includes('sequence_builder') || normalizedType.includes('sequence')) {
-      const sequences = [
-        {
-          processName: "The Hydrological Water Cycle",
-          subject: "Science",
-          question: "Reorder the stages of the natural water cycle into their exact chronological sequence.",
-          whyItHelps: "Deepens your understanding of continuous natural cycles and thermodynamic phase changes.",
-          hint: "The cycle starts with sunlight heating water bodies into water vapor (Evaporation).",
-          explanation: "1. Solar radiation evaporates surface water -> 2. Rising water vapor cools and condenses into clouds -> 3. Clouds precipitate as rain/snow -> 4. Runoff collects in rivers and underground aquifers.",
-          steps: [
-            { id: "st1", stepNumber: 1, text: "☀️ Evaporation", detail: "Sun heats ocean & lake water, turning liquid water into invisible water vapor gas." },
-            { id: "st2", stepNumber: 2, text: "☁️ Condensation", detail: "Water vapor cools as it rises into the cold upper atmosphere, forming clouds." },
-            { id: "st3", stepNumber: 3, text: "🌧️ Precipitation", detail: "Droplets inside clouds become too heavy and fall back to earth as rain, snow, or hail." },
-            { id: "st4", stepNumber: 4, text: "🌊 Collection & Runoff", detail: "Rainwater flows into streams, rivers, lakes, and aquifers, restarting the cycle." }
-          ],
-          correctOrder: ["st1", "st2", "st3", "st4"]
-        },
-        {
-          processName: "Plant Seed Germination & Growth",
-          subject: "Biology",
-          question: "Place the stages of plant seed germination and development in chronological order.",
-          whyItHelps: "Teaches plant embryology and cellular differentiation stages.",
-          hint: "Imbibition of water must swell the seed coat before the primary root (radicle) emerges.",
-          explanation: "1. Seed absorbs moisture (Imbibition) -> 2. Radicle root anchors into soil -> 3. Hypocotyl stem arches upward -> 4. True leaves unfold for photosynthesis.",
-          steps: [
-            { id: "sg1", stepNumber: 1, text: "💧 Seed Imbibition", detail: "Dry seed absorbs soil water, swelling and activating metabolic enzymes." },
-            { id: "sg2", stepNumber: 2, text: "🌱 Root (Radicle) Emergence", detail: "Primary root emerges downwards to anchor and absorb minerals." },
-            { id: "sg3", stepNumber: 3, text: "🌿 Shoot Sprouting", detail: "The green hypocotyl shoot emerges above ground reaching towards sunlight." },
-            { id: "sg4", stepNumber: 4, text: "🍃 Foliage Leaf Photosynthesis", detail: "First true green leaves expand to produce sugars via sunlight." }
-          ],
-          correctOrder: ["sg1", "sg2", "sg3", "sg4"]
-        }
-      ];
-      const pick = sequences[Math.floor(Math.random() * sequences.length)];
-      const shuffledSteps = [...pick.steps].sort(() => Math.random() - 0.5);
-      return {
-        puzzleType: 'sequence_builder',
-        title: `Process Sequence: ${pick.processName}`,
-        subject: pick.subject,
-        topic: topic || "Scientific Processes",
-        groupId: groupId || "group2",
-        classLevel: studentClass || "Classes 6-9",
-        difficulty: difficulty || "Medium",
-        question: pick.question,
-        whyItHelps: pick.whyItHelps,
-        hint: pick.hint,
-        explanation: pick.explanation,
-        interactiveData: {
-          processName: pick.processName,
-          steps: shuffledSteps,
-          correctOrder: pick.correctOrder
-        }
-      };
-    }
-
-    if (normalizedType.includes('crossword')) {
-      return {
-        puzzleType: 'crossword',
-        title: "Curriculum Vocabulary Mini-Crossword",
-        subject: "Language & Science",
-        topic: topic || "Vocabulary Literacy",
-        groupId: groupId || "group2",
-        classLevel: studentClass || "Classes 6-9",
-        difficulty: difficulty || "Medium",
-        question: "Use the clues to fill in the crossword grid with standard academic terminology.",
-        whyItHelps: "Strengthens spelling, vocabulary precision, and lateral deductive thinking.",
-        hint: "Check intersecting letters between Across and Down words.",
-        explanation: "Crossword puzzles encourage multi-angle vocabulary recall by combining conceptual definitions with letter constraints.",
-        interactiveData: {
-          gridSize: 5,
-          clues: {
-            across: [
-              { number: 1, clue: "Green pigment in plant leaves that absorbs sunlight for photosynthesis (11 letters)", answer: "CHLOROPHYLL", row: 0, col: 0 },
-              { number: 2, clue: "Force pulling objects toward the center of the Earth (7 letters)", answer: "GRAVITY", row: 2, col: 0 }
-            ],
-            down: [
-              { number: 1, clue: "Basic unit of all living organisms (4 letters)", answer: "CELL", row: 0, col: 0 },
-              { number: 3, clue: "Invisible gas necessary for animal respiration (6 letters)", answer: "OXYGEN", row: 0, col: 4 }
-            ]
-          }
-        }
-      };
-    }
-
     if (normalizedType.includes('number_grid')) {
-      const grids = [
-        {
-          title: "Arithmetic Chain Grid",
-          gridType: "equation_matrix",
+      // Dynamic Mathematical Grid Generator (Produces infinite randomized balanced grids)
+      const gridStyles = ['addition_balance', 'multiplication_matrix', 'subtraction_chain', 'mixed_matrix'];
+      const chosenStyle = gridStyles[Math.floor(Math.random() * gridStyles.length)];
+
+      if (chosenStyle === 'multiplication_matrix') {
+        const factor1 = Math.floor(Math.random() * 6) + 4; // 4..9
+        const factor2 = Math.floor(Math.random() * 5) + 3; // 3..7
+        const factor3 = Math.floor(Math.random() * 4) + 6; // 6..9
+        const rowFactor = Math.floor(Math.random() * 5) + 5; // 5..9
+
+        const p1 = factor1 * factor2;
+        const p2 = factor1 * factor3;
+        const p3 = rowFactor * factor2;
+        const p4 = rowFactor * factor3;
+
+        const candidates = [factor1, p3, factor1 + 1, p3 - 4, factor2, p4].sort(() => Math.random() - 0.5);
+
+        const matrix = [
+          ["×", `${factor2}`, `${factor3}`],
+          ["?1", `${p1}`, `${p2}`],
+          [`${rowFactor}`, "?2", `${p4}`]
+        ];
+
+        const missingPositions = [
+          { id: "?1", cellId: "cell_1_0", expectedVal: factor1, label: "Row Factor" },
+          { id: "?2", cellId: "cell_2_1", expectedVal: p3, label: "Product Slot" }
+        ];
+
+        const formattedRows = matrix.map((rowArr, rIdx) => ({
+          cells: rowArr.map((val, cIdx) => {
+            const isMissing = val.startsWith("?");
+            const missingObj = missingPositions.find(m => m.id === val || m.cellId === `cell_${rIdx}_${cIdx}`);
+            const isOperator = ["+", "-", "×", "÷", "=", " "].includes(val);
+            return {
+              value: isMissing ? "?" : val,
+              text: isMissing ? "?" : val,
+              isMissing: isMissing,
+              isOperator: isOperator,
+              id: isMissing ? (missingObj?.id || `cell_${rIdx}_${cIdx}`) : undefined,
+              cellId: `cell_${rIdx}_${cIdx}`,
+              expectedVal: missingObj?.expectedVal
+            };
+          })
+        }));
+
+        return {
+          puzzleType: 'number_grid',
+          title: `Dynamic Factor Matrix (${factor2} × ${factor3})`,
+          subject: "Math",
+          topic: topic || "Multiplication & Factors",
+          groupId: groupId || "group2",
+          classLevel: studentClass || "Classes 6-9",
+          difficulty: difficulty || "Medium",
+          question: "Find the missing factors and products in the multiplication grid.",
+          whyItHelps: "Reinforces multiplication tables, prime factorizations, and mental math agility.",
+          hint: `Look at row 2: [?] × ${factor2} = ${p1}.`,
+          explanation: `${factor1} × ${factor2} = ${p1}; ${factor1} × ${factor3} = ${p2}; ${rowFactor} × ${factor2} = ${p3}.`,
+          interactiveData: {
+            gridType: "multiplication_grid",
+            matrix: matrix,
+            rows: formattedRows,
+            missingPositions: missingPositions,
+            candidateNumbers: candidates
+          }
+        };
+      } else {
+        // Dynamic Addition / Subtraction Balanced Matrix
+        const a = Math.floor(Math.random() * 12) + 5; // 5..16
+        const b = Math.floor(Math.random() * 10) + 3; // 3..12
+        const c = a + b;
+
+        const d = Math.floor(Math.random() * 10) + 6; // 6..15
+        const e = Math.floor(Math.random() * 8) + 2;  // 2..9
+        const f = d + e;
+
+        const col1 = a + d;
+        const col2 = b + e;
+        const col3 = c + f;
+
+        const candidates = [b, f, b + 2, f - 3, b - 1, f + 4].sort(() => Math.random() - 0.5);
+
+        const matrix = [
+          [`${a}`, "+", "?1", "=", `${c}`],
+          ["+", " ", "+", " ", "+"],
+          [`${d}`, "+", `${e}`, "=", "?2"],
+          ["=", " ", "=", " ", "="],
+          [`${col1}`, "+", `${col2}`, "=", `${col3}`]
+        ];
+
+        const missingPositions = [
+          { id: "?1", cellId: "cell_0_2", expectedVal: b, label: "Slot A (Row 1)" },
+          { id: "?2", cellId: "cell_2_4", expectedVal: f, label: "Slot B (Row 3)" }
+        ];
+
+        const formattedRows = matrix.map((rowArr, rIdx) => ({
+          cells: rowArr.map((val, cIdx) => {
+            const isMissing = val.startsWith("?");
+            const missingObj = missingPositions.find(m => m.id === val || m.cellId === `cell_${rIdx}_${cIdx}`);
+            const isOperator = ["+", "-", "×", "÷", "=", " "].includes(val);
+            return {
+              value: isMissing ? "?" : val,
+              text: isMissing ? "?" : val,
+              isMissing: isMissing,
+              isOperator: isOperator,
+              id: isMissing ? (missingObj?.id || `cell_${rIdx}_${cIdx}`) : undefined,
+              cellId: `cell_${rIdx}_${cIdx}`,
+              expectedVal: missingObj?.expectedVal
+            };
+          })
+        }));
+
+        return {
+          puzzleType: 'number_grid',
+          title: `Dynamic Balance Equation Grid (${a} + ? = ${c})`,
+          subject: "Math",
+          topic: topic || "Number Logic & Operations",
+          groupId: groupId || "group2",
+          classLevel: studentClass || "Classes 6-9",
+          difficulty: difficulty || "Medium",
           question: "Fill in the missing numbers in the grid so all horizontal and vertical equations are mathematically correct.",
           whyItHelps: "Builds mental arithmetic agility, algebraic balance, and logic grid reasoning.",
-          hint: "Solve row 1 first: 8 + [?] = 15, so the missing number must be 7.",
-          explanation: "Using algebraic balance: Row 1: 8 + 7 = 15; Row 2: 12 - 4 = 8; Column 1: 8 + 12 = 20; Column 2: 7 - 4 = 3.",
-          matrix: [
-            ["8", "+", "?1", "=", "15"],
-            ["+", " ", "-", " ", "+"],
-            ["12", "-", "4", "=", "?2"],
-            ["=", " ", "=", " ", "="],
-            ["20", "+", "3", "=", "23"]
-          ],
-          missingPositions: [
-            { id: "?1", expectedVal: 7, label: "Slot A (Row 1)" },
-            { id: "?2", expectedVal: 8, label: "Slot B (Row 3)" }
-          ],
-          candidateNumbers: [7, 8, 5, 9, 11, 4]
-        },
-        {
-          title: "Multiplication & Factor Matrix",
-          gridType: "multiplication_grid",
-          question: "Find the missing factors and products in the multiplication grid.",
-          whyItHelps: "Reinforces multiplication tables, prime factorizations, and mental math speed.",
-          hint: "6 × [?] = 42, which gives you 7.",
-          explanation: "6 × 7 = 42; 9 × 7 = 63; 6 × 9 = 54.",
-          matrix: [
-            ["×", "6", "9"],
-            ["?1", "42", "63"],
-            ["8", "?2", "72"]
-          ],
-          missingPositions: [
-            { id: "?1", expectedVal: 7, label: "Row Factor" },
-            { id: "?2", expectedVal: 48, label: "Product Slot (8×6)" }
-          ],
-          candidateNumbers: [7, 48, 6, 56, 42, 64]
-        }
-      ];
-      const pick = grids[Math.floor(Math.random() * grids.length)];
-      return {
-        puzzleType: 'number_grid',
-        title: pick.title,
-        subject: "Math",
-        topic: topic || "Number Logic & Operations",
-        groupId: groupId || "group2",
-        classLevel: studentClass || "Classes 6-9",
-        difficulty: difficulty || "Medium",
-        question: pick.question,
-        whyItHelps: pick.whyItHelps,
-        hint: pick.hint,
-        explanation: pick.explanation,
-        interactiveData: {
-          gridType: pick.gridType,
-          matrix: pick.matrix,
-          missingPositions: pick.missingPositions,
-          candidateNumbers: pick.candidateNumbers.sort(() => Math.random() - 0.5)
-        }
-      };
+          hint: `Solve row 1 first: ${a} + [?] = ${c}, so the missing number must be ${b}.`,
+          explanation: `Row 1: ${a} + ${b} = ${c}; Row 2: ${d} + ${e} = ${f}; Column 1: ${a} + ${d} = ${col1}; Column 2: ${b} + ${e} = ${col2}.`,
+          interactiveData: {
+            gridType: "equation_matrix",
+            matrix: matrix,
+            rows: formattedRows,
+            missingPositions: missingPositions,
+            candidateNumbers: candidates
+          }
+        };
+      }
     }
 
     // Default: odd_one_out
@@ -2396,7 +2432,7 @@ Guidelines for formatting the JSON fields:
         ]
       },
       {
-        title: "Cell Organelles & Structures",
+        title: "Cell Organelles & Biological Structures",
         subject: "Biology",
         category: "Plant vs Animal Cell Structures",
         question: "Select the organelle that does not belong with the others in terms of animal cell biology.",
@@ -2413,9 +2449,9 @@ Guidelines for formatting the JSON fields:
         ]
       },
       {
-        title: "Fundamental Forces of Nature",
+        title: "Fundamental Forces of the Universe",
         subject: "Physics",
-        category: "Four Fundamental Physical Interactions",
+        category: "Fundamental Physical Interactions",
         question: "Identify the force that is a derived contact friction force rather than a fundamental universe force.",
         whyItHelps: "Sharpens physics fundamentals and force categorization.",
         hint: "Look for macroscopic surface interaction versus subatomic/universal field interactions.",
@@ -2428,9 +2464,43 @@ Guidelines for formatting the JSON fields:
           { id: "item_strong", name: "⚛️ Strong Nuclear Force", detail: "Binds quarks and nucleons inside atomic nuclei", icon: "⚛️", isOdd: false },
           { id: "odd_fric", name: "🛑 Friction Force", detail: "Contact resistance between touching surfaces", icon: "🛑", isOdd: true }
         ]
+      },
+      {
+        title: "Solar System Planets vs Dwarf Planets",
+        subject: "Astronomy",
+        category: "Planetary Classification",
+        question: "Identify the celestial body that is classified as a Dwarf Planet rather than a Major Planet.",
+        whyItHelps: "Teaches IAU astronomical classification standards.",
+        hint: "Look for the icy Kuiper Belt world reclassified by the IAU in 2006.",
+        explanation: "Pluto is a dwarf planet in the Kuiper belt because it has not cleared the neighborhood around its orbit. Mars, Jupiter, and Saturn are major planets.",
+        oddItemId: "odd_pluto",
+        reason: "Pluto is a Dwarf Planet in the Kuiper Belt, while the others are major planets.",
+        items: [
+          { id: "item_mars", name: "🔴 Mars", detail: "Terrestrial rocky inner planet", icon: "🔴", isOdd: false },
+          { id: "item_jup", name: "🪐 Jupiter", detail: "Largest gas giant in our solar system", icon: "🪐", isOdd: false },
+          { id: "item_sat", name: "💫 Saturn", detail: "Prominent ringed gas giant planet", icon: "💫", isOdd: false },
+          { id: "odd_pluto", name: "❄️ Pluto", detail: "Kuiper Belt dwarf planet", icon: "❄️", isOdd: true }
+        ]
+      },
+      {
+        title: "States of Matter & Phase Transitions",
+        subject: "Chemistry",
+        category: "States of Matter",
+        question: "Identify the substance state that is ionized Plasma rather than a classical state of matter.",
+        whyItHelps: "Teaches high-energy physics and ionization states.",
+        hint: "Lightning and stellar cores consist of stripped free electrons and positively charged ions.",
+        explanation: "Lightning Plasma is a 4th state of matter consisting of superheated ionized gas, unlike regular ice, water, or steam.",
+        oddItemId: "odd_plasma",
+        reason: "Lightning is ionized high-energy Plasma, whereas the others are classical solid, liquid, and gas phases.",
+        items: [
+          { id: "item_ice", name: "🧊 Ice (Solid)", detail: "Fixed crystalline lattice structure", icon: "🧊", isOdd: false },
+          { id: "item_water", name: "💧 Liquid Water", detail: "Fluid state taking container shape", icon: "💧", isOdd: false },
+          { id: "item_steam", name: "💨 Steam Vapor", detail: "Gaseous state with high kinetic energy", icon: "💨", isOdd: false },
+          { id: "odd_plasma", name: "⚡ Lightning Plasma", detail: "Superheated ionized electron gas", icon: "⚡", isOdd: true }
+        ]
       }
     ];
-    const pick = oddSets[Math.floor(Math.random() * oddSets.length)];
+    const pick = pickNonRepeating('odd_one_out', oddSets);
     const shuffledItems = [...pick.items].sort(() => Math.random() - 0.5);
     return {
       puzzleType: 'odd_one_out',
@@ -2461,18 +2531,50 @@ Guidelines for formatting the JSON fields:
         studentName = "Student",
         studentClass = "Classes 1-5",
         subject = "Science",
-        topic = "General Knowledge",
+        topic = "",
         difficulty = "Medium",
         groupId = "group1",
         lang = "en",
         puzzleNumber = 1
       } = req.body;
 
+      // Dynamic curriculum topic picker to ensure non-repetition across AI prompts
+      const CURRICULUM_TOPIC_POOL: Record<string, string[]> = {
+        primary: [
+          "Photosynthesis & Green Plants", "Ocean Marine Ecosystems", "Planets & Solar System",
+          "Water Cycle & Rain", "Human Senses & Body Organs", "Simple Geometric Shapes",
+          "Magnets & Static Electricity", "States of Matter (Solid, Liquid, Gas)",
+          "Animal Habitats & Adaptations", "Fractions & Number Operations"
+        ],
+        middle: [
+          "Newton's Laws of Motion & Gravity", "Cell Organelles & Plant Biology", "Periodic Table Elements",
+          "Ancient Indus Valley Civilization", "Mughal Empire & Architecture", "Indian Freedom Movement (1857-1947)",
+          "Atmosphere Layers & Weather", "Acids, Bases & Neutralization", "Sound Waves & Frequency",
+          "Ohm's Law & Circuit Loops", "Plate Tectonics & Earthquakes", "Algebraic Equations & Matrices"
+        ],
+        secondary: [
+          "Electromagnetism & Faraday Induction", "Organic Chemistry & Hydrocarbons", "Human Circulatory System & Heart",
+          "World War II & Global Alliances", "Genetics & DNA Replication Structure", "Thermodynamics & Heat Engines",
+          "Astronomical Cosmology & Stars", "Microbiology & Antibiotic Discovery", "Renewable Energy & Climate Science"
+        ]
+      };
+
+      const groupKey = (groupId === 'group1' || studentClass.includes('1') || studentClass.includes('2') || studentClass.includes('3') || studentClass.includes('4') || studentClass.includes('5')) 
+        ? 'primary' 
+        : (groupId === 'group3' || studentClass.includes('10') || studentClass.includes('11') || studentClass.includes('12')) 
+        ? 'secondary' 
+        : 'middle';
+
+      const pool = CURRICULUM_TOPIC_POOL[groupKey] || CURRICULUM_TOPIC_POOL.middle;
+      const activeTopic = topic && topic !== "General Knowledge" && topic !== "Core Concept"
+        ? topic
+        : pool[Math.floor(Math.random() * pool.length)];
+
       const apiKey = process.env.GEMINI_API_KEY;
 
       if (!apiKey) {
         console.warn("[PUZZLE GENERATOR] No GEMINI_API_KEY found. Serving procedural fallback puzzle.");
-        const fallbackPuzzle = getProceduralPuzzleFallback(puzzleType, studentClass, subject, topic, difficulty, groupId, lang);
+        const fallbackPuzzle = getProceduralPuzzleFallback(puzzleType, studentClass, subject, activeTopic, difficulty, groupId, lang);
         return res.json({
           success: true,
           puzzle: fallbackPuzzle,
@@ -2542,9 +2644,9 @@ Strict Requirements:
 }`;
 
       const modelsToTry = [
+        "gemini-3.1-flash-lite",
         "gemini-3.7-flash",
         "gemini-flash-latest",
-        "gemini-3.1-flash-lite",
         "gemini-3.1-pro-preview"
       ];
 
@@ -2564,8 +2666,10 @@ Strict Requirements:
               responseMimeType: "application/json"
             }
           });
-          success = true;
-          break;
+          if (response?.text) {
+            success = true;
+            break;
+          }
         } catch (err: any) {
           lastError = err;
           console.warn(`[PUZZLE GENERATOR] Model ${modelName} failed:`, err?.message || err);
@@ -2610,7 +2714,7 @@ Strict Requirements:
       }
 
       // Check if critical arrays are missing or empty, and fallback if needed
-      const fallback = getProceduralPuzzleFallback(puzzleType, studentClass, subject, topic, difficulty, groupId, lang);
+      const fallback = getProceduralPuzzleFallback(puzzleType, studentClass, subject, activeTopic, difficulty, groupId, lang) as any;
 
       const type = generatedData.puzzleType || puzzleType;
       if (type === 'food_chain') {
@@ -2702,7 +2806,7 @@ Strict Requirements:
   // API ROUTE: AI PUZZLE SUBMISSION ANALYZER
   app.post("/api/gemini/analyze-puzzle", async (req, res) => {
     try {
-      const { puzzle, userSubmission, isCorrect, studentName = "Student", timeTaken = 30 } = req.body;
+      const { puzzle, userSubmission, isCorrect, studentName = "Student", timeTaken = 30, lang = "en" } = req.body;
 
       const apiKey = process.env.GEMINI_API_KEY;
 
@@ -2740,30 +2844,58 @@ Topic: ${puzzle?.topic}
 Student Result: ${isCorrect ? 'CORRECT' : 'INCORRECT'}
 Time Taken: ${timeTaken} seconds
 Official Solution/Explanation: ${puzzle?.explanation}
+Language Code: ${lang}
+
+CRITICAL: You MUST write the JSON text (badge, feedback, masteryInsight, nextChallengeRecommendation) in the requested language corresponding to language code: ${lang}.
 
 Generate a concise JSON feedback object with this exact structure:
 {
   "score": ${isCorrect ? 100 : 50},
   "badge": "Creative emoji badge (e.g. ⚡ Logic Maestro, 🔬 Junior Scientist)",
-  "feedback": "2-3 sentences of positive, motivating personalized feedback directly addressing what the student accomplished.",
-  "masteryInsight": "1-2 key conceptual takeaway sentences explaining WHY the correct solution works.",
-  "nextChallengeRecommendation": "1 sentence recommending the next skill or concept to explore."
+  "feedback": "2-3 sentences of positive, motivating personalized feedback directly addressing what the student accomplished in language ${lang}.",
+  "masteryInsight": "1-2 key conceptual takeaway sentences explaining WHY the correct solution works in language ${lang}.",
+  "nextChallengeRecommendation": "1 sentence recommending the next skill or concept to explore in language ${lang}."
 }`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.7
-        }
-      });
+      const modelsToTry = [
+        "gemini-3.1-flash-lite",
+        "gemini-3.7-flash",
+        "gemini-flash-latest",
+        "gemini-3.1-pro-preview"
+      ];
 
-      const analysis = JSON.parse(response?.text || "{}");
-      return res.json({
-        success: true,
-        analysis
-      });
+      let response: any = null;
+      let success = false;
+
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`[PUZZLE ANALYZER] Querying model ${modelName}...`);
+          response = await ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              temperature: 0.7
+            }
+          });
+          if (response?.text) {
+            success = true;
+            break;
+          }
+        } catch (err: any) {
+          console.warn(`[PUZZLE ANALYZER] Model ${modelName} failed:`, err?.message || err);
+        }
+      }
+
+      if (success && response?.text) {
+        const analysis = JSON.parse(response.text.trim());
+        return res.json({
+          success: true,
+          analysis
+        });
+      }
+
+      throw new Error("All models failed to analyze puzzle submission");
 
     } catch (error: any) {
       console.error("[GLOBAL SERVER ERROR IN /api/gemini/analyze-puzzle]:", error);
