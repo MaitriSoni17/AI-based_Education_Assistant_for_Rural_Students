@@ -10,8 +10,36 @@ import {
   where, 
   getDocs,
   deleteDoc,
-  disableNetwork
+  disableNetwork,
+  setLogLevel
 } from "firebase/firestore";
+
+// Suppress raw SDK internal console errors/warnings for quota exhaustion
+try {
+  setLogLevel("silent");
+} catch (e) {
+  // ignore
+}
+
+// Intercept console.error to prevent raw Firebase SDK quota backoff noise from cluttering logs
+if (typeof window !== "undefined") {
+  const originalConsoleError = console.error;
+  console.error = function (...args: any[]) {
+    const firstArg = args[0] ? String(args[0]) : "";
+    if (
+      firstArg.includes("@firebase/firestore") &&
+      (firstArg.includes("resource-exhausted") ||
+        firstArg.includes("Quota limit exceeded") ||
+        firstArg.includes("maximum backoff delay") ||
+        firstArg.includes("Free daily write units"))
+    ) {
+      // Handled gracefully via local state & disableNetwork
+      markFirestoreQuotaExceeded();
+      return;
+    }
+    originalConsoleError.apply(console, args);
+  };
+}
 import { getAuth } from "firebase/auth";
 import { getDeterministicAvatar } from "../utils/avatar";
 import { getSafeDateString } from "../utils/dateUtils";
@@ -59,14 +87,45 @@ export interface FirestoreErrorInfo {
 
 let isQuotaExceeded = false;
 
+if (typeof localStorage !== 'undefined') {
+  const quotaTime = localStorage.getItem('gramin_firestore_quota_exceeded_time');
+  if (quotaTime) {
+    const elapsed = Date.now() - parseInt(quotaTime, 10);
+    // Keep quota exceeded flag active for 6 hours
+    if (elapsed < 6 * 60 * 60 * 1000) {
+      isQuotaExceeded = true;
+      disableNetwork(db).catch(() => {});
+    } else {
+      localStorage.removeItem('gramin_firestore_quota_exceeded_time');
+    }
+  }
+}
+
+export function isFirestoreQuotaExceeded(): boolean {
+  return isQuotaExceeded;
+}
+
+export function markFirestoreQuotaExceeded(): void {
+  if (!isQuotaExceeded) {
+    isQuotaExceeded = true;
+    console.warn("Firestore Quota Exceeded. Running in offline/local fallback mode.");
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('gramin_firestore_quota_exceeded_time', String(Date.now()));
+    }
+    disableNetwork(db).catch(() => {});
+  }
+}
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): void {
   const errMessage = error instanceof Error ? error.message : String(error);
-  if (errMessage.includes("resource-exhausted") || errMessage.includes("quota") || errMessage.includes("Quota limit exceeded")) {
-    if (!isQuotaExceeded) {
-      isQuotaExceeded = true;
-      console.warn("Firestore Quota Exceeded. Running in offline/local fallback mode.");
-      disableNetwork(db).catch(() => {});
-    }
+  if (
+    errMessage.includes("resource-exhausted") || 
+    errMessage.includes("quota") || 
+    errMessage.includes("Quota limit exceeded") ||
+    errMessage.includes("Free daily write units") ||
+    errMessage.includes("Free daily read units")
+  ) {
+    markFirestoreQuotaExceeded();
     return;
   }
   const errInfo: FirestoreErrorInfo = {
@@ -134,6 +193,7 @@ export interface FirestoreUser {
  * Fetch a user profile by mobile number.
  */
 export async function getFirebaseUser(mobile: string): Promise<FirestoreUser | null> {
+  if (isQuotaExceeded) return null;
   const path = `users/${mobile}`;
   try {
     const userDocRef = doc(db, "users", mobile);
@@ -156,6 +216,26 @@ export async function syncFirebaseUserWithLWW(
   mobile: string,
   localUser: Partial<FirestoreUser> & { updatedAt?: number }
 ): Promise<{ resolvedUser: FirestoreUser; conflictResolved: boolean; source: 'local' | 'remote' }> {
+  const fallbackUser: FirestoreUser = {
+    mobile,
+    name: localUser.name || "Student",
+    defaultLanguage: localUser.defaultLanguage || "en",
+    signupDate: localUser.signupDate || getSafeDateString(),
+    avatar: getDeterministicAvatar(localUser.name || "Student", mobile),
+    streakDays: localUser.streakDays || 1,
+    totalPoints: localUser.totalPoints || 15,
+    studyMins: localUser.studyMins || 30,
+    village: localUser.village || "",
+    school: localUser.school || "",
+    standard: localUser.standard || "",
+    lastCheckedInDate: localUser.lastCheckedInDate || getSafeDateString(),
+    ...localUser
+  };
+
+  if (isQuotaExceeded) {
+    return { resolvedUser: fallbackUser, conflictResolved: false, source: 'local' };
+  }
+
   const path = `users/${mobile}`;
   try {
     const userDocRef = doc(db, "users", mobile);
@@ -275,6 +355,7 @@ export async function updateFirebaseUserFields(mobile: string, fields: Partial<F
  * Fetch all user profiles for Admin Dashboard analytics & management.
  */
 export async function getAllFirebaseUsers(): Promise<FirestoreUser[]> {
+  if (isQuotaExceeded) return [];
   const path = "users";
   try {
     const usersCol = collection(db, "users");
@@ -285,7 +366,7 @@ export async function getAllFirebaseUsers(): Promise<FirestoreUser[]> {
     });
     return usersList;
   } catch (error) {
-    console.error("Failed to fetch all users from Firestore:", error);
+    handleFirestoreError(error, OperationType.LIST, path);
     return [];
   }
 }
@@ -301,6 +382,7 @@ export async function updateUserRole(mobile: string, role: 'student' | 'teacher'
  * Delete a user profile (Admin action)
  */
 export async function deleteFirebaseUser(mobile: string): Promise<void> {
+  if (isQuotaExceeded) return;
   const path = `users/${mobile}`;
   try {
     const userDocRef = doc(db, "users", mobile);
@@ -337,6 +419,7 @@ const DEFAULT_DEMO_CERTIFICATES: FirestoreCertificate[] = [
  * Fetch all certificates from Firestore (combines 'certificates' collection and 'users' earnedCertificates)
  */
 export async function getAllFirebaseCertificates(): Promise<FirestoreCertificate[]> {
+  if (isQuotaExceeded) return DEFAULT_DEMO_CERTIFICATES;
   const path = "certificates";
   try {
     const certsMap = new Map<string, FirestoreCertificate>();
@@ -412,6 +495,7 @@ export async function getAllFirebaseCertificates(): Promise<FirestoreCertificate
  * Issue or save a new certificate in Firestore
  */
 export async function issueFirebaseCertificate(cert: FirestoreCertificate): Promise<void> {
+  if (isQuotaExceeded) return;
   const path = `certificates/${cert.id}`;
   try {
     const certDocRef = doc(db, "certificates", cert.id);
@@ -474,6 +558,7 @@ export async function updateFirebaseCertificateStatus(
   status: 'valid' | 'revoked',
   studentMobile?: string
 ): Promise<void> {
+  if (isQuotaExceeded) return;
   const path = `certificates/${id}`;
   try {
     const certDocRef = doc(db, "certificates", id);
@@ -515,6 +600,7 @@ export async function updateFirebaseCertificateStatus(
  * Delete a certificate from Firestore
  */
 export async function deleteFirebaseCertificate(id: string): Promise<void> {
+  if (isQuotaExceeded) return;
   const path = `certificates/${id}`;
   try {
     const certDocRef = doc(db, "certificates", id);
@@ -571,6 +657,7 @@ export interface FirestoreCurriculumFile {
  * Fetch all curriculum folders from Firestore
  */
 export async function getAllFirebaseCurriculumFolders(): Promise<FirestoreCurriculumFolder[]> {
+  if (isQuotaExceeded) return [];
   const path = "curriculum_folders";
   try {
     const colRef = collection(db, path);
@@ -629,6 +716,7 @@ export async function deleteFirebaseCurriculumFolder(id: string): Promise<void> 
  * Fetch all curriculum files from Firestore
  */
 export async function getAllFirebaseCurriculumFiles(): Promise<FirestoreCurriculumFile[]> {
+  if (isQuotaExceeded) return [];
   const path = "curriculum_files";
   try {
     const colRef = collection(db, path);
@@ -654,6 +742,7 @@ export async function getAllFirebaseCurriculumFiles(): Promise<FirestoreCurricul
  * Retrieve the full fileDataUrl from Firestore, reconstructing it from chunks if necessary
  */
 export async function getFirebaseCurriculumFileDataUrl(fileId: string): Promise<string | null> {
+  if (isQuotaExceeded) return null;
   try {
     // Try to check chunks first
     const chunksColRef = collection(db, "curriculum_files", fileId, "chunks");

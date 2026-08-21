@@ -1277,16 +1277,6 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
               pdf.addPage();
             }
 
-            // Draw clean border
-            pdf.setDrawColor(220, 215, 205);
-            pdf.setLineWidth(0.2);
-            pdf.rect(margin - 2, margin - 2, pageWidth - (margin - 2) * 2, pageHeight - (margin - 2) * 2);
-
-            pdf.setFont("Helvetica", "normal");
-            pdf.setFontSize(8);
-            pdf.setTextColor(150, 150, 150);
-            pdf.text(`${labels.page || 'Page'} ${pageCount + 1}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
-
             pdf.addImage(
               imgData,
               'PNG',
@@ -1299,6 +1289,32 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
             leftHeight -= pageImgHeight;
             pageCount++;
           }
+        }
+
+        // Draw clean page borders, white footer overlay and crisp page numbers on ALL pages
+        const totalPages = (pdf.internal as any).getNumberOfPages();
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          pdf.setPage(pageNum);
+
+          // White footer overlay block
+          pdf.setFillColor(250, 248, 245);
+          pdf.rect(0, pageHeight - 12, pageWidth, 12, 'F');
+
+          // Divider line
+          pdf.setDrawColor(220, 215, 205);
+          pdf.setLineWidth(0.3);
+          pdf.line(margin, pageHeight - 11, pageWidth - margin, pageHeight - 11);
+
+          // Page Number
+          pdf.setFont("Helvetica", "bold");
+          pdf.setFontSize(8.5);
+          pdf.setTextColor(100, 116, 139);
+          pdf.text(`${labels.page || 'Page'} ${pageNum} ${(labels as any).of || 'of'} ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+
+          // Header/Footer Metadata
+          pdf.setFontSize(7.5);
+          pdf.setFont("Helvetica", "normal");
+          pdf.text(`GyaanBot AI Lesson Note • ${selectedChar.name}`, margin, pageHeight - 5);
         }
 
         const safeTitle = (userQuestion || "Study_Note").substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_');

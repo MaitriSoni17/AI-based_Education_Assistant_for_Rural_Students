@@ -5,7 +5,7 @@ import { getDeterministicAvatar } from '../utils/avatar';
 import { speakText, stopSpeaking } from '../utils/speech';
 import { offlineSyncManager } from '../utils/offlineSync';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, isFirestoreQuotaExceeded } from '../lib/firebase';
 
 // Modular Tab Components
 import ProfileTab, { formatStudyTime } from './dashboard/ProfileTab';
@@ -244,7 +244,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
   }, [localUser]);
 
   useEffect(() => {
-    if (!user.mobile) return;
+    if (!user.mobile || isFirestoreQuotaExceeded()) return;
 
     const path = `users/${user.mobile}`;
     const userDocRef = doc(db, 'users', user.mobile);

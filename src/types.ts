@@ -95,5 +95,8 @@ export interface CurriculumFile {
   description?: string;
   standard?: string;
   board?: string;
+  language?: string;
+  isGenerated?: boolean;
+  fullContent?: string;
   isVisible?: boolean;
 }

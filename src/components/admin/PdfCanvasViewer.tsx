@@ -27,9 +27,13 @@ import {
   Layers,
   MessageSquare,
   ArrowRight,
-  Star
+  Star,
+  Mic,
+  Languages
 } from 'lucide-react';
 import { speakText, stopSpeaking } from '../../utils/speech';
+import SpeechInputButton from '../SpeechInputButton';
+import { LanguageCode } from '../../types';
 
 interface PdfCanvasViewerProps {
   fileId: string;
@@ -173,13 +177,18 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
         const context = canvas.getContext('2d');
         if (!context) return;
 
+        const outputScale = Math.max(2, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 2);
         const viewport = page.getViewport({ scale, rotation });
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
+        canvas.style.width = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = `${Math.floor(viewport.height)}px`;
 
         const renderContext = {
           canvasContext: context,
           viewport: viewport,
+          transform: [outputScale, 0, 0, outputScale, 0, 0],
         };
 
         const renderTask = page.render(renderContext);
@@ -846,8 +855,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: promptText,
-          systemInstruction: `You are GyaanBot's expert AI Solver Chatbot. Help the student understand the study material document "${fileName}". Provide clear, well-structured educational explanations with markdown formatting.
-CRITICAL LANGUAGE INSTRUCTION: You MUST respond completely in the ${targetLanguage} language (using the proper native script for ${targetLanguage}).`,
+          systemInstruction: `You are GyaanBot's expert AI Solver Chatbot. Help the student understand the study material document "${fileName}". Provide clear, well-structured educational explanations with markdown formatting.`,
         })
       });
 
@@ -1222,58 +1230,61 @@ CRITICAL LANGUAGE INSTRUCTION: You MUST respond completely in the ${targetLangua
             </div>
 
             {/* Quick AI Task Actions Grid */}
-            <div className="p-3 bg-slate-900/60 border-b border-slate-800 space-y-3 shrink-0">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Chatbot Language</span>
-                <div className="flex items-center gap-1 text-[11px] text-slate-300 bg-purple-950/60 px-2.5 py-1 rounded-xl border border-purple-700/50 shadow-2xs">
-                  <Globe className="w-3.5 h-3.5 text-amber-300" />
-                  <select
-                    value={targetLanguage}
-                    onChange={(e) => setTargetLanguage(e.target.value)}
-                    className="bg-transparent font-bold text-amber-200 focus:outline-none cursor-pointer text-[11px]"
-                  >
-                    <option value="English" className="bg-slate-900 text-slate-200">🇬🇧 English</option>
-                    <option value="Hindi" className="bg-slate-900 text-slate-200">🇮🇳 Hindi (हिंदी)</option>
-                    <option value="Gujarati" className="bg-slate-900 text-slate-200">🇮🇳 Gujarati (ગુજરાતી)</option>
-                    <option value="Marathi" className="bg-slate-900 text-slate-200">🇮🇳 Marathi (मराठी)</option>
-                    <option value="Tamil" className="bg-slate-900 text-slate-200">🇮🇳 Tamil (தமிழ்)</option>
-                    <option value="Telugu" className="bg-slate-900 text-slate-200">🇮🇳 Telugu (తెలుగు)</option>
-                    <option value="Bengali" className="bg-slate-900 text-slate-200">🇮🇳 Bengali (বাংলা)</option>
-                    <option value="Kannada" className="bg-slate-900 text-slate-200">🇮🇳 Kannada (ಕನ್ನಡ)</option>
-                    <option value="Malayalam" className="bg-slate-900 text-slate-200">🇮🇳 Malayalam (മലയാളം)</option>
-                    <option value="Punjabi" className="bg-slate-900 text-slate-200">🇮🇳 Punjabi (ਪੰਜਾਬੀ)</option>
-                    <option value="Odia" className="bg-slate-900 text-slate-200">🇮🇳 Odia (ଓଡ଼ିଆ)</option>
-                    <option value="Assamese" className="bg-slate-900 text-slate-200">🇮🇳 Assamese (অসমীয়া)</option>
-                    <option value="Urdu" className="bg-slate-900 text-slate-200">🇮🇳 Urdu (اردو)</option>
-                    <option value="Sanskrit" className="bg-slate-900 text-slate-200">🇮🇳 Sanskrit (संस्कृतम्)</option>
-                    <option value="Hinglish" className="bg-slate-900 text-slate-200">🇮🇳 Hinglish</option>
-                    <option value="Spanish" className="bg-slate-900 text-slate-200">🇪🇸 Spanish (Español)</option>
-                    <option value="French" className="bg-slate-900 text-slate-200">🇫🇷 French (Français)</option>
-                    <option value="German" className="bg-slate-900 text-slate-200">🇩🇪 German (Deutsch)</option>
-                    <option value="Arabic" className="bg-slate-900 text-slate-200">🇸🇦 Arabic (العربية)</option>
-                  </select>
-                </div>
-              </div>
+            <div className="p-3 bg-slate-900/80 border-b border-slate-800 shrink-0">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {/* 1. Solve Page Questions */}
+                <button
+                  onClick={() => handleRunAiTask('solve_questions')}
+                  disabled={aiLoading}
+                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-colors"
+                  title="Solve all questions on active page"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">Solve Questions</span>
+                </button>
 
-              <div className="grid grid-cols-2 gap-1.5">
-                {/* 1. Key Formulas */}
+                {/* 2. Key Formulas */}
                 <button
                   onClick={() => handleRunAiTask('key_concepts')}
                   disabled={aiLoading}
-                  className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-[11px] font-medium text-slate-300 flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-colors"
+                  title="Extract key formulas & concepts"
                 >
                   <Wand2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span className="truncate">Key Formulas</span>
                 </button>
 
-                {/* 2. Practice Quiz */}
+                {/* 3. Practice Quiz */}
                 <button
                   onClick={() => handleRunAiTask('quiz')}
                   disabled={aiLoading}
-                  className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-[11px] font-medium text-slate-300 flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-colors"
+                  title="Generate 5 practice questions"
                 >
                   <HelpCircle className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   <span className="truncate">5 Practice Quiz</span>
+                </button>
+
+                {/* 4. Summarize Page */}
+                <button
+                  onClick={() => handleRunAiTask('summarize_page')}
+                  disabled={aiLoading}
+                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-colors"
+                  title="Summarize page in bullet points"
+                >
+                  <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span className="truncate">Page Summary</span>
+                </button>
+
+                {/* 5. Revision Notes */}
+                <button
+                  onClick={() => handleRunAiTask('short_notes')}
+                  disabled={aiLoading}
+                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-colors col-span-2 sm:col-span-1"
+                  title="Create revision short notes"
+                >
+                  <Star className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <span className="truncate">Revision Notes</span>
                 </button>
               </div>
             </div>
@@ -1307,9 +1318,26 @@ CRITICAL LANGUAGE INSTRUCTION: You MUST respond completely in the ${targetLangua
                       {msg.sender === 'assistant' && (
                         <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => speakText(msg.text, 'en')}
+                            onClick={() => {
+                              const codeMap: Record<string, LanguageCode> = {
+                                'English': 'en',
+                                'Hindi': 'hi',
+                                'Gujarati': 'gu',
+                                'Marathi': 'mr',
+                                'Tamil': 'ta',
+                                'Telugu': 'te',
+                                'Hinglish': 'hi',
+                                'Bengali': 'hi',
+                                'Kannada': 'en',
+                                'Malayalam': 'en',
+                                'Punjabi': 'hi',
+                                'Urdu': 'hi'
+                              };
+                              const speechLang = codeMap[targetLanguage] || 'en';
+                              speakText(msg.text, speechLang);
+                            }}
                             className="hover:text-white cursor-pointer"
-                            title="Speak Response"
+                            title={`Speak Response (${targetLanguage})`}
                           >
                             <Volume2 className="w-3 h-3 text-purple-300" />
                           </button>
@@ -1321,14 +1349,14 @@ CRITICAL LANGUAGE INSTRUCTION: You MUST respond completely in the ${targetLangua
               ))}
 
               {aiLoading && (
-                <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-2xl text-xs text-purple-300 border border-purple-900/30">
+                <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-2xl text-xs text-purple-300 border border-purple-900/30 animate-pulse">
                   <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-                  <span>AI Assistant analyzing PDF content...</span>
+                  <span>AI Solver Chatbot working in {targetLanguage}...</span>
                 </div>
               )}
             </div>
 
-            {/* AI Prompt Input Bar */}
+            {/* AI Prompt Input Bar with Speech-to-Text */}
             <div className="p-3 bg-slate-900 border-t border-slate-800 shrink-0">
               <form
                 onSubmit={(e) => {
@@ -1342,15 +1370,32 @@ CRITICAL LANGUAGE INSTRUCTION: You MUST respond completely in the ${targetLangua
               >
                 <input
                   type="text"
-                  placeholder={`Ask AI about Page ${activePageNum} or full PDF...`}
+                  placeholder={`Ask AI Solver in ${targetLanguage} about Page ${activePageNum}...`}
                   value={aiPromptInput}
                   onChange={(e) => setAiPromptInput(e.target.value)}
                   className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
                 />
+
+                {/* Speech Input Voice Mic Button */}
+                <SpeechInputButton
+                  lang={
+                    targetLanguage === 'Hindi' ? 'hi' :
+                    targetLanguage === 'Gujarati' ? 'gu' :
+                    targetLanguage === 'Marathi' ? 'mr' :
+                    targetLanguage === 'Tamil' ? 'ta' :
+                    targetLanguage === 'Telugu' ? 'te' : 'en'
+                  }
+                  onTranscript={(text) => {
+                    setAiPromptInput(prev => (prev ? prev + ' ' + text : text));
+                  }}
+                  className="shrink-0"
+                />
+
                 <button
                   type="submit"
                   disabled={!aiPromptInput.trim() || aiLoading}
-                  className="p-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white rounded-xl cursor-pointer"
+                  className="p-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white rounded-xl cursor-pointer shadow-md transition-all"
+                  title="Send Message"
                 >
                   <Send className="w-4 h-4" />
                 </button>

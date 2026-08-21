@@ -2778,15 +2778,6 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
             if (pageCount > 0) {
               pdf.addPage();
             }
-            // Draw standard PDF border and footer elements on each page
-            pdf.setDrawColor(220, 215, 205);
-            pdf.setLineWidth(0.2);
-            pdf.rect(margin - 2, margin - 2, pageWidth - (margin - 2) * 2, pageHeight - (margin - 2) * 2);
-            
-            pdf.setFont("Helvetica", "normal");
-            pdf.setFontSize(8);
-            pdf.setTextColor(150, 150, 150);
-            pdf.text(lang === 'hi' ? `पृष्ठ ${pageCount + 1}` : `Page ${pageCount + 1}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
 
             // Add the image slice using source clipping/positioning
             pdf.addImage(
@@ -2801,6 +2792,37 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
             leftHeight -= pageImgHeight;
             pageCount++;
           }
+        }
+
+        // Draw clean footer overlay and page numbers on ALL pages
+        const totalPages = (pdf.internal as any).getNumberOfPages();
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          pdf.setPage(pageNum);
+
+          // White footer block
+          pdf.setFillColor(250, 248, 245);
+          pdf.rect(0, pageHeight - 12, pageWidth, 12, 'F');
+
+          // Divider line
+          pdf.setDrawColor(220, 215, 205);
+          pdf.setLineWidth(0.3);
+          pdf.line(margin, pageHeight - 11, pageWidth - margin, pageHeight - 11);
+
+          // Page Number
+          pdf.setFont("Helvetica", "bold");
+          pdf.setFontSize(8.5);
+          pdf.setTextColor(100, 116, 139);
+          pdf.text(
+            lang === 'hi' ? `पृष्ठ ${pageNum} / ${totalPages}` : `Page ${pageNum} of ${totalPages}`,
+            pageWidth / 2,
+            pageHeight - 5,
+            { align: 'center' }
+          );
+
+          // Branding text
+          pdf.setFontSize(7.5);
+          pdf.setFont("Helvetica", "normal");
+          pdf.text(`Gramin Shiksha Math & Science Solver`, margin, pageHeight - 5);
         }
 
         const safeTitle = (userQuestion || "Explanation").substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_');
