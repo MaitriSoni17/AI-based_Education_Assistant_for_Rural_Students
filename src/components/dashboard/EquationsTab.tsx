@@ -16,6 +16,7 @@ import html2canvas from 'html2canvas-pro';
 import 'katex/dist/katex.min.css';
 import SpeechInputButton from '../SpeechInputButton';
 import SpeakButton from '../SpeakButton';
+import MathRenderer, { normalizeFractions } from '../common/MathRenderer';
 
 interface EquationsTabProps {
   user: User;
@@ -1803,6 +1804,8 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
       textToEdit = textToEdit.slice(2, -2);
     } else if (textToEdit.startsWith('\\(') && textToEdit.endsWith('\\)')) {
       textToEdit = textToEdit.slice(2, -2);
+    } else if (textToEdit.startsWith('$') && textToEdit.endsWith('$') && textToEdit.length > 2) {
+      textToEdit = textToEdit.slice(1, -1);
     }
     setEditingText(textToEdit);
   };
@@ -1850,8 +1853,15 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
 
     const systemInstruction = `You are GyaanBot's Smart AI Math and Science Solver, an expert teacher. Solve science/math problems, balance equations, explain physics laws, and show step-by-step calculations.
 CRITICAL RULE 1: You MUST explain, write, and reply ENTIRELY in the ${langName} language (using its native script/characters, e.g. Devanagari for Hindi/Sanskrit, Bengali script for Bengali, Arabic/Persian script for Urdu, Tamil script for Tamil, etc.). Do not speak English if the requested language is not English.
-CRITICAL RULE 2: Always present mathematical equations, formulas, fractions, derivatives, integrals, and multi-step math solutions in proper mathematical notation using LaTeX formatting. Do not write equations or formulas as plain text sentences. Every single equation, math term, variable, or inline formula must be enclosed in LaTeX inline syntax, e.g. \\(x^2 + y^2 = z^2\\) or \\(\\text{H}_2\\text{O}\\). Use display-style block LaTeX wrappers for multi-step solutions, derivations, or stand-alone prominent equations: \\[ E = mc^2 \\]. Explanations should be in simple, friendly, empathetic text in the ${langName} language, but equations must ALWAYS appear as LaTeX equations. For all science, physics, chemistry formulas and molecules, also use LaTeX formatting (e.g., \\(\\text{H}_2\\text{O}\\), \\(\\Delta G = \\Delta H - T\\Delta S\\)). Never mix plain text math with explanations — keep all math strictly in LaTeX (e.g., write \\(\\frac{d}{dx}x^2 = 2x\\) instead of "the derivative of x squared is 2x").
-CRITICAL RULE 3: MATH-AWARE PARSING AND SOLVING: Always parse and solve equations in LaTeX formatting. If the student's input query is in plain text, mentally convert it into proper LaTeX and provide the step-by-step mathematical explanation showing how the variables and fractions relate. Ensure any division type equations (e.g. \\(\\frac{a}{b}\\)), matrices, exponents, or chemical equations are beautifully structured and fully solved.
+CRITICAL RULE 2: Always output mathematical expressions, variables, formulas, and equations using standard inline LaTeX delimiters $...$ or standard Markdown bold text. Do NOT use block delimiters like \\[ ... \\] or code blocks (\`\`\`) for equations.
+- Inline math: Use single dollar signs, e.g., $D = b^2 - 4ac$, $x = 2$, $\\frac{d}{dx}x^2 = 2x$.
+- Standalone equations: Place single-dollar inline math on its own line, e.g.,
+$D = (-5)^2 - 4(3)(2)$
+$D = 25 - 24$
+$D = 1$
+- Do NOT include backslashes or brackets like \\[ or \\] around math.
+- For all science and chemistry formulas, also use $...$, e.g., $\\text{H}_2\\text{O}$, $\\Delta G = \\Delta H - T\\Delta S$, $F = ma$.
+CRITICAL RULE 3: MATH-AWARE PARSING AND SOLVING: Always parse and solve equations in LaTeX formatting. If the student's input query is in plain text, mentally convert it into proper LaTeX and provide the step-by-step mathematical explanation showing how the variables and fractions relate. Ensure any division type equations (e.g. $\\frac{a}{b}$), matrices, exponents, or chemical equations are beautifully structured and fully solved.
 CRITICAL RULE 4: CONVERSATIONAL CONTINUITY & PRACTICE QUESTIONS: Maintain context across messages. Whenever you solve a problem, you may provide a relevant Practice Question at the end for the student to try. When the student subsequently asks for "the solution", "solution to the practice question", "solve the practice question", "tell me the answer", or provides their answer attempt to the practice question, refer directly to the exact practice question given in your previous message in the conversation history, and provide its full, step-by-step LaTeX solution.
 If a user uploads an image or PDF, carefully analyze the visual/document problem and provide a detailed educational walkthrough in the ${langName} language using this clean format.
 
@@ -2307,7 +2317,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
   };
 
   const convertDivisionToFraction = (text: string): string => {
-    let result = text;
+    let result = normalizeFractions(text);
     
     // 1. Convert parenthesized divisions, e.g. (x + 1)/(y - 1) -> \frac{x + 1}{y - 1}
     const parenRegex = /\(([^()]+)\)\s*\/\s*\(([^()]+)\)/g;
@@ -2325,7 +2335,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     const simpleRegex = /\b([a-zA-Z0-9]+)\s*\/\s*([a-zA-Z0-9]+)\b/g;
     result = result.replace(simpleRegex, '\\frac{$1}{$2}');
     
-    return result;
+    return normalizeFractions(result);
   };
 
   const formatPlainTextInputToLatex = (input: string): string => {
@@ -2349,7 +2359,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
     if (isPureFormula) {
       const formatted = convertDivisionToFraction(text);
-      return `\\[ ${formatted} \\]`;
+      return `$${formatted}$`;
     }
 
     // Otherwise, convert any simple inline fraction like 3/4 -> \frac{3}{4} within the natural text
@@ -2402,8 +2412,17 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
     const systemInstruction = `You are GyaanBot's Smart AI Math and Science Solver, an expert teacher. Solve science/math problems, balance equations, explain physics laws, and show step-by-step calculations.
 CRITICAL RULE 1: You MUST explain, write, and reply ENTIRELY in the ${langName} language (using its native script/characters, e.g. Devanagari for Hindi/Sanskrit, Bengali script for Bengali, Arabic/Persian script for Urdu, Tamil script for Tamil, etc.). Do not speak English if the requested language is not English.
-CRITICAL RULE 2: Always present mathematical equations, formulas, fractions, derivatives, integrals, and multi-step math solutions in proper mathematical notation using LaTeX formatting. Do not write equations or formulas as plain text sentences. Every single equation, math term, variable, or inline formula must be enclosed in LaTeX inline syntax, e.g. \\(x^2 + y^2 = z^2\\) or \\(\\text{H}_2\\text{O}\\). Use display-style block LaTeX wrappers for multi-step solutions, derivations, or stand-alone prominent equations: \\[ E = mc^2 \\]. Explanations should be in simple, friendly, empathetic text in the ${langName} language, but equations must ALWAYS appear as LaTeX equations. For all science, physics, chemistry formulas and molecules, also use LaTeX formatting (e.g., \\(\\text{H}_2\\text{O}\\), \\(\\Delta G = \\Delta H - T\\Delta S\\)). Never mix plain text math with explanations — keep all math strictly in LaTeX (e.g., write \\(\\frac{d}{dx}x^2 = 2x\\) instead of "the derivative of x squared is 2x").
-CRITICAL RULE 3: MATH-AWARE PARSING AND SOLVING: Always parse and solve equations in LaTeX formatting. If the student's input query is in plain text, mentally convert it into proper LaTeX and provide the step-by-step mathematical explanation showing how the variables and fractions relate. Ensure any division type equations (e.g. \\(\\frac{a}{b}\\)), matrices, exponents, or chemical equations are beautifully structured and fully solved.
+CRITICAL RULE 2: Always output mathematical expressions, variables, formulas, and equations using standard inline LaTeX delimiters $...$ or standard Markdown bold text. Do NOT use block delimiters like \\[ ... \\] or code blocks (\`\`\`) for equations.
+- Separate natural language text from math expressions with clear spaces. Never put regular conversational words inside math mode $...$ delimiters.
+- Fractions: Format fractions strictly as $\\frac{numerator}{denominator}$ with both numerator and denominator in curly braces, e.g., $\\frac{2}{3}$, $\\frac{-b \\pm \\sqrt{D}}{2a}$. Never write unbracketed forms like \\frac{2}3.
+- Inline math: Use single dollar signs, e.g., $D = b^2 - 4ac$, $x = 2$, $\\frac{d}{dx}x^2 = 2x$.
+- Standalone equations: Place single-dollar inline math on its own line, e.g.,
+$D = (-5)^2 - 4(3)(2)$
+$D = 25 - 24$
+$D = 1$
+- Do NOT include backslashes or brackets like \\[ or \\] around math.
+- For all science and chemistry formulas, also use $...$, e.g., $\\text{H}_2\\text{O}$, $\\Delta G = \\Delta H - T\\Delta S$, $F = ma$.
+CRITICAL RULE 3: MATH-AWARE PARSING AND SOLVING: Always parse and solve equations in LaTeX formatting. If the student's input query is in plain text, mentally convert it into proper LaTeX and provide the step-by-step mathematical explanation showing how the variables and fractions relate. Ensure any division type equations (e.g. $\\frac{a}{b}$), matrices, exponents, or chemical equations are beautifully structured and fully solved.
 CRITICAL RULE 4: CONVERSATIONAL CONTINUITY & PRACTICE QUESTIONS: Maintain context across messages. Whenever you solve a problem, you may provide a relevant Practice Question at the end for the student to try. When the student subsequently asks for "the solution", "solution to the practice question", "solve the practice question", "tell me the answer", or provides their answer attempt to the practice question, refer directly to the exact practice question given in your previous message in the conversation history, and provide its full, step-by-step LaTeX solution.
 If a user uploads an image or PDF, carefully analyze the visual/document problem and provide a detailed educational walkthrough in the ${langName} language using this clean format.
 
@@ -2477,8 +2496,12 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
   // Helper to sanitize any accidental LaTeX syntax into clean plain text
   const sanitizeAccidentalLatex = (rawText: string): string => {
+    if (!rawText) return "";
     let t = rawText;
     
+    // Normalize ((x_1)) -> x_1
+    t = t.replace(/\(\(\s*([^()]+?)\s*\)\)/g, "$1");
+
     // Remove block delimiters
     t = t.replace(/\$\$/g, "");
     t = t.replace(/\$/g, "");
@@ -2532,166 +2555,50 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     return t;
   };
 
-  // Helper to format messages with proper LaTeX typesetting using KaTeX
+  // Helper to normalize and preprocess LaTeX text from AI responses
+  const normalizeMathText = (rawText: string): string => {
+    if (!rawText) return "";
+    let t = rawText;
+
+    // 1. Normalize escaped backslashes (e.g. \\\[ -> \[, \\\( -> \()
+    t = t.replace(/\\{2,}\[/g, "\\[");
+    t = t.replace(/\\{2,}\]/g, "\\]");
+    t = t.replace(/\\{2,}\(/g, "\\(");
+    t = t.replace(/\\{2,}\)/g, "\\)");
+
+    // 2. Convert (( variable )) -> \( variable \) e.g. ((x_1)) -> \(x_1\), ((x_2)) -> \(x_2\), ((D)) -> \(D\)
+    t = t.replace(/\(\(\s*([a-zA-Z0-9_\\^\{\}\+\-\*\/\s\.\,=±√≤≥≠÷×]+?)\s*\)\)/g, "\\($1\\)");
+
+    // 3. Convert bracketed math formulas [ x = \frac{...}{...} ] or [ D = 1 ] into \[ ... \] display blocks
+    t = t.replace(/\[\s*([^\[\]]+?)\s*\](?!\()/g, (fullMatch, inner) => {
+      const trimmed = inner.trim();
+      if (!trimmed) return fullMatch;
+
+      // Ignore pure non-math labels like [Step 1], [Note], [Figure 1], [CBSE 2024]
+      const isPureLabel = /^(step|note|fig|figure|page|cbse|ncert|icse|state|case|rule|method|level|section|chapter)\s*[0-9a-zA-Z\s]*$/i.test(trimmed);
+      if (isPureLabel) return fullMatch;
+
+      // Check if it has LaTeX commands (\frac, \sqrt, \pm, \cdot, etc.)
+      const hasLatex = /\\[a-zA-Z]+/.test(trimmed);
+      // Check if it has math equations/operators
+      const hasMathOps = /[=\^_\+\*\/<>≤≥≠≈±√∫∑%]/.test(trimmed);
+      // Check if it's a standalone variable or number assignment like "D = 1" or "x = 5" or "a = 3, b = -5, c = 2"
+      const isMathExpr = /^[a-zA-Z0-9_\^\s\+\-\*\/\.\,=±√\(\)\{\}\\]+$/.test(trimmed) && (/[0-9]/.test(trimmed) || hasMathOps);
+
+      if (hasLatex || hasMathOps || isMathExpr) {
+        return `\\[ ${trimmed} \\]`;
+      }
+      return fullMatch;
+    });
+
+    return t;
+  };
+
+  // Helper to format messages with proper LaTeX typesetting using react-katex MathRenderer
   const formatMessageText = (text: string, isUser?: boolean) => {
     if (!text) return null;
-
-    // Split text by display blocks first
-    const displayRegex = /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g;
-    const parts = text.split(displayRegex);
-
-    return parts.map((part, partIdx) => {
-      const isDisplayBlock = part.startsWith('$$') && part.endsWith('$$') || part.startsWith('\\[') && part.endsWith('\\]');
-      
-      if (isDisplayBlock) {
-        let content = part;
-        if (content.startsWith('$$')) {
-          content = content.slice(2, -2);
-        } else {
-          content = content.slice(2, -2);
-        }
-        
-        const trimmedContent = content.trim();
-        const isPlainSentence = !/[=\+\*\/\\^\{]/.test(trimmedContent) && trimmedContent.split(/\s+/).length >= 2;
-
-        if (isUser || isPlainSentence) {
-          return (
-            <span key={`block-${partIdx}`} className="font-sans text-xs sm:text-[13px] leading-relaxed text-white">
-              {trimmedContent}
-            </span>
-          );
-        }
-
-        try {
-          const html = katex.renderToString(content.trim(), {
-            displayMode: true,
-            throwOnError: false,
-          });
-          return (
-            <div 
-              key={`block-${partIdx}`} 
-              className={`my-1.5 overflow-x-auto p-2 rounded-lg border text-center text-xs sm:text-[13px] ${
-                isUser 
-                  ? 'bg-white/10 border-white/15 text-white font-semibold' 
-                  : 'bg-slate-50/50 border-slate-150 text-indigo-950 font-sans'
-              }`}
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          );
-        } catch (err) {
-          console.error("KaTeX block render error:", err);
-          return <pre key={`block-${partIdx}`} className="text-rose-600 bg-rose-50 p-2 rounded-xl text-xs overflow-x-auto my-2">\[{content}\]</pre>;
-        }
-      }
-
-      // If not display block, it's normal text which may contain inline math and markdown bold/bullets
-      // First, let's split by inline math: \( ... \) and $ ... $
-      const inlineRegex = /(\\\([\s\S]*?\\\)|\\\(.*?\\\))/g;
-      const subParts = part.split(inlineRegex);
-
-      return (
-        <span key={`text-block-${partIdx}`}>
-          {subParts.map((subPart, subIdx) => {
-            const isInlineMath = subPart.startsWith('\\(') && subPart.endsWith('\\)');
-            
-            if (isInlineMath) {
-              const content = subPart.slice(2, -2);
-              try {
-                const html = katex.renderToString(content.trim(), {
-                  displayMode: false,
-                  throwOnError: false,
-                });
-                return (
-                  <span 
-                    key={`inline-${subIdx}`} 
-                    className={`inline-block px-1 font-sans align-middle ${
-                      isUser ? 'text-white font-semibold' : 'text-indigo-950 font-sans'
-                    }`}
-                    dangerouslySetInnerHTML={{ __html: html }}
-                  />
-                );
-              } catch (err) {
-                console.error("KaTeX inline render error:", err);
-                return <code key={`inline-${subIdx}`} className="text-rose-600 bg-rose-50 px-1 rounded-md text-xs">\{content}\</code>;
-              }
-            }
-
-            // Also check for $ ... $ inline math in the subPart
-            const dollarRegex = /(\$[^\$\n]+?\$)/g;
-            const dollarParts = subPart.split(dollarRegex);
-
-            return dollarParts.map((dollarPart, dIdx) => {
-              const isDollarMath = dollarPart.startsWith('$') && dollarPart.endsWith('$') && dollarPart.length > 2;
-
-              if (isDollarMath) {
-                const content = dollarPart.slice(1, -1);
-                try {
-                  const html = katex.renderToString(content.trim(), {
-                    displayMode: false,
-                    throwOnError: false,
-                  });
-                  return (
-                    <span 
-                      key={`dollar-${dIdx}`} 
-                      className="inline-block px-1 font-sans text-indigo-950 align-middle"
-                      dangerouslySetInnerHTML={{ __html: html }}
-                  />
-                );
-              } catch (err) {
-                console.error("KaTeX inline dollar render error:", err);
-                return <code key={`dollar-${dIdx}`} className="text-rose-600 bg-rose-50 px-1 rounded-md text-xs">${content}$</code>;
-              }
-            }
-
-            // Normal text with newlines, bold markdown, and bullet points
-            return dollarPart.split('\n').map((line, lineIdx) => {
-              const trimmedLine = line.trim();
-              const isBullet = trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ');
-              const cleanLine = isBullet ? trimmedLine.substring(2) : line;
-
-              // Match **bold**
-              const parts = [];
-              const regex = /\*\*(.*?)\*\*/g;
-              let match;
-              let lastIndex = 0;
-
-              while ((match = regex.exec(cleanLine)) !== null) {
-                if (match.index > lastIndex) {
-                  parts.push(cleanLine.substring(lastIndex, match.index));
-                }
-                parts.push(<strong key={match.index} className={isUser ? "font-extrabold text-white" : "font-bold text-gray-950"}>{match[1]}</strong>);
-                lastIndex = regex.lastIndex;
-              }
-              if (lastIndex < cleanLine.length) {
-                parts.push(cleanLine.substring(lastIndex));
-              }
-
-              const content = parts.length > 0 ? parts : cleanLine;
-
-              if (isBullet) {
-                return (
-                  <span key={lineIdx} className={`block list-disc ml-3 mt-0.5 text-xs sm:text-[13px] leading-normal font-sans ${
-                    isUser ? 'text-white/90 font-sans' : 'text-gray-750 font-sans'
-                  }`}>
-                    • {content}
-                  </span>
-                );
-              }
-
-              return (
-                <span key={lineIdx} className={`block text-xs sm:text-[13px] leading-normal font-sans min-h-[0.25rem] ${
-                  isUser ? 'text-white font-sans' : 'text-gray-750 font-sans'
-                }`}>
-                  {content}
-                </span>
-              );
-            });
-          });
-        })}
-      </span>
-    );
-  });
-};
+    return <MathRenderer content={text} isUser={isUser} />;
+  };
 
   const copyMessageToClipboard = (msg: ChatMessage) => {
     const cleanText = sanitizeAccidentalLatex(msg.text);
@@ -4685,57 +4592,61 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
           <div className="w-full flex-1 flex flex-col min-h-0">
             
             {/* CHAT HEADER */}
-            <div className="border-b border-gray-100 p-3 sm:p-4 bg-gray-50/60 flex flex-col sm:flex-row justify-between sm:items-center gap-2 sm:gap-3">
+            <div className="border-b border-gray-100 p-3 sm:p-4 bg-gray-50/60 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-rose-50 text-[#E07A5F] rounded-2xl border border-rose-100 flex items-center justify-center shadow-3xs">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div className="text-left">
-                  <h3 className="font-display font-extrabold text-sm text-gray-900 leading-snug">
-                    {chatbotLang === 'hi' ? 'स्मार्ट सॉल्वर' : chatbotLang === 'gu' ? 'સ્માર્ટ સોલ્વર' : chatbotLang === 'mr' ? 'स्मार्ट सॉल्वर' : chatbotLang === 'bn' ? 'স্মার্ট সমাধানকারী' : chatbotLang === 'ta' ? 'ஸ்மார்ட் தீர்வு' : chatbotLang === 'te' ? 'స్మార్ట్ సాల్వర్' : 'Smart Solver'}
-                  </h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-display font-extrabold text-sm text-gray-900 leading-snug">
+                      {chatbotLang === 'hi' ? 'स्मार्ट सॉल्वर' : chatbotLang === 'gu' ? 'સ્માર્ટ સોલ્વર' : chatbotLang === 'mr' ? 'स्मार्ट सॉल्वर' : chatbotLang === 'bn' ? 'স্মার্ট সমাধানকারী' : chatbotLang === 'ta' ? 'ஸ்மார்ட் தீர்வு' : chatbotLang === 'te' ? 'స్మార్ట్ సాల్వర్' : 'Smart Solver'}
+                    </h3>
+
+                    {/* History & New Chat Buttons inline next to heading */}
+                    <div className="flex items-center gap-1.5 ml-1">
+                      {/* Search History Toggle button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowHistory(!showHistory)}
+                        className={`text-[11px] border px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-3xs ${
+                          showHistory 
+                            ? 'bg-[#FAF8F4] text-[#3D405B] border-[#F2CC8F]' 
+                            : 'bg-white hover:bg-slate-50 text-gray-700 border-gray-200'
+                        }`}
+                        title={showHistory 
+                          ? translations.chatButton
+                          : translations.searchHistory}
+                      >
+                        <BookOpen className="h-3.5 w-3.5" style={{color: showHistory ? '#E07A5F' : '#3D405B'}} />
+                        <span className="hidden sm:inline">
+                          {showHistory 
+                            ? translations.activeChat
+                            : translations.searchHistory}
+                        </span>
+                      </button>
+
+                      {/* New Chat Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleNewChat();
+                          setShowHistory(false);
+                        }}
+                        className="text-[11px] bg-[#E07A5F] hover:bg-[#CE6B50] text-white border border-transparent px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-3xs"
+                        title={translations.newChat}
+                      >
+                        <Plus className="h-3.5 w-3.5 text-white" />
+                        <span className="hidden sm:inline">{translations.newChat}</span>
+                      </button>
+                    </div>
+                  </div>
+                  
                   <p className="text-[10px] text-emerald-600 font-mono font-bold flex items-center gap-1 mt-0.5">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
                     {chatbotLang === 'hi' ? 'सक्रिय सॉल्वर इंजन' : chatbotLang === 'gu' ? 'સક્રિય સોલ્વર એન્જિન' : chatbotLang === 'mr' ? 'सक्रिय सॉલ્वर इंजिन' : chatbotLang === 'bn' ? 'সক্রিয় সমাধানকারী ইঞ্জিন' : chatbotLang === 'ta' ? 'செயலில் உள்ள தீர்வு எஞ்சின்' : chatbotLang === 'te' ? 'క్రియాశీల సాల్వర్ ఇంజిన్' : 'Active Solver Engine Online'}
                   </p>
                 </div>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
-                {/* Search History Toggle button */}
-                <button
-                  type="button"
-                  onClick={() => setShowHistory(!showHistory)}
-                  className={`text-[11px] sm:text-xs border px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
-                    showHistory 
-                      ? 'bg-[#FAF8F4] text-[#3D405B] border-[#F2CC8F]' 
-                      : 'bg-white hover:bg-slate-50 text-gray-700 border-gray-200'
-                  }`}
-                  title={showHistory 
-                    ? translations.chatButton
-                    : translations.searchHistory}
-                >
-                  <BookOpen className={`h-3.5 w-3.5`} style={{color: showHistory ? '#E07A5F' : '#3D405B'}} />
-                  <span className="hidden sm:inline">
-                    {showHistory 
-                      ? translations.activeChat
-                      : translations.searchHistory}
-                  </span>
-                </button>
-
-                {/* New Chat Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleNewChat();
-                    setShowHistory(false);
-                  }}
-                  className="text-[11px] sm:text-xs bg-[#E07A5F] hover:bg-[#CE6B50] text-white border border-transparent px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-                  title={translations.newChat}
-                >
-                  <Plus className="h-3.5 w-3.5 text-white" />
-                  <span className="hidden sm:inline">{translations.newChat}</span>
-                </button>
               </div>
             </div>
 
@@ -5254,9 +5165,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         </div>
                       ) : (
                         <div className="markdown-content w-full overflow-hidden break-words text-sm sm:text-base leading-relaxed">
-                          <ReactMarkdown>
-                            {msg.text}
-                          </ReactMarkdown>
+                          {formatMessageText(msg.text, msg.sender === 'user')}
                         </div>
                       )}
 

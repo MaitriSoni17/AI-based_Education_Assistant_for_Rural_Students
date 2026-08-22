@@ -481,7 +481,7 @@ export default function App() {
       </main>
 
       {/* Decorative Rural Education Support Footer with Natural Tones elements */}
-      <footer className="bg-white border-t border-[#F2CC8F]/30 text-[#3D405B]/80 py-8">
+      <footer className="bg-white border-t border-[#F2CC8F]/30 text-[#3D405B]/80 pt-8 pb-6 lg:py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
           <div className="flex items-center justify-center space-x-2 text-[#E07A5F]">
             <GraduationCap className="h-5 w-5" />
@@ -509,7 +509,7 @@ export default function App() {
       </footer>
 
       {/* Bottom Decorative Bar mimicking Natural Tones theme instructions */}
-      <div className="h-2 w-full flex">
+      <div className="h-2 w-full flex mb-20 lg:mb-0">
         <div className="flex-1 bg-[#E07A5F]"></div>
         <div className="flex-1 bg-[#F2CC8F]"></div>
         <div className="flex-1 bg-[#81B29A]"></div>
@@ -517,7 +517,7 @@ export default function App() {
       </div>
 
       {showStreakEarnedToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#3D405B] text-white p-4 rounded-2xl border-2 border-amber-300 shadow-2xl flex items-center gap-3 max-w-sm text-left hover:scale-101 transition-transform duration-300">
+        <div className="fixed bottom-20 lg:bottom-6 right-4 sm:right-6 z-50 bg-[#3D405B] text-white p-4 rounded-2xl border-2 border-amber-300 shadow-2xl flex items-center gap-3 max-w-sm text-left hover:scale-101 transition-transform duration-300">
           <div className="bg-amber-100 p-2 rounded-xl text-xl">🔥</div>
           <div className="flex-1">
             <h4 className="font-display font-black text-xs uppercase tracking-wider text-amber-300">

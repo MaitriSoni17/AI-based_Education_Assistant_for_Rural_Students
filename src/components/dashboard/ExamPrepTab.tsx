@@ -1052,28 +1052,30 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
       </div>
 
       {/* MODE SELECTOR WORKFLOW TABS */}
-      <div className="bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/50 flex w-full max-w-xl mx-auto gap-1">
+      <div className="bg-gray-100/90 p-1.5 rounded-2xl border border-gray-200/60 grid grid-cols-1 sm:grid-cols-2 w-full max-w-xl mx-auto gap-1.5 shadow-2xs">
         <button
+          type="button"
           onClick={() => { setMode('simulated'); setErrorMsg(null); }}
-          className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+          className={`py-2.5 px-3 sm:px-4 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer text-center ${
             mode === 'simulated'
-              ? 'bg-[#3D405B] text-white shadow-sm'
-              : 'text-gray-500 hover:text-gray-800 bg-transparent'
+              ? 'bg-[#3D405B] text-white shadow-xs'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-white/60 bg-transparent'
           }`}
         >
-          <Clock className="h-4 w-4" />
-          <span>Simulated Live AI Exam</span>
+          <Clock className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate sm:whitespace-nowrap">Simulated Live AI Exam</span>
         </button>
         <button
+          type="button"
           onClick={() => { setMode('standard'); setErrorMsg(null); }}
-          className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+          className={`py-2.5 px-3 sm:px-4 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer text-center ${
             mode === 'standard'
-              ? 'bg-[#3D405B] text-white shadow-sm'
-              : 'text-gray-500 hover:text-gray-800 bg-transparent'
+              ? 'bg-[#3D405B] text-white shadow-xs'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-white/60 bg-transparent'
           }`}
         >
-          <UploadCloud className="h-4 w-4" />
-          <span>Direct Answer Review</span>
+          <UploadCloud className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate sm:whitespace-nowrap">Direct Answer Review</span>
         </button>
       </div>
 
@@ -1161,12 +1163,12 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
               {/* STAGE 1: PROFILE & SYLLABUS SETUP */}
               {simStage === 'setup' && (
                 <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-xs space-y-6 animate-fade-in">
-                  <div className="border-b border-gray-100 pb-3 flex justify-between items-center">
+                  <div className="border-b border-gray-100 pb-3 flex items-center justify-between gap-3">
                     <h3 className="font-display font-bold text-[#3D405B] text-base flex items-center gap-2">
-                      <Layers className="h-5 w-5 text-indigo-500" />
-                      Configure Your Simulated Exam
+                      <Layers className="h-5 w-5 text-indigo-500 shrink-0" />
+                      <span>Configure Your Simulated Exam</span>
                     </h3>
-                    <span className="text-[9px] bg-indigo-50 text-indigo-700 p-1 px-2.5 rounded-full font-mono uppercase font-bold">
+                    <span className="text-[10px] bg-indigo-50 text-indigo-700 py-1 px-3 rounded-full font-mono uppercase font-bold tracking-wider whitespace-nowrap shrink-0 border border-indigo-100">
                       Step 1 of 3
                     </span>
                   </div>
@@ -1318,31 +1320,31 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                   </div>
 
                   {/* Max Marks & Penalty */}
-                  <div className="flex gap-4">
-                    <div className="space-y-1.5 flex-none w-32">
-                      <label className="text-xs font-bold text-gray-500">Max Marks Allocated</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-500 block">Max Marks Allocated</label>
                       <input 
                         type="number"
                         value={maxMarks}
                         onChange={(e) => setMaxMarks(Number(e.target.value))}
-                        className="w-full text-xs p-3 bg-gray-55 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
+                        className="w-full h-11 px-3.5 text-xs bg-gray-50 border border-gray-200 rounded-xl font-sans font-medium text-gray-800 focus:border-indigo-400 focus:outline-none"
                       />
                     </div>
-                    <div className="space-y-1.5 relative flex-1">
-                      <label className="text-xs font-bold text-gray-500">{t.negMarking}</label>
+                    <div className="space-y-1.5 relative">
+                      <label className="text-xs font-bold text-gray-500 block truncate">{t.negMarking}</label>
                       <button
                         type="button"
                         onClick={() => setIsNegativeMarkingDropdownOpen(!isNegativeMarkingDropdownOpen)}
-                        className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl font-sans font-bold text-gray-800 flex items-center justify-between hover:bg-gray-100/70 transition-colors cursor-pointer text-left"
+                        className="w-full h-11 px-3.5 text-xs bg-gray-50 border border-gray-200 rounded-xl font-sans font-bold text-gray-800 flex items-center justify-between hover:bg-gray-100/70 transition-colors cursor-pointer text-left"
                       >
-                        <span className="text-left flex-1 mr-2">
+                        <span className="text-left flex-1 mr-2 truncate">
                           {negativeMarking === 'None' ? t.negNone :
                            negativeMarking === '-0.33 per wrong MCQ' ? t.negOneThird :
                            negativeMarking === '-0.25 per wrong MCQ' ? t.negOneFourth :
                            negativeMarking === '-1 per wrong subjective question' ? "Strict penalty (-1 mark)" :
                            negativeMarking}
                         </span>
-                        <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isNegativeMarkingDropdownOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown className={`h-4 w-4 text-gray-500 shrink-0 transition-transform ${isNegativeMarkingDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
 
                       <AnimatePresence>
@@ -1382,27 +1384,25 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                         )}
                       </AnimatePresence>
                     </div>
-
-                    
                   </div>
 
                   {/* Language and Extra instructions */}
-                  <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                        <Languages className="h-4 w-4 text-emerald-500" />
-                        Preferred Assessment Language
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-gray-500 flex items-center gap-1.5">
+                        <Languages className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <span>Preferred Assessment Language</span>
                       </label>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {(['en', 'hi', 'gu', 'mr', 'ta', 'te'] as LanguageCode[]).map(langCode => (
                           <button
                             key={langCode}
                             type="button"
                             onClick={() => setFeedbackLang(langCode)}
-                            className={`text-[10px] font-bold px-3 py-1.5 border rounded-lg transition-all ${
+                            className={`text-xs font-medium px-3 py-1.5 border rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                               feedbackLang === langCode 
-                                ? 'bg-indigo-600 border-indigo-600 text-white' 
-                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                ? 'bg-indigo-600 border-indigo-600 text-white font-semibold shadow-2xs' 
+                                : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
                             }`}
                           >
                             {langCode === 'en' && '🇬🇧 English'}
@@ -1416,17 +1416,17 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                       </div>
                     </div>
 
-                    <div className="space-y-1.5 mt-5">
-                      <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                        <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
-                        {t.extraInstructions}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-500 flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0 animate-pulse" />
+                        <span>{t.extraInstructions}</span>
                       </label>
                       <input 
                         type="text"
                         value={extraInstructions}
                         onChange={(e) => setExtraInstructions(e.target.value)}
                         placeholder="e.g. Focus on physical reaction dynamics, ask for diagrams"
-                        className="w-full text-xs p-3 bg-gray-55 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
+                        className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1437,9 +1437,9 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                       type="button"
                       disabled={!simTopic.trim() || isGeneratingExam}
                       onClick={handleGenerateExam}
-                      className="w-full py-4 bg-[#3D405B] hover:bg-[#2D2F44] text-white text-xs font-bold rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-3.5 px-6 bg-[#3D405B] hover:bg-[#2D2F44] text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-sm hover:shadow flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-center"
                     >
-                      <Sparkles className="h-4.5 w-4.5 text-amber-300 animate-pulse" />
+                      <Sparkles className="h-4 w-4 text-amber-300 shrink-0 animate-pulse" />
                       <span>Generate Question Paper & Start Live Assessment</span>
                     </button>
                     {!simTopic.trim() && (
@@ -2209,21 +2209,22 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
               </div>
 
               {/* LOWER CONTROLS & SUBMISSION ACTIONS */}
-              <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-xs justify-between items-center gap-4 text-center sm:text-left">
-                <div className="space-y-1">
-                  <p className="text-xs font-bold text-gray-500 flex items-center justify-center sm:justify-start gap-1">
-                    <Languages className="h-4 w-4 text-[#81B29A]" />
-                    {t.feedbackLanguage}
+              <div className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6 shadow-xs space-y-4 text-left">
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                    <Languages className="h-4 w-4 text-[#81B29A] shrink-0" />
+                    <span>{t.feedbackLanguage}</span>
                   </p>
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 mt-3">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {(['en', 'hi', 'gu', 'mr', 'ta', 'te'] as LanguageCode[]).map(langCode => (
                       <button
                         key={langCode}
+                        type="button"
                         onClick={() => setFeedbackLang(langCode)}
-                        className={`text-[10px] font-bold px-3 py-1 border rounded-lg transition-all ${
+                        className={`text-xs font-medium px-3 py-1.5 border rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                           feedbackLang === langCode 
-                            ? 'bg-indigo-600 border-indigo-600 text-white' 
-                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            ? 'bg-[#3D405B] border-[#3D405B] text-white shadow-2xs font-semibold' 
+                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
                         }`}
                       >
                         {langCode === 'en' && '🇬🇧 English'}
@@ -2237,11 +2238,11 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                   </div>
                 </div>
 
-                <div className="flex gap-2 w-full sm:w-auto shrink-0 mt-3">
+                <div className="pt-3 border-t border-gray-100 flex flex-wrap sm:flex-nowrap items-center justify-end gap-3">
                   <button
                     type="button"
                     onClick={clearCurrentFiles}
-                    className="px-4 py-3 border border-gray-200 text-gray-500 text-xs font-bold rounded-xl hover:bg-gray-50 transition-all flex-1 sm:flex-none"
+                    className="px-4 py-2.5 border border-gray-200 text-gray-600 hover:text-gray-900 text-xs font-semibold rounded-xl hover:bg-gray-50 transition-all cursor-pointer w-full sm:w-auto text-center whitespace-nowrap"
                   >
                     Reset Files
                   </button>
@@ -2250,16 +2251,16 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                     type="button"
                     disabled={isEvaluating}
                     onClick={handleStartEvaluation}
-                    className="px-6 py-3 bg-[#3D405B] hover:bg-[#2D2F44] text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-1.5 flex-1 sm:flex-none disabled:opacity-50"
+                    className="px-6 py-2.5 bg-[#E07A5F] hover:bg-[#D0694E] text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 w-full sm:w-auto text-center whitespace-nowrap"
                   >
                     {isEvaluating ? (
                       <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <RefreshCw className="h-4 w-4 animate-spin shrink-0" />
                         <span>{t.evaluating}</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+                        <Sparkles className="h-4 w-4 text-amber-200 animate-pulse shrink-0" />
                         <span>{t.evaluateBtn}</span>
                       </>
                     )}

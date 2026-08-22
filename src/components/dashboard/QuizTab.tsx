@@ -1088,12 +1088,12 @@ const PERFECT_SCORE_LABELS: Record<string, string> = {
 };
 
 const RETRY_GAME_LABELS: Record<string, string> = {
-  en: "Retry Game 🔄",
-  hi: "पुनः प्रयास करें 🔄",
-  gu: "ફરી પ્રયાસ કરો 🔄",
-  mr: "पुन्हा प्रयत्न करा 🔄",
-  ta: "மீண்டும் முயற்சி செய் 🔄",
-  te: "మళ్ళీ ప్రయత్నించండి 🔄"
+  en: "Retry Game",
+  hi: "पुनः प्रयास करें",
+  gu: "ફરી પ્રયાસ કરો",
+  mr: "पुन्हा प्रयत्न करा",
+  ta: "மீண்டும் முயற்சி செய்",
+  te: "మళ్ళీ ప్రయత్నించండి"
 };
 
 
@@ -1242,12 +1242,12 @@ const ENTER_NAME_LABELS: Record<string, string> = {
 };
 
 const CLAIM_CERT_BTN_LABELS: Record<string, string> = {
-  en: "Claim Achievement Certificate 📜",
-  hi: "सफलता का प्रमाण पत्र प्राप्त करें 📜",
-  gu: "સિદ્ધિનું પ્રમાણપત્ર મેળવો 📜",
-  mr: "यशस्वीतेचे प्रमाणपत्र मिळवा 📜",
-  ta: "சான்றிதழைப் பெற்றிடுங்கள் 📜",
-  te: "ప్రశంసా పత్రాన్ని పొందండి 📜"
+  en: "Claim Achievement Certificate",
+  hi: "सफलता का प्रमाण पत्र प्राप्त करें",
+  gu: "સિદ્ધિનું પ્રમાણપત્ર મેળવો",
+  mr: "यशस्वीतेचे प्रमाणपत्र मिळवा",
+  ta: "சான்றிதழைப் பெற்றிடுங்கள்",
+  te: "ప్రశంసా పత్రాన్ని పొందండి"
 };
 
 const ACCURACY_LABELS: Record<string, string> = {
@@ -3024,7 +3024,7 @@ JSON Schema:
                 ) : (
                   <>
                     <Download className="h-4.5 w-4.5" />
-                    <span>{lang === 'hi' ? 'प्रमाण पत्र डाउनलोड करें 📥' : 'Download Certificate 📥'}</span>
+                    <span>{lang === 'hi' ? 'प्रमाण पत्र डाउनलोड करें' : 'Download Certificate'}</span>
                   </>
                 )}
               </button>

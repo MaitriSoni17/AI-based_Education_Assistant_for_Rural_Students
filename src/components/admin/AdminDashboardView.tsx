@@ -2044,117 +2044,108 @@ startxref
     return result;
   }, [usersList]);
 
+  const adminNavItems = [
+    { id: 'analytics' as const, label: 'Student Analytics', icon: BarChart3, color: 'text-amber-600 bg-amber-50', activeIconColor: 'text-amber-400' },
+    { id: 'content' as const, label: 'Curriculum & Content', icon: BookOpen, color: 'text-emerald-600 bg-emerald-50', activeIconColor: 'text-emerald-400' },
+    { id: 'certificates' as const, label: 'Certificates Registry', icon: Award, color: 'text-amber-600 bg-amber-50', activeIconColor: 'text-amber-400' },
+    { id: 'users' as const, label: 'User Role Management', icon: Users, color: 'text-indigo-600 bg-indigo-50', activeIconColor: 'text-indigo-400' },
+    { id: 'settings' as const, label: 'Platform Config', icon: Settings, color: 'text-slate-600 bg-slate-100', activeIconColor: 'text-slate-300' },
+  ];
+
+  const currentAdminNavItem = adminNavItems.find(item => item.id === activeTab) || adminNavItems[0];
+  const CurrentAdminNavIcon = currentAdminNavItem.icon;
+
   return (
-    <div className="space-y-6 pb-12 animate-fade-in">
+    <div className="space-y-6 pb-24 lg:pb-12 animate-fade-in">
       
       {/* Top Banner & Control Status Bar */}
-      <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-xl border-2 border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3.5 bg-amber-500/20 border border-amber-400/30 rounded-2xl text-amber-400">
-            <Shield className="h-8 w-8" />
+      <div className="bg-slate-900 text-white rounded-3xl p-4 sm:p-6 shadow-xl border-2 border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+          <div className="p-2.5 sm:p-3 bg-amber-500/20 border border-amber-400/30 rounded-2xl text-amber-400 shrink-0">
+            <Shield className="h-6 w-6 sm:h-7 sm:w-7" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-sm font-black text-white tracking-tight">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-base sm:text-lg lg:text-xl font-black text-white tracking-tight leading-snug">
                 Gramin Shiksha Admin Dashboard
               </h1>
-              <span className="bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase">
+              <span className="bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase whitespace-nowrap inline-flex items-center">
                 SUPER ADMIN
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Logged in as <strong className="text-amber-300">{adminUser.name}</strong> ({adminUser.mobile}) • State Curriculum Operations
+            <p className="text-xs text-slate-400">
+              Logged in as <strong className="text-amber-300">{adminUser.name}</strong> <span className="text-slate-500 font-mono">({adminUser.mobile})</span> • State Curriculum Operations
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap justify-end self-end md:self-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-3 md:flex md:items-center gap-2 w-full md:w-auto shrink-0 pt-1 md:pt-0">
           <button
             onClick={() => setShowExportModal(true)}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl border border-emerald-400 shadow-sm flex items-center gap-1.5 cursor-pointer transition-all"
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl border border-emerald-400 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all whitespace-nowrap"
           >
-            <Download className="h-3.5 w-3.5" />
+            <Download className="h-3.5 w-3.5 shrink-0" />
             <span>Download Analytics</span>
           </button>
 
           <button
             onClick={handleSyncAllData}
-            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all"
+            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer transition-all whitespace-nowrap"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isLoadingUsers || isLoadingCerts ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${isLoadingUsers || isLoadingCerts ? 'animate-spin' : ''}`} />
             <span>Sync Live Data</span>
           </button>
 
           <button
             onClick={onLogoutAdmin}
-            className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-bold rounded-xl border border-red-500/30 cursor-pointer transition-all"
+            className="px-3.5 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-bold rounded-xl border border-red-500/30 cursor-pointer transition-all flex items-center justify-center whitespace-nowrap"
           >
             Exit Admin Console
           </button>
         </div>
       </div>
 
-      {/* Main Tab Navigation Buttons */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-xs grid grid-cols-2 xs:grid-cols-3 md:grid-cols-5 gap-2 text-xs font-bold font-sans">
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`py-3 px-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all ${
-            activeTab === 'analytics'
-              ? 'bg-slate-900 text-white shadow-md'
-              : 'text-slate-700 hover:bg-slate-100'
-          }`}
-        >
-          <BarChart3 className="h-4 w-4 text-amber-400" />
-          <span>Student Analytics</span>
-        </button>
+      {/* TOP TAB CONTROLS & MOBILE HORIZONTAL QUICK SCROLL DOCK */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs space-y-2.5">
+        {/* Header Row: Current active tab display */}
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Current:</span>
+            <span className="text-xs sm:text-sm font-extrabold text-slate-800 truncate flex items-center gap-1.5">
+              <CurrentAdminNavIcon className="h-4 w-4 text-amber-500" />
+              {currentAdminNavItem.label}
+            </span>
+          </div>
 
-        <button
-          onClick={() => setActiveTab('content')}
-          className={`py-3 px-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all ${
-            activeTab === 'content'
-              ? 'bg-slate-900 text-white shadow-md'
-              : 'text-slate-700 hover:bg-slate-100'
-          }`}
-        >
-          <BookOpen className="h-4 w-4 text-emerald-400" />
-          <span>Curriculum & Content</span>
-        </button>
+          <div className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200/60 shrink-0">
+            {adminNavItems.length} Admin Modules
+          </div>
+        </div>
 
-        <button
-          onClick={() => setActiveTab('certificates')}
-          className={`py-3 px-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all ${
-            activeTab === 'certificates'
-              ? 'bg-slate-900 text-white shadow-md'
-              : 'text-slate-700 hover:bg-slate-100'
-          }`}
-        >
-          <Award className="h-4 w-4 text-amber-400" />
-          <span>Certificates Registry</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('users')}
-          className={`py-3 px-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all ${
-            activeTab === 'users'
-              ? 'bg-slate-900 text-white shadow-md'
-              : 'text-slate-700 hover:bg-slate-100'
-          }`}
-        >
-          <Users className="h-4 w-4 text-indigo-400" />
-          <span>User Role Management</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('settings')}
-          className={`py-3 px-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all ${
-            activeTab === 'settings'
-              ? 'bg-slate-900 text-white shadow-md'
-              : 'text-slate-700 hover:bg-slate-100'
-          }`}
-        >
-          <Settings className="h-4 w-4 text-slate-400" />
-          <span>Platform Config</span>
-        </button>
+        {/* Clean Horizontal Quick Pills on Mobile & Tablet / Symmetrical 5-Col Grid on Desktop */}
+        <div className="flex overflow-x-auto gap-2 pb-1 pt-0.5 select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-5 md:gap-2">
+          {adminNavItems.map(item => {
+            const IconComp = item.icon;
+            const isSelected = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                className={`p-2.5 px-3.5 rounded-xl font-sans text-xs font-bold whitespace-nowrap flex items-center gap-2 transition-all duration-150 cursor-pointer border text-left shrink-0 md:justify-center ${
+                  isSelected
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-[1.01]'
+                    : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100/90 hover:border-slate-300'
+                }`}
+              >
+                <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-white/20 text-white' : item.color}`}>
+                  <IconComp className="h-4 w-4" />
+                </div>
+                <span className="truncate">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* TAB 1: STUDENT ANALYTICS & PROGRESS */}
@@ -2165,48 +2156,48 @@ startxref
           <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-5 text-white space-y-4">
             {/* Card Header: Title & Direct Downloads */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
-                    <BarChart3 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-extrabold text-white tracking-tight flex items-center gap-2">
-                      <span>Platform Analytics & Export Hub</span>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 font-mono font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
-                        {getDateFilterLabel()}
-                      </span>
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20 shrink-0 mt-0.5 sm:mt-0">
+                  <BarChart3 className="h-5 w-5" />
+                </div>
+                <div className="space-y-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-sm sm:text-base font-extrabold text-white tracking-tight leading-snug">
+                      Platform Analytics & Export Hub
                     </h2>
-                    <p className="text-xs text-slate-400">
-                      Filter platform datasets by academic year, month, or custom period, then export executive PDF or Excel (.xlsx) reports.
-                    </p>
+                    <span className="text-[10px] bg-amber-500/20 text-amber-300 font-mono font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30 whitespace-nowrap inline-flex items-center">
+                      {getDateFilterLabel()}
+                    </span>
                   </div>
+                  <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
+                    Filter platform datasets by academic year, month, or custom period, then export executive PDF or Excel (.xlsx) reports.
+                  </p>
                 </div>
               </div>
 
               {/* Direct Quick Downloads */}
-              <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:items-center gap-2 w-full lg:w-auto shrink-0 pt-1 lg:pt-0">
                 <button
                   onClick={() => handleExportMasterPDF(true)}
-                  className="px-3.5 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center gap-1.5"
+                  className="px-3.5 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"
                   title={`Download PDF report for ${getDateFilterLabel()}`}
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <Download className="h-3.5 w-3.5 shrink-0" />
                   <span>PDF Report</span>
                 </button>
                 <button
                   onClick={() => handleExportMasterExcel(true)}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center gap-1.5"
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"
                   title={`Download Excel spreadsheet for ${getDateFilterLabel()}`}
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <Download className="h-3.5 w-3.5 shrink-0" />
                   <span>Excel (.xlsx)</span>
                 </button>
                 <button
                   onClick={() => setShowExportModal(true)}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 cursor-pointer transition-all flex items-center gap-1.5"
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 cursor-pointer transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
                 >
-                  <Filter className="h-3.5 w-3.5 text-amber-400" />
+                  <Filter className="h-3.5 w-3.5 text-amber-400 shrink-0" />
                   <span>All Export Formats</span>
                 </button>
               </div>
@@ -2492,7 +2483,7 @@ startxref
 
       {/* TAB 2: CONTENT & CURRICULUM MANAGEMENT (FOLDER STRUCTURE) */}
       {activeTab === 'content' && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-3xs space-y-6">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-3xs space-y-6">
           {/* Header */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
@@ -2566,7 +2557,7 @@ startxref
               ))}
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="flex gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:w-60">
                 <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <input
@@ -2777,10 +2768,133 @@ startxref
                       </div>
                     )}
 
-                    <div className="overflow-x-auto border border-slate-200/85 rounded-2xl bg-white shadow-xs">
-                      <div className="text-[10px] text-slate-400 font-mono px-4 py-2 bg-slate-50 border-b border-slate-100 sm:hidden flex items-center gap-1">
-                        <span>↔️ Swipe horizontally to view full table details</span>
-                      </div>
+                    {/* Responsive Mobile Cards View */}
+                    <div className="block md:hidden space-y-3">
+                      {visibleFiles.map((file) => {
+                        const isPdf = file.category === 'pdf';
+                        const isVideo = file.category === 'video';
+                        const isQuiz = file.category === 'quiz';
+                        const isAudio = file.category === 'audio';
+
+                        return (
+                          <div
+                            key={`mobile-file-${file.id}`}
+                            className="p-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-3"
+                          >
+                            {/* Header row: Checkbox, Type Badge, Subject & Visibility */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedFileIds.includes(file.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedFileIds(prev => [...prev, file.id]);
+                                    } else {
+                                      setSelectedFileIds(prev => prev.filter(id => id !== file.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer shrink-0"
+                                />
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase font-mono tracking-wider shrink-0 ${
+                                    isPdf ? 'bg-red-50 text-red-700 border border-red-100' :
+                                    isVideo ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                                    isQuiz ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                                    isAudio ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                    'bg-slate-100 text-slate-700 border border-slate-200'
+                                  }`}>
+                                    {isPdf && <FileText className="h-3 w-3 text-red-500 shrink-0" />}
+                                    {isVideo && <Video className="h-3 w-3 text-blue-500 shrink-0" />}
+                                    {isQuiz && <HelpCircle className="h-3 w-3 text-amber-500 shrink-0" />}
+                                    {isAudio && <Radio className="h-3 w-3 text-emerald-500 shrink-0" />}
+                                    <span>{file.category}</span>
+                                  </span>
+                                  <span className="text-[11px] font-bold text-slate-700 truncate">
+                                    {file.subject}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0">
+                                {file.isVisible !== false ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold whitespace-nowrap">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    <span>Visible</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-bold whitespace-nowrap">
+                                    <Lock className="h-3 w-3 text-amber-500" />
+                                    <span>Hidden</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Main Title & Description */}
+                            <div className="space-y-1">
+                              {isPdf ? (
+                                <button
+                                  onClick={() => setActivePdfFile(file)}
+                                  className="font-bold text-slate-900 text-left text-sm hover:text-emerald-600 transition-colors line-clamp-2 block leading-snug cursor-pointer"
+                                >
+                                  {file.name}
+                                </button>
+                              ) : (
+                                <div className="font-bold text-slate-900 text-sm line-clamp-2 leading-snug">{file.name}</div>
+                              )}
+                              {file.description && (
+                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{file.description}</p>
+                              )}
+                            </div>
+
+                            {/* Meta info & Action buttons */}
+                            <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-y-2 gap-x-1.5">
+                              <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500 min-w-0">
+                                <span className="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/70 text-slate-700 font-semibold text-[10px] shrink-0">
+                                  {file.size}
+                                </span>
+                                <span className="text-slate-300">•</span>
+                                <span className="text-[10px] text-slate-400 truncate">{file.uploadedAt}</span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                                {isPdf && (
+                                  <button
+                                    onClick={() => setActivePdfFile(file)}
+                                    className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg cursor-pointer transition-all flex items-center gap-1 border border-emerald-200/60"
+                                  >
+                                    <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                                    <span>View</span>
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDownloadFile(file)}
+                                  className="p-1.5 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors border border-slate-200/80"
+                                  title="Download File"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveFileMenuId(file.id);
+                                  }}
+                                  className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg cursor-pointer transition-all flex items-center gap-1 shadow-2xs shrink-0"
+                                  title="More Operations"
+                                >
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                  <span>Options</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block overflow-x-auto border border-slate-200/85 rounded-2xl bg-white shadow-xs">
                       <table className="w-full min-w-[750px] text-left border-collapse">
                         <thead className="bg-slate-50/75 border-b border-slate-200/60">
                           <tr>
@@ -2917,7 +3031,7 @@ startxref
                                   )}
                                 </td>
 
-                                {/* Cleaner, grouped actions with dropdown */}
+                                {/* Cleaner, grouped actions */}
                                 <td className="p-4 text-right">
                                   <div className="flex items-center justify-end gap-1.5">
                                     {isPdf && (
@@ -2939,86 +3053,16 @@ startxref
                                       <Download className="h-4 w-4" />
                                     </button>
 
-                                    {/* Unified More Actions Dropdown Button */}
-                                    <div className="relative inline-block">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setActiveFileMenuId(activeFileMenuId === file.id ? null : file.id);
-                                        }}
-                                        className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-200"
-                                        title="More Operations"
-                                      >
-                                        <MoreVertical className="h-4 w-4" />
-                                      </button>
-
-                                      {activeFileMenuId === file.id && (
-                                        <>
-                                          <div className="fixed inset-0 z-20 cursor-default" onClick={(e) => { e.stopPropagation(); setActiveFileMenuId(null); }} />
-                                          <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200/80 rounded-xl shadow-lg py-1 z-35 animate-fade-in text-left">
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleToggleVisibility(file);
-                                                setActiveFileMenuId(null);
-                                              }}
-                                              className="w-full px-3 py-2 text-left hover:bg-slate-50 font-bold text-[11px] text-slate-700 transition-colors flex items-center gap-2 cursor-pointer"
-                                            >
-                                              {file.isVisible !== false ? (
-                                                <>
-                                                  <EyeOff className="h-3.5 w-3.5 text-amber-500" />
-                                                  <span>Hide from Students</span>
-                                                </>
-                                              ) : (
-                                                <>
-                                                  <Eye className="h-3.5 w-3.5 text-emerald-500" />
-                                                  <span>Make Visible</span>
-                                                </>
-                                              )}
-                                            </button>
-
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleStartEditFile(file);
-                                                setActiveFileMenuId(null);
-                                              }}
-                                              className="w-full px-3 py-2 text-left hover:bg-slate-50 font-bold text-[11px] text-slate-700 transition-colors flex items-center gap-2 cursor-pointer"
-                                            >
-                                              <Edit3 className="h-3.5 w-3.5 text-amber-500" />
-                                              <span>Edit details</span>
-                                            </button>
-
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedMoveFile(file);
-                                                setTargetMoveFolderId(file.folderId);
-                                                setActiveFileMenuId(null);
-                                              }}
-                                              className="w-full px-3 py-2 text-left hover:bg-slate-50 font-bold text-[11px] text-slate-700 transition-colors flex items-center gap-2 cursor-pointer"
-                                            >
-                                              <Move className="h-3.5 w-3.5 text-indigo-500" />
-                                              <span>Move to folder</span>
-                                            </button>
-
-                                            <div className="border-t border-slate-100 my-1" />
-
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteFile(file.id);
-                                                setActiveFileMenuId(null);
-                                              }}
-                                              className="w-full px-3 py-2 text-left hover:bg-rose-50 hover:text-red-600 font-bold text-[11px] text-red-600 transition-colors flex items-center gap-2 cursor-pointer"
-                                            >
-                                              <Trash2 className="h-3.5 w-3.5" />
-                                              <span>Delete file</span>
-                                            </button>
-                                          </div>
-                                        </>
-                                      )}
-                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveFileMenuId(file.id);
+                                      }}
+                                      className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-200"
+                                      title="More Operations"
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </button>
                                   </div>
                                 </td>
                               </tr>
@@ -3663,6 +3707,163 @@ startxref
             </div>
           )}
 
+          {/* Modal: File Operations Action Sheet / Options Menu */}
+          {(() => {
+            if (!activeFileMenuId) return null;
+            const file = curriculumFiles.find((f) => f.id === activeFileMenuId);
+            if (!file) return null;
+            const isPdf = file.category === 'pdf';
+
+            return (
+              <div 
+                className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
+                onClick={() => setActiveFileMenuId(null)}
+              >
+                <div 
+                  className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono">
+                          {file.category}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 font-mono">{file.size}</span>
+                        {file.isVisible !== false ? (
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                            Visible
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
+                            Hidden
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-bold text-slate-900 text-sm sm:text-base line-clamp-2">{file.name}</h3>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">Subject: {file.subject}</p>
+                    </div>
+                    <button
+                      onClick={() => setActiveFileMenuId(null)}
+                      className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 cursor-pointer shrink-0"
+                    >
+                      <X className="h-4.5 w-4.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5 pt-1">
+                    {/* Toggle Visibility */}
+                    <button
+                      onClick={() => {
+                        handleToggleVisibility(file);
+                        setActiveFileMenuId(null);
+                      }}
+                      className="w-full px-3.5 py-3 hover:bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs text-slate-800 transition-colors flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {file.isVisible !== false ? (
+                          <EyeOff className="h-4 w-4 text-amber-500 shrink-0" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-emerald-500 shrink-0" />
+                        )}
+                        <span>{file.isVisible !== false ? 'Hide from Students' : 'Make Visible to Students'}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400">Toggle</span>
+                    </button>
+
+                    {/* Open in PDF Reader */}
+                    {isPdf && (
+                      <button
+                        onClick={() => {
+                          setActiveFileMenuId(null);
+                          setActivePdfFile(file);
+                        }}
+                        className="w-full px-3.5 py-3 bg-emerald-50/70 hover:bg-emerald-100 border border-emerald-200/60 rounded-xl font-bold text-xs text-emerald-800 transition-colors flex items-center justify-between cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span>Open PDF in Interactive Reader</span>
+                        </div>
+                        <ExternalLink className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      </button>
+                    )}
+
+                    {/* Edit Details */}
+                    <button
+                      onClick={() => {
+                        setActiveFileMenuId(null);
+                        handleStartEditFile(file);
+                      }}
+                      className="w-full px-3.5 py-3 hover:bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs text-slate-800 transition-colors flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Edit3 className="h-4 w-4 text-amber-500 shrink-0" />
+                        <span>Edit File Details & Categorization</span>
+                      </div>
+                      <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    </button>
+
+                    {/* Move to Folder */}
+                    <button
+                      onClick={() => {
+                        setActiveFileMenuId(null);
+                        setSelectedMoveFile(file);
+                        setTargetMoveFolderId(file.folderId);
+                      }}
+                      className="w-full px-3.5 py-3 hover:bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs text-slate-800 transition-colors flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Move className="h-4 w-4 text-indigo-500 shrink-0" />
+                        <span>Move to Another Folder</span>
+                      </div>
+                      <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    </button>
+
+                    {/* Download File */}
+                    <button
+                      onClick={() => {
+                        setActiveFileMenuId(null);
+                        handleDownloadFile(file);
+                      }}
+                      className="w-full px-3.5 py-3 hover:bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs text-slate-800 transition-colors flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Download className="h-4 w-4 text-blue-500 shrink-0" />
+                        <span>Download File Locally</span>
+                      </div>
+                      <Download className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    </button>
+
+                    {/* Delete File */}
+                    <button
+                      onClick={() => {
+                        setActiveFileMenuId(null);
+                        handleDeleteFile(file.id);
+                      }}
+                      className="w-full px-3.5 py-3 hover:bg-rose-50 border border-rose-100 rounded-xl font-bold text-xs text-red-600 transition-colors flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Trash2 className="h-4 w-4 text-red-500 shrink-0" />
+                        <span>Delete File Permanently</span>
+                      </div>
+                      <Trash2 className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                    </button>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveFileMenuId(null)}
+                      className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors"
+                    >
+                      Close Options
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Modal: Bulk Re-categorize */}
           {showBulkCategorizeModal && (
             <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
@@ -3840,11 +4041,66 @@ startxref
             )}
           </div>
 
-          {/* Certificate Table */}
-          <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white">
-            <div className="text-[10px] text-slate-400 font-mono px-4 py-2 bg-slate-50 border-b border-slate-100 sm:hidden flex items-center gap-1">
-              <span>↔️ Swipe horizontally to view full table details</span>
-            </div>
+          {/* Mobile Certificate Cards View */}
+          <div className="block md:hidden space-y-3">
+            {isLoadingCerts ? (
+              <div className="p-8 text-center text-slate-500 font-medium bg-slate-50 border border-slate-200 rounded-2xl">
+                <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-amber-500" />
+                Loading certificates from Firestore database...
+              </div>
+            ) : certificates.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 bg-slate-50 border border-slate-200 rounded-2xl">
+                No certificates registered in Firestore database yet.
+              </div>
+            ) : (
+              certificates.map((cert) => (
+                <div key={`mob-cert-${cert.id}`} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-mono font-bold text-slate-900 text-xs">{cert.id}</span>
+                      <h4 className="font-bold text-slate-900 text-sm mt-0.5">{cert.studentName}</h4>
+                      <div className="text-[11px] text-slate-500 font-mono">{cert.studentMobile}</div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                      cert.status === 'valid'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {cert.status}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                    <div className="font-medium text-slate-800">{cert.title}</div>
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">Issued: {cert.date}</div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100">
+                    <button
+                      onClick={() => handleToggleCertStatus(cert.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                        cert.status === 'valid'
+                          ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                          : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200'
+                      }`}
+                    >
+                      {cert.status === 'valid' ? 'Revoke Cert' : 'Reactivate'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCertificate(cert.id)}
+                      className="px-3 py-1.5 bg-rose-50 text-red-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Certificate Table */}
+          <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-xs">
             <table className="w-full min-w-[700px] text-left text-xs">
               <thead className="bg-slate-900 text-white font-mono uppercase text-[10px]">
                 <tr>
@@ -4036,11 +4292,80 @@ startxref
             />
           </div>
 
-          {/* User Accounts Table */}
-          <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white">
-            <div className="text-[10px] text-slate-400 font-mono px-4 py-2 bg-slate-50 border-b border-slate-100 sm:hidden flex items-center gap-1">
-              <span>↔️ Swipe horizontally to view full table details</span>
-            </div>
+          {/* Mobile User Cards View */}
+          <div className="block md:hidden space-y-3">
+            {filteredUsers.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 bg-slate-50 border border-slate-200 rounded-2xl">
+                No users found matching filter or search.
+              </div>
+            ) : (
+              filteredUsers.map((u) => {
+                const currentRole = u.role || 'student';
+                return (
+                  <div key={`mob-user-${u.mobile}`} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">{u.name}</h4>
+                        <div className="text-[11px] text-slate-700 font-mono font-semibold">{u.mobile}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">Reg: {u.signupDate}</div>
+                      </div>
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center gap-1 shrink-0 ${
+                        currentRole === 'admin'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          : currentRole === 'teacher'
+                          ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {currentRole === 'admin' && <Shield className="h-3 w-3 text-amber-600" />}
+                        <span>{currentRole}</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">VILLAGE / HUB</span>
+                        <span className="font-medium text-slate-800 text-[11px]">{u.village || 'Primary Village Hub'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">ACTIVITY</span>
+                        <span className="text-amber-600 font-bold text-[11px]">{u.totalPoints || 0} XP</span>
+                        <span className="text-slate-400 text-[10px] ml-1">({u.studyMins || 0}m)</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100">
+                      {currentRole !== 'admin' && (
+                        <button
+                          onClick={() => handleRoleChange(u.mobile, 'admin')}
+                          className="px-2.5 py-1.5 bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                        >
+                          Make Admin
+                        </button>
+                      )}
+                      {currentRole !== 'student' && (
+                        <button
+                          onClick={() => handleRoleChange(u.mobile, 'student')}
+                          className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 rounded-lg text-xs font-bold cursor-pointer transition-colors"
+                        >
+                          Make Student
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteUser(u.mobile)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg cursor-pointer transition-colors"
+                        title="Delete User"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Desktop User Accounts Table */}
+          <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-xs">
             <table className="w-full min-w-[700px] text-left text-xs">
               <thead className="bg-slate-900 text-white font-mono uppercase text-[10px]">
                 <tr>
@@ -4333,240 +4658,259 @@ startxref
 
       {/* EXPORT ANALYTICS & REPORTS MODAL */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-6 relative">
-            <button
-              onClick={() => setShowExportModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-xl w-full max-h-[90vh] shadow-2xl flex flex-col relative overflow-hidden animate-scale-in">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-start justify-between gap-3 shrink-0 bg-white">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 sm:p-3 bg-emerald-100 text-emerald-700 rounded-2xl shrink-0">
+                  <Download className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-snug">
+                    Export Analytics & Reports
+                  </h3>
+                  <p className="text-xs text-slate-500 line-clamp-1 sm:line-clamp-none">
+                    Download structured datasets for reporting, offline records, and state audits.
+                  </p>
+                </div>
+              </div>
 
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-emerald-100 text-emerald-700 rounded-2xl">
-                <Download className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black text-slate-900">
-                  Export System Analytics & Data Reports
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Download structured analytics files for future reporting, offline records, and state audits.
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowExportModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
 
-            {/* Clean Filter Control Header in Modal */}
-            <div className="p-3.5 bg-slate-900 text-white border border-slate-800 rounded-2xl space-y-2.5 font-sans">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-300 flex items-center gap-1.5">
-                  <Filter className="h-3.5 w-3.5 text-amber-400" />
-                  Active Filter Period:
-                </span>
-                <span className="font-mono font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-2.5 py-0.5 rounded-md text-[11px]">
-                  {getDateFilterLabel()}
-                </span>
-              </div>
-              
-              {/* Filter Mode Selector Pills */}
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
-                <button
-                  type="button"
-                  onClick={() => setAnalyticsFilterMode('all')}
-                  className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${analyticsFilterMode === 'all' ? 'bg-amber-500 text-slate-950 font-extrabold' : 'bg-slate-800 text-slate-300 hover:text-white'}`}
-                >
-                  All Time
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAnalyticsFilterMode('year')}
-                  className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${analyticsFilterMode === 'year' ? 'bg-amber-500 text-slate-950 font-extrabold' : 'bg-slate-800 text-slate-300 hover:text-white'}`}
-                >
-                  Year
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAnalyticsFilterMode('month')}
-                  className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${analyticsFilterMode === 'month' ? 'bg-amber-500 text-slate-950 font-extrabold' : 'bg-slate-800 text-slate-300 hover:text-white'}`}
-                >
-                  Month
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAnalyticsFilterMode('custom')}
-                  className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${analyticsFilterMode === 'custom' ? 'bg-amber-500 text-slate-950 font-extrabold' : 'bg-slate-800 text-slate-300 hover:text-white'}`}
-                >
-                  Custom Range
-                </button>
-              </div>
-
-              {/* Connected Controls inside Modal */}
-              {analyticsFilterMode === 'year' && (
-                <div className="pt-1 animate-fade-in text-xs flex items-center gap-2">
-                  <span className="text-slate-400 text-[11px]">Academic Year:</span>
-                  <AdminCustomSelect
-                    value={analyticsYear}
-                    onChange={setAnalyticsYear}
-                    options={['2026', '2025', '2024', '2023', '2022', '2021', '2020'].map((y) => ({
-                      value: y,
-                      label: `${y} Academic Year`,
-                    }))}
-                    dark
-                    className="w-44"
-                  />
+            {/* Scrollable Content Area */}
+            <div className="p-4 sm:p-5 space-y-3.5 overflow-y-auto overflow-x-hidden flex-1">
+              {/* Clean Filter Control Header in Modal */}
+              <div className="p-3.5 bg-slate-900 text-white border border-slate-800 rounded-2xl space-y-2.5 font-sans">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                    <span>Active Filter Period:</span>
+                  </span>
+                  <span className="font-mono font-bold text-amber-300 bg-amber-500/20 border border-amber-500/30 px-2.5 py-0.5 rounded-full text-[11px] whitespace-nowrap inline-flex items-center">
+                    {getDateFilterLabel()}
+                  </span>
                 </div>
-              )}
-
-              {analyticsFilterMode === 'month' && (
-                <div className="pt-1 animate-fade-in text-xs flex items-center gap-2 flex-wrap">
-                  <AdminCustomSelect
-                    value={analyticsMonth.split('-')[1] || '08'}
-                    onChange={(val) => {
-                      const currentY = analyticsMonth.split('-')[0] || analyticsYear || '2026';
-                      setAnalyticsMonth(`${currentY}-${val}`);
-                    }}
-                    options={[
-                      { value: '01', label: 'January' },
-                      { value: '02', label: 'February' },
-                      { value: '03', label: 'March' },
-                      { value: '04', label: 'April' },
-                      { value: '05', label: 'May' },
-                      { value: '06', label: 'June' },
-                      { value: '07', label: 'July' },
-                      { value: '08', label: 'August' },
-                      { value: '09', label: 'September' },
-                      { value: '10', label: 'October' },
-                      { value: '11', label: 'November' },
-                      { value: '12', label: 'December' },
-                    ]}
-                    dark
-                    className="w-36"
-                  />
-
-                  <AdminCustomSelect
-                    value={analyticsMonth.split('-')[0] || '2026'}
-                    onChange={(val) => {
-                      const currentM = analyticsMonth.split('-')[1] || '08';
-                      setAnalyticsMonth(`${val}-${currentM}`);
-                    }}
-                    options={['2026', '2025', '2024', '2023', '2022']}
-                    dark
-                    className="w-28"
-                  />
+                
+                {/* Symmetrical Grid for Filter Mode Selector */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsFilterMode('all')}
+                    className={`py-1.5 px-2 rounded-xl text-center cursor-pointer transition-all ${analyticsFilterMode === 'all' ? 'bg-amber-500 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'}`}
+                  >
+                    All Time
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsFilterMode('year')}
+                    className={`py-1.5 px-2 rounded-xl text-center cursor-pointer transition-all ${analyticsFilterMode === 'year' ? 'bg-amber-500 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'}`}
+                  >
+                    Year
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsFilterMode('month')}
+                    className={`py-1.5 px-2 rounded-xl text-center cursor-pointer transition-all ${analyticsFilterMode === 'month' ? 'bg-amber-500 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'}`}
+                  >
+                    Month
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsFilterMode('custom')}
+                    className={`py-1.5 px-2 rounded-xl text-center cursor-pointer transition-all ${analyticsFilterMode === 'custom' ? 'bg-amber-500 text-slate-950 font-extrabold shadow-sm' : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'}`}
+                  >
+                    Custom Range
+                  </button>
                 </div>
-              )}
 
-              {analyticsFilterMode === 'custom' && (
-                <div className="pt-1 animate-fade-in text-xs flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 text-[10px]">From:</span>
-                    <input
-                      type="date"
-                      value={analyticsStartDate}
-                      onChange={(e) => setAnalyticsStartDate(e.target.value)}
-                      className="px-2 py-1 bg-slate-950 border border-slate-700 rounded-lg text-amber-400 font-mono text-xs cursor-pointer"
+                {/* Connected Controls inside Modal */}
+                {analyticsFilterMode === 'year' && (
+                  <div className="pt-1 animate-fade-in text-xs flex items-center gap-2">
+                    <span className="text-slate-400 text-[11px] shrink-0">Academic Year:</span>
+                    <AdminCustomSelect
+                      value={analyticsYear}
+                      onChange={setAnalyticsYear}
+                      options={['2026', '2025', '2024', '2023', '2022', '2021', '2020'].map((y) => ({
+                        value: y,
+                        label: `${y} Academic Year`,
+                      }))}
+                      dark
+                      className="w-full sm:w-48"
                     />
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-slate-400 text-[10px]">To:</span>
-                    <input
-                      type="date"
-                      value={analyticsEndDate}
-                      onChange={(e) => setAnalyticsEndDate(e.target.value)}
-                      className="px-2 py-1 bg-slate-950 border border-slate-700 rounded-lg text-amber-400 font-mono text-xs cursor-pointer"
-                    />
-                  </div>
-                  {(analyticsStartDate || analyticsEndDate) && (
-                    <button
-                      type="button"
-                      onClick={() => { setAnalyticsStartDate(''); setAnalyticsEndDate(''); }}
-                      className="text-[10px] font-bold text-red-400 hover:underline cursor-pointer"
-                    >
-                      Clear Range
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+                )}
 
-            <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+                {analyticsFilterMode === 'month' && (
+                  <div className="pt-1 animate-fade-in text-xs flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                    <span className="text-slate-400 text-[11px] shrink-0">Select Month:</span>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <AdminCustomSelect
+                        value={analyticsMonth.split('-')[1] || '08'}
+                        onChange={(val) => {
+                          const currentY = analyticsMonth.split('-')[0] || analyticsYear || '2026';
+                          setAnalyticsMonth(`${currentY}-${val}`);
+                        }}
+                        options={[
+                          { value: '01', label: 'January' },
+                          { value: '02', label: 'February' },
+                          { value: '03', label: 'March' },
+                          { value: '04', label: 'April' },
+                          { value: '05', label: 'May' },
+                          { value: '06', label: 'June' },
+                          { value: '07', label: 'July' },
+                          { value: '08', label: 'August' },
+                          { value: '09', label: 'September' },
+                          { value: '10', label: 'October' },
+                          { value: '11', label: 'November' },
+                          { value: '12', label: 'December' },
+                        ]}
+                        dark
+                        className="flex-1 sm:w-36"
+                      />
+
+                      <AdminCustomSelect
+                        value={analyticsMonth.split('-')[0] || '2026'}
+                        onChange={(val) => {
+                          const currentM = analyticsMonth.split('-')[1] || '08';
+                          setAnalyticsMonth(`${val}-${currentM}`);
+                        }}
+                        options={['2026', '2025', '2024', '2023', '2022']}
+                        dark
+                        className="w-24 sm:w-28"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {analyticsFilterMode === 'custom' && (
+                  <div className="pt-1 animate-fade-in text-xs flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-400 text-[10px]">From:</span>
+                      <input
+                        type="date"
+                        value={analyticsStartDate}
+                        onChange={(e) => setAnalyticsStartDate(e.target.value)}
+                        className="px-2 py-1 bg-slate-950 border border-slate-700 rounded-lg text-amber-400 font-mono text-xs cursor-pointer"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-slate-400 text-[10px]">To:</span>
+                      <input
+                        type="date"
+                        value={analyticsEndDate}
+                        onChange={(e) => setAnalyticsEndDate(e.target.value)}
+                        className="px-2 py-1 bg-slate-950 border border-slate-700 rounded-lg text-amber-400 font-mono text-xs cursor-pointer"
+                      />
+                    </div>
+                    {(analyticsStartDate || analyticsEndDate) && (
+                      <button
+                        type="button"
+                        onClick={() => { setAnalyticsStartDate(''); setAnalyticsEndDate(''); }}
+                        className="text-[10px] font-bold text-red-400 hover:underline cursor-pointer"
+                      >
+                        Clear Range
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Option 1: Executive PDF Report */}
-              <div className="p-4 rounded-2xl border-2 border-red-200 bg-red-50/40 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-sm">Official Executive Analytics PDF Report</span>
-                    <span className="text-[10px] bg-red-600 text-white font-mono font-bold px-2 py-0.5 rounded-full">PDF DOC</span>
+              <div className="p-3.5 sm:p-4 rounded-2xl border-2 border-red-200 bg-red-50/40 space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-900 text-sm block leading-snug">
+                      Official Executive Analytics PDF Report
+                    </span>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Formatted document with headers, KPIs, village hub tables, and certificates log ready for printing/audits.
+                    </p>
                   </div>
+                  <span className="text-[10px] bg-red-600 text-white font-mono font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap mt-0.5">
+                    PDF DOC
+                  </span>
                 </div>
-                <p className="text-xs text-slate-600">
-                  Formatted document with headers, KPIs, village hub tables, and certificates log ready for printing/audits.
-                </p>
-                <div className="flex items-center gap-2 pt-1">
+                
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
                   <button
                     onClick={() => handleExportMasterPDF(true)}
-                    className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1 shrink-0"
+                    className="flex-1 py-2 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-sm"
                   >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Download ({getDateFilterLabel()})</span>
+                    <Download className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Download PDF Report ({getDateFilterLabel()})</span>
                   </button>
                   {analyticsFilterMode !== 'all' && (
                     <button
                       onClick={() => handleExportMasterPDF(false)}
-                      className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1 shrink-0"
+                      className="py-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1 shrink-0"
                     >
-                      <span>Download Full (All Time)</span>
+                      <span>All Time PDF</span>
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Option 2: Master Multi-Sheet Excel */}
-              <div className="p-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-sm">Master Multi-Sheet Excel Analytics Workbook</span>
-                    <span className="text-[10px] bg-emerald-600 text-white font-mono font-bold px-2 py-0.5 rounded-full">EXCEL .XLSX</span>
+              <div className="p-3.5 sm:p-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-900 text-sm block leading-snug">
+                      Master Multi-Sheet Excel Analytics Workbook
+                    </span>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Includes Executive Summary, Student Directory, Village Hubs, Certificates, and Curriculum sheets.
+                    </p>
                   </div>
+                  <span className="text-[10px] bg-emerald-600 text-white font-mono font-bold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap mt-0.5">
+                    EXCEL .XLSX
+                  </span>
                 </div>
-                <p className="text-xs text-slate-600">
-                  Includes Executive Summary, Student Directory, Village Hubs, Certificates, and Curriculum sheets.
-                </p>
-                <div className="flex items-center gap-2 pt-1">
+                
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
                   <button
                     onClick={() => handleExportMasterExcel(true)}
-                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1 shrink-0"
+                    className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-sm"
                   >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Download ({getDateFilterLabel()})</span>
+                    <Download className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Download Excel Workbook ({getDateFilterLabel()})</span>
                   </button>
                   {analyticsFilterMode !== 'all' && (
                     <button
                       onClick={() => handleExportMasterExcel(false)}
-                      className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1 shrink-0"
+                      className="py-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1 shrink-0"
                     >
-                      <span>Download Full (All Time)</span>
+                      <span>All Time Excel</span>
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Option 3: Users Directory */}
-              <div className="p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white flex items-center justify-between gap-3">
-                <div>
+              <div className="p-3 sm:p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="min-w-0">
                   <div className="font-bold text-slate-800 text-xs">Users & Student Progress Directory</div>
                   <div className="text-[11px] text-slate-500">{usersList.length} user records with role, grade, streak & study minutes</div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
                     onClick={handleExportUsersPDF}
-                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>PDF</span>
                   </button>
                   <button
                     onClick={handleExportUsersExcel}
-                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>Excel</span>
@@ -4575,22 +4919,22 @@ startxref
               </div>
 
               {/* Option 4: Village Hubs */}
-              <div className="p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white flex items-center justify-between gap-3">
-                <div>
+              <div className="p-3 sm:p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="min-w-0">
                   <div className="font-bold text-slate-800 text-xs">Rural Village Hub Activity Report</div>
                   <div className="text-[11px] text-slate-500">{villageHubStats.length} regional village hubs engagement & XP stats</div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
                     onClick={handleExportVillageHubsPDF}
-                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>PDF</span>
                   </button>
                   <button
                     onClick={handleExportVillageHubsExcel}
-                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>Excel</span>
@@ -4599,22 +4943,22 @@ startxref
               </div>
 
               {/* Option 5: Certificates Ledger */}
-              <div className="p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white flex items-center justify-between gap-3">
-                <div>
+              <div className="p-3 sm:p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="min-w-0">
                   <div className="font-bold text-slate-800 text-xs">Issued Certificates Ledger</div>
                   <div className="text-[11px] text-slate-500">{certificates.length} verification records & course completion details</div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
                     onClick={handleExportCertificatesPDF}
-                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>PDF</span>
                   </button>
                   <button
                     onClick={handleExportCertificatesExcel}
-                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>Excel</span>
@@ -4623,22 +4967,22 @@ startxref
               </div>
 
               {/* Option 6: Curriculum Inventory */}
-              <div className="p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white flex items-center justify-between gap-3">
-                <div>
+              <div className="p-3 sm:p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="min-w-0">
                   <div className="font-bold text-slate-800 text-xs">Curriculum Folders & Content Library</div>
                   <div className="text-[11px] text-slate-500">{curriculumFiles.length} file metadata entries across {curriculumFolders.length} folders</div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
                     onClick={handleExportCurriculumPDF}
-                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>PDF</span>
                   </button>
                   <button
                     onClick={handleExportCurriculumExcel}
-                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1"
+                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>Excel</span>
@@ -4647,25 +4991,30 @@ startxref
               </div>
 
               {/* Option 7: Full System JSON Backup */}
-              <div className="p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-slate-50 flex items-center justify-between gap-3">
-                <div>
+              <div className="p-3 sm:p-3.5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="min-w-0">
                   <div className="font-bold text-slate-800 text-xs">Full Raw Database Backup (JSON)</div>
                   <div className="text-[11px] text-slate-500">Full structured object model for developer database restores</div>
                 </div>
                 <button
                   onClick={handleExportFullJSONReport}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1 shrink-0"
+                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1.5 shrink-0 self-end sm:self-center shadow-xs"
                 >
                   <Download className="h-3.5 w-3.5 text-amber-400" />
-                  <span>JSON</span>
+                  <span>Export JSON</span>
                 </button>
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
+            {/* Modal Footer */}
+            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/80 shrink-0 flex items-center justify-between gap-2">
+              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                Instant generation in PDF, Excel, and JSON formats
+              </span>
               <button
+                type="button"
                 onClick={() => setShowExportModal(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl cursor-pointer transition-all"
+                className="w-full sm:w-auto px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer transition-all"
               >
                 Close Window
               </button>
@@ -4884,7 +5233,30 @@ startxref
         </div>
       )}
 
-
+      {/* STICKY BOTTOM QUICK DOCK (MOBILE THUMB NAV FOR ADMIN) */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-1.5 px-2 shadow-2xl flex justify-around items-center">
+        {adminNavItems.map((dockItem) => {
+          const DockIcon = dockItem.icon;
+          const isDockSelected = activeTab === dockItem.id;
+          return (
+            <button
+              key={`admin-dock-${dockItem.id}`}
+              type="button"
+              onClick={() => setActiveTab(dockItem.id)}
+              className={`flex flex-col items-center justify-center p-1.5 px-2 rounded-xl transition-all cursor-pointer ${
+                isDockSelected
+                  ? 'text-amber-400 font-extrabold'
+                  : 'text-slate-400 hover:text-slate-200 font-medium'
+              }`}
+            >
+              <DockIcon className={`h-4.5 w-4.5 ${isDockSelected ? 'text-amber-400' : 'text-slate-400'}`} />
+              <span className="text-[10px] mt-0.5 truncate max-w-[64px]">
+                {dockItem.id === 'analytics' ? 'Analytics' : dockItem.id === 'content' ? 'Curriculum' : dockItem.id === 'certificates' ? 'Certs' : dockItem.id === 'users' ? 'Users' : 'Config'}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
     </div>
   );

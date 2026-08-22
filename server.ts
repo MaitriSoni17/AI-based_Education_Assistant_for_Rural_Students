@@ -1288,7 +1288,51 @@ Board: State Board SCERT Standard
         }
       }
 
-      adjustedSystemInstruction = `${adjustedSystemInstruction}\n${syllabusGuideline}`;
+      // Multilingual Mapping & Strict LaTeX Math/Science Problem Solving Directives
+      const languageMap: Record<string, string> = {
+        en: "English",
+        hi: "Hindi (हिंदी)",
+        gu: "Gujarati (ગુજરાતી)",
+        mr: "Marathi (मराठी)",
+        ta: "Tamil (தமிழ்)",
+        te: "Telugu (తెలుగు)",
+        kn: "Kannada (ಕನ್ನಡ)",
+        bn: "Bengali (বাংলা)",
+        or: "Odia (ଓଡ଼ିଆ)",
+        pa: "Punjabi (ਪੰਜਾਬੀ)",
+        ml: "Malayalam (മലയാളം)",
+        sa: "Sanskrit (संस्कृतम्)",
+        ur: "Urdu (اردو)",
+        as: "Assamese (অসমীয়া)"
+      };
+
+      const selectedLangCode = (lang || "en").toLowerCase().trim();
+      const targetLangName = languageMap[selectedLangCode] || selectedLangCode;
+
+      const mathAndScienceLatexRules = `
+[MANDATORY MATHEMATICAL & SCIENTIFIC FORMATTING RULES]
+You are an expert Math and Science Problem-Solving Assistant.
+1. ALWAYS output mathematical expressions, variables, formulas, and equations using standard inline LaTeX delimiters $...$ or standard Markdown bold text.
+2. Do NOT use block delimiters like \\[ ... \\] or code blocks (\`\`\`) for equations.
+3. Formatting Rules:
+   - Inline math: Use single dollar signs, e.g., $D = b^2 - 4ac$, $x = 2$, $\\frac{d}{dx}x^2 = 2x$.
+   - Standalone equations: Place single-dollar inline math on its own line, e.g.,
+     $D = (-5)^2 - 4(3)(2)$
+     $D = 25 - 24$
+     $D = 1$
+   - Do NOT include backslashes or brackets like \\[ or \\] around math.
+   - For all science and chemistry formulas, also use $...$, e.g., $\\text{H}_2\\text{O}$, $\\text{CO}_2$, $\\Delta G = \\Delta H - T\\Delta S$, $F = ma$, $PV = nRT$.
+4. Explanations should be in simple, friendly, empathetic text in the requested language, and all equations must be enclosed in single dollar signs $...$ on their own line or inline.
+5. Never mix plain text math with explanations — keep math strictly formatted in $...$.
+
+[MULTILINGUAL ADAPTATION DIRECTIVE]
+- Active Preferred Language: "${targetLangName}" (Code: "${selectedLangCode}").
+- You MUST adapt your response to write fluently, naturally, and completely in "${targetLangName}" using its proper native script/characters (e.g., Devanagari for Hindi/Marathi/Sanskrit, Gujarati script for Gujarati, Tamil script for Tamil, Telugu script for Telugu, Bengali script for Bengali, etc.), or in the language requested by the user.
+- Keep all conceptual explanations, step-by-step guidance, and conversational intuition in "${targetLangName}".
+- Keep all mathematical equations and scientific variables cleanly formatted in standard $...$ notation within those explanations.
+`;
+
+      adjustedSystemInstruction = `${adjustedSystemInstruction}\n${syllabusGuideline}\n${mathAndScienceLatexRules}`;
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {

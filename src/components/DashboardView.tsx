@@ -336,39 +336,48 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
         </div>
 
         {/* Global summary stats indicators */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:flex md:flex-wrap lg:flex-nowrap items-center gap-2.5 sm:gap-3 w-full md:w-auto">
           {/* Real-time XP Gained Indicator */}
-          <div className="bg-emerald-50/50 border border-emerald-250 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs hover-float duration-300 transition-all cursor-default">
-            <Sparkles className="h-4.5 w-4.5 text-emerald-500 animate-pulse" />
-            <div className="text-left font-mono">
-              <span className="text-[9px] text-emerald-800 font-bold uppercase tracking-wider block">XP Gained</span>
-              <span className="text-xs font-black text-gray-900">{localUser.totalPoints ?? 15} points</span>
+          <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-2 sm:px-3.5 sm:py-2 flex items-center gap-2.5 shadow-3xs hover-float duration-300 transition-all cursor-default min-w-0">
+            <div className="p-1.5 bg-emerald-100/80 rounded-xl shrink-0">
+              <Sparkles className="h-4 w-4 text-emerald-600 animate-pulse" />
+            </div>
+            <div className="text-left font-mono min-w-0 flex-1">
+              <span className="text-[9px] text-emerald-800 font-bold uppercase tracking-wider block truncate">XP Gained</span>
+              <span className="text-xs font-black text-gray-900 truncate block">{localUser.totalPoints ?? 15} pts</span>
             </div>
           </div>
 
           {/* Real-time Active Streak Indicator */}
-          <div className="bg-orange-50/50 border border-orange-250 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs hover-float duration-300 transition-all cursor-default">
-            <Flame className="h-4.5 w-4.5 text-orange-500 animate-pulse" />
-            <div className="text-left font-mono">
-              <span className="text-[9px] text-orange-800 font-bold uppercase tracking-wider block">Study Streak</span>
-              <span className="text-xs font-black text-gray-900">{localUser.streakDays ?? 1} Days</span>
+          <div className="bg-orange-50/60 border border-orange-200/80 rounded-2xl p-2 sm:px-3.5 sm:py-2 flex items-center gap-2.5 shadow-3xs hover-float duration-300 transition-all cursor-default min-w-0">
+            <div className="p-1.5 bg-orange-100/80 rounded-xl shrink-0">
+              <Flame className="h-4 w-4 text-orange-600 animate-pulse" />
+            </div>
+            <div className="text-left font-mono min-w-0 flex-1">
+              <span className="text-[9px] text-orange-800 font-bold uppercase tracking-wider block truncate">Study Streak</span>
+              <span className="text-xs font-black text-gray-900 truncate block">{localUser.streakDays ?? 1} Days</span>
             </div>
           </div>
 
           {/* Real-time Time Studied Indicator */}
-          <div className="bg-indigo-50/50 border border-indigo-200 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs hover-float duration-300 transition-all cursor-default">
-            <Clock className="h-4.5 w-4.5 text-indigo-500" />
-            <div className="text-left font-mono">
-              <span className="text-[9px] text-indigo-800 font-bold uppercase tracking-wider block">Time Studied</span>
-              <span className="text-xs font-black text-gray-900">{formatStudyTime(localUser.studyMins ?? 30, lang === 'hi')}</span>
+          <div className="bg-indigo-50/60 border border-indigo-200/80 rounded-2xl p-2 sm:px-3.5 sm:py-2 flex items-center gap-2.5 shadow-3xs hover-float duration-300 transition-all cursor-default min-w-0">
+            <div className="p-1.5 bg-indigo-100/80 rounded-xl shrink-0">
+              <Clock className="h-4 w-4 text-indigo-600" />
+            </div>
+            <div className="text-left font-mono min-w-0 flex-1">
+              <span className="text-[9px] text-indigo-800 font-bold uppercase tracking-wider block truncate">Time Studied</span>
+              <span className="text-xs font-black text-gray-900 truncate block">{formatStudyTime(localUser.studyMins ?? 30, lang === 'hi')}</span>
             </div>
           </div>
 
-          <div className="bg-amber-50/50 border border-[#F2CC8F]/40 rounded-2xl px-3.5 py-1.5 flex items-center gap-2 shadow-3xs hover-float duration-300 transition-all cursor-default">
-            <Award className="h-4.5 w-4.5 text-amber-500" />
-            <div className="text-left font-mono">
-              <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider block">Completed Lessons</span>
-              <span className="text-xs font-black text-gray-900">{claimedMedals.length} medals</span>
+          {/* Real-time Completed Lessons Indicator */}
+          <div className="bg-amber-50/60 border border-[#F2CC8F]/60 rounded-2xl p-2 sm:px-3.5 sm:py-2 flex items-center gap-2.5 shadow-3xs hover-float duration-300 transition-all cursor-default min-w-0">
+            <div className="p-1.5 bg-amber-100/80 rounded-xl shrink-0">
+              <Award className="h-4 w-4 text-amber-600" />
+            </div>
+            <div className="text-left font-mono min-w-0 flex-1">
+              <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider block truncate">Completed</span>
+              <span className="text-xs font-black text-gray-900 truncate block">{claimedMedals.length} medals</span>
             </div>
           </div>
         </div>

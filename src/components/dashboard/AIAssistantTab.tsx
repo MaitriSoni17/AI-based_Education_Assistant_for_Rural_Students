@@ -17,6 +17,7 @@ import html2canvas from 'html2canvas-pro';
 import { offlineSyncManager } from '../../utils/offlineSync';
 import InteractiveDiagram from './InteractiveDiagram';
 import { LOCAL_LEARNING_PATHS, LearningPath } from '../../data/learningPaths';
+import MathRenderer from '../common/MathRenderer';
 
 // Utility helper to safely extract and parse diagram-data JSON blocks from AI responses
 const parseMessageContent = (text: string) => {
@@ -1446,6 +1447,18 @@ You MUST adapt your personality and teaching strictly based on the following stu
 7. [School_Name]: The student studies at "${studentSchool || 'their school'}". Refer to their school context to make explanations personal and relatable.
 8. [Academic_Board]: The student follows the "${studentBoard}" curriculum. Ensure explanation styles, marking formats, or curricular terminology align beautifully with this educational board.
 
+[MANDATORY MATHEMATICAL & SCIENTIFIC FORMATTING RULES]
+- ALWAYS output mathematical expressions, variables, formulas, and equations using standard inline LaTeX delimiters $...$ or standard Markdown bold text.
+- Do NOT use block delimiters like \\[ ... \\] or code blocks (\`\`\`) for equations.
+- Inline math: Use single dollar signs, e.g., $D = b^2 - 4ac$, $x = 2$, $\\frac{d}{dx}x^2 = 2x$.
+- Standalone equations: Place single-dollar inline math on its own line, e.g.,
+  $D = (-5)^2 - 4(3)(2)$
+  $D = 25 - 24$
+  $D = 1$
+- Do NOT include backslashes or brackets like \\[ or \\] around math.
+- For all science and chemistry formulas, also use $...$ (e.g., $\\text{H}_2\\text{O}$, $\\Delta G = \\Delta H - T\\Delta S$, $F = ma$).
+- Never mix plain text math with explanations — keep all math strictly formatted in $...$.
+
 [BEHAVIOR & PEDAGOGICAL GUIDELINES]
 - Do not give wall-of-text answers. Use short, beautifully spaced paragraphs and bullet points for high legibility.
 - Always ask exactly ONE clear concept-checking question at the end of your response to test understanding.
@@ -2009,7 +2022,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                                         const parsed = parseMessageContent(msg.text);
                                           return (
                                             <div className="markdown-content w-full overflow-hidden break-words text-sm sm:text-base">
-                                              <ReactMarkdown>{parsed.text}</ReactMarkdown>
+                                              <MathRenderer content={parsed.text} isUser={isMe} />
                                               {parsed.diagram && (
                                                 <InteractiveDiagram data={parsed.diagram} lang={lang} />
                                               )}
@@ -2215,7 +2228,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                           const parsed = parseMessageContent(msg.text);
                           return (
                             <div className="markdown-content w-full overflow-hidden break-words text-sm sm:text-base">
-                              <ReactMarkdown>{parsed.text}</ReactMarkdown>
+                              <MathRenderer content={parsed.text} isUser={isMe} />
                               {parsed.diagram && (
                                 <InteractiveDiagram data={parsed.diagram} lang={lang} />
                               )}
@@ -2509,7 +2522,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                   const parsed = parseMessageContent(pdfExportMessage.text);
                   return (
                     <>
-                      <p className="whitespace-pre-wrap leading-relaxed">{parsed.text}</p>
+                      <MathRenderer content={parsed.text} isUser={false} />
                       {parsed.diagram && (
                         <div className="mt-6 pt-6 border-t border-gray-200">
                           <InteractiveDiagram data={parsed.diagram} lang={lang} />

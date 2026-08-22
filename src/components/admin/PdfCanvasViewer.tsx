@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import MathRenderer from '../common/MathRenderer';
 import { 
   ChevronLeft, 
   ChevronRight, 
+  ChevronsLeft,
+  ChevronsRight,
   ZoomIn, 
   ZoomOut, 
   RotateCw, 
@@ -486,6 +489,16 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   const [aiPromptInput, setAiPromptInput] = useState<string>('');
   const aiChatScrollRef = useRef<HTMLDivElement | null>(null);
 
+  const [pageInputVal, setPageInputVal] = useState<string>('1');
+  const [isEditingPageInput, setIsEditingPageInput] = useState<boolean>(false);
+
+  // Keep page input synced with active page when user is not actively editing
+  useEffect(() => {
+    if (!isEditingPageInput) {
+      setPageInputVal(String(activePageNum));
+    }
+  }, [activePageNum, isEditingPageInput]);
+
   const pageRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -496,6 +509,26 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   const handlePageVisible = useCallback((page: number) => {
     setActivePageNum(page);
   }, []);
+
+  // Jump to page helper
+  const jumpToPage = useCallback((page: number) => {
+    const targetPage = Math.max(1, Math.min(page, numPages || page));
+    const element = pageRefs.current[targetPage];
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [numPages]);
+
+  const handlePageInputSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsEditingPageInput(false);
+    const parsedPage = parseInt(pageInputVal, 10);
+    if (!isNaN(parsedPage) && parsedPage >= 1 && parsedPage <= (numPages || 1)) {
+      jumpToPage(parsedPage);
+    } else {
+      setPageInputVal(String(activePageNum));
+    }
+  };
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -532,14 +565,6 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     return () => {
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
-
-  // Jump to page helper
-  const jumpToPage = useCallback((page: number) => {
-    const element = pageRefs.current[page];
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   }, []);
 
   // Fit width calculation
@@ -965,8 +990,19 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       {/* Top Reader Control Panel */}
       <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-slate-950 border-b border-slate-800 text-xs text-slate-300 gap-3 shrink-0 z-20">
         
-        {/* Left: Page navigation */}
-        <div className="flex items-center gap-2">
+        {/* Left: Interactive Page Number Navigation & Jump */}
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          {/* First Page Shortcut */}
+          <button
+            onClick={() => jumpToPage(1)}
+            disabled={activePageNum <= 1}
+            className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
+            title="First Page (Page 1)"
+          >
+            <ChevronsLeft className="h-4 w-4" />
+          </button>
+
+          {/* Previous Page */}
           <button
             onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
             disabled={activePageNum <= 1}
@@ -975,9 +1011,51 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="font-mono text-xs select-none bg-slate-900 px-3 py-1 rounded-lg border border-slate-800 whitespace-nowrap">
-            Page <strong className="text-emerald-400 font-extrabold">{activePageNum}</strong> of <strong className="text-slate-400">{numPages || '?'}</strong>
-          </span>
+
+          {/* Interactive Editable Page Number Input Box & Dropdown Select */}
+          <div className="flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded-xl border border-slate-800">
+            <span className="text-[11px] font-bold text-slate-400 hidden sm:inline">Page</span>
+            
+            {/* Direct Number Input Form */}
+            <form onSubmit={handlePageInputSubmit} className="flex items-center">
+              <input
+                type="number"
+                min={1}
+                max={numPages || 1}
+                value={pageInputVal}
+                onFocus={() => setIsEditingPageInput(true)}
+                onChange={(e) => setPageInputVal(e.target.value)}
+                onBlur={() => handlePageInputSubmit()}
+                className="w-12 bg-slate-950 border border-slate-700/80 focus:border-emerald-500 rounded-lg text-center font-extrabold text-emerald-400 text-xs py-0.5 px-1 focus:outline-none transition-colors shadow-inner"
+                title="Click or type page number and press Enter to change page"
+              />
+            </form>
+
+            {/* Quick Page Dropdown Picker */}
+            {numPages > 1 && (
+              <select
+                value={activePageNum}
+                onChange={(e) => {
+                  const pg = parseInt(e.target.value, 10);
+                  if (pg) jumpToPage(pg);
+                }}
+                className="bg-slate-950 text-slate-300 text-[11px] font-medium border border-slate-800 rounded-lg py-0.5 px-1 focus:outline-none focus:border-emerald-500 cursor-pointer hidden md:block max-w-[95px]"
+                title="Jump to specific page"
+              >
+                {Array.from({ length: numPages }, (_, i) => i + 1).map((pg) => (
+                  <option key={`p-opt-${pg}`} value={pg}>
+                    Page {pg}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <span className="text-slate-400 text-xs font-mono">
+              of <strong className="text-slate-200">{numPages || '?'}</strong>
+            </span>
+          </div>
+
+          {/* Next Page */}
           <button
             onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
             disabled={activePageNum >= numPages}
@@ -985,6 +1063,16 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             title="Next Page"
           >
             <ChevronRight className="h-4 w-4" />
+          </button>
+
+          {/* Last Page Shortcut */}
+          <button
+            onClick={() => numPages > 0 && jumpToPage(numPages)}
+            disabled={activePageNum >= numPages}
+            className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
+            title={`Last Page (Page ${numPages})`}
+          >
+            <ChevronsRight className="h-4 w-4" />
           </button>
         </div>
 
@@ -1202,6 +1290,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               );
             })
           )}
+
+
         </div>
 
         {/* AI Task Assistant Side Panel */}
@@ -1307,7 +1397,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   >
                     {msg.sender === 'assistant' ? (
                       <div className="prose prose-invert prose-xs max-w-none">
-                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                        <MathRenderer content={msg.text} isUser={false} className="text-slate-200" />
                       </div>
                     ) : (
                       <p>{msg.text}</p>

@@ -3121,7 +3121,7 @@ STRUCTURE:
 
       {/* PERMISSION ERROR TOAST */}
       {deletePermissionError && (
-        <div className="fixed bottom-6 right-6 z-50 bg-rose-600 text-white font-bold text-xs px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 border border-rose-400 animate-bounce">
+        <div className="fixed bottom-20 lg:bottom-6 right-6 z-50 bg-rose-600 text-white font-bold text-xs px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 border border-rose-400 animate-bounce">
           <AlertCircle className="w-4 h-4" />
           <span>{deletePermissionError}</span>
         </div>

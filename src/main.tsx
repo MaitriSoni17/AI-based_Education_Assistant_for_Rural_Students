@@ -2,6 +2,7 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import 'katex/dist/katex.min.css';
 
 // Clean up system credentials/auth tokens from the visible URL bar once loaded
 if (typeof window !== 'undefined' && window.location.search) {
