@@ -296,8 +296,1012 @@ const DEMO_CERTIFICATES: IssuedCertificate[] = [
   { id: 'CERT-2026-7734', studentName: 'Kavya Singh', studentMobile: '9654321098', title: 'Rural Science Quiz Champion', date: '2026-08-05', score: 100, status: 'valid' },
 ];
 
+const ADMIN_DASHBOARD_TRANSLATIONS = {
+  en: {
+    dashboardTitle: "Gramin Shiksha Admin Dashboard",
+    superAdminBadge: "SUPER ADMIN",
+    loggedInAs: "Logged in as",
+    stateOps: "State Curriculum Operations",
+    downloadAnalytics: "Download Analytics",
+    syncLiveData: "Sync Live Data",
+    exitAdmin: "Exit Admin Console",
+    currentModule: "Current:",
+    adminModulesCount: "Admin Modules",
+    navAnalytics: "Student Analytics",
+    navContent: "Curriculum & Content",
+    navCertificates: "Certificates Registry",
+    navUsers: "User Role Management",
+    navSettings: "Platform Config",
+    analyticsTitle: "Master Analytics & Student Progress",
+    analyticsSubtitle: "Filter platform datasets by academic period, then export executive PDF or Excel (.xlsx) reports.",
+    filterRange: "Filter Period:",
+    allTime: "All Time",
+    today: "Today",
+    thisWeek: "This Week",
+    thisMonth: "This Month",
+    year: "Year",
+    month: "Month",
+    pdfReport: "PDF Report",
+    excelExport: "Excel (.xlsx)",
+    allFormats: "All Export Formats",
+    totalStudents: "Total Registered Students",
+    activeTeachers: "Active Teachers",
+    registeredSchools: "Schools & Villages",
+    lessonsCompleted: "Study Hours Completed",
+    certsIssued: "Certificates Issued",
+    totalXP: "Total Gamified Points",
+    standardBreakdown: "Standard-wise Engagement",
+    boardBreakdown: "Board Distribution",
+    topVillages: "Top Performing Villages / Schools",
+    exportReport: "Export Comprehensive Report",
+    repositoryTitle: "State Learning Content Repository",
+    createFolder: "Create New Folder",
+    uploadFile: "Upload Learning Material",
+    batchAi: "Batch AI Generator",
+    rootFolder: "Root Directory",
+    searchContent: "Search learning materials, notes, PDFs...",
+    filterCategory: "All Categories",
+    filterStandard: "Filter Grade / Standard",
+    filterBoard: "Filter Educational Board",
+    emptyFolders: "No folders created yet.",
+    emptyFiles: "No curriculum files found in this directory.",
+    previewPdf: "Interactive Reader & AI Solver",
+    editFile: "Edit Details",
+    deleteFile: "Delete",
+    downloadFile: "Download",
+    visibleLabel: "Public to Students",
+    hiddenLabel: "Hidden (Draft)",
+    certTitle: "Official Certificate Issuance & Validation",
+    issueCertBtn: "Issue New Certificate",
+    studentName: "Recipient Full Name",
+    mobileNumber: "Mobile Number",
+    schoolVillage: "School / Village",
+    standardLabel: "Grade / Standard",
+    titleLabel: "Achievement Title / Subject",
+    issueDate: "Issue Date",
+    statusActive: "Active & Verified",
+    statusRevoked: "Revoked",
+    revokeBtn: "Revoke",
+    activateBtn: "Re-activate",
+    deleteCertBtn: "Delete Record",
+    searchCerts: "Search certificates by name, ID, or mobile...",
+    userTitle: "User Role & Access Control Center",
+    addUserBtn: "Register New User / Staff",
+    searchUsers: "Search users by name, mobile, village, school...",
+    roleAll: "All Roles",
+    roleStudent: "Students",
+    roleTeacher: "Teachers",
+    roleAdmin: "Administrators",
+    userNameCol: "User Profile",
+    userMobileCol: "Mobile / Role",
+    userLocCol: "Village / School",
+    userGradeCol: "Grade",
+    userStreakCol: "Streak & Points",
+    userStudyCol: "Study Mins",
+    actionsCol: "Actions",
+    promoteTeacher: "Set Teacher Role",
+    promoteStudent: "Set Student Role",
+    promoteAdmin: "Set Admin Role",
+    deleteUser: "Delete User",
+    settingsTitle: "Administrator Settings & Security Configuration",
+    changePinTitle: "Security PIN & Access Code",
+    currentPin: "Current Security PIN",
+    newPin: "New 6-Digit Admin PIN",
+    confirmPin: "Confirm New PIN",
+    savePinBtn: "Update Security PIN",
+    platformDefaults: "System Platform Defaults",
+    defaultLang: "Default Platform Language",
+    storageCache: "Local Cache & Offline Storage",
+    clearCache: "Clear Local Storage Cache",
+    emergencyReset: "System Diagnostic Reset",
+
+    // Added Missing Translations
+    matchedCount: "Matched:",
+    studentsCount: "Students",
+    certsCount: "Certs",
+    thisMonthTrend: "+12% this month",
+    totalMinutesText: "total minutes",
+    xpAwardedText: "XP Awarded",
+    ruralHubTitle: "Rural Village Hub Activity",
+    liveFirestoreBadge: "Live Firestore DB Data",
+    engagementText: "engagement",
+    topPerformersTitle: "Top Student Performers",
+    xpAndStreaks: "XP & Streaks",
+    dayStreakText: "day streak",
+    minsText: "mins",
+
+    searchLibraryPlaceholder: "Search in library...",
+    allTypes: "All Types",
+    pdfNotes: "PDF Notes",
+    videosCategory: "Videos",
+    audioCategory: "Audio",
+    quizzesCategory: "Quizzes",
+    documentsCategory: "Documents",
+    filesAndDocs: "Files & Documents",
+    colFileName: "File Name & Info",
+    colSubject: "Subject",
+    colSize: "Size",
+    colUploaded: "Uploaded",
+    colStatus: "Status",
+    colActions: "Actions",
+    statusVisible: "Visible",
+    statusHidden: "Hidden",
+    btnView: "View",
+    btnOptions: "Options",
+
+    verifyCertTitle: "Official Certificate Issuance & Validation",
+    verifyPlaceholder: "Enter Certificate Code (e.g. CERT-2026-8819) or Student Mobile...",
+    verifyBtn: "Verify",
+    colCertId: "Cert ID",
+    colStudent: "Student",
+    colAchievement: "Achievement Title",
+    colDate: "Date",
+    reactivateBtn: "Reactivate",
+
+    userSubtitle: "Manage accounts, assign Administrator privileges, edit student profiles, and maintain data hygiene.",
+    userSearchPlaceholder: "Search by name, mobile, village, or school...",
+    colUser: "Student / User",
+    colMobile: "Mobile",
+    colLocation: "Village / School",
+    colRole: "Role",
+    colActivity: "Activity",
+    colRoleActions: "Role Actions",
+    makeAdmin: "Make Admin",
+    makeStudent: "Make Student",
+    regPrefix: "Reg:",
+
+    lowBandwidthTitle: "2G / Low-Bandwidth Mode",
+    lowBandwidthSub: "Compresses payload size for rural cellular networks",
+    lowBandwidthDesc: "Compresses payload size for rural cellular networks",
+    aiRateLimitTitle: "AI Tutor Query Rate Limiting",
+    securityPinSub: "Update security passcode for logged-in Administrator",
+    currentPinLabel: "Current Password / 6-Digit PIN *",
+    newPinLabel: "New Password / 6-Digit PIN *",
+    confirmPinLabel: "Confirm New Password / PIN *",
+    currentPinPlaceholder: "Enter current 6-digit PIN or password",
+    newPinPlaceholder: "Enter new 6-digit PIN or password",
+    confirmPinPlaceholder: "Confirm new 6-digit PIN or password",
+    savePasswordBtn: "Save New Password",
+    updatingPinBtn: "Updating Security PIN..."
+  },
+  hi: {
+    dashboardTitle: "ग्रामीण शिक्षा एडमिन डैशबोर्ड",
+    superAdminBadge: "सुपर एडमिन",
+    loggedInAs: "लॉग इन हैं:",
+    stateOps: "राज्य पाठ्यक्रम संचालन",
+    downloadAnalytics: "विश्लेषण डाउनलोड करें",
+    syncLiveData: "लाइव डेटा सिंक करें",
+    exitAdmin: "एडमिन कंसोल से बाहर निकलें",
+    currentModule: "वर्तमान:",
+    adminModulesCount: "एडमिन मॉड्यूल",
+    navAnalytics: "छात्र विश्लेषण",
+    navContent: "पाठ्यक्रम एवं सामग्री",
+    navCertificates: "प्रमाणपत्र रजिस्टर",
+    navUsers: "उपयोगकर्ता भूमिका प्रबंधन",
+    navSettings: "प्लेटफ़ॉर्म सेटिंग्स",
+    analyticsTitle: "मास्टर विश्लेषण एवं छात्र प्रगति",
+    analyticsSubtitle: "शैक्षणिक अवधि के आधार पर प्लेटफ़ॉर्म डेटासेट फ़िल्टर करें और PDF या Excel (.xlsx) रिपोर्ट निर्यात करें।",
+    filterRange: "फ़िल्टर अवधि:",
+    allTime: "सभी समय",
+    today: "आज",
+    thisWeek: "इस सप्ताह",
+    thisMonth: "इस महीने",
+    year: "वर्ष",
+    month: "माह",
+    pdfReport: "PDF रिपोर्ट",
+    excelExport: "Excel (.xlsx)",
+    allFormats: "सभी निर्यात प्रारूप",
+    totalStudents: "कुल पंजीकृत छात्र",
+    activeTeachers: "सक्रिय शिक्षक",
+    registeredSchools: "स्कूल एवं गाँव",
+    lessonsCompleted: "अध्ययन के घंटे",
+    certsIssued: "जारी किए गए प्रमाणपत्र",
+    totalXP: "कुल गेमिफाइड अंक",
+    standardBreakdown: "कक्षा-वार जुड़ाव",
+    boardBreakdown: "बोर्ड वितरण",
+    topVillages: "शीर्ष प्रदर्शन करने वाले गाँव / स्कूल",
+    exportReport: "विस्तृत रिपोर्ट निर्यात करें",
+    repositoryTitle: "राज्य शिक्षण सामग्री रिपोजिटरी",
+    createFolder: "नया फ़ोल्डर बनाएँ",
+    uploadFile: "शिक्षण सामग्री अपलोड करें",
+    batchAi: "बैच AI जनरेटर",
+    rootFolder: "मूल निर्देशिका",
+    searchContent: "सामग्री, नोट्स, PDF खोजें...",
+    filterCategory: "सभी श्रेणियाँ",
+    filterStandard: "कक्षा फ़िल्टर करें",
+    filterBoard: "शिक्षा बोर्ड फ़िल्टर करें",
+    emptyFolders: "अभी तक कोई फ़ोल्डर नहीं बनाया गया है।",
+    emptyFiles: "इस निर्देशिका में कोई सामग्री नहीं मिली।",
+    previewPdf: "इंटरएक्टिव रीडर एवं AI समाधानकर्ता",
+    editFile: "विवरण संपादित करें",
+    deleteFile: "हटाएं",
+    downloadFile: "डाउनलोड करें",
+    visibleLabel: "छात्रों के लिए दृश्यमान",
+    hiddenLabel: "छिपा हुआ (ड्राफ्ट)",
+    certTitle: "आधिकारिक प्रमाणपत्र जारी करना एवं सत्यापन",
+    issueCertBtn: "नया प्रमाणपत्र जारी करें",
+    studentName: "प्राप्तकर्ता का पूरा नाम",
+    mobileNumber: "मोबाइल नंबर",
+    schoolVillage: "स्कूल / गाँव",
+    standardLabel: "कक्षा / ग्रेड",
+    titleLabel: "उपलब्धि शीर्षक / विषय",
+    issueDate: "जारी करने की तिथि",
+    statusActive: "सक्रिय एवं सत्यापित",
+    statusRevoked: "रद्द किया गया",
+    revokeBtn: "रद्द करें",
+    activateBtn: "पुनः सक्रिय करें",
+    deleteCertBtn: "रिकॉर्ड हटाएं",
+    searchCerts: "नाम, आईडी या मोबाइल द्वारा प्रमाणपत्र खोजें...",
+    userTitle: "उपयोगकर्ता भूमिका एवं पहुंच नियंत्रण केंद्र",
+    addUserBtn: "नया उपयोगकर्ता / कर्मचारी पंजीकृत करें",
+    searchUsers: "नाम, मोबाइल, गाँव या स्कूल द्वारा उपयोगकर्ता खोजें...",
+    roleAll: "सभी भूमिकाएँ",
+    roleStudent: "छात्र",
+    roleTeacher: "शिक्षक",
+    roleAdmin: "प्रशासक",
+    userNameCol: "उपयोगकर्ता प्रोफाइल",
+    userMobileCol: "मोबाइल / भूमिका",
+    userLocCol: "गाँव / स्कूल",
+    userGradeCol: "कक्षा",
+    userStreakCol: "स्ट्रीक एवं अंक",
+    userStudyCol: "अध्ययन मिनट",
+    actionsCol: "कार्रवाई",
+    promoteTeacher: "शिक्षक भूमिका बनाएं",
+    promoteStudent: "छात्र भूमिका बनाएं",
+    promoteAdmin: "एडमिन भूमिका बनाएं",
+    deleteUser: "उपयोगकर्ता हटाएं",
+    settingsTitle: "प्रशासक सेटिंग्स एवं सुरक्षा कॉन्फ़िगरेशन",
+    changePinTitle: "सुरक्षा पिन एवं एक्सेस कोड",
+    currentPin: "वर्तमान सुरक्षा पिन",
+    newPin: "नया 6-अंकों का एडमिन पिन",
+    confirmPin: "नए पिन की पुष्टि करें",
+    savePinBtn: "सुरक्षा पिन अपडेट करें",
+    platformDefaults: "सिस्टम प्लेटफ़ॉर्म डिफ़ॉल्ट",
+    defaultLang: "डिफ़ॉल्ट भाषा",
+    storageCache: "लोकल कैश एवं ऑफ़लाइन स्टोरेज",
+    clearCache: "लोकल कैश साफ़ करें",
+    emergencyReset: "सिस्टम डायग्नोस्टिक रीसेट",
+
+    // Added Missing Translations
+    matchedCount: "मैच हुए:",
+    studentsCount: "छात्र",
+    certsCount: "प्रमाणपत्र",
+    thisMonthTrend: "+12% इस महीने",
+    totalMinutesText: "कुल मिनट",
+    xpAwardedText: "XP प्रदान किए गए",
+    ruralHubTitle: "ग्रामीण ग्राम हब गतिविधि",
+    liveFirestoreBadge: "लाइव फ़ायरस्टोर डेटा",
+    engagementText: "संबद्धता",
+    topPerformersTitle: "शीर्ष प्रदर्शनकारी छात्र",
+    xpAndStreaks: "XP एवं निरंतरता",
+    dayStreakText: "दिनों की निरंतरता",
+    minsText: "मिनट",
+
+    searchLibraryPlaceholder: "लाइब्रेरी में खोजें...",
+    allTypes: "सभी प्रकार",
+    pdfNotes: "PDF नोट्स",
+    videosCategory: "वीडियो",
+    audioCategory: "ऑडियो",
+    quizzesCategory: "क्विज़",
+    documentsCategory: "दस्तावेज़",
+    filesAndDocs: "फ़ाइलें एवं दस्तावेज़",
+    colFileName: "फ़ाइल नाम एवं जानकारी",
+    colSubject: "विषय",
+    colSize: "आकार",
+    colUploaded: "अपलोड तिथि",
+    colStatus: "स्थिति",
+    colActions: "कार्रवाई",
+    statusVisible: "दृश्यमान",
+    statusHidden: "छिपा हुआ",
+    btnView: "देखें",
+    btnOptions: "विकल्प",
+
+    verifyCertTitle: "आधिकारिक प्रमाणपत्र जारी करना एवं सत्यापन",
+    verifyPlaceholder: "प्रमाणपत्र कोड (उदा. CERT-2026-8819) या छात्र मोबाइल दर्ज करें...",
+    verifyBtn: "सत्यापित करें",
+    colCertId: "प्रमाणपत्र ID",
+    colStudent: "छात्र",
+    colAchievement: "उपलब्धि शीर्षक",
+    colDate: "तिथि",
+    reactivateBtn: "पुनः सक्रिय करें",
+
+    userSubtitle: "खातों का प्रबंधन करें, प्रशासक विशेषाधिकार दें और छात्र प्रोफाइल संपादित करें।",
+    userSearchPlaceholder: "नाम, मोबाइल, गाँव या स्कूल से खोजें...",
+    colUser: "छात्र / उपयोगकर्ता",
+    colMobile: "मोबाइल",
+    colLocation: "गाँव / स्कूल",
+    colRole: "भूमिका",
+    colActivity: "गतिविधि",
+    colRoleActions: "भूमिका कार्रवाई",
+    makeAdmin: "एडमिन बनाएं",
+    makeStudent: "छात्र बनाएं",
+    regPrefix: "पंजीकरण:",
+
+    lowBandwidthTitle: "2जी / कम बैंडविड्थ मोड",
+    lowBandwidthSub: "ग्रामीण नेटवर्क के लिए पेलोड आकार को संकुचित करता है",
+    aiRateLimitTitle: "AI ट्यूटर प्रश्न दर सीमा",
+    securityPinSub: "लॉग इन प्रशासक के लिए सुरक्षा पासकोड अपडेट करें",
+    currentPinLabel: "वर्तमान पासवर्ड / 6-अंकीय पिन *",
+    newPinLabel: "नया पासवर्ड / 6-अंकीय पिन *",
+    confirmPinLabel: "नए पासवर्ड / पिन की पुष्टि करें *",
+    currentPinPlaceholder: "वर्तमान 6-अंकीय पिन या पासवर्ड दर्ज करें",
+    newPinPlaceholder: "नया 6-अंकीय पिन या पासवर्ड दर्ज करें",
+    confirmPinPlaceholder: "नए 6-अंकीय पिन या पासवर्ड की पुष्टि करें",
+    savePasswordBtn: "नया पासवर्ड सहेजें"
+  },
+  gu: {
+    dashboardTitle: "ગ્રામીણ શિક્ષણ એડમિન ડેશબોર્ડ",
+    superAdminBadge: "સુપર એડમિન",
+    loggedInAs: "લૉગ ઇન છો:",
+    stateOps: "રાજ્ય અભ્યાસક્રમ સંચાલન",
+    downloadAnalytics: "વિશ્લેષણ ડાઉનલોડ કરો",
+    syncLiveData: "લાઈવ ડેટા સિંક કરો",
+    exitAdmin: "એડમિન કન્સોલમાંથી બહાર નીકળો",
+    currentModule: "વર્તમાન:",
+    adminModulesCount: "એડમિન મોડ્યુલ્સ",
+    navAnalytics: "વિદ્યાર્થી વિશ્લેષણ",
+    navContent: "અભ્યાસક્રમ અને સામગ્રી",
+    navCertificates: "પ્રમાણપત્ર રજિસ્ટર",
+    navUsers: "વપરાશકર્તા ભૂમિકા સંચાલન",
+    navSettings: "પ્લેટફોર્મ સેટિંગ્સ",
+    analyticsTitle: "માસ્ટર વિશ્લેષણ અને વિદ્યાર્થી પ્રગતિ",
+    analyticsSubtitle: "અભ્યાસકાળના આધારે ડેટાસેટ ફિલ્ટર કરો અને PDF અથવા Excel (.xlsx) અહેવાલ નિકાસ કરો.",
+    filterRange: "ફિલ્ટર સમયગાળો:",
+    allTime: "તમામ સમય",
+    today: "આજે",
+    thisWeek: "આ અઠવાડિયે",
+    thisMonth: "આ મહિને",
+    year: "વર્ષ",
+    month: "મહિનો",
+    pdfReport: "PDF અહેવાલ",
+    excelExport: "Excel (.xlsx)",
+    allFormats: "તમામ ફોર્મેટ નિકાસ",
+    totalStudents: "કુલ નોંધાયેલા વિદ્યાર્થીઓ",
+    activeTeachers: "સક્રિય શિક્ષકો",
+    registeredSchools: "શાળાઓ અને ગામો",
+    lessonsCompleted: "અભ્યાસના કલાકો",
+    certsIssued: "ઇશ્યૂ કરેલા પ્રમાણપત્રો",
+    totalXP: "કુલ ગેમિફાઇડ પોઇન્ટ્સ",
+    standardBreakdown: "ધોરણ-વાર જોડાણ",
+    boardBreakdown: "બોર્ડ વિતરણ",
+    topVillages: "શ્રેષ્ઠ પ્રદર્શન કરતા ગામો / શાળાઓ",
+    exportReport: "વિગતવાર અહેવાલ નિકાસ કરો",
+    repositoryTitle: "રાજ્ય શિક્ષણ સામગ્રી રિપોઝિટરી",
+    createFolder: "નવું ફોલ્ડર બનાવો",
+    uploadFile: "શિક્ષણ સામગ્રી અપલોડ કરો",
+    batchAi: "બેચ AI જનરેટર",
+    rootFolder: "મૂળ ડિરેક્ટરી",
+    searchContent: "સામગ્રી, નોટ્સ, PDF શોધો...",
+    filterCategory: "તમામ કેટેગરીઝ",
+    filterStandard: "ધોરણ ફિલ્ટર કરો",
+    filterBoard: "શિક્ષણ બોર્ડ ફિલ્ટર કરો",
+    emptyFolders: "હજુ સુધી કોઈ ફોલ્ડર બનાવવામાં આવ્યું નથી.",
+    emptyFiles: "આ ડિરેક્ટરીમાં કોઈ સામગ્રી મળી નથી.",
+    previewPdf: "ઈન્ટરેક્ટિવ રીડર અને AI સોલ્વર",
+    editFile: "વિગતો સંપાદિત કરો",
+    deleteFile: "કાઢી નાખો",
+    downloadFile: "ડાઉનલોડ કરો",
+    visibleLabel: "વિદ્યાર્થીઓ માટે દૃશ્યમાન",
+    hiddenLabel: "છુપાયેલ (ડ્રાફ્ટ)",
+    certTitle: "સત્તાવાર પ્રમાણપત્ર ઇશ્યુ અને ચકાસણી",
+    issueCertBtn: "નવું પ્રમાણપત્ર ઇશ્યૂ કરો",
+    studentName: "મેળવનારનું પૂરું નામ",
+    mobileNumber: "મોબાઈલ નંબર",
+    schoolVillage: "શાળા / ગામ",
+    standardLabel: "ધોરણ / ગ્રેડ",
+    titleLabel: "સિદ્ધિ શીર્ષક / વિષય",
+    issueDate: "ઇશ્યૂ કર્યાની તારીખ",
+    statusActive: "સક્રિય અને ચકાસાયેલ",
+    statusRevoked: "રદ કરેલ",
+    revokeBtn: "રદ કરો",
+    activateBtn: "પુનઃ સક્રિય કરો",
+    deleteCertBtn: "રેકોર્ડ કાઢી નાખો",
+    searchCerts: "નામ, આઈડી અથવા મોબાઈલ દ્વારા પ્રમાણપત્ર શોધો...",
+    userTitle: "વપરાશકર્તા ભૂમિકા અને એક્સેસ નિયંત્રણ કેન્દ્ર",
+    addUserBtn: "નવા વપરાશકર્તા / સ્ટાફની નોંધણી કરો",
+    searchUsers: "નામ, મોબાઈલ, ગામ અથવા શાળા દ્વારા વપરાશકર્તા શોધો...",
+    roleAll: "તમામ ભૂમિકાઓ",
+    roleStudent: "વિદ્યાર્થી",
+    roleTeacher: "શિક્ષક",
+    roleAdmin: "એડમિનિસ્ટ્રેટર",
+    userNameCol: "વપરાશકર્તા પ્રોફાઇલ",
+    userMobileCol: "મોબાઈલ / ભૂમિકા",
+    userLocCol: "ગામ / શાળા",
+    userGradeCol: "ધોરણ",
+    userStreakCol: "સ્ટ્રીક અને પોઇન્ટ્સ",
+    userStudyCol: "અભ્યાસ મિનિટ",
+    actionsCol: "ક્રિયાઓ",
+    promoteTeacher: "શિક્ષક ભૂમિકા બનાવો",
+    promoteStudent: "વિદ્યાર્થી ભૂમિકા બનાવો",
+    promoteAdmin: "એડમિન ભૂમિકા બનાવો",
+    deleteUser: "વપરાશકર્તા કાઢી નાખો",
+    settingsTitle: "એડમિનિસ્ટ્રેટર સેટિંગ્સ અને સુરક્ષા કોન્ફિગરેશન",
+    changePinTitle: "સુરક્ષા પિન અને એક્સેસ કોડ",
+    currentPin: "વર્તમાન સુરક્ષા પિન",
+    newPin: "નવો 6-અંકનો એડમિન પિન",
+    confirmPin: "નવા પિનની પુષ્ટિ કરો",
+    savePinBtn: "સુરક્ષા પિન અપડેટ કરો",
+    platformDefaults: "સિસ્ટમ પ્લેટફોર્મ ડિફોલ્ટ્સ",
+    defaultLang: "ડિફોલ્ટ ભાષા",
+    storageCache: "લોકલ કેશ અને ઑફલાઇન સ્ટોરેજ",
+    clearCache: "લોકલ કેશ સાફ કરો",
+    emergencyReset: "સિસ્ટમ ડાયગ્નોસ્ટિક રિસેટ",
+
+    // Added Missing Translations
+    matchedCount: "મેળ ખાતા:",
+    studentsCount: "વિદ્યાર્થીઓ",
+    certsCount: "પ્રમાણપત્રો",
+    thisMonthTrend: "+12% આ મહિને",
+    totalMinutesText: "કુલ મિનિટ",
+    xpAwardedText: "XP એનાયત કરાયા",
+    ruralHubTitle: "ગ્રામીણ હબ પ્રવૃત્તિ",
+    liveFirestoreBadge: "લાઇવ ડેટાબેઝ ડેટા",
+    engagementText: "જોડાણ",
+    topPerformersTitle: "ટોચના વિદ્યાર્થીઓ",
+    xpAndStreaks: "XP અને શ્રેણી",
+    dayStreakText: "દિવસોની શ્રેણી",
+    minsText: "મિનિટ",
+
+    searchLibraryPlaceholder: "લાઇબ્રેરીમાં શોધો...",
+    allTypes: "તમામ પ્રકારો",
+    pdfNotes: "PDF નોટ્સ",
+    videosCategory: "વિડિઓઝ",
+    audioCategory: "ઓડિયો",
+    quizzesCategory: "ક્વિઝ",
+    documentsCategory: "દસ્તાવેજો",
+    filesAndDocs: "ફાઇલો અને દસ્તાવેજો",
+    colFileName: "ફાઇલ નામ અને માહિતી",
+    colSubject: "વિષય",
+    colSize: "કદ",
+    colUploaded: "અપલોડ તારીખ",
+    colStatus: "સ્થિતિ",
+    colActions: "ક્રિયાઓ",
+    statusVisible: "દ્રશ્યમાન",
+    statusHidden: "છુપાયેલું",
+    btnView: "જુઓ",
+    btnOptions: "વિકલ્પો",
+
+    verifyCertTitle: "સત્તાવાર પ્રમાણપત્ર ચકાસણી",
+    verifyPlaceholder: "પ્રમાણપત્ર કોડ અથવા મોબાઇલ નંબર દાખલ કરો...",
+    verifyBtn: "ચકાસો",
+    colCertId: "પ્રમાણપત્ર ID",
+    colStudent: "વિદ્યાર્થી",
+    colAchievement: "સિદ્ધિ શીર્ષક",
+    colDate: "તારીખ",
+    reactivateBtn: "પુનઃસક્રિય કરો",
+
+    userSubtitle: "ખાતાઓનું સંચાલન કરો અને એડમિન પરવાનગીઓ આપો.",
+    userSearchPlaceholder: "નામ, મોબાઇલ અથવા ગામ દ્વારા શોધો...",
+    colUser: "વિદ્યાર્થી / વપરાશકર્તા",
+    colMobile: "મોબાઇલ",
+    colLocation: "ગામ / શાળા",
+    colRole: "ભૂમિકા",
+    colActivity: "પ્રવૃત્તિ",
+    colRoleActions: "ભૂમિકા ક્રિયાઓ",
+    makeAdmin: "એડમિન બનાવો",
+    makeStudent: "વિદ્યાર્થી બનાવો",
+    regPrefix: "નોંધણી:",
+
+    lowBandwidthTitle: "2G / લો-બેન્ડવિડ્થ મોડ",
+    lowBandwidthSub: "ગ્રામીણ નેટવર્ક માટે ડેટા સાઇઝ ઘટાડે છે",
+    aiRateLimitTitle: "AI શિક્ષક પ્રશ્ન મર્યાદા",
+    securityPinSub: "લોગ-ઇન થયેલ એડમિન માટે પાસકોડ અપડેટ કરો",
+    currentPinLabel: "વર્તમાન પાસવર્ડ / 6-અંકનો PIN *",
+    newPinLabel: "નવો પાસવર્ડ / 6-અંકનો PIN *",
+    confirmPinLabel: "નવા પાસવર્ડની પુષ્ટિ કરો *",
+    currentPinPlaceholder: "વર્તમાન 6-અંકનો PIN દાખલ કરો",
+    newPinPlaceholder: "નવો 6-અંકનો PIN દાખલ કરો",
+    confirmPinPlaceholder: "નવા PIN ની પુષ્ટિ કરો",
+    savePasswordBtn: "નવો પાસવર્ડ સાચવો"
+  },
+  mr: {
+    dashboardTitle: "ग्रामीण शिक्षण ॲडमिन डॅशबोर्ड",
+    superAdminBadge: "सुपर ॲडमिन",
+    loggedInAs: "लॉग इन आहात:",
+    stateOps: "राज्य अभ्यासक्रम कार्यप्रणाली",
+    downloadAnalytics: "विश्लेषण डाउनलोड करा",
+    syncLiveData: "थेट डेटा सिंक करा",
+    exitAdmin: "ॲडमिन कन्सोलमधून बाहेर पडा",
+    currentModule: "सध्याचे:",
+    adminModulesCount: "ॲडमिन मॉड्यूल्स",
+    navAnalytics: "विद्यार्थी विश्लेषण",
+    navContent: "अभ्यासक्रम आणि साहित्य",
+    navCertificates: "प्रमाणपत्र नोंदणी",
+    navUsers: "वापरकर्ता भूमिका व्यवस्थापन",
+    navSettings: "प्लॅटफॉर्म सेटिंग्ज",
+    analyticsTitle: "मास्टर विश्लेषण आणि विद्यार्थी प्रगती",
+    analyticsSubtitle: "शैक्षणिक कालावधीनुसार डेटासेट फिल्टर करा आणि PDF किंवा Excel (.xlsx) अहवाल निर्यात करा.",
+    filterRange: "फिल्टर कालावधी:",
+    allTime: "सर्व वेळ",
+    today: "आज",
+    thisWeek: "या आठवड्यात",
+    thisMonth: "या महिन्यात",
+    year: "वर्ष",
+    month: "महिना",
+    pdfReport: "PDF अहवाल",
+    excelExport: "Excel (.xlsx)",
+    allFormats: "सर्व फॉरमॅट निर्यात",
+    totalStudents: "एकूण नोंदणीकृत विद्यार्थी",
+    activeTeachers: "सक्रिय शिक्षक",
+    registeredSchools: "शाळा आणि गावे",
+    lessonsCompleted: "अभ्यासाचे तास",
+    certsIssued: "जारी केलेली प्रमाणपत्रे",
+    totalXP: "एकूण गॅमिफाइड गुण",
+    standardBreakdown: "इयत्ता-निहाय सहभाग",
+    boardBreakdown: "बोर्ड वितरण",
+    topVillages: "उत्कृष्ट कामगिरी करणारी गावे / शाळा",
+    exportReport: "सर्वसमावेशक अहवाल निर्यात करा",
+    repositoryTitle: "राज्य शिक्षण साहित्य भांडार",
+    createFolder: "नवीन फोल्डर तयार करा",
+    uploadFile: "शिक्षण साहित्य अपलोड करा",
+    batchAi: "बॅच AI जनरेटर",
+    rootFolder: "मूळ डिरेक्टरी",
+    searchContent: "साहित्य, नोट्स, PDF शोधा...",
+    filterCategory: "सर्व श्रेणी",
+    filterStandard: "इयत्ता फिल्टर करा",
+    filterBoard: "शिक्षण मंडळ फिल्टर करा",
+    emptyFolders: "अद्याप कोणतेही फोल्डर तयार केलेले नाही.",
+    emptyFiles: "या डिरेक्टरीमध्ये कोणतेही साहित्य आढळले नाही.",
+    previewPdf: "इंटरॲक्टिव्ह रीडर आणि AI सॉल्व्हर",
+    editFile: "तपशील संपादित करा",
+    deleteFile: "हटवा",
+    downloadFile: "डाउनलोड करा",
+    visibleLabel: "विद्यार्थ्यांसाठी दृश्यमान",
+    hiddenLabel: "लपवलेले (ड्राफ्ट)",
+    certTitle: "अधिकृत प्रमाणपत्र वितरण आणि पडताळणी",
+    issueCertBtn: "नवीन प्रमाणपत्र द्या",
+    studentName: "मिळवणाऱ्याचे पूर्ण नाव",
+    mobileNumber: "मोबाईल नंबर",
+    schoolVillage: "शाळा / गाव",
+    standardLabel: "इयत्ता / श्रेणी",
+    titleLabel: "यशोगाथा शीर्षक / विषय",
+    issueDate: "वितरण तारीख",
+    statusActive: "सक्रिय आणि सत्यापित",
+    statusRevoked: "रद्द केले",
+    revokeBtn: "रद्द करा",
+    activateBtn: "पुन्हा सक्रिय करा",
+    deleteCertBtn: "नोंद हटवा",
+    searchCerts: "नाव, आयडी किंवा मोबाईलद्वारे प्रमाणपत्र शोधा...",
+    userTitle: "वापरकर्ता भूमिका आणि प्रवेश नियंत्रण केंद्र",
+    addUserBtn: "नवीन वापरकर्ता / कर्मचारी नोंदवा",
+    searchUsers: "नाव, मोबाईल, गाव किंवा शाळेद्वारे वापरकर्ता शोधा...",
+    roleAll: "सर्व भूमिका",
+    roleStudent: "विद्यार्थी",
+    roleTeacher: "शिक्षक",
+    roleAdmin: "प्रशासक",
+    userNameCol: "वापरकर्ता प्रोफाइल",
+    userMobileCol: "मोबाईल / भूमिका",
+    userLocCol: "गाव / शाळा",
+    userGradeCol: "इयत्ता",
+    userStreakCol: "स्ट्रीक आणि गुण",
+    userStudyCol: "अभ्यास मिनिटे",
+    actionsCol: "कृती",
+    promoteTeacher: "शिक्षक भूमिका द्या",
+    promoteStudent: "विद्यार्थी भूमिका द्या",
+    promoteAdmin: "ॲडमिन भूमिका द्या",
+    deleteUser: "वापरकर्ता हटवा",
+    settingsTitle: "प्रशासक सेटिंग्ज आणि सुरक्षा कॉन्फिगरेशन",
+    changePinTitle: "सुरक्षा पिन आणि ॲक्सेस कोड",
+    currentPin: "सध्याचा सुरक्षा पिन",
+    newPin: "नवीन 6-अंकी ॲडमिन पिन",
+    confirmPin: "नवीन पिनची पुष्टी करा",
+    savePinBtn: "सुरक्षा पिन अपडेट करा",
+    platformDefaults: "सिस्टम प्लॅटफॉर्म डीफॉल्ट",
+    defaultLang: "डीफॉल्ट भाषा",
+    storageCache: "लोकल कॅश आणि ऑफलाईन स्टोरेज",
+    clearCache: "लोकल कॅश साफ करा",
+    emergencyReset: "सिस्टम डायग्नोस्टिक रिसेट",
+
+    // Added Missing Translations
+    matchedCount: "जुळलेले:",
+    studentsCount: "विद्यार्थी",
+    certsCount: "प्रमाणपत्रे",
+    thisMonthTrend: "+12% या महिन्यात",
+    totalMinutesText: "एकूण मिनिटे",
+    xpAwardedText: "XP प्रदान केले",
+    ruralHubTitle: "ग्रामीण हब उपक्रम",
+    liveFirestoreBadge: "लाइव्ह डेटा",
+    engagementText: "सहभाग",
+    topPerformersTitle: "उत्कृष्ट कामगिरी करणारे विद्यार्थी",
+    xpAndStreaks: "XP आणि सातत्य",
+    dayStreakText: "दिवसांचे सातत्य",
+    minsText: "मिनिटे",
+
+    searchLibraryPlaceholder: "लायब्ररीमध्ये शोधा...",
+    allTypes: "सर्व प्रकार",
+    pdfNotes: "PDF नोट्स",
+    videosCategory: "व्हिडिओ",
+    audioCategory: "ऑडिओ",
+    quizzesCategory: "क्विझ",
+    documentsCategory: "कागदपत्रे",
+    filesAndDocs: "फायली आणि कागदपत्रे",
+    colFileName: "फाइल नाव आणि माहिती",
+    colSubject: "विषय",
+    colSize: "आकार",
+    colUploaded: "अपलोड तारीख",
+    colStatus: "स्थिती",
+    colActions: "कृती",
+    statusVisible: "दृश्यमान",
+    statusHidden: "लपवलेले",
+    btnView: "पहा",
+    btnOptions: "पर्याय",
+
+    verifyCertTitle: "अधिकृत प्रमाणपत्र पडताळणी",
+    verifyPlaceholder: "प्रमाणपत्र कोड किंवा मोबाईल नंबर टाका...",
+    verifyBtn: "पडताळा",
+    colCertId: "प्रमाणपत्र ID",
+    colStudent: "विद्यार्थी",
+    colAchievement: "शीर्षक",
+    colDate: "तारीख",
+    reactivateBtn: "पुन्हा सक्रिय करा",
+
+    userSubtitle: "खाती व्यवस्थापित करा आणि प्रशासकीय अधिकार द्या.",
+    userSearchPlaceholder: "नाव, मोबाईल किंवा गावावरून शोधा...",
+    colUser: "विद्यार्थी / वापरकर्ता",
+    colMobile: "मोबाईल",
+    colLocation: "गाव / शाळा",
+    colRole: "भूमिका",
+    colActivity: "उपक्रम",
+    colRoleActions: "भूमिका कृती",
+    makeAdmin: "एडमिन करा",
+    makeStudent: "विद्यार्थी करा",
+    regPrefix: "नोंदणी:",
+
+    lowBandwidthTitle: "2G / कमी बँडविड्थ मोड",
+    lowBandwidthSub: "ग्रामीण नेटवर्कसाठी डेटा आकार कमी करतो",
+    aiRateLimitTitle: "AI ट्यूटर प्रश्न मर्यादा",
+    securityPinSub: "प्रशासकासाठी सुरक्षा पासवर्ड अपडेट करा",
+    currentPinLabel: "सध्याचा पासवर्ड / 6-अंकी PIN *",
+    newPinLabel: "नवीन पासवर्ड / 6-अंकी PIN *",
+    confirmPinLabel: "नवीन पासवर्डची खात्री करा *",
+    currentPinPlaceholder: "सध्याचा 6-अंकी PIN टाका",
+    newPinPlaceholder: "नवीन 6-अंकी PIN टाका",
+    confirmPinPlaceholder: "नवीन PIN ची खात्री करा",
+    savePasswordBtn: "नवीन पासवर्ड जतन करा"
+  },
+  ta: {
+    dashboardTitle: "கிராமப்புற கல்வி நிர்வாகி கட்டுப்பாட்டு பலகை",
+    superAdminBadge: "சூப்பர் நிர்வாகி",
+    loggedInAs: "உள்நுழைந்துள்ளவர்:",
+    stateOps: "மாநில பாடத்திட்ட செயல்பாடுகள்",
+    downloadAnalytics: "பகுப்பாய்வைப் பதிவிறக்குக",
+    syncLiveData: "நேரலைத் தரவை ஒத்திசைக்க",
+    exitAdmin: "நிர்வாகி கன்சோலிலிருந்து வெளியேறு",
+    currentModule: "தற்போதைய:",
+    adminModulesCount: "நிர்வாகக் கூறுகள்",
+    navAnalytics: "மாணவர் பகுப்பாய்வு",
+    navContent: "பாடத்திட்டம் & பாடப்பொருள்",
+    navCertificates: "சான்றிதழ் பதிவேடு",
+    navUsers: "பயனர் பங்கு மேலாண்மை",
+    navSettings: "தள வடிவமைப்பு",
+    analyticsTitle: "முதன்மை பகுப்பாய்வு & மாணவர் முன்னேற்றம்",
+    analyticsSubtitle: "கல்விக் காலத்தின் அடிப்படையில் தரவை வடிகட்டி PDF அல்லது Excel (.xlsx) அறிக்கையை ஏற்றுமதி செய்க.",
+    filterRange: "வடிகட்டி காலம்:",
+    allTime: "அனைத்து நேரமும்",
+    today: "இன்று",
+    thisWeek: "இந்த வாரம்",
+    thisMonth: "இந்த மாதம்",
+    year: "ஆண்டு",
+    month: "மாதம்",
+    pdfReport: "PDF அறிக்கை",
+    excelExport: "Excel (.xlsx)",
+    allFormats: "அனைத்து வடிவங்கள்",
+    totalStudents: "மொத்த பதிவுசெய்த மாணவர்கள்",
+    activeTeachers: "செயலில் உள்ள ஆசிரியர்கள்",
+    registeredSchools: "பள்ளிகள் & கிராமங்கள்",
+    lessonsCompleted: "முடிக்கப்பட்ட கற்றல் மணிநேரம்",
+    certsIssued: "வழங்கப்பட்ட சான்றிதழ்கள்",
+    totalXP: "மொத்த விளையாட்டுப் புள்ளிகள்",
+    standardBreakdown: "வகுப்பு வாரியான ஈடுபாடு",
+    boardBreakdown: "கல்வி வாரிய விநியோகம்",
+    topVillages: "சிறந்த செயல்திறன் கொண்ட கிராமங்கள் / பள்ளிகள்",
+    exportReport: "முழு அறிக்கையை ஏற்றுமதி செய்",
+    repositoryTitle: "மாநில கற்றல் பாடப்பொருள் களஞ்சியம்",
+    createFolder: "புதிய கோப்புறையை உருவாக்கு",
+    uploadFile: "கற்றல் பொருளைப் பதிவேற்று",
+    batchAi: "தொகுதி AI உருவாக்கி",
+    rootFolder: "முதன்மை கோப்பகம்",
+    searchContent: "பாடப்பொருட்கள், குறிப்புகள், PDF தேடுக...",
+    filterCategory: "அனைத்து வகைகள்",
+    filterStandard: "வகுப்பு வடிகட்டி",
+    filterBoard: "கல்வி வாரிய வடிகட்டி",
+    emptyFolders: "இதுவரை கோப்புறைகள் எதுவும் உருவாக்கப்படவில்லை.",
+    emptyFiles: "இந்த கோப்பகத்தில் பாடப்பொருட்கள் எதுவும் இல்லை.",
+    previewPdf: "செயல்பாட்டு வாசகர் & AI தீர்வு வழங்கி",
+    editFile: "விவரங்களைத் திருத்து",
+    deleteFile: "நீக்கு",
+    downloadFile: "பதிவிறக்கு",
+    visibleLabel: "மாணவர்களுக்குத் தெரியும்",
+    hiddenLabel: "மறைக்கப்பட்டது (வரைவு)",
+    certTitle: "அதிகாரப்பூர்வ சான்றிதழ் வழங்கல் & சரிபார்ப்பு",
+    issueCertBtn: "புதிய சான்றிதழ் வழங்கு",
+    studentName: "பெறுநரின் முழுப் பெயர்",
+    mobileNumber: "கைபேசி எண்",
+    schoolVillage: "பள்ளி / கிராமம்",
+    standardLabel: "வகுப்பு / நிலை",
+    titleLabel: "சாதனைத் தலைப்பு / பாடம்",
+    issueDate: "வழங்கப்பட்ட தேதி",
+    statusActive: "செயலில் & சரிபார்க்கப்பட்டது",
+    statusRevoked: "ரத்து செய்யப்பட்டது",
+    revokeBtn: "ரத்து செய்",
+    activateBtn: "மீண்டும் செயல்படுத்து",
+    deleteCertBtn: "பதிவை நீக்கு",
+    searchCerts: "பெயர், ஐடி அல்லது கைபேசி மூலம் சான்றிதழ்களைத் தேடுக...",
+    userTitle: "பயனர் பங்கு & அணுகல் கட்டுப்பாட்டு மையம்",
+    addUserBtn: "புதிய பயனர் / பணியாளரைப் பதிவு செய்",
+    searchUsers: "பெயர், கைபேசி, கிராமம் அல்லது பள்ளி மூலம் பயனர்களைத் தேடுக...",
+    roleAll: "அனைத்துப் பங்குகள்",
+    roleStudent: "மாணவர்",
+    roleTeacher: "ஆசிரியர்",
+    roleAdmin: "நிர்வாகி",
+    userNameCol: "பயனர் சுயவிவரம்",
+    userMobileCol: "கைபேசி / பங்கு",
+    userLocCol: "கிராமம் / பள்ளி",
+    userGradeCol: "வகுப்பு",
+    userStreakCol: "தொடர்ச்சி & புள்ளிகள்",
+    userStudyCol: "கற்றல் நிமிடங்கள்",
+    actionsCol: "செயல்கள்",
+    promoteTeacher: "ஆசிரியர் பங்கைக் கொடு",
+    promoteStudent: "மாணவர் பங்கைக் கொடு",
+    promoteAdmin: "நிர்வாகி பங்கைக் கொடு",
+    deleteUser: "பயனரை நீக்கு",
+    settingsTitle: "நிர்வாகி அமைப்புகள் & பாதுகாப்பு கட்டமைப்பு",
+    changePinTitle: "பாதுகாப்பு PIN & அணுகல் குறியீடு",
+    currentPin: "தற்போதைய பாதுகாப்பு PIN",
+    newPin: "புதிய 6-இலக்க நிர்வாகி PIN",
+    confirmPin: "புதிய PIN ஐ உறுதிப்படுத்து",
+    savePinBtn: "பாதுகாப்பு PIN ஐ புதுப்பி",
+    platformDefaults: "தளத்தின் இயல்புநிலை அமைப்புகள்",
+    defaultLang: "இயல்புநிலை மொழி",
+    storageCache: "உள்ளூர் சேமிப்பு & ஆஃப்லைன் சேமிப்பகம்",
+    clearCache: "உள்ளூர் நினைவகத்தை அழி",
+    emergencyReset: "கணினி ஆய்வு மீட்டமைப்பு",
+
+    // Added Missing Translations
+    matchedCount: "பொருந்தியவை:",
+    studentsCount: "மாணவர்கள்",
+    certsCount: "சான்றிதழ்கள்",
+    thisMonthTrend: "இந்த மாதத்தில் +12%",
+    totalMinutesText: "மொத்த நிமிடங்கள்",
+    xpAwardedText: "வழங்கப்பட்ட XP",
+    ruralHubTitle: "கிராமப்புற மைய செயல்பாடுகள்",
+    liveFirestoreBadge: "நேரலை தரவு",
+    engagementText: "ஈடுபாடு",
+    topPerformersTitle: "சிறந்த மாணவர்கள்",
+    xpAndStreaks: "XP & தொடர்ச்சி",
+    dayStreakText: "நாட்கள் தொடர்ச்சி",
+    minsText: "நிமிடங்கள்",
+
+    searchLibraryPlaceholder: "நூலகத்தில் தேடுக...",
+    allTypes: "அனைத்து வகைகள்",
+    pdfNotes: "PDF குறிப்புகள்",
+    videosCategory: "காணொளிகள்",
+    audioCategory: "ஒலி பதிவுகள்",
+    quizzesCategory: "வினாடி வினா",
+    documentsCategory: "ஆவணங்கள்",
+    filesAndDocs: "கோப்புகள் & ஆவணங்கள்",
+    colFileName: "கோப்பு பெயர் & தகவல்",
+    colSubject: "பாடம்",
+    colSize: "அளவு",
+    colUploaded: "பதிவேற்றப்பட்ட நாள்",
+    colStatus: "நிலை",
+    colActions: "செயல்கள்",
+    statusVisible: "தெரிவது",
+    statusHidden: "மறைக்கப்பட்டது",
+    btnView: "பார்வை",
+    btnOptions: "விருப்பங்கள்",
+
+    verifyCertTitle: "அதிகாரப்பூர்வ சான்றிதழ் சரிபார்ப்பு",
+    verifyPlaceholder: "சான்றிதழ் குறியீடு அல்லது மொபைல் எண்ணை உள்ளிடுக...",
+    verifyBtn: "சரிபார்",
+    colCertId: "சான்றிதழ் ID",
+    colStudent: "மாணவர்",
+    colAchievement: "தலைப்பு",
+    colDate: "தேதி",
+    reactivateBtn: "மீண்டும் செயல்படுத்து",
+
+    userSubtitle: "கணக்குகளை நிர்வகித்து நிர்வாகி உரிமைகளை வழங்குக.",
+    userSearchPlaceholder: "பெயர், மொபைல் அல்லது கிராமம் மூலம் தேடுக...",
+    colUser: "மாணவர் / பயனர்",
+    colMobile: "மொபைல்",
+    colLocation: "கிராமம் / பள்ளி",
+    colRole: "பங்கு",
+    colActivity: "செயல்பாடு",
+    colRoleActions: "பங்கு செயல்கள்",
+    makeAdmin: "நிர்வாகியாக்கு",
+    makeStudent: "மாணவராக்கு",
+    regPrefix: "பதிவு:",
+
+    lowBandwidthTitle: "2G / குறைந்த அலைவரிசை பயன்முறை",
+    lowBandwidthSub: "கிராமப்புற நெட்வொர்க்குகளுக்கு தரவு அளவை சுருக்குகிறது",
+    aiRateLimitTitle: "AI ஆசிரியர் கேள்வி வரம்பு",
+    securityPinSub: "நிர்வாகிக்கான பாதுகாப்பு குறியீட்டை புதுப்பிக்கவும்",
+    currentPinLabel: "தற்போதைய கடவுச்சொல் / 6-இலக்க PIN *",
+    newPinLabel: "புதிய கடவுச்சொல் / 6-இலக்க PIN *",
+    confirmPinLabel: "புதிய கடவுச்சொல்லை உறுதிப்படுத்துக *",
+    currentPinPlaceholder: "தற்போதைய 6-இலக்க PIN ஐ உள்ளிடுக",
+    newPinPlaceholder: "புதிய 6-இலக்க PIN ஐ உள்ளிடுக",
+    confirmPinPlaceholder: "புதிய PIN ஐ உறுதிப்படுத்துக",
+    savePasswordBtn: "கடவுச்சொல்லை சேமி"
+  },
+  te: {
+    dashboardTitle: "గ్రామీణ విద్యా పోర్టల్ అడ్మిన్ డాష్‌బోర్డ్",
+    superAdminBadge: "సూపర్ అడ్మిన్",
+    loggedInAs: "లాగిన్ అయ్యారు:",
+    stateOps: "రాష్ట్ర పాఠ్య ప్రణాళిక నిర్వహణ",
+    downloadAnalytics: "విశ్లేషణలను డౌన్‌లోడ్ చేయండి",
+    syncLiveData: "లైవ్ డేటాను సింక్ చేయండి",
+    exitAdmin: "అడ్మిన్ కన్సోల్ నుండి నిష్క్రమించండి",
+    currentModule: "ప్రస్తుత:",
+    adminModulesCount: "అడ్మిన్ మోడ్యూల్స్",
+    navAnalytics: "విద్యార్థి విశ్లేషణలు",
+    navContent: "పాఠ్య ప్రణాళిక మరియు కంటెంట్",
+    navCertificates: "సర్టిఫికేట్ల రిజిస్ట్రీ",
+    navUsers: "వినియోగదారు పాత్రల నిర్వహణ",
+    navSettings: "ప్లాట్‌ఫారమ్ కాన్ఫిగరేషన్",
+    analyticsTitle: "మాస్టర్ విశ్లేషణలు & విద్యార్థుల పురోగతి",
+    analyticsSubtitle: "విద్యా కాలం ఆధారంగా డేటాను ఫిల్టర్ చేయండి మరియు PDF లేదా Excel (.xlsx) నివేదికలను ఎగుమతి చేయండి.",
+    filterRange: "ఫిల్టర్ వ్యవధి:",
+    allTime: "అన్ని సమయాలు",
+    today: "ఈ రోజు",
+    thisWeek: "ఈ వారం",
+    thisMonth: "ఈ నెల",
+    year: "సంవత్సరం",
+    month: "నెల",
+    pdfReport: "PDF నివేదిక",
+    excelExport: "Excel (.xlsx)",
+    allFormats: "అన్ని ఫార్మాట్‌లు",
+    totalStudents: "మొత్తం నమోదైన విద్యార్థులు",
+    activeTeachers: "యాక్టివ్ ఉపాధ్యాయులు",
+    registeredSchools: "పాఠశాలలు & గ్రామాలు",
+    lessonsCompleted: "పూర్తయిన అధ్యయన గంటలు",
+    certsIssued: "జారీ చేసిన సర్టిఫికెట్లు",
+    totalXP: "మొత్తం గేమిఫైడ్ పాయింట్లు",
+    standardBreakdown: "తరగతి వారీగా భాగస్వామ్యం",
+    boardBreakdown: "విద్యా బోర్డుల పంపిణీ",
+    topVillages: "అత్యుత్తమ ప్రతిభ కనబరిచిన గ్రామాలు / పాఠశాలలు",
+    exportReport: "సమగ్ర నివేదికను ఎగుమతి చేయండి",
+    repositoryTitle: "రాష్ట్ర అభ్యాస కంటెంట్ రిపోజిటరీ",
+    createFolder: "కొత్త ఫోల్డర్‌ను సృష్టించండి",
+    uploadFile: "అభ్యాస సామగ్రిని అప్‌లోడ్ చేయండి",
+    batchAi: "బ్యాచ్ AI జనరేటర్",
+    rootFolder: "రూట్ డైరెక్టరీ",
+    searchContent: "కంటెంట్, నోట్స్, PDF లను శోధించండి...",
+    filterCategory: "అన్ని విభాగాలు",
+    filterStandard: "తరగతి ఫిల్టర్ చేయండి",
+    filterBoard: "విద్యా బోర్డు ఫిల్టర్ చేయండి",
+    emptyFolders: "ఇంకా ఫోల్డర్లు సృష్టించబడలేదు.",
+    emptyFiles: "ఈ డైరెక్టరీలో పాఠ్య సామగ్రి కనుగొనబడలేదు.",
+    previewPdf: "ఇంటరాక్టివ్ రీడర్ & AI సోల్వర్",
+    editFile: "వివరాలను సవరించండి",
+    deleteFile: "తొలగించు",
+    downloadFile: "డౌన్‌లోడ్ చేయండి",
+    visibleLabel: "విద్యార్థులకు కనిపిస్తుంది",
+    hiddenLabel: "దాచబడింది (డ్రాఫ్ట్)",
+    certTitle: "అధికారిక సర్టిఫికేట్ జారీ & ప్రమాణీకరణ",
+    issueCertBtn: "కొత్త సర్టిఫికేట్ జారీ చేయండి",
+    studentName: "గ్రహీత పూర్తి పేరు",
+    mobileNumber: "మొబైల్ సంఖ్య",
+    schoolVillage: "పాఠశాల / గ్రామం",
+    standardLabel: "తరగతి / గ్రేడ్",
+    titleLabel: "సాధన శీర్షిక / సబ్జెక్ట్",
+    issueDate: "జారీ చేసిన తేదీ",
+    statusActive: "యాక్టివ్ & వెరిఫై చేయబడింది",
+    statusRevoked: "రద్దు చేయబడింది",
+    revokeBtn: "రద్దు చేయండి",
+    activateBtn: "మళ్లీ యాక్టివేట్ చేయండి",
+    deleteCertBtn: "రికార్డును తొలగించండి",
+    searchCerts: "పేరు, ఐడీ లేదా మొబైల్ ద్వారా సర్టిఫికేట్లను శోధించండి...",
+    userTitle: "వినియోగదారు పాత్రలు & యాక్సెస్ నియంత్రణ కేంద్రం",
+    addUserBtn: "కొత్త వినియోగదారు / సిబ్బందిని నమోదు చేయండి",
+    searchUsers: "పేరు, మొబైల్, గ్రామం లేదా పాఠశాల ద్వారా శోధించండి...",
+    roleAll: "అన్ని పాత్రలు",
+    roleStudent: "విద్యార్థి",
+    roleTeacher: "ఉపాధ్యాయుడు",
+    roleAdmin: "నిర్వాహకుడు",
+    userNameCol: "వినియోగదారు ప్రొఫైల్",
+    userMobileCol: "మొబైల్ / పాత్ర",
+    userLocCol: "గ్రామం / పాఠశాల",
+    userGradeCol: "తరగతి",
+    userStreakCol: "స్ట్రీక్ & పాయింట్లు",
+    userStudyCol: "అధ్యయన నిమిషాలు",
+    actionsCol: "చర్యలు",
+    promoteTeacher: "ఉపాధ్యాయుడి పాత్ర ఇవ్వండి",
+    promoteStudent: "విద్యార్థి పాత్ర ఇవ్వండి",
+    promoteAdmin: "అడ్మిన్ పాత్ర ఇవ్వండి",
+    deleteUser: "వినియోగదారుని తొలగించు",
+    settingsTitle: "నిర్వాహకుడి సెట్టింగ్‌లు & భద్రతా కాన్ఫిగరేషన్",
+    changePinTitle: "సెక్యూరిటీ పిన్ & యాక్సెస్ కోడ్",
+    currentPin: "ప్రస్తుత సెక్యూరిటీ పిన్",
+    newPin: "కొత్త 6-అంకెల అడ్మిన్ పిన్",
+    confirmPin: "కొత్త పిన్‌ను నిర్ధారించండి",
+    savePinBtn: "సెక్యూరిటీ పిన్ అప్‌డేట్ చేయండి",
+    platformDefaults: "సిస్టమ్ ప్లాట్‌ఫారమ్ డిఫాల్ట్‌లు",
+    defaultLang: "డిఫాల్ట్ భాష",
+    storageCache: "లోకల్ క్యాషే & ఆఫ్‌లైన్ స్టోరేజ్",
+    clearCache: "లోకల్ క్యాషే క్లియర్ చేయండి",
+    emergencyReset: "సిస్టమ్ డయాగ్నోస్టిక్ రీసెట్",
+
+    // Added Missing Translations
+    matchedCount: "సరిపోలినవి:",
+    studentsCount: "విద్యార్థులు",
+    certsCount: "సర్టిఫికెట్లు",
+    thisMonthTrend: "ఈ నెలలో +12%",
+    totalMinutesText: "మొత్తం నిమిషాలు",
+    xpAwardedText: "లభించిన XP",
+    ruralHubTitle: "గ్రామీణ హబ్ కార్యకలాపాలు",
+    liveFirestoreBadge: "లైవ్ డేటా",
+    engagementText: "భాగస్వామ్యం",
+    topPerformersTitle: "ఉత్తమ విద్యార్థులు",
+    xpAndStreaks: "XP & నిలకడ",
+    dayStreakText: "రోజుల నిలకడ",
+    minsText: "నిమిషాలు",
+
+    searchLibraryPlaceholder: "లైబ్రరీలో శోధించండి...",
+    allTypes: "అన్ని రకాలు",
+    pdfNotes: "PDF నోట్స్",
+    videosCategory: "వీడియోలు",
+    audioCategory: "ఆడియో",
+    quizzesCategory: "క్విజ్‌లు",
+    documentsCategory: "పత్రాలు",
+    filesAndDocs: "ఫైళ్లు & పత్రాలు",
+    colFileName: "ఫైల్ పేరు & సమాచారం",
+    colSubject: "సబ్జెక్ట్",
+    colSize: "పరిమాణం",
+    colUploaded: "అప్‌లోడ్ తేదీ",
+    colStatus: "స్థితి",
+    colActions: "చర్యలు",
+    statusVisible: "కనిపించేది",
+    statusHidden: "దాచబడింది",
+    btnView: "చూడండి",
+    btnOptions: "ఎంపికలు",
+
+    verifyCertTitle: "అధికారిక సర్టిఫికేట్ ధృవీకరణ",
+    verifyPlaceholder: "సర్టిఫికేట్ కోడ్ లేదా మొబైల్ నంబర్ ఎంటర్ చేయండి...",
+    verifyBtn: "ధృవీకరించు",
+    colCertId: "సర్టిఫికేట్ ID",
+    colStudent: "విద్యార్థి",
+    colAchievement: "శీర్షిక",
+    colDate: "తేదీ",
+    reactivateBtn: "తిరిగి ప్రారంభించు",
+
+    userSubtitle: "ఖాతాలను నిర్వహించండి మరియు అడ్మిన్ అధికారాలను కేటాయించండి.",
+    userSearchPlaceholder: "పేరు, మొబైల్ లేదా గ్రామం ద్వారా శోధించండి...",
+    colUser: "విద్యార్థి / వినియోగదారు",
+    colMobile: "మొబైల్",
+    colLocation: "గ్రామం / పాఠశాల",
+    colRole: "పాత్ర",
+    colActivity: "కార్యాచరణ",
+    colRoleActions: "పాత్ర చర్యలు",
+    makeAdmin: "అడ్మిన్ చేయండి",
+    makeStudent: "విద్యార్థి చేయండి",
+    regPrefix: "నమోదు:",
+
+    lowBandwidthTitle: "2G / తక్కువ బ్యాండ్‌విడ్త్ మోడ్",
+    lowBandwidthSub: "గ్రామీణ నెట్‌వర్క్‌ల కోసం డేటా సైజును తగ్గిస్తుంది",
+    aiRateLimitTitle: "AI ట్యూటర్ ప్రశ్నల పరిమితి",
+    securityPinSub: "అడ్మినిస్ట్రేటర్ కోసం సెక్యూరిటీ పిన్ అప్‌డేట్ చేయండి",
+    currentPinLabel: "ప్రస్తుత పాస్‌వర్డ్ / 6-అంకెల PIN *",
+    newPinLabel: "కొత్త పాస్‌వర్డ్ / 6-అంకెల PIN *",
+    confirmPinLabel: "కొత్త పాస్‌వర్డ్‌ను నిర్ధారించండి *",
+    currentPinPlaceholder: "ప్రస్తుత 6-అంకెల PIN ఎంటర్ చేయండి",
+    newPinPlaceholder: "కొత్త 6-అంకెల PIN ఎంటర్ చేయండి",
+    confirmPinPlaceholder: "కొత్త PIN నిర్ధారించండి",
+    savePasswordBtn: "పాస్‌వర్డ్ సేవ్ చేయండి"
+  }
+};
+
 export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: AdminDashboardViewProps) {
   const [activeTab, setActiveTab] = useState<'analytics' | 'content' | 'certificates' | 'users' | 'settings'>('analytics');
+  const [adminLang, setAdminLang] = useState<LanguageCode>(lang || 'en');
+
+  useEffect(() => {
+    if (lang) {
+      setAdminLang(lang);
+    }
+  }, [lang]);
+
+  const t = (ADMIN_DASHBOARD_TRANSLATIONS[adminLang] || ADMIN_DASHBOARD_TRANSLATIONS.en) as typeof ADMIN_DASHBOARD_TRANSLATIONS.en;
 
   // Real data state
   const [usersList, setUsersList] = useState<FirestoreUser[]>([]);
@@ -2045,11 +3049,11 @@ startxref
   }, [usersList]);
 
   const adminNavItems = [
-    { id: 'analytics' as const, label: 'Student Analytics', icon: BarChart3, color: 'text-amber-600 bg-amber-50', activeIconColor: 'text-amber-400' },
-    { id: 'content' as const, label: 'Curriculum & Content', icon: BookOpen, color: 'text-emerald-600 bg-emerald-50', activeIconColor: 'text-emerald-400' },
-    { id: 'certificates' as const, label: 'Certificates Registry', icon: Award, color: 'text-amber-600 bg-amber-50', activeIconColor: 'text-amber-400' },
-    { id: 'users' as const, label: 'User Role Management', icon: Users, color: 'text-indigo-600 bg-indigo-50', activeIconColor: 'text-indigo-400' },
-    { id: 'settings' as const, label: 'Platform Config', icon: Settings, color: 'text-slate-600 bg-slate-100', activeIconColor: 'text-slate-300' },
+    { id: 'analytics' as const, label: t.navAnalytics, icon: BarChart3, color: 'text-amber-600 bg-amber-50', activeIconColor: 'text-amber-400' },
+    { id: 'content' as const, label: t.navContent, icon: BookOpen, color: 'text-emerald-600 bg-emerald-50', activeIconColor: 'text-emerald-400' },
+    { id: 'certificates' as const, label: t.navCertificates, icon: Award, color: 'text-amber-600 bg-amber-50', activeIconColor: 'text-amber-400' },
+    { id: 'users' as const, label: t.navUsers, icon: Users, color: 'text-indigo-600 bg-indigo-50', activeIconColor: 'text-indigo-400' },
+    { id: 'settings' as const, label: t.navSettings, icon: Settings, color: 'text-slate-600 bg-slate-100', activeIconColor: 'text-slate-300' },
   ];
 
   const currentAdminNavItem = adminNavItems.find(item => item.id === activeTab) || adminNavItems[0];
@@ -2067,25 +3071,42 @@ startxref
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-base sm:text-lg lg:text-xl font-black text-white tracking-tight leading-snug">
-                Gramin Shiksha Admin Dashboard
+                {t.dashboardTitle}
               </h1>
               <span className="bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase whitespace-nowrap inline-flex items-center">
-                SUPER ADMIN
+                {t.superAdminBadge}
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Logged in as <strong className="text-amber-300">{adminUser.name}</strong> <span className="text-slate-500 font-mono">({adminUser.mobile})</span> • State Curriculum Operations
+              {t.loggedInAs} <strong className="text-amber-300">{adminUser.name}</strong> <span className="text-slate-500 font-mono">({adminUser.mobile})</span> • {t.stateOps}
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 md:flex md:items-center gap-2 w-full md:w-auto shrink-0 pt-1 md:pt-0">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:items-center gap-2 w-full md:w-auto shrink-0 pt-1 md:pt-0">
+          {/* Admin Language Selector */}
+          <div className="relative inline-block text-left">
+            <select
+              value={adminLang}
+              onChange={(e) => setAdminLang(e.target.value as LanguageCode)}
+              className="w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-extrabold text-xs rounded-xl border border-slate-700 cursor-pointer focus:outline-none"
+              title="Select Admin Language"
+            >
+              <option value="en">English (EN)</option>
+              <option value="hi">हिन्दी (Hindi)</option>
+              <option value="gu">ગુજરાતી (Gujarati)</option>
+              <option value="mr">मराठी (Marathi)</option>
+              <option value="ta">தமிழ் (Tamil)</option>
+              <option value="te">తెలుగు (Telugu)</option>
+            </select>
+          </div>
+
           <button
             onClick={() => setShowExportModal(true)}
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl border border-emerald-400 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all whitespace-nowrap"
           >
             <Download className="h-3.5 w-3.5 shrink-0" />
-            <span>Download Analytics</span>
+            <span>{t.downloadAnalytics}</span>
           </button>
 
           <button
@@ -2093,14 +3114,14 @@ startxref
             className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer transition-all whitespace-nowrap"
           >
             <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${isLoadingUsers || isLoadingCerts ? 'animate-spin' : ''}`} />
-            <span>Sync Live Data</span>
+            <span>{t.syncLiveData}</span>
           </button>
 
           <button
             onClick={onLogoutAdmin}
             className="px-3.5 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-bold rounded-xl border border-red-500/30 cursor-pointer transition-all flex items-center justify-center whitespace-nowrap"
           >
-            Exit Admin Console
+            {t.exitAdmin}
           </button>
         </div>
       </div>
@@ -2110,7 +3131,7 @@ startxref
         {/* Header Row: Current active tab display */}
         <div className="flex items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Current:</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">{t.currentModule}</span>
             <span className="text-xs sm:text-sm font-extrabold text-slate-800 truncate flex items-center gap-1.5">
               <CurrentAdminNavIcon className="h-4 w-4 text-amber-500" />
               {currentAdminNavItem.label}
@@ -2118,7 +3139,7 @@ startxref
           </div>
 
           <div className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200/60 shrink-0">
-            {adminNavItems.length} Admin Modules
+            {adminNavItems.length} {t.adminModulesCount}
           </div>
         </div>
 
@@ -2163,14 +3184,14 @@ startxref
                 <div className="space-y-1 min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-sm sm:text-base font-extrabold text-white tracking-tight leading-snug">
-                      Platform Analytics & Export Hub
+                      {t.analyticsTitle}
                     </h2>
                     <span className="text-[10px] bg-amber-500/20 text-amber-300 font-mono font-bold px-2.5 py-0.5 rounded-full border border-amber-500/30 whitespace-nowrap inline-flex items-center">
                       {getDateFilterLabel()}
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
-                    Filter platform datasets by academic year, month, or custom period, then export executive PDF or Excel (.xlsx) reports.
+                    {t.analyticsSubtitle}
                   </p>
                 </div>
               </div>
@@ -2183,7 +3204,7 @@ startxref
                   title={`Download PDF report for ${getDateFilterLabel()}`}
                 >
                   <Download className="h-3.5 w-3.5 shrink-0" />
-                  <span>PDF Report</span>
+                  <span>{t.pdfReport}</span>
                 </button>
                 <button
                   onClick={() => handleExportMasterExcel(true)}
@@ -2191,14 +3212,14 @@ startxref
                   title={`Download Excel spreadsheet for ${getDateFilterLabel()}`}
                 >
                   <Download className="h-3.5 w-3.5 shrink-0" />
-                  <span>Excel (.xlsx)</span>
+                  <span>{t.excelExport}</span>
                 </button>
                 <button
                   onClick={() => setShowExportModal(true)}
                   className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 cursor-pointer transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
                 >
                   <Filter className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                  <span>All Export Formats</span>
+                  <span>{t.allFormats}</span>
                 </button>
               </div>
             </div>
@@ -2209,7 +3230,7 @@ startxref
               <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                 <span className="text-slate-400 font-bold text-[11px] uppercase tracking-wider flex items-center gap-1 shrink-0">
                   <Filter className="h-3 w-3 text-amber-400" />
-                  Filter Period:
+                  {t.filterRange}
                 </span>
 
                 {/* Sleek Segmented Mode Switcher */}
@@ -2223,7 +3244,7 @@ startxref
                         : 'text-slate-400 hover:text-white hover:bg-slate-900'
                     }`}
                   >
-                    All Time
+                    {t.allTime}
                   </button>
                   <button
                     type="button"
@@ -2234,7 +3255,7 @@ startxref
                         : 'text-slate-400 hover:text-white hover:bg-slate-900'
                     }`}
                   >
-                    Year
+                    {t.year}
                   </button>
                   <button
                     type="button"
@@ -2245,7 +3266,7 @@ startxref
                         : 'text-slate-400 hover:text-white hover:bg-slate-900'
                     }`}
                   >
-                    Month
+                    {t.month}
                   </button>
                   <button
                     type="button"
@@ -2351,7 +3372,7 @@ startxref
               {/* Matched Dataset Count Indicator */}
               <div className="text-[11px] text-slate-400 font-mono flex items-center gap-2 shrink-0">
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Matched: <strong className="text-white">{filteredUsersList.length}</strong> Students • <strong className="text-white">{filteredCertificates.length}</strong> Certs</span>
+                <span>{t.matchedCount} <strong className="text-white">{filteredUsersList.length}</strong> {t.studentsCount} • <strong className="text-white">{filteredCertificates.length}</strong> {t.certsCount}</span>
               </div>
             </div>
           </div>
@@ -2360,10 +3381,10 @@ startxref
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-3xs flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Active Students</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.totalStudents}</p>
                 <h3 className="text-2xl font-black text-slate-900 mt-1">{filteredTotalStudents}</h3>
                 <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
-                  <ArrowUpRight className="h-3 w-3" /> {analyticsFilterMode !== 'all' ? `Filtered (${getDateFilterLabel()})` : '+12% this month'}
+                  <ArrowUpRight className="h-3 w-3" /> {analyticsFilterMode !== 'all' ? `Filtered (${getDateFilterLabel()})` : t.thisMonthTrend}
                 </span>
               </div>
               <div className="p-3 bg-amber-100 rounded-2xl text-amber-600">
@@ -2373,10 +3394,10 @@ startxref
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-3xs flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Study Time Logged</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.lessonsCompleted}</p>
                 <h3 className="text-2xl font-black text-slate-900 mt-1">{(filteredTotalStudyMins / 60).toFixed(1)} hrs</h3>
                 <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
-                  <ArrowUpRight className="h-3 w-3" /> ~{filteredTotalStudyMins} total minutes
+                  <ArrowUpRight className="h-3 w-3" /> ~{filteredTotalStudyMins} {t.totalMinutesText}
                 </span>
               </div>
               <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-600">
@@ -2386,10 +3407,10 @@ startxref
 
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-3xs flex items-center justify-between">
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Avg Quiz Pass Rate</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.totalXP}</p>
                 <h3 className="text-2xl font-black text-slate-900 mt-1">{filteredTotalPoints > 0 ? (88.5 + (filteredTotalPoints % 7) * 0.5).toFixed(1) + '%' : '91.4%'}</h3>
                 <span className="text-[11px] text-indigo-600 font-semibold flex items-center gap-1 mt-1">
-                  <Award className="h-3 w-3" /> {filteredTotalPoints} XP Awarded
+                  <Award className="h-3 w-3" /> {filteredTotalPoints} {t.xpAwardedText}
                 </span>
               </div>
               <div className="p-3 bg-indigo-100 rounded-2xl text-indigo-600">
@@ -2406,10 +3427,10 @@ startxref
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider flex items-center gap-2">
                   <Radio className="h-4 w-4 text-amber-500" />
-                  Rural Village Hub Activity
+                  {t.ruralHubTitle}
                 </h3>
                 <span className="text-[11px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
-                  {analyticsFilterMode !== 'all' ? getDateFilterLabel() : 'Live Firestore DB Data'}
+                  {analyticsFilterMode !== 'all' ? getDateFilterLabel() : t.liveFirestoreBadge}
                 </span>
               </div>
 
@@ -2428,7 +3449,7 @@ startxref
                     <div key={idx} className="space-y-1">
                       <div className="flex justify-between text-xs font-bold text-slate-700">
                         <span>{item.name} ({item.count} student{item.count > 1 ? 's' : ''})</span>
-                        <span className="text-amber-600 font-mono">{item.pct} engagement</span>
+                        <span className="text-amber-600 font-mono">{item.pct} {t.engagementText}</span>
                       </div>
                       <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                         <div className="bg-amber-500 h-full rounded-full transition-all duration-500" style={{ width: item.pct }} />
@@ -2444,9 +3465,9 @@ startxref
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-emerald-500" />
-                  Top Student Performers
+                  {t.topPerformersTitle}
                 </h3>
-                <span className="text-xs text-emerald-600 font-bold">XP & Streaks</span>
+                <span className="text-xs text-emerald-600 font-bold">{t.xpAndStreaks}</span>
               </div>
 
               {filteredUsersList.length === 0 ? (
@@ -2468,7 +3489,7 @@ startxref
                       </div>
                       <div className="text-right font-mono">
                         <div className="font-bold text-amber-600">{u.totalPoints || 100} XP</div>
-                        <div className="text-[10px] text-slate-500">🔥 {u.streakDays || 1} day streak</div>
+                        <div className="text-[10px] text-slate-500">🔥 {u.streakDays || 1} {t.dayStreakText}</div>
                       </div>
                     </div>
                   ))}
@@ -2489,7 +3510,7 @@ startxref
             <div>
               <h2 className="text-base font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <FolderTree className="h-5 w-5 text-amber-500" />
-                Curriculum & Content Folder Structure
+                {t.repositoryTitle}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Create custom folders for classes and subjects, organize files into subfolders, and store offline study materials.
@@ -2502,7 +3523,7 @@ startxref
                 className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
               >
                 <FolderPlus className="h-4 w-4 text-amber-400" />
-                <span>New Folder</span>
+                <span>{t.createFolder}</span>
               </button>
 
               <button
@@ -2510,7 +3531,7 @@ startxref
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
               >
                 <Upload className="h-4 w-4" />
-                <span>Upload File</span>
+                <span>{t.uploadFile}</span>
               </button>
             </div>
           </div>
@@ -2539,7 +3560,7 @@ startxref
                 }`}
               >
                 <Folder className="h-4 w-4 text-amber-500" />
-                <span>Root Library</span>
+                <span>{t.rootFolder}</span>
               </button>
 
               {getBreadcrumbs().map((crumb) => (
@@ -2564,7 +3585,7 @@ startxref
                   type="text"
                   value={contentSearch}
                   onChange={(e) => setContentSearch(e.target.value)}
-                  placeholder="Search in library..."
+                  placeholder={t.searchLibraryPlaceholder}
                   className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 font-sans"
                 />
               </div>
@@ -2573,12 +3594,12 @@ startxref
                 value={contentCategoryFilter}
                 onChange={setContentCategoryFilter}
                 options={[
-                  { value: 'all', label: 'All Types' },
-                  { value: 'pdf', label: 'PDF Notes' },
-                  { value: 'video', label: 'Videos' },
-                  { value: 'audio', label: 'Audio' },
-                  { value: 'quiz', label: 'Quizzes' },
-                  { value: 'document', label: 'Documents' },
+                  { value: 'all', label: t.allTypes },
+                  { value: 'pdf', label: t.pdfNotes },
+                  { value: 'video', label: t.videosCategory },
+                  { value: 'audio', label: t.audioCategory },
+                  { value: 'quiz', label: t.quizzesCategory },
+                  { value: 'document', label: t.documentsCategory },
                 ]}
                 className="w-36 md:w-44"
               />
@@ -2732,7 +3753,7 @@ startxref
                     <div className="flex items-center justify-between">
                       <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
                         <File className="h-4 w-4 text-emerald-500" />
-                        <span>Files & Documents ({visibleFiles.length})</span>
+                        <span>{t.filesAndDocs} ({visibleFiles.length})</span>
                       </h3>
                     </div>
 
@@ -2912,12 +3933,12 @@ startxref
                                 className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
                               />
                             </th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">File Name & Info</th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden sm:table-cell">Subject</th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden md:table-cell">Size</th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden lg:table-cell">Uploaded</th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">Status</th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans text-right">Actions</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">{t.colFileName}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden sm:table-cell">{t.colSubject}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden md:table-cell">{t.colSize}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden lg:table-cell">{t.colUploaded}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">{t.colStatus}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans text-right">{t.colActions}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-sans text-xs">
@@ -3980,7 +5001,7 @@ startxref
             <div>
               <h2 className="text-base font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Award className="h-5 w-5 text-amber-500" />
-                Certificate Verification & Registry
+                {t.certTitle}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Verify student achievement certificates, issue custom excellence awards, or revoke invalid credentials.
@@ -3992,14 +5013,14 @@ startxref
               className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
             >
               <Plus className="h-4 w-4" />
-              <span>Issue Manual Certificate</span>
+              <span>{t.issueCertBtn}</span>
             </button>
           </div>
 
           {/* Verification Search Bar */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
             <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-              Verify Certificate Authenticity
+              {t.certTitle}
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -4244,7 +5265,7 @@ startxref
             <div>
               <h2 className="text-base font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Users className="h-5 w-5 text-indigo-500" />
-                User Accounts & Role Permissions Management
+                {t.userTitle}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Manage accounts, assign Administrator privileges, edit student profiles, and maintain data hygiene.
@@ -4260,7 +5281,7 @@ startxref
                 className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
               >
                 <UserPlus className="h-4 w-4 text-slate-950" />
-                <span>Add Admin Manually</span>
+                <span>{t.addUserBtn}</span>
               </button>
 
               {/* Filter pills */}
@@ -4545,25 +5566,25 @@ startxref
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-3xs space-y-4">
             <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider flex items-center gap-2">
               <Settings className="h-4 w-4 text-slate-600" />
-              Bandwidth & Low-Signal Engine Controls
+              {t.settingsTitle}
             </h3>
 
             <div className="space-y-4 text-xs">
               <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
                 <div>
-                  <div className="font-bold text-slate-900">2G / Low-Bandwidth Mode</div>
-                  <div className="text-slate-500 text-[11px]">Compresses payload size for rural cellular networks</div>
+                  <div className="font-bold text-slate-900">{t.lowBandwidthTitle}</div>
+                  <div className="text-slate-500 text-[11px]">{t.lowBandwidthDesc}</div>
                 </div>
                 <input
                   type="checkbox"
                   checked={bandwidthCompression}
-                  onChange={(e) => setBandwidthCompression(e.target.checked)}
+                  onChange={(e) => setBandwidthCompression(e.target.value ? e.target.checked : false)}
                   className="h-4 w-4 accent-amber-500 cursor-pointer"
                 />
               </div>
 
               <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-1.5">
-                <div className="font-bold text-slate-900">AI Tutor Query Rate Limiting</div>
+                <div className="font-bold text-slate-900">{t.aiRateLimitTitle}</div>
                 <AdminCustomSelect
                   value={aiRateLimit}
                   onChange={setAiRateLimit}
@@ -4582,7 +5603,7 @@ startxref
             <div className="border-b border-slate-100 pb-3">
               <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider flex items-center gap-2">
                 <KeyRound className="h-4 w-4 text-amber-500" />
-                Change Admin Password / Security PIN
+                {t.changePinTitle}
               </h3>
               <p className="text-xs text-slate-500 mt-0.5 font-sans">
                 Update security passcode for logged-in Administrator <strong className="text-slate-800">{adminUser.name}</strong> ({adminUser.mobile}).
@@ -4606,7 +5627,7 @@ startxref
 
             <form onSubmit={handleUpdateAdminPasswordSubmit} className="space-y-3.5 text-xs font-sans">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Current Password / 6-Digit PIN *</label>
+                <label className="block font-bold text-slate-700 mb-1">{t.currentPinLabel}</label>
                 <input
                   type="password"
                   required
@@ -4618,7 +5639,7 @@ startxref
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">New Password / 6-Digit PIN *</label>
+                <label className="block font-bold text-slate-700 mb-1">{t.newPinLabel}</label>
                 <input
                   type="password"
                   required
@@ -4631,7 +5652,7 @@ startxref
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Confirm New Password / PIN *</label>
+                <label className="block font-bold text-slate-700 mb-1">{t.confirmPinLabel}</label>
                 <input
                   type="password"
                   required
@@ -4649,7 +5670,7 @@ startxref
                 className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl cursor-pointer flex items-center justify-center gap-2 shadow-xs transition-all"
               >
                 <Lock className="h-4 w-4 text-slate-950" />
-                <span>{isSavingAdminPin ? 'Updating Security PIN...' : 'Save New Password'}</span>
+                <span>{isSavingAdminPin ? t.updatingPinBtn : t.savePinBtn}</span>
               </button>
             </form>
           </div>
@@ -5154,6 +6175,7 @@ startxref
               ) : (
                 <div className="flex-1 min-h-0 overflow-hidden">
                   <PdfCanvasViewer
+                    lang={adminLang}
                     fileId={activePdfFile.id}
                     fileDataUrl={activePdfFile.fileDataUrl}
                     fileName={activePdfFile.name}

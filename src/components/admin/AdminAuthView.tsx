@@ -12,7 +12,101 @@ interface AdminAuthViewProps {
   onGoToDashboard?: () => void;
 }
 
+const ADMIN_AUTH_TRANSLATIONS = {
+  en: {
+    backToApp: "Return to Student App",
+    restrictedPortal: "Restricted Admin Portal",
+    title: "Administrative Control Center",
+    subtitle: "Gramin Shiksha Platform & Curriculum Management",
+    activeSession: "Active Administrator Session Detected",
+    openDashboard: "Open Admin Console Dashboard",
+    mobileLabel: "Administrator Mobile Number",
+    mobilePlaceholder: "Enter 10-digit Admin Mobile",
+    pinLabel: "Security Passcode / PIN",
+    pinPlaceholder: "Enter 6-digit Security PIN (999999)",
+    verifying: "Verifying Credentials...",
+    authenticateBtn: "Authenticate Admin Console",
+    encryptedSession: "256-Bit Encrypted Admin Session"
+  },
+  hi: {
+    backToApp: "छात्र ऐप पर लौटें",
+    restrictedPortal: "प्रतिबंधित एडमिन पोर्टल",
+    title: "प्रशासनिक नियंत्रण केंद्र",
+    subtitle: "ग्रामीण शिक्षा मंच एवं पाठ्यक्रम प्रबंधन",
+    activeSession: "सक्रिय प्रशासक सत्र का पता चला",
+    openDashboard: "एडमिन कंसोल डैशबोर्ड खोलें",
+    mobileLabel: "प्रशासक मोबाइल नंबर",
+    mobilePlaceholder: "10-अंकों का एडमिन मोबाइल नंबर दर्ज करें",
+    pinLabel: "सुरक्षा पासकोड / पिन",
+    pinPlaceholder: "6-अंकों का सुरक्षा पिन दर्ज करें (999999)",
+    verifying: "प्रमाण-पत्रों का सत्यापन हो रहा है...",
+    authenticateBtn: "एडमिन कंसोल को प्रमाणित करें",
+    encryptedSession: "256-बिट एन्क्रिप्टेड एडमिन सत्र"
+  },
+  gu: {
+    backToApp: "વિદ્યાર્થી એપ પર પાછા ફરો",
+    restrictedPortal: "મર્યાદિત એડમિન પોર્ટલ",
+    title: "વહીવટી નિયંત્રણ કેન્દ્ર",
+    subtitle: "ગ્રામીણ શિક્ષણ પ્લેટફોર્મ અને અભ્યાસક્રમ સંચાલન",
+    activeSession: "સક્રિય એડમિનિસ્ટ્રેટર સત્ર મળી આવ્યું",
+    openDashboard: "એડમિન કન્સોલ ડેશબોર્ડ ખોલો",
+    mobileLabel: "એડમિનિસ્ટ્રેટર મોબાઈલ નંબર",
+    mobilePlaceholder: "10-અંકનો એડમિન મોબાઈલ દાખલ કરો",
+    pinLabel: "સુરક્ષા પાસકોડ / પિન",
+    pinPlaceholder: "6-અંકનો સુરક્ષા પિન દાખલ કરો (999999)",
+    verifying: "પ્રમાણપત્રો ચકાસી રહ્યા છીએ...",
+    authenticateBtn: "એડમિન કન્સોલ પ્રમાણિત કરો",
+    encryptedSession: "256-બિટ એનક્રિપ્ટેડ એડમિન સત્ર"
+  },
+  mr: {
+    backToApp: "विद्यार्थी ॲपवर परत जा",
+    restrictedPortal: "प्रतिबंधित ॲडमिन पोर्टल",
+    title: "प्रशासकीय नियंत्रण केंद्र",
+    subtitle: "ग्रामीण शिक्षण प्लॅटफॉर्म आणि अभ्यासक्रम व्यवस्थापन",
+    activeSession: "सक्रिय प्रशासक सत्र आढळले",
+    openDashboard: "ॲडमिन कन्सोल डॅशबोर्ड उघडा",
+    mobileLabel: "प्रशासक मोबाईल नंबर",
+    mobilePlaceholder: "10-अंकी ॲडमिन मोबाईल प्रविष्ट करा",
+    pinLabel: "सुरक्षा पासकोड / पिन",
+    pinPlaceholder: "6-अंकी सुरक्षा पिन प्रविष्ट करा (999999)",
+    verifying: "प्रमाणपत्रे तपासली जात आहेत...",
+    authenticateBtn: "ॲडमिन कन्सोल प्रमाणित करा",
+    encryptedSession: "256-बिट एनक्रिप्टेड ॲडमिन सत्र"
+  },
+  ta: {
+    backToApp: "மாணவர் செயலிகளுக்குத் திரும்புக",
+    restrictedPortal: "கட்டுப்படுத்தப்பட்ட நிர்வாகி தளம்",
+    title: "நிர்வாகக் கட்டுப்பாட்டு மையம்",
+    subtitle: "கிராமப்புற கல்வி தளம் & பாடத்திட்ட மேலாண்மை",
+    activeSession: "செயலில் உள்ள நிர்வாகி அமர்வு கண்டறியப்பட்டது",
+    openDashboard: "நிர்வாகக் கட்டுப்பாட்டுப் பலகையைத் திற",
+    mobileLabel: "நிர்வாகி கைபேசி எண்",
+    mobilePlaceholder: "10-இலக்க நிர்வாகி கைபேசி எண்ணை உள்ளிடவும்",
+    pinLabel: "பாதுகாப்பு பாஸ்கோடு / PIN",
+    pinPlaceholder: "6-இலக்க பாதுகாப்பு PIN ஐ உள்ளிடவும் (999999)",
+    verifying: "சான்றுகள் சரிபார்க்கப்படுகின்றன...",
+    authenticateBtn: "நிர்வாகக் கன்சோலை அங்கீகரிக்கவும்",
+    encryptedSession: "256-பிட் எண்க்ரிப்ட் செய்யப்பட்ட அமர்வு"
+  },
+  te: {
+    backToApp: "విద్యార్థి యాప్‌కి తిరిగి వెళ్ళండి",
+    restrictedPortal: "పరిమిత అడ్మిన్ పోర్టల్",
+    title: "పరిపాలనా నియంత్రణ కేంద్రం",
+    subtitle: "గ్రామీణ విద్యా వేదిక మరియు పాఠ్య ప్రణాళిక నిర్వహణ",
+    activeSession: "సక్రియ నిర్వాహక సెషన్ కనుగొనబడింది",
+    openDashboard: "అడ్మిన్ కన్సోల్ డాష్‌బోర్డ్‌ను తెరవండి",
+    mobileLabel: "నిర్వాహకుడి మొబైల్ నంబర్",
+    mobilePlaceholder: "10-అంకెల అడ్మిన్ మొబైల్ నమోదు చేయండి",
+    pinLabel: "భద్రతా పాస్‌కోడ్ / PIN",
+    pinPlaceholder: "6-అంకెల సెక్యూరిటీ పిన్ నమోదు చేయండి (999999)",
+    verifying: "రుజువులను పరిశీలిస్తోంది...",
+    authenticateBtn: "అడ్మిన్ కన్సోల్‌ను ప్రమాణీకరించండి",
+    encryptedSession: "256-బిట్ ఎన్‌క్రిప్టెడ్ అడ్మిన్ సెషన్"
+  }
+};
+
 export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser, onGoToDashboard }: AdminAuthViewProps) {
+  const t = ADMIN_AUTH_TRANSLATIONS[lang] || ADMIN_AUTH_TRANSLATIONS.en;
   const [mobile, setMobile] = useState('9999999999');
   const [pin, setPin] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -126,7 +220,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
         className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs hover:bg-slate-50 transition-all"
       >
         <ArrowLeft className="h-4 w-4" />
-        <span>Return to Student App</span>
+        <span>{t.backToApp}</span>
       </button>
 
       {/* Main Admin Portal Card */}
@@ -140,14 +234,14 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-[10px] font-mono font-bold uppercase tracking-widest mb-2">
             <Lock className="h-3 w-3" />
-            Restricted Admin Portal
+            {t.restrictedPortal}
           </div>
 
           <h1 className="text-2xl font-black text-white tracking-tight">
-            Administrative Control Center
+            {t.title}
           </h1>
           <p className="text-xs text-slate-400 mt-1 font-sans">
-            Gramin Shiksha Platform & Curriculum Management
+            {t.subtitle}
           </p>
         </div>
 
@@ -159,7 +253,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
             <div className="bg-amber-500/10 border-2 border-amber-400/40 rounded-2xl p-4 text-center space-y-2">
               <div className="text-amber-300 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5">
                 <Shield className="h-4 w-4 text-amber-400" />
-                <span>Active Administrator Session Detected</span>
+                <span>{t.activeSession}</span>
               </div>
               <div className="text-white font-black text-sm">{adminUser.name} ({adminUser.mobile})</div>
               {onGoToDashboard && (
@@ -169,26 +263,11 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
                   className="mt-2 w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <Shield className="h-4 w-4 text-slate-950" />
-                  <span>Open Admin Console Dashboard</span>
+                  <span>{t.openDashboard}</span>
                 </button>
               )}
             </div>
           )}
-
-          {/* Quick Credential Hint Box */}
-          {/*<div className="bg-slate-800/80 border border-amber-500/30 rounded-2xl p-4 text-xs space-y-2 text-slate-300">
-            <div className="flex items-center gap-2 font-bold text-amber-400 uppercase tracking-wider text-[11px]">
-              <KeyRound className="h-4 w-4" />
-              <span>Admin Demo Passcode:</span>
-            </div>
-            <div className="font-mono bg-slate-950 p-2.5 rounded-xl border border-slate-700 text-slate-200 flex flex-col gap-1">
-              <div><span className="text-slate-500">Mobile:</span> <span className="text-amber-300 font-bold">9999999999</span></div>
-              <div><span className="text-slate-500">PIN / OTP:</span> <span className="text-emerald-400 font-bold">999999</span></div>
-            </div>
-            <p className="text-[10px] text-slate-400 italic">
-              Note: This dedicated endpoint is separate from the student login page.
-            </p>
-          </div>*/}
 
           {/* Error Banner */}
           {errorMessage && (
@@ -203,7 +282,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
             {/* Mobile Number */}
             <div className="space-y-1.5">
               <label className="block text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
-                Administrator Mobile Number
+                {t.mobileLabel}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500 font-mono font-bold text-sm">
@@ -215,7 +294,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
                   maxLength={10}
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Enter 10-digit Admin Mobile"
+                  placeholder={t.mobilePlaceholder}
                   className="w-full pl-12 pr-4 py-3 bg-slate-950 rounded-xl border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-mono text-sm font-semibold"
                 />
               </div>
@@ -224,7 +303,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
             {/* Admin Security PIN */}
             <div className="space-y-1.5">
               <label className="block text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
-                Security Passcode / PIN
+                {t.pinLabel}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -236,7 +315,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
                   maxLength={6}
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Enter 6-digit Security PIN (999999)"
+                  placeholder={t.pinPlaceholder}
                   className="w-full pl-10 pr-4 py-3 bg-slate-950 rounded-xl border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-mono text-lg font-bold tracking-widest"
                 />
               </div>
@@ -251,12 +330,12 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
               {isAuthenticating ? (
                 <>
                   <RefreshCw className="h-4 w-4 animate-spin text-slate-950" />
-                  <span>Verifying Credentials...</span>
+                  <span>{t.verifying}</span>
                 </>
               ) : (
                 <>
                   <Shield className="h-4 w-4" />
-                  <span>Authenticate Admin Console</span>
+                  <span>{t.authenticateBtn}</span>
                 </>
               )}
             </button>
@@ -266,7 +345,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
           <div className="text-center pt-2 border-t border-slate-800">
             <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest flex items-center justify-center gap-1">
               <CheckCircle2 className="h-3 w-3 text-emerald-400" />
-              256-Bit Encrypted Admin Session
+              {t.encryptedSession}
             </span>
           </div>
 

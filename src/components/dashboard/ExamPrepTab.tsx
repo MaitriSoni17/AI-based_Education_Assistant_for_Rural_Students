@@ -118,7 +118,20 @@ const LOCAL_TRANSLATIONS = {
     historyEmpty: "No evaluation records yet. Upload an answer sheet above to begin your assessment history!",
     pointsEarned: "Earned +15 Academic Points for evaluation completion!",
     extraInstructions: "Extra Evaluation Instructions (e.g. 'focus on hand-writing', 'strict checking')",
-    extraPlaceholder: "Specify extra instructions for checking (optional)..."
+    extraPlaceholder: "Specify extra instructions for checking (optional)...",
+    simLiveExam: "Simulated Live AI Exam",
+    directReview: "Direct Answer Review",
+    targetTopicLabel: "Target Chapter / Specific Topic",
+    targetTopicPlaceholder: "e.g. Mughal Architecture, Rotational Mechanics, Cellular Respiration",
+    numQuestionsLabel: "Number of Questions",
+    qOpt2: "2 Questions (Quick Sprint)",
+    qOpt3: "3 Questions (Standard Practice)",
+    qOpt5: "5 Questions (Rigorous Test)",
+    qOpt8: "8 Questions (Full Length Exam)",
+    maxMarksLabel: "Max Marks Allocated",
+    assessmentLangLabel: "Preferred Assessment Language",
+    generateExamBtn: "Generate Question Paper & Start Live Assessment ✨",
+    unlockPrompt: "* Please type a Target Chapter/Topic above to unlock the generator."
   },
   hi: {
     suiteTitle: "विशेषज्ञ परीक्षा मूल्यांकनकर्ता और शैक्षणिक मेंटर",
@@ -152,8 +165,8 @@ const LOCAL_TRANSLATIONS = {
     analysis: "प्रश्न-वार रूब्रिक समीक्षा",
     pointsAwarded: "प्रदान किए गए अंक",
     textReportTab: "पूर्ण शैक्षणिक रिपोर्ट",
-    visualDashboardTab: "विजुअल परफॉर्मेंस बोर्ड",
-    listenFeedback: "रिपोर्ट सुनें (ऑдио)",
+    visualDashboardTab: "विजुअल परफॉर्मन्स बोर्ड",
+    listenFeedback: "रिपोर्ट सुनें (ऑडियो)",
     stopAudio: "आवाज बंद करें",
     generateSample: "नमूना अभ्यास पत्र लोड करें",
     sampleDesc: "क्या आपके पास उत्तर पुस्तिका तैयार नहीं है? इस मूल्यांकनकर्ता को काम करते देखने के लिए नमूना UPSC इतिहास प्रश्न, छात्र का उत्तर और रूब्रिक लोड करने के लिए नीचे क्लिक करें!",
@@ -163,10 +176,23 @@ const LOCAL_TRANSLATIONS = {
     historyEmpty: "अभी तक कोई मूल्यांकन रिकॉर्ड नहीं है। अपना मूल्यांकन इतिहास शुरू करने के लिए ऊपर एक उत्तर पुस्तिका अपलोड करें!",
     pointsEarned: "मूल्यांकन पूरा करने के लिए +15 शैक्षणिक अंक अर्जित किए!",
     extraInstructions: "अतिरिक्त मूल्यांकन निर्देश (जैसे 'हैंडराइटिंग पर ध्यान दें', 'सख्त चेकिंग करें')",
-    extraPlaceholder: "चेकिंग के लिए अतिरिक्त निर्देश निर्दिष्ट करें (वैकल्पिक)..."
+    extraPlaceholder: "चेकिंग के लिए अतिरिक्त निर्देश निर्दिष्ट करें (वैकल्पिक)...",
+    simLiveExam: "सिम्युलेटेड लाइव AI परीक्षा",
+    directReview: "प्रत्यक्ष उत्तर समीक्षा",
+    targetTopicLabel: "लक्ष्य अध्याय / विशिष्ट विषय",
+    targetTopicPlaceholder: "जैसे मुगल वास्तुकला, घूर्णन यांत्रिकी, कोशिकीय श्वसन",
+    numQuestionsLabel: "प्रश्नों की संख्या",
+    qOpt2: "2 प्रश्न (त्वरित स्प्रिंट)",
+    qOpt3: "3 प्रश्न (मानक अभ्यास)",
+    qOpt5: "5 प्रश्न (कठोर परीक्षा)",
+    qOpt8: "8 प्रश्न (पूर्ण लंबाई परीक्षा)",
+    maxMarksLabel: "आवंटित अधिकतम अंक",
+    assessmentLangLabel: "पसंदीदा मूल्यांकन भाषा",
+    generateExamBtn: "प्रश्न पत्र तैयार करें और लाइव परीक्षा शुरू करें ✨",
+    unlockPrompt: "* जेनरेटर को अनलॉक करने के लिए कृपया ऊपर लक्षित अध्याय/विषय टाइप करें।"
   },
   gu: {
-    suiteTitle: "નિષ્ણાત પરીક્ષા મૂલ્યાંકનકાર અને શૈક્ષણిక માર્ગદર્શક",
+    suiteTitle: "નિષ્ણાત પરીક્ષા મૂલ્યાંકનકાર અને શૈક્ષણિક માર્ગદર્શક",
     suiteSubtitle: "તમારી હસ્તલિખિત ઉત્તરવહી PDF અથવા છબીઓ અપલોડ કરો. ત્વરિત સ્કોરિંગ, વિગતવાર વિશ્લેષણ અને તમારી ભાષામાં રચનાત્મક માર્ગદર્શન મેળવવા માટે તમારા પ્રશ્નપત્ર અને ઉત્તર કી સાથે સરખામણી કરો.",
     examProfile: "પરીક્ષા પ્રોફાઇલ / ટ્રેક",
     selectExam: "લક્ષ્ય પરીક્ષા પસંદ કરો",
@@ -191,7 +217,7 @@ const LOCAL_TRANSLATIONS = {
     allowedTypes: "PDF અને છબીઓ (PNG, JPG, WebP) ને સપોર્ટ કરે છે",
     strengths: "મજબૂત પાસાઓ",
     improvements: "સુધારણાના ક્ષેત્રો",
-    expertAdvice: "નિષ્ણાત શૈક્ષણिक સલાહ",
+    expertAdvice: "નિષ્ણાત શૈક્ષણિક સલાહ",
     finalScore: "અંતિમ મૂલ્યાંકન સ્કોર",
     accuracy: "ચોકસાઈ દર",
     analysis: "પ્રશ્ન-વાર રૂબ્રિક સમીક્ષા",
@@ -208,26 +234,39 @@ const LOCAL_TRANSLATIONS = {
     historyEmpty: "હજી સુધી કોઈ મૂલ્યાંકન રેકોર્ડ નથી. તમારો મૂલ્યાંકન ઇતિહાસ શરૂ કરવા માટે ઉપર ઉત્તરવહી અપલોડ કરો!",
     pointsEarned: "મૂલ્યાંકન પૂર્ણ કરવા માટે +15 શૈક્ષણિક પોઇન્ટ મેળવ્યા!",
     extraInstructions: "વધારાની સૂચનાઓ (દા.ત. 'અક્ષરો પર ધ્યાન આપો', 'કડક ચેકિંગ')",
-    extraPlaceholder: "મૂલ્યાંકન માટે વધારાની સૂચનાઓ લખો (વૈકલ્પિક)..."
+    extraPlaceholder: "મૂલ્યાંકન માટે વધારાની સૂચનાઓ લખો (વૈકલ્પિક)...",
+    simLiveExam: "સિમ્યુલેટેડ લાઈવ AI પરીક્ષા",
+    directReview: "પ્રત્યક્ષ ઉત્તર સમીક્ષા",
+    targetTopicLabel: "લક્ષ્ય પ્રકરણ / ચોક્કસ વિષય",
+    targetTopicPlaceholder: "દા.ત. મુઘલ સ્થાપત્ય, ભૌતિક વિજ્ઞાન, કોષીય શ્વસન",
+    numQuestionsLabel: "પ્રશ્નોની સંખ્યા",
+    qOpt2: "2 પ્રશ્નો (ઝડપી સ્પ્રિન્ટ)",
+    qOpt3: "3 પ્રશ્નો (સામાન્ય મહાવરો)",
+    qOpt5: "5 પ્રશ્નો (સઘન કસોટી)",
+    qOpt8: "8 પ્રશ્નો (પૂર્ણ લંબાઈની પરીક્ષા)",
+    maxMarksLabel: "ફાળવેલ મહત્તમ ગુણ",
+    assessmentLangLabel: "પસંદગીની મૂલ્યાંકન ભાષા",
+    generateExamBtn: "પ્રશ્નપત્ર બનાવો અને લાઈવ પરીક્ષા શરૂ કરો ✨",
+    unlockPrompt: "* જનરેટર અનલોક કરવા માટે કૃપા કરીને ઉપર લક્ષ્ય પ્રકરણ/વિષય લખો."
   },
   mr: {
     suiteTitle: "तज्ज्ञ परीक्षा मूल्यमापनकर्ता आणि शैक्षणिक मार्गदर्शक",
-    suiteSubtitle: "तुमची हस्तलिखित उत्तरपत्रिका PDF किंवा प्रतिमा अपलोड करा. तुमच्या प्रश्नपत्रिका आणि उत्तर पत्रिकेशी तुलना करून तुमच्या स्वतःच्या भाषेत त्वरित गुण, तपशीलवार विश्लेषण आणि रचनात्मक सल्ला मिळवा.",
-    examProfile: "परीक्षा प्रोफाइल / ट्रॅक",
-    selectExam: "लक्ष्य परीक्षा निवडा",
-    custom: "सानुकूल परीक्षा नमुना",
+    suiteSubtitle: "तुमची हस्तलिखित उत्तरपत्रिका PDF किंवा प्रतिमा अपलोड करा. झटपट स्कोअर, सविस्तर विश्लेषण आणि तुमच्या भाषेत रचनात्मक मार्गदर्शन मिळवण्यासाठी तुमच्या प्रश्नपत्रिका आणि उत्तरतालिकेशी तुलना करा.",
+    examProfile: "परीक्षा प्रोफाईल",
+    selectExam: "परीक्षा निवडा",
+    custom: "कस्टम परीक्षा पद्धत",
     boardLabel: "शैक्षणिक बोर्ड",
     maxMarks: "कमाल गुण",
-    negMarking: "नकारात्मक गुण पद्धत",
+    negMarking: "ऋणात्मक गुण पद्धती",
     negNone: "काहीही नाही",
-    negOneThird: "प्रत्येक चुकीच्या MCQ साठी -0.33 गुण",
-    negOneFourth: "प्रत्येक चुकीच्या MCQ साठी -0.25 गुण",
+    negOneThird: "प्रत्येक चुकीच्या उत्तरानंतर -0.33 गुण",
+    negOneFourth: "प्रत्येक चुकीच्या उत्तरानंतर -0.25 गुण",
     studentSheet: "विद्यार्थ्याची हस्तलिखित उत्तरपत्रिका (PDF/प्रतिमा)",
     questionPaper: "मूळ प्रश्नपत्रिका (पर्यायी)",
-    answerKey: "उत्तर पत्रिका / निकष (पर्यायी)",
+    answerKey: "उत्तरतालिका / निकष (पर्यायी)",
     pasteText: "मूळ मजकूर येथे पेस्ट करा",
     uploadDoc: "दस्तऐवज/प्रतिमा अपलोड करा",
-    textPlaceholderQP: "येथे परीक्षेचे प्रश्न टाईप करा किंवा पेस्ट करा...",
+    textPlaceholderQP: "येथे परीक्षेतील प्रश्न टाईप करा किंवा पेस्ट करा...",
     textPlaceholderAK: "येथे आदर्श उत्तरे, गुण देण्याचे निकष किंवा महत्त्वाचे शब्द टाईप करा किंवा पेस्ट करा...",
     feedbackLanguage: "अभिप्राय भाषा",
     evaluateBtn: "उत्तरपत्रिकेचे विश्लेषण आणि मूल्यमापन करा",
@@ -253,7 +292,200 @@ const LOCAL_TRANSLATIONS = {
     historyEmpty: "अद्याप कोणताही मूल्यमापन रेकॉर्ड नाही. तुमचा मूल्यमापन इतिहास सुरू करण्यासाठी वर एक उत्तरपत्रिका अपलोड करा!",
     pointsEarned: "मूल्यमापन पूर्ण केल्याबद्दल +15 शैक्षणिक गुण मिळाले!",
     extraInstructions: "अतिरिक्त मूल्यमापन सूचना (उदा. 'हस्ताक्षरावर लक्ष केंद्रित करा', 'कडक तपासणी')",
-    extraPlaceholder: "मूल्यमापनासाठी अतिरिक्त सूचना लिहा (पर्यायी)..."
+    extraPlaceholder: "मूल्यमापनासाठी अतिरिक्त सूचना लिहा (पर्यायी)...",
+    simLiveExam: "सिम्युलेटेड लाइव्ह AI परीक्षा",
+    directReview: "प्रत्यक्ष उत्तर सराव",
+    targetTopicLabel: "लक्ष्य प्रकरण / विशिष्ट विषय",
+    targetTopicPlaceholder: "उदा. मुघल स्थापत्य, भौतिक शास्त्र, पेशीय श्वसन",
+    numQuestionsLabel: "प्रश्नांची संख्या",
+    qOpt2: "2 प्रश्न (जलद स्प्रिंट)",
+    qOpt3: "3 प्रश्न (प्रमाणित सराव)",
+    qOpt5: "5 प्रश्न (कठोर कसोटी)",
+    qOpt8: "8 प्रश्न (पूर्ण परीक्षा)",
+    maxMarksLabel: "कमाल गुण",
+    assessmentLangLabel: "मूल्यमापनाची भाषा",
+    generateExamBtn: "प्रश्नपत्रिका बनवा आणि परीक्षा सुरू करा ✨",
+    unlockPrompt: "* जनरेटर अनलॉक करण्यासाठी वर विषय लिहा."
+  },
+  ta: {
+    suiteTitle: "தேர்வு மதிப்பீட்டாளர் & கல்வி வழிகாட்டி",
+    suiteSubtitle: "உங்கள் கையெழுத்து விடைத்தாளின் PDF அல்லது படங்களை பதிவேற்றவும். உங்கள் கேள்வித்தாள் மற்றும் விடைக்குறிப்புடன் ஒப்பிட்டு, உங்கள் சொந்த மொழியிலேயே உடனடி மதிப்பெண், விரிவான பகுப்பாய்வு மற்றும் வழிகாட்டல்களைப் பெறுங்கள்.",
+    examProfile: "தேர்வு சுயவிவரம்",
+    selectExam: "தேர்வைத் தேர்ந்தெடுக்கவும்",
+    custom: "தனிப்பயன் தேர்வு முறை",
+    boardLabel: "கல்வி வாரியம்",
+    maxMarks: "அதிகபட்ச மதிப்பெண்கள்",
+    negMarking: "தவறான விடைகளுக்கான மதிப்பெண் குறைப்பு",
+    negNone: "இல்லை",
+    negOneThird: "-0.33 மதிப்பெண் குறைப்பு",
+    negOneFourth: "-0.25 மதிப்பெண் குறைப்பு",
+    studentSheet: "மாணவரின் கையெழுத்து விடைத்தாள் (PDF/படம்)",
+    questionPaper: "அசல் கேள்வித்தாள் (விருப்பத்திற்குரியது)",
+    answerKey: "விடைக்குறிப்பு / மதிப்பீட்டு விதிமுறை (விருப்பத்திற்குரியது)",
+    pasteText: "அசல் உரையை ஒட்டவும்",
+    uploadDoc: "ஆவணத்தைப் பதிவேற்றவும்",
+    textPlaceholderQP: "தேர்வு வினாக்களை இங்கே தட்டச்சு செய்யவும் அல்லது ஒட்டவும்...",
+    textPlaceholderAK: "மாதிரி விடைகள் அல்லது முக்கிய வார்த்தைகளை இங்கே தட்டச்சு செய்யவும் அல்லது ஒட்டவும்...",
+    feedbackLanguage: "கருத்து மொழி",
+    evaluateBtn: "விடைத்தாளை பகுப்பாய்வு செய்து மதிப்பிடவும்",
+    evaluating: "AI மதிப்பிடுகிறது... தயவுசெய்து காத்திருக்கவும்",
+    dragDrop: "கோப்பை இழுத்து இங்கே விடவும் அல்லது தேட கிளிக் செய்யவும்",
+    allowedTypes: "PDF மற்றும் படங்களை (PNG, JPG, WebP) ஆதரிக்கிறது",
+    strengths: "பலம்",
+    improvements: "மேம்படுத்த வேண்டிய பகுதிகள்",
+    expertAdvice: "வல்லுநரின் கல்வி ஆலோசனை",
+    finalScore: "இறுதி மதிப்பீட்டு மதிப்பெண்",
+    accuracy: "துல்லிய விகிதம்",
+    analysis: "கேள்வி வாரியான மதிப்பீடு",
+    pointsAwarded: "வழங்கப்பட்ட மதிப்பெண்கள்",
+    textReportTab: "முழு கல்வி அறிக்கை",
+    visualDashboardTab: "விஷுவல் செயல்திறன் பலகை",
+    listenFeedback: "அறிக்கையைக் கேளுங்கள் (ஆடியோ)",
+    stopAudio: "ஒலியை நிறுத்து",
+    generateSample: "மாதிரி விடைத்தாளை ஏற்றுக",
+    sampleDesc: "விடைத்தாள் தயாராக இல்லையா? இந்த மதிப்பீட்டாளர் எவ்வாறு செயல்படுகிறது என்பதைப் பார்க்க மாதிரி UPSC வரலாறு கேள்வி, மாணவர் விடை மற்றும் விதிமுறையை ஏற்ற கீழே கிளிக் செய்யவும்!",
+    marks: "மதிப்பெண்கள்",
+    noFileSelected: "கோப்பு எதுவும் தேர்ந்தெடுக்கப்படவில்லை",
+    historyTitle: "கடந்தகால மதிப்பீட்டு அறிக்கைகள்",
+    historyEmpty: "மதிப்பீட்டு பதிவுகள் எதுவும் இல்லை. உங்கள் மதிப்பீட்டு வரலாற்றைத் தொடங்க விடைத்தாளைப் பதிவேற்றவும்!",
+    pointsEarned: "மதிப்பீடு முடிந்ததற்கு +15 கல்விப் புள்ளிகள் பெறப்பட்டன!",
+    extraInstructions: "கூடுதல் மதிப்பீட்டு வழிமுறைகள் (எ.கா. 'கையெழுத்தை கவனிக்கவும்', 'கடுமையான திருத்தம்')",
+    extraPlaceholder: "மதிப்பீட்டிற்கான கூடுதல் வழிமுறைகளைக் குறிப்பிடவும் (விருப்பத்திற்குரியது)...",
+    simLiveExam: "நேரலை AI மாதிரித் தேர்வு",
+    directReview: "நேரடி விடை மதிப்பீடு",
+    targetTopicLabel: "இலக்கு அத்தியாயம் / தலைப்பு",
+    targetTopicPlaceholder: "எ.கா. முகலாய கட்டிடக்கலை, சுழற்சி இயங்கியல்",
+    numQuestionsLabel: "வினாக்களின் எண்ணிக்கை",
+    qOpt2: "2 வினாக்கள் (வேகப் பயிற்சி)",
+    qOpt3: "3 வினாக்கள் (இயல்புப் பயிற்சி)",
+    qOpt5: "5 வினாக்கள் (கடினத் தேர்வு)",
+    qOpt8: "8 வினாக்கள் (முழுத் தேர்வு)",
+    maxMarksLabel: "ஒதுக்கப்பட்ட அதிகபட்ச மதிப்பெண்",
+    assessmentLangLabel: "விரும்பப்படும் தேர்வு மொழி",
+    generateExamBtn: "வினாத்தாளை உருவாக்கி தேர்வைத் தொடங்கு ✨",
+    unlockPrompt: "* தேர்வைத் தொடங்க மேலே தலைப்பைத் தட்டச்சு செய்யவும்."
+  },
+  te: {
+    suiteTitle: "పరీక్షా మూల్యాంకనకర్త & విద్యా మెంటార్",
+    suiteSubtitle: "మీ చేతితో రాసిన జవాబు పత్రం యొక్క PDF లేదా చిత్రాలను అప్‌లోడ్ చేయండి. మీ ప్రశ్నపత్రం మరియు జవాబు కీతో పోల్చి మీ స్వంత భాషలోనే తక్షణ స్కోర్, విశ్లేషణ మరియు విద్యా మార్గదర్శకత్వాన్ని పొందండి.",
+    examProfile: "పరీక్షా ప్రొఫైల్",
+    selectExam: "పరీక్షను ఎంచుకోండి",
+    custom: "కస్టమ్ పరీక్షా విధానం",
+    boardLabel: "విద్యా బోర్డు",
+    maxMarks: "గరిష్ట మార్కులు",
+    negMarking: "నెగటివ్ మార్కింగ్ విధానం",
+    negNone: "ఏమీ లేదు",
+    negOneThird: "ప్రతి తప్పు సమాధానానికి -0.33 మార్కులు",
+    negOneFourth: "ప్రతి తప్పు సమాధానానికి -0.25 మార్కులు",
+    studentSheet: "విద్యార్థి చేతితో రాసిన జవాబు పత్రం (PDF/చిత్రం)",
+    questionPaper: "అసలు ప్రశ్న పత్రం (ఐచ్ఛికం)",
+    answerKey: "జవాబు కీ / రూబ్రిక్ (ఐచ్ఛికం)",
+    pasteText: "అసలు వచనాన్ని ఇక్కడ పేస్ట్ చేయండి",
+    uploadDoc: "పత్రాన్ని/చిత్రాన్ని అప్‌లోడ్ చేయండి",
+    textPlaceholderQP: "పరీక్ష ప్రశ్నలను ఇక్కడ టైప్ చేయండి లేదా పేస్ట్ చేయండి...",
+    textPlaceholderAK: "ఆదర్శ సమాధానాలు లేదా ముఖ్యమైన పదాలను ఇక్కడ టైప్ చేయండి లేదా పేస్ట్ చేయండి...",
+    feedbackLanguage: "ఫీడ్‌బ్యాక్ భాష",
+    evaluateBtn: "జవాబు పత్రాన్ని విశ్లేషించి మూల్యాంకనం చేయండి",
+    evaluating: "AI మూల్యాంకనం చేస్తోంది... దయచేసి వేచి ఉండండి",
+    dragDrop: "ఫైల్‌ను ఇక్కడ లాగి వదలండి లేదా బ్రౌజ్ చేయడానికి క్లిక్ చేయండి",
+    allowedTypes: "PDF మరియు చిత్రాలను (PNG, JPG, WebP) సపోర్ట్ చేస్తుంది",
+    strengths: "బలాలు",
+    improvements: "మెరుగుపరచుకోవాల్సిన అంశాలు",
+    expertAdvice: "నిపుణుల విద్యా సలహా",
+    finalScore: "తుది మూల్యాంకన స్కోర్",
+    accuracy: "ఖచ్చితత్వ రేటు",
+    analysis: "ప్రశ్నల వారీ సమీక్ష",
+    pointsAwarded: "కేటాయించిన మార్కులు",
+    textReportTab: "పూర్తి విద్యా నివేదిక",
+    visualDashboardTab: "విజువల్ పెర్ఫార్మెన్స్ బోర్డు",
+    listenFeedback: "నివేదిక వినండి (ఆడియో)",
+    stopAudio: "ఆడియో ఆపండి",
+    generateSample: "నమూనా పత్రాన్ని లోడ్ చేయండి",
+    sampleDesc: "జవాబు పత్రం సిద్ధంగా లేదా? ఈ మూల్యాంకనకర్త ఎలా పనిచేస్తుందో చూడటానికి నమూనా UPSC హిస్టరీ ప్రశ్న, విద్యార్థి జవాబు మరియు రూబ్రిక్‌ను లోడ్ చేయడానికి క్రింది క్లిక్ చేయండి!",
+    marks: "మార్కులు",
+    noFileSelected: "ఏ ఫైల్ ఎంపిక చేయబడలేదు",
+    historyTitle: "గత మూల్యాంకన నివేదికలు",
+    historyEmpty: "ఇంకా మూల్యాంకన రికార్డులు లేవు. మీ మూల్యాంకన చరిత్రను ప్రారంభించడానికి పైన ఒక జవాబు పత్రాన్ని అప్‌లోడ్ చేయండి!",
+    pointsEarned: "మూల్యాంకనం విజయవంతంగా పూర్తి చేసినందుకు +15 విద్యా పాయింట్లు లభించాయి!",
+    extraInstructions: "అదనపు ఆదేశాలు (ఉదా. 'రాతను గమనించండి', 'కఠినమైన మూల్యాంకనం')",
+    extraPlaceholder: "మూల్యాంకనానికి అదనపు ఆదేశాలు రాయండి (ఐచ్ఛికం)...",
+    simLiveExam: "సిమ్యులేటెడ్ లైవ్ AI పరీక్ష",
+    directReview: "నేరుగా జవాబు సమీక్ష",
+    targetTopicLabel: "లక్ష్య అధ్యాయం / నిర్దిష్ట అంశం",
+    targetTopicPlaceholder: "ఉదా. మొఘల్ వాస్తుశిల్పం, రోటేషనல் మెకానిక్స్",
+    numQuestionsLabel: "ప్రశ్నల సంఖ్య",
+    qOpt2: "2 ప్రశ్నలు (వేగవంతమైన పరీక్ష)",
+    qOpt3: "3 ప్రశ్నలు (ప్రామాణిక సాధన)",
+    qOpt5: "5 ప్రశ్నలు (కఠినమైన పరీక్ష)",
+    qOpt8: "8 ప్రశ్నలు (పూర్తి నిడివి పరీక్ష)",
+    maxMarksLabel: "కేటాయించిన గరిష్ట మార్కులు",
+    assessmentLangLabel: "కోరుకున్న పరీక్షా భాష",
+    generateExamBtn: "ప్రశ్నపత్రాన్ని రూపొందించి లైవ్ పరీక్షను ప్రారంభించండి ✨",
+    unlockPrompt: "* జనరేటర్‌ను అన్‌లాక్ చేయడానికి దయచేసి పైన అంశాన్ని టైప్ చేయండి."
+  }
+};
+/*
+  generateSample: "నమూనా పత్రాన్ని లోడ్ చేయండి",
+    sampleDesc: "జవాబు పత్రం సిద్ధంగా లేదా? ఈ మూల్యాంకనకర్త ఎలా పనిచేస్తుందో చూడటానికి నమూనా UPSC హిస్టరీ ప్రశ్న, విద్యార్థి జవాబు మరియు రూబ్రిక్‌ను లోడ్ చేయడానికి క్రింది క్లిక్ చేయండి!",
+    marks: "మార్కులు",
+    noFileSelected: "ఏ ఫైల్ ఎంపిక చేయబడలేదు",
+    historyTitle: "గత మూల్యాంకన నివేదికలు",
+    historyEmpty: "ఇంకా మూల్యాంకన రికార్డులు లేవు. మీ మూల్యాంకన చరిత్రను ప్రారంభించడానికి పైన ఒక జవాబు పత్రాన్ని అప్‌లోడ్ చేయండి!",
+    pointsEarned: "మూల్యాంకనం విజయవంతంగా పూర్తి చేసినందుకు +15 విద్యా పాయింట్లు లభించాయి!",
+    extraInstructions: "అదనపు ఆదేశాలు (ఉదా. 'రాతను గమనించండి', 'కఠినమైన మూల్యాంకనం')",
+    extraPlaceholder: "మూల్యాంకనానికి అదనపు ఆదేశాలు రాయండి (ఐచ్ఛికం)...",
+    simLiveExam: "సిమ్యులేటెడ్ లైవ్ AI పరీక్ష",
+    directReview: "నేరుగా జవాబు సమీక్ష",
+    targetTopicLabel: "లక్ష్య అధ్యాయం / నిర్దిష్ట అంశం",
+    targetTopicPlaceholder: "ఉదా. మొఘల్ వాస్తుశిల్పం, రోటేషనల్ మెకానిక్స్",
+    numQuestionsLabel: "ప్రశ్నల సంఖ్య",
+    qOpt2: "2 ప్రశ్నలు (వేగవంతమైన పరీక్ష)",
+    qOpt3: "3 ప్రశ్నలు (ప్రామాణిక సాధన)",
+    qOpt5: "5 ప్రశ్నలు (కఠినమైన పరీక్ష)",
+    qOpt8: "8 ప్రశ్నలు (పూర్తి నిడివి పరీక్ష)",
+    maxMarksLabel: "కేటాయించిన గరిష్ట మార్కులు",
+    assessmentLangLabel: "కోరుకున్న పరీక్షా భాష",
+    generateExamBtn: "ప్రశ్నపత్రాన్ని రూపొందించి లైవ్ పరీక్షను ప్రారంభించండి ✨",
+    unlockPrompt: "* జనరేటర్‌ను అన్‌లాక్ చేయడానికి దయచేసి పైన అంశాన్ని టైప్ చేయండి."
+  }िंवा महत्त्वाचे शब्द टाईप करा किंवा पेस्ट करा...",
+    feedbackLanguage: "अभिप्राय भाषा",
+    evaluateBtn: "उत्तरपत्रिकेचे विश्लेषण आणि मूल्यमापन करा",
+    evaluating: "AI मूल्यमापन करत आहे... कृपया प्रतीक्षा करा",
+    dragDrop: "येथे फाईल ड्रॅग करा आणि सोडा किंवा ब्राउझ करण्यासाठी क्लिक करा",
+    allowedTypes: "PDF आणि प्रतिमा (PNG, JPG, WebP) चे समर्थन करते",
+    strengths: "मजबूत बाजू",
+    improvements: "सुधारणेचे क्षेत्र",
+    expertAdvice: "तज्ज्ञ शैक्षणिक सल्ला",
+    finalScore: "अंतिम मूल्यमापन गुण",
+    accuracy: "अचूकता दर",
+    analysis: "प्रश्न-निहाय मूल्यमापन",
+    pointsAwarded: "दिलेले गुण",
+    textReportTab: "पूर्ण शैक्षणिक अहवाल",
+    visualDashboardTab: "विझ्युअल परफॉर्मन्स बोर्ड",
+    listenFeedback: "अहवाल ऐका (ऑडिओ)",
+    stopAudio: "आवाज बंद करा",
+    generateSample: "नमुना उत्तरपत्रिका लोड करा",
+    sampleDesc: "तुमच्याकडे उत्तरपत्रिका तयार नाही का? हे मूल्यमापन कसे चालते हे पाहण्यासाठी नमुना UPSC इतिहास प्रश्न, विद्यार्थ्याचे उत्तर आणि गुण देण्याचे निकष लोड करण्यासाठी खाली क्लिक करा!",
+    marks: "गुण",
+    noFileSelected: "कोणतीही फाईल निवडली नाही",
+    historyTitle: "मागील मूल्यमापन अहवाल",
+    historyEmpty: "अद्याप कोणताही मूल्यमापन रेकॉर्ड नाही. तुमचा मूल्यमापन इतिहास सुरू करण्यासाठी वर एक उत्तरपत्रिका अपलोड करा!",
+    pointsEarned: "मूल्यमापन पूर्ण केल्याबद्दल +15 शैक्षणिक गुण मिळाले!",
+    extraInstructions: "अतिरिक्त मूल्यमापन सूचना (उदा. 'हस्ताक्षरावर लक्ष केंद्रित करा', 'कडक तपासणी')",
+    extraPlaceholder: "मूल्यमापनासाठी अतिरिक्त सूचना लिहा (पर्यायी)...",
+    simLiveExam: "सिम्युलेटेड लाइव्ह AI परीक्षा",
+    directReview: "प्रत्यक्ष उत्तर सराव",
+    targetTopicLabel: "लक्ष्य प्रकरण / विशिष्ट विषय",
+    targetTopicPlaceholder: "उदा. मुघल स्थापत्य, भौतिक शास्त्र, पेशीय श्वसन",
+    numQuestionsLabel: "प्रश्नांची संख्या",
+    qOpt2: "2 प्रश्न (जलद स्प्रिंट)",
+    qOpt3: "3 प्रश्न (प्रमाणित सराव)",
+    qOpt5: "5 प्रश्न (कठोर कसोटी)",
+    qOpt8: "8 प्रश्न (पूर्ण परीक्षा)",
+    maxMarksLabel: "कमाल गुण",
+    assessmentLangLabel: "मूल्यमापनाची भाषा",
+    generateExamBtn: "प्रश्नपत्रिका बनवा आणि परीक्षा सुरू करा ✨",
+    unlockPrompt: "* जनरेटर अनलॉक करण्यासाठी वर विषय लिहा."
   },
   ta: {
     suiteTitle: "தேர்வு மதிப்பீட்டாளர் & கல்வி வழிகாட்டி",
@@ -346,6 +578,7 @@ const LOCAL_TRANSLATIONS = {
     extraPlaceholder: "మూల్యాంకనానికి అదనపు ఆదేశాలు రాయండి (ఐచ్ఛికం)..."
   }
 };
+*/
 
 const EXAM_PRESETS = [
   { id: 'upsc', name: 'UPSC IAS Civil Services (Mains)', maxMarks: 250, type: 'subjective', neg: 'None' },
@@ -1063,7 +1296,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
           }`}
         >
           <Clock className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate sm:whitespace-nowrap">Simulated Live AI Exam</span>
+          <span className="truncate sm:whitespace-nowrap">{t.simLiveExam || "Simulated Live AI Exam"}</span>
         </button>
         <button
           type="button"
@@ -1075,7 +1308,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
           }`}
         >
           <UploadCloud className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate sm:whitespace-nowrap">Direct Answer Review</span>
+          <span className="truncate sm:whitespace-nowrap">{t.directReview || "Direct Answer Review"}</span>
         </button>
       </div>
 
@@ -1250,31 +1483,31 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                   <div className="gap-4">
                     <div className="sm:col-span-2 space-y-1.5">
                       <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                        <span>Target Chapter / Specific Topic</span>
+                        <span>{t.targetTopicLabel || "Target Chapter / Specific Topic"}</span>
                         <span className="text-rose-500 font-bold">*</span>
                       </label>
                       <input 
                         type="text"
                         value={simTopic}
                         onChange={(e) => setSimTopic(e.target.value)}
-                        placeholder="e.g. Mughal Architecture, Rotational Mechanics, Cellular Respiration"
+                        placeholder={t.targetTopicPlaceholder || "e.g. Mughal Architecture, Rotational Mechanics, Cellular Respiration"}
                         className="w-full text-xs p-3 bg-gray-55 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
                         required
                       />
                     </div>
 
                     <div className="space-y-1.5 relative mt-4">
-                      <label className="text-xs font-bold text-gray-500">Number of Questions</label>
+                      <label className="text-xs font-bold text-gray-500">{t.numQuestionsLabel || "Number of Questions"}</label>
                       <button
                         type="button"
                         onClick={() => setIsQuestionsDropdownOpen(!isQuestionsDropdownOpen)}
                         className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl font-sans font-bold text-gray-800 flex items-center justify-between hover:bg-gray-100/70 transition-colors cursor-pointer text-left"
                       >
                         <span className="text-left flex-1 mr-2">
-                          {simNumQuestions === 2 ? "2 Questions (Quick Sprint)" :
-                           simNumQuestions === 3 ? "3 Questions (Standard Practice)" :
-                           simNumQuestions === 5 ? "5 Questions (Rigorous Test)" :
-                           simNumQuestions === 8 ? "8 Questions (Full Length Exam)" :
+                          {simNumQuestions === 2 ? (t.qOpt2 || "2 Questions (Quick Sprint)") :
+                           simNumQuestions === 3 ? (t.qOpt3 || "3 Questions (Standard Practice)") :
+                           simNumQuestions === 5 ? (t.qOpt5 || "5 Questions (Rigorous Test)") :
+                           simNumQuestions === 8 ? (t.qOpt8 || "8 Questions (Full Length Exam)") :
                            `${simNumQuestions} Questions`}
                         </span>
                         <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isQuestionsDropdownOpen ? 'rotate-180' : ''}`} />
@@ -1291,10 +1524,10 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                               className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 p-1.5 space-y-0.5"
                             >
                               {[
-                                { val: 2, label: "2 Questions (Quick Sprint)" },
-                                { val: 3, label: "3 Questions (Standard Practice)" },
-                                { val: 5, label: "5 Questions (Rigorous Test)" },
-                                { val: 8, label: "8 Questions (Full Length Exam)" }
+                                { val: 2, label: t.qOpt2 || "2 Questions (Quick Sprint)" },
+                                { val: 3, label: t.qOpt3 || "3 Questions (Standard Practice)" },
+                                { val: 5, label: t.qOpt5 || "5 Questions (Rigorous Test)" },
+                                { val: 8, label: t.qOpt8 || "8 Questions (Full Length Exam)" }
                               ].map(opt => (
                                 <button
                                   key={opt.val}
@@ -1322,7 +1555,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                   {/* Max Marks & Penalty */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 block">Max Marks Allocated</label>
+                      <label className="text-xs font-bold text-gray-500 block">{t.maxMarksLabel || "Max Marks Allocated"}</label>
                       <input 
                         type="number"
                         value={maxMarks}
@@ -1391,7 +1624,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-gray-500 flex items-center gap-1.5">
                         <Languages className="h-4 w-4 text-emerald-500 shrink-0" />
-                        <span>Preferred Assessment Language</span>
+                        <span>{t.assessmentLangLabel || "Preferred Assessment Language"}</span>
                       </label>
                       <div className="flex flex-wrap items-center gap-1.5">
                         {(['en', 'hi', 'gu', 'mr', 'ta', 'te'] as LanguageCode[]).map(langCode => (
@@ -1425,7 +1658,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                         type="text"
                         value={extraInstructions}
                         onChange={(e) => setExtraInstructions(e.target.value)}
-                        placeholder="e.g. Focus on physical reaction dynamics, ask for diagrams"
+                        placeholder={t.extraPlaceholder}
                         className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl font-sans focus:border-indigo-400 focus:outline-none"
                       />
                     </div>
@@ -1440,11 +1673,11 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                       className="w-full py-3.5 px-6 bg-[#3D405B] hover:bg-[#2D2F44] text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-sm hover:shadow flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-center"
                     >
                       <Sparkles className="h-4 w-4 text-amber-300 shrink-0 animate-pulse" />
-                      <span>Generate Question Paper & Start Live Assessment</span>
+                      <span>{t.generateExamBtn || "Generate Question Paper & Start Live Assessment ✨"}</span>
                     </button>
                     {!simTopic.trim() && (
                       <p className="text-[10px] text-rose-500 text-left mt-2">
-                        * Please type a Target Chapter/Topic above to unlock the generator.
+                        {t.unlockPrompt || "* Please type a Target Chapter/Topic above to unlock the generator."}
                       </p>
                     )}
                   </div>

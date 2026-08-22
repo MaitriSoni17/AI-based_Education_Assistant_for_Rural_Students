@@ -44,6 +44,7 @@ interface PdfCanvasViewerProps {
   fileName: string;
   fullContent?: string;
   isAiGenerated?: boolean;
+  lang?: LanguageCode;
   onGetFileLocal: (id: string) => Promise<string | null>;
   onDownload: () => void;
   onPagesTextExtracted?: (pages: { pageNum: number; text: string }[]) => void;
@@ -435,6 +436,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   fileName,
   fullContent,
   isAiGenerated,
+  lang,
   onGetFileLocal,
   onDownload,
   onPagesTextExtracted,
@@ -476,7 +478,25 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
   // AI Task Assistant State
   const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
-  const [targetLanguage, setTargetLanguage] = useState<string>('Hindi');
+  const [targetLanguage, setTargetLanguage] = useState<string>(() => {
+    if (lang === 'hi') return 'Hindi';
+    if (lang === 'gu') return 'Gujarati';
+    if (lang === 'mr') return 'Marathi';
+    if (lang === 'ta') return 'Tamil';
+    if (lang === 'te') return 'Telugu';
+    return 'English';
+  });
+
+  useEffect(() => {
+    if (lang) {
+      if (lang === 'hi') setTargetLanguage('Hindi');
+      else if (lang === 'gu') setTargetLanguage('Gujarati');
+      else if (lang === 'mr') setTargetLanguage('Marathi');
+      else if (lang === 'ta') setTargetLanguage('Tamil');
+      else if (lang === 'te') setTargetLanguage('Telugu');
+      else setTargetLanguage('English');
+    }
+  }, [lang]);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiMessages, setAiMessages] = useState<{ id: string; sender: 'user' | 'assistant'; text: string; timestamp: string }[]>([
     {

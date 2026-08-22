@@ -2946,6 +2946,7 @@ STRUCTURE:
             <div className="flex-1 bg-slate-900 overflow-hidden flex flex-col p-2 sm:p-4">
               <div className="flex-1 h-full min-h-[500px]">
                 <PdfCanvasViewer
+                  lang={lang}
                   fileId={activePdfFile.id}
                   fileDataUrl={activePdfFile.fileDataUrl}
                   fileName={activePdfFile.name}

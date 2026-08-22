@@ -1137,9 +1137,17 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   useEffect(() => {
     const history = offlineSyncManager.getChatHistory(selectedChar.id, user.mobile);
     if (history && history.length > 0) {
+      // If history contains only the initial welcome message, update text to match selected language
+      const updatedHistory = history.map(m => {
+        if (m.id === 'welcome') {
+          return { ...m, text: selectedChar.welcome[lang] || selectedChar.welcome['en'] };
+        }
+        return m;
+      });
+
       setMsgHistory(prev => ({
         ...prev,
-        [selectedChar.id]: history
+        [selectedChar.id]: updatedHistory
       }));
 
       // Restore activeSessionId if the loaded history matches a saved session

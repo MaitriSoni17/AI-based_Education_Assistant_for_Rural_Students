@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { LanguageCode, User, OfflineResource } from '../types';
-import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../data/translations';
+import { SUPPORTED_LANGUAGES, TRANSLATIONS, DASHBOARD_TABS_I18N, UI_COMMON_I18N } from '../data/translations';
 import { getDeterministicAvatar } from '../utils/avatar';
 import { speakText, stopSpeaking } from '../utils/speech';
 import { offlineSyncManager } from '../utils/offlineSync';
@@ -300,21 +300,24 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
     stopSpeaking();
   }, [activeTab]);
 
+  const tabTitles = DASHBOARD_TABS_I18N[lang] || DASHBOARD_TABS_I18N.en;
+  const commonI18n = UI_COMMON_I18N[lang] || UI_COMMON_I18N.en;
+
   const sidebarItems = [
-    { id: 'profile', label: 'My Profile Overview', category: 'Account & Settings', icon: UserIcon, color: 'text-blue-500 bg-blue-50' },
-    { id: 'ai-assistant', label: 'AI Study Chatbot', category: 'AI Learning Tools', icon: MessageSquare, color: 'text-emerald-500 bg-emerald-50' },
-    { id: 'tutor', label: 'Mascot Class Tutor', category: 'AI Learning Tools', icon: BookOpen, color: 'text-[#81B29A] bg-[#81B29A]/10' },
-    { id: 'equations', label: 'Smart Equation Hub', category: 'AI Learning Tools', icon: Binary, color: 'text-orange-500 bg-orange-50' },
-    { id: 'admin-pdfs', label: 'Study Materials', category: 'Curriculum & Prep', icon: FileText, color: 'text-rose-600 bg-rose-50' },
-    { id: 'quiz', label: 'Topic Play Quizzes', category: 'Practice & Rewards', icon: HelpCircle, color: 'text-amber-500 bg-amber-50' },
-    { id: 'puzzles', label: 'AI Puzzle Arena', category: 'Practice & Rewards', icon: Gamepad2, color: 'text-violet-600 bg-violet-50' },
-    { id: 'certificates', label: 'My Certificates', category: 'Practice & Rewards', icon: GraduationCap, color: 'text-amber-600 bg-amber-50' },
-    { id: 'exam', label: 'Competitive Exams', category: 'Curriculum & Prep', icon: Award, color: 'text-rose-500 bg-rose-50' },
-    { id: 'career', label: 'Career Guidance', category: 'Curriculum & Prep', icon: Sparkles, color: 'text-purple-500 bg-purple-50' },
-    { id: 'settings', label: 'System Settings', category: 'Account & Settings', icon: SettingsIcon, color: 'text-gray-500 bg-gray-50' },
+    { id: 'profile', label: tabTitles.profile, category: commonI18n.accountAndSettings, icon: UserIcon, color: 'text-blue-500 bg-blue-50' },
+    { id: 'ai-assistant', label: tabTitles.aiAssistant, category: commonI18n.aiLearningTools, icon: MessageSquare, color: 'text-emerald-500 bg-emerald-50' },
+    { id: 'tutor', label: tabTitles.tutor, category: commonI18n.aiLearningTools, icon: BookOpen, color: 'text-[#81B29A] bg-[#81B29A]/10' },
+    { id: 'equations', label: tabTitles.equations, category: commonI18n.aiLearningTools, icon: Binary, color: 'text-orange-500 bg-orange-50' },
+    { id: 'admin-pdfs', label: tabTitles.adminPdfs, category: commonI18n.curriculumAndPrep, icon: FileText, color: 'text-rose-600 bg-rose-50' },
+    { id: 'quiz', label: tabTitles.quiz, category: commonI18n.practiceAndRewards, icon: HelpCircle, color: 'text-amber-500 bg-amber-50' },
+    { id: 'puzzles', label: tabTitles.puzzles, category: commonI18n.practiceAndRewards, icon: Gamepad2, color: 'text-violet-600 bg-violet-50' },
+    { id: 'certificates', label: tabTitles.certificates, category: commonI18n.practiceAndRewards, icon: GraduationCap, color: 'text-amber-600 bg-amber-50' },
+    { id: 'exam', label: tabTitles.exam, category: commonI18n.curriculumAndPrep, icon: Award, color: 'text-rose-500 bg-rose-50' },
+    { id: 'career', label: tabTitles.career, category: commonI18n.curriculumAndPrep, icon: Sparkles, color: 'text-purple-500 bg-purple-50' },
+    { id: 'settings', label: tabTitles.settings, category: commonI18n.accountAndSettings, icon: SettingsIcon, color: 'text-gray-500 bg-gray-50' },
   ] as const;
 
-  const activeLabel = sidebarItems.find(i => i.id === activeTab)?.label || 'Dashboard';
+  const activeLabel = sidebarItems.find(i => i.id === activeTab)?.label || tabTitles.profile;
   const currentActiveItem = sidebarItems.find(i => i.id === activeTab) || sidebarItems[0];
   const CurrentActiveIcon = currentActiveItem.icon;
 
@@ -326,11 +329,11 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
         <div className="space-y-1 w-full md:w-auto">
           <h1 className="font-display font-extrabold text-lg sm:text-xl text-[#3D405B] flex items-center gap-1.5">
             <span className="text-2xl sm:text-3xl hover:scale-110 transition-transform duration-300">{localUser.avatar || getDeterministicAvatar(localUser.name, localUser.mobile)}</span>
-            <span>Namaste, {localUser.name}!</span>
+            <span>{commonI18n.namaste}, {localUser.name}!</span>
           </h1>
           <p className="text-xs text-gray-500 font-sans">
-            Curriculum Medium: <span className="font-bold underline text-[#E07A5F] capitalize">
-              {SUPPORTED_LANGUAGES.find(l => l.code === localUser.defaultLanguage)?.label}
+            {commonI18n.curriculumMedium}: <span className="font-bold underline text-[#E07A5F] capitalize">
+              {SUPPORTED_LANGUAGES.find(l => l.code === (localUser.defaultLanguage || lang))?.nativeLabel || 'English'}
             </span>
           </p>
         </div>
@@ -343,7 +346,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
               <Sparkles className="h-4 w-4 text-emerald-600 animate-pulse" />
             </div>
             <div className="text-left font-mono min-w-0 flex-1">
-              <span className="text-[9px] text-emerald-800 font-bold uppercase tracking-wider block truncate">XP Gained</span>
+              <span className="text-[9px] text-emerald-800 font-bold uppercase tracking-wider block truncate">XP</span>
               <span className="text-xs font-black text-gray-900 truncate block">{localUser.totalPoints ?? 15} pts</span>
             </div>
           </div>
@@ -354,8 +357,8 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
               <Flame className="h-4 w-4 text-orange-600 animate-pulse" />
             </div>
             <div className="text-left font-mono min-w-0 flex-1">
-              <span className="text-[9px] text-orange-800 font-bold uppercase tracking-wider block truncate">Study Streak</span>
-              <span className="text-xs font-black text-gray-900 truncate block">{localUser.streakDays ?? 1} Days</span>
+              <span className="text-[9px] text-orange-800 font-bold uppercase tracking-wider block truncate">{commonI18n.studyStreak}</span>
+              <span className="text-xs font-black text-gray-900 truncate block">{localUser.streakDays ?? 1} {commonI18n.days}</span>
             </div>
           </div>
 
@@ -365,8 +368,8 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
               <Clock className="h-4 w-4 text-indigo-600" />
             </div>
             <div className="text-left font-mono min-w-0 flex-1">
-              <span className="text-[9px] text-indigo-800 font-bold uppercase tracking-wider block truncate">Time Studied</span>
-              <span className="text-xs font-black text-gray-900 truncate block">{formatStudyTime(localUser.studyMins ?? 30, lang === 'hi')}</span>
+              <span className="text-[9px] text-indigo-800 font-bold uppercase tracking-wider block truncate">{commonI18n.timeStudied}</span>
+              <span className="text-xs font-black text-gray-900 truncate block">{formatStudyTime(localUser.studyMins ?? 30, lang)}</span>
             </div>
           </div>
 
@@ -376,8 +379,8 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
               <Award className="h-4 w-4 text-amber-600" />
             </div>
             <div className="text-left font-mono min-w-0 flex-1">
-              <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider block truncate">Completed</span>
-              <span className="text-xs font-black text-gray-900 truncate block">{claimedMedals.length} medals</span>
+              <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider block truncate">{commonI18n.completed}</span>
+              <span className="text-xs font-black text-gray-900 truncate block">{claimedMedals.length} {commonI18n.medals}</span>
             </div>
           </div>
         </div>
@@ -392,7 +395,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
         <aside className="lg:col-span-3 bg-white p-4 rounded-3xl border border-gray-150 shadow-sm space-y-4 hidden lg:block text-left">
           <div className="px-3 pb-2 border-b border-gray-100">
             <h3 className="text-[10px] font-mono font-extrabold text-gray-400 uppercase tracking-widest">
-              My Class Channels
+              {commonI18n.myClassChannels}
             </h3>
           </div>
           <nav className="space-y-1">
@@ -428,7 +431,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
                 <CurrentActiveIcon className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider block">Active Page</span>
+                <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider block">{commonI18n.activePage}</span>
                 <h2 className="text-xs sm:text-sm font-extrabold text-gray-850 truncate">{currentActiveItem.label}</h2>
               </div>
             </div>
@@ -440,7 +443,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
               className="px-3 py-2 bg-[#3D405B] hover:bg-[#2D2F44] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer active:scale-95 transition-all"
             >
               <Grid className="h-3.5 w-3.5 text-[#F2CC8F]" />
-              <span>All Pages ({sidebarItems.length})</span>
+              <span>{commonI18n.allPages} ({sidebarItems.length})</span>
               <ChevronDown className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -480,9 +483,9 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
                   </div>
                   <div>
                     <h3 className="text-base font-extrabold text-gray-800">
-                      Classroom Pages ({sidebarItems.length})
+                      {commonI18n.allPages} ({sidebarItems.length})
                     </h3>
-                    <p className="text-xs text-gray-500 font-sans">Tap any page to navigate instantly</p>
+                    <p className="text-xs text-gray-500 font-sans">{commonI18n.activePage}: {currentActiveItem.label}</p>
                   </div>
                 </div>
                 <button
@@ -497,7 +500,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
 
               {/* Categorized Pages List */}
               <div className="p-4 overflow-y-auto space-y-4">
-                {['AI Learning Tools', 'Curriculum & Prep', 'Practice & Rewards', 'Account & Settings'].map(catName => {
+                {[commonI18n.aiLearningTools, commonI18n.curriculumAndPrep, commonI18n.practiceAndRewards, commonI18n.accountAndSettings].map(catName => {
                   const itemsInCat = sidebarItems.filter(i => i.category === catName);
                   if (itemsInCat.length === 0) return null;
                   return (

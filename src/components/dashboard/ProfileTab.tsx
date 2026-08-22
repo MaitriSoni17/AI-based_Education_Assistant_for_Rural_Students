@@ -31,23 +31,44 @@ import { offlineSyncManager } from '../../utils/offlineSync';
 import { fireContinuousFireworks, fireConfetti } from '../../utils/confetti';
 import { getSafeDateString, getCurrentWeekDates, formatDateInfo } from '../../utils/dateUtils';
 
-export const formatStudyTime = (minutes: number, isHindi: boolean) => {
-  if (minutes < 60) {
-    return isHindi ? `${minutes} मिनट` : `${minutes} Mins`;
-  }
+export const formatStudyTime = (minutes: number, langOrHindi?: LanguageCode | boolean) => {
+  const lang: LanguageCode = typeof langOrHindi === 'string' 
+    ? langOrHindi 
+    : (langOrHindi === true ? 'hi' : 'en');
+
   const hrs = Math.floor(minutes / 60);
   const mins = minutes % 60;
-  if (isHindi) {
+
+  if (lang === 'hi') {
+    if (minutes < 60) return `${minutes} मिनट`;
     const hrLabel = hrs === 1 ? 'घंटा' : 'घंटे';
-    return mins > 0 
-      ? `${hrs} ${hrLabel} ${mins} मिनट` 
-      : `${hrs} ${hrLabel}`;
-  } else {
-    const hrLabel = hrs === 1 ? 'hr' : 'hrs';
-    return mins > 0 
-      ? `${hrs} ${hrLabel} ${mins} mins` 
-      : `${hrs} ${hrLabel}`;
+    return mins > 0 ? `${hrs} ${hrLabel} ${mins} मिनट` : `${hrs} ${hrLabel}`;
   }
+  if (lang === 'gu') {
+    if (minutes < 60) return `${minutes} મિનિટ`;
+    const hrLabel = 'કલાક';
+    return mins > 0 ? `${hrs} ${hrLabel} ${mins} મિનિટ` : `${hrs} ${hrLabel}`;
+  }
+  if (lang === 'mr') {
+    if (minutes < 60) return `${minutes} मिनिटे`;
+    const hrLabel = 'तास';
+    return mins > 0 ? `${hrs} ${hrLabel} ${mins} मिनिटे` : `${hrs} ${hrLabel}`;
+  }
+  if (lang === 'ta') {
+    if (minutes < 60) return `${minutes} நிமிடங்கள்`;
+    const hrLabel = 'மணி';
+    return mins > 0 ? `${hrs} ${hrLabel} ${mins} நிமிடங்கள்` : `${hrs} ${hrLabel}`;
+  }
+  if (lang === 'te') {
+    if (minutes < 60) return `${minutes} నిమిషాలు`;
+    const hrLabel = 'గంటలు';
+    return mins > 0 ? `${hrs} ${hrLabel} ${mins} నిమిషాలు` : `${hrs} ${hrLabel}`;
+  }
+
+  // Default English
+  if (minutes < 60) return `${minutes} Mins`;
+  const hrLabel = hrs === 1 ? 'hr' : 'hrs';
+  return mins > 0 ? `${hrs} ${hrLabel} ${mins} mins` : `${hrs} ${hrLabel}`;
 };
 
 interface ProfileTabProps {
