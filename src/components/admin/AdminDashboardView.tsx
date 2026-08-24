@@ -2232,8 +2232,10 @@ startxref
           uploadedAt: new Date().toISOString().split('T')[0],
           fileDataUrl: item.dataUrl,
           externalUrl: item.externalUrl.trim() || undefined,
-          description: item.description.trim() || undefined
-        };
+          description: item.description.trim() || undefined,
+          isAdminUploaded: true,
+          uploadedByRole: 'admin'
+        } as any;
 
         createdFiles.push(fileObj);
 
@@ -2406,8 +2408,10 @@ startxref
         uploadedAt: new Date().toISOString().split('T')[0],
         fileDataUrl: newFileDataUrl,
         externalUrl: newFileExternalUrl.trim() || undefined,
-        description: newFileDesc.trim() || undefined
-      };
+        description: newFileDesc.trim() || undefined,
+        isAdminUploaded: true,
+        uploadedByRole: 'admin'
+      } as any;
 
       // Save file payload to IndexedDB for offline persistence & localStorage cache
       if (newFileDataUrl) {
@@ -2844,11 +2848,19 @@ startxref
         });
       }
       if (remoteFiles && remoteFiles.length > 0) {
-        const filteredFiles = (remoteFiles as any[]).filter((f) => !deletedFileIds.includes(f.id));
+        (remoteFiles as any[]).forEach((rf) => {
+          if (rf.isDeleted === true && !deletedFileIds.includes(rf.id)) {
+            deletedFileIds.push(rf.id);
+          }
+        });
+        const filteredFiles = (remoteFiles as any[]).filter((f) => !deletedFileIds.includes(f.id) && f.isDeleted !== true);
         setCurriculumFiles((prev) => {
           const map = new Map<string, CurriculumFile>(prev.map((f) => [f.id, f]));
           filteredFiles.forEach((rf: any) => {
-            if (deletedFileIds.includes(rf.id)) return;
+            if (deletedFileIds.includes(rf.id) || rf.isDeleted === true) {
+              map.delete(rf.id);
+              return;
+            }
             const existing = map.get(rf.id);
             // Preserve local fileDataUrl if remote is missing base64 payload
             if (existing && existing.fileDataUrl && !rf.fileDataUrl) {
@@ -2857,7 +2869,7 @@ startxref
               map.set(rf.id, rf as CurriculumFile);
             }
           });
-          return Array.from(map.values()).filter((f) => !deletedFileIds.includes(f.id));
+          return Array.from(map.values()).filter((f) => !deletedFileIds.includes(f.id) && (f as any).isDeleted !== true);
         });
       }
     } catch (e) {
@@ -3085,11 +3097,11 @@ startxref
 
         <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:items-center gap-2 w-full md:w-auto shrink-0 pt-1 md:pt-0">
           {/* Admin Language Selector */}
-          <div className="relative inline-block text-left">
+          {/*<div className="relative inline-block text-left">
             <select
               value={adminLang}
               onChange={(e) => setAdminLang(e.target.value as LanguageCode)}
-              className="w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-extrabold text-xs rounded-xl border border-slate-700 cursor-pointer focus:outline-none"
+              className="w-full pl-3 pr-8 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-extrabold text-xs rounded-xl border border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400/40 appearance-none transition-all shadow-xs"
               title="Select Admin Language"
             >
               <option value="en">English (EN)</option>
@@ -3099,7 +3111,8 @@ startxref
               <option value="ta">தமிழ் (Tamil)</option>
               <option value="te">తెలుగు (Telugu)</option>
             </select>
-          </div>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-400 pointer-events-none" />
+          </div>*/}
 
           <button
             onClick={() => setShowExportModal(true)}
@@ -3578,15 +3591,15 @@ startxref
               ))}
             </div>
 
-            <div className="flex gap-2 w-full md:w-auto">
-              <div className="relative flex-1 md:w-60">
-                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <div className="flex gap-2 w-full md:w-auto items-center">
+              <div className="relative md:w-60">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                 <input
                   type="text"
                   value={contentSearch}
                   onChange={(e) => setContentSearch(e.target.value)}
                   placeholder={t.searchLibraryPlaceholder}
-                  className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 font-sans"
+                  className="w-full pl-9 pr-3.5 py-2.5 bg-white border border-slate-200/90 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/50 font-sans shadow-3xs"
                 />
               </div>
 
@@ -3619,6 +3632,11 @@ startxref
               const matchesSearch = !contentSearch || f.name.toLowerCase().includes(contentSearch.toLowerCase()) || f.subject.toLowerCase().includes(contentSearch.toLowerCase());
               const matchesCategory = contentCategoryFilter === 'all' || f.category === contentCategoryFilter;
               return inCurrent && matchesSearch && matchesCategory;
+            }).sort((a, b) => {
+              const timeA = Date.parse(a.uploadedAt || '1970-01-01') || 0;
+              const timeB = Date.parse(b.uploadedAt || '1970-01-01') || 0;
+              if (timeA !== timeB) return timeB - timeA;
+              return a.name.localeCompare(b.name);
             });
 
             const totalFoldersCount = curriculumFolders.length;
@@ -4905,18 +4923,21 @@ startxref
                 <form onSubmit={handleBulkCategorizeSubmit} className="space-y-3.5 text-xs">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">New Category *</label>
-                    <select
-                      value={bulkCategory}
-                      onChange={(e) => setBulkCategory(e.target.value as any)}
-                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-sans"
-                    >
-                      <option value="pdf">PDF Study Material</option>
-                      <option value="video">Video Lecture</option>
-                      <option value="audio">Audio / Podcast</option>
-                      <option value="quiz">Interactive Quiz</option>
-                      <option value="document">General Document</option>
-                      <option value="other">Other</option>
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={bulkCategory}
+                        onChange={(e) => setBulkCategory(e.target.value as any)}
+                        className="w-full pl-3 pr-8 py-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 hover:border-slate-300 rounded-xl font-sans text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 appearance-none cursor-pointer transition-all"
+                      >
+                        <option value="pdf">PDF Study Material</option>
+                        <option value="video">Video Lecture</option>
+                        <option value="audio">Audio / Podcast</option>
+                        <option value="quiz">Interactive Quiz</option>
+                        <option value="document">General Document</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    </div>
                   </div>
 
                   <div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { safeFetchJson } from '../../utils/safeFetch';
 import { LanguageCode, User } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
@@ -720,7 +721,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
         ? (customExamName || "Custom Exam") 
         : EXAM_PRESETS.find(p => p.id === selectedPresetId)?.name;
 
-      const response = await fetch('/api/gemini/generate-exam', {
+      const resData = await safeFetchJson('/api/gemini/generate-exam', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -733,8 +734,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
         })
       });
 
-      const resData = await response.json();
-      if (!resData.success) {
+      if (!resData.success && !resData.questionPaper) {
         throw new Error(resData.message || "Failed to generate exam questions.");
       }
 
@@ -1122,7 +1122,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
     }
 
     try {
-      const response = await fetch("/api/gemini/evaluate", {
+      const data = await safeFetchJson("/api/gemini/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1139,10 +1139,9 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
         })
       });
 
-      const data = await response.json();
       clearInterval(progressInterval);
 
-      if (data.success) {
+      if (data.text || data.success) {
         setEvaluationStep(3); // Complete progress
         setEvaluationReport(data.text);
         const parsed = parseEvaluationReport(data.text);

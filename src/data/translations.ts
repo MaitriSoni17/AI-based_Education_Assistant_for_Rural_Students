@@ -6,7 +6,7 @@ export const SUPPORTED_LANGUAGES: LanguageInfo[] = [
   { code: 'gu', label: 'Gujarati', nativeLabel: 'ગુજરાતી' },
   { code: 'mr', label: 'Marathi', nativeLabel: 'मराठी' },
   { code: 'ta', label: 'Tamil', nativeLabel: 'தமிழ்' },
-  { code: 'te', label: 'Telugu', nativeLabel: 'తెలుగు' }
+  { code: 'te', label: 'Telugu', nativeLabel: 'తెలుగు' },
 ];
 
 export interface TranslationSet {
@@ -18,6 +18,14 @@ export interface TranslationSet {
   navSignUp: string;
   navDashboard: string;
   navLogout: string;
+
+  // Footer
+  footerDesc: string;
+  footerCopyright: string;
+  footerAdminLogin: string;
+  footerQuickLinks: string;
+  footerTagline: string;
+  footerBuiltFor: string;
   
   // Home Page
   heroTitle: string;
@@ -81,6 +89,13 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     navSignUp: "Register First",
     navDashboard: "My Classroom",
     navLogout: "Exit",
+
+    footerDesc: "A specialized digital learning assistant designed to operate securely under 2G bandwidth. Built for local offline synchronization and text-to-speech literacy assistance.",
+    footerCopyright: "© 2026 GyaanBot. India Primary Rural Classrooms Initiatives.",
+    footerAdminLogin: "Admin Portal Login",
+    footerQuickLinks: "Quick Navigation",
+    footerTagline: "Specialized rural digital learning platform",
+    footerBuiltFor: "Built for rural education & offline learning",
     
     heroTitle: "AI Teacher for Every Village School",
     heroSubtitle: "Interactive voice and video learning that runs without any active internet. Speak, watch, and learn in your home language!",
@@ -138,6 +153,13 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     navSignUp: "पंजीकरण करें",
     navDashboard: "मेरी कक्षा",
     navLogout: "बाहर जाएं",
+
+    footerDesc: "कमज़ोर 2G नेटवर्क में भी सुरक्षित रूप से चलने वाला विशेष डिजिटल शिक्षण सहायक। स्थानीय ऑफ़लाइन सिंक और टेक्स्ट-टू-स्पीच भाषा सहायता के साथ निर्मित।",
+    footerCopyright: "© 2026 ज्ञानबॉट. भारत प्राथमिक ग्रामीण कक्षा पहल।",
+    footerAdminLogin: "एडमिन पोर्टल लॉगिन",
+    footerQuickLinks: "त्वरित नेविगेशन",
+    footerTagline: "विशेष ग्रामीण डिजिटल शिक्षा मंच",
+    footerBuiltFor: "ग्रामीण शिक्षा और ऑफ़लाइन अध्ययन के लिए निर्मित",
     
     heroTitle: "हर गाँव के स्कूल के लिए AI शिक्षक",
     heroSubtitle: "बिना इंटरनेट के चलने वाली आवाज और वीडियो शिक्षा। अपनी मातृभाषा में बोलें, देखें और सीखें!",
@@ -182,65 +204,72 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     selectLanguageLabel: "अपनी डिफ़ॉल्ट अध्ययन भाषा चुनें",
     alreadyHaveAccount: "पहले से पंजीकृत हैं? यहाँ लॉगिन करें",
     dontHaveAccount: "नए छात्र हैं? पहले पंजीकरण करें",
-    otpSentMessage: "आपके मोबाइल पर अस्थायी कोड भेज दिया गया है!",
+    otpSentMessage: "आपके मोबाइल पर सुरक्षित अस्थायी सुरक्षा कोड भेज दिया गया है!",
     logInBtn: "डिजिटल कक्षा में प्रवेश करें",
-    signUpBtn: "पंजीकरण करें और सीखना शुरू करें"
+    signUpBtn: "पंजीकरण करें और पढ़ाई शुरू करें"
   },
   gu: {
     appTitle: "જ્ઞાનબોટ (GyaanBot)",
     navHome: "મુખ્ય પૃષ્ઠ",
     navAbout: "અમારા વિશે",
-    navFeatures: "વિશેષતાઓ",
-    navLogin: "વિદ્યાર્થી લોગિન",
+    navFeatures: "સુવિધાઓ",
+    navLogin: "વિદ્યાર્થી લૉગિન",
     navSignUp: "નોંધણી કરો",
-    navDashboard: "મારો વર્ગખંડ",
+    navDashboard: "મારો વર્ગ",
     navLogout: "બહાર નીકળો",
+
+    footerDesc: "2G નેટવર્કમાં પણ સુરક્ષિત રીતે ચાલતો વિશિષ્ટ ડિજિટલ શિક્ષણ સહાયક. સ્થાનિક ઑફલાઇન સિંક અને ટેક્સ્ટ-ટુ-સ્પીચ સહાય માટે નિર્મિત.",
+    footerCopyright: "© 2026 જ્ઞાનબોટ. ભારત પ્રાથમિક ગ્રામીણ વર્ગ પહેલ.",
+    footerAdminLogin: "એડમિન પોર્ટલ લૉગિન",
+    footerQuickLinks: "ઝડપી નેવિગેશન",
+    footerTagline: "વિશિષ્ટ ગ્રામીણ ડિજિટલ શિક્ષણ પ્લેટફોર્મ",
+    footerBuiltFor: "ગ્રામીણ શિક્ષણ અને ઑફલાઇન અભ્યાસ માટે નિર્મિત",
     
     heroTitle: "દરેક ગામની શાળા માટે AI શિક્ષક",
     heroSubtitle: "ઇન્ટરનેટ વિના ચાલતું અવાજ અને વિડિયો શિક્ષણ. તમારી માતૃભાષામાં બોલો, જુઓ અને શીખો!",
-    getStarted: "હમણાં શીખવાનું શરૂ કરો",
-    howItWorks: "કાર્યપદ્ધતિ સમજો",
-    connectivityLabel: "સિગ્નલ ક્ષમતા: નબળા નેટવર્ક માટે ઉત્તમ",
+    getStarted: "હવે શીખવાનું શરૂ કરો",
+    howItWorks: "કેવી રીતે કામ કરે છે તે જુઓ",
+    connectivityLabel: "સિગ્નલ ક્ષમતા: નબળા નેટવર્ક માટે અનુકૂળ",
     offlineReadyTitle: "સંપૂર્ણ ઑફલાઇન સપોર્ટ",
-    offlineReadyDesc: "પંચાયત કેન્દ્રો કે બસ સ્ટેન્ડ પર એકવાર વિડિયો ડાઉનલોડ કરો અને ઘરે ગમે ત્યાં ઑફલાઇન અભ્યાસ કરો.",
+    offlineReadyDesc: "પંચાયત કેન્દ્ર કે બસ સ્ટેન્ડ પર એકવાર વિડિયો ડાઉનલોડ કરો અને ઘરે ગમે ત્યાં ઑફલાઇન અભ્યાસ કરો.",
     lowInternetMode: "2G ઇન્ટરનેટ સપોર્ટ",
-    lowInternetModeDesc: "ઓટો-કમ્પ્રેસ્ડ ઑડિયો/વિડિયો જેથી નબળા સિગ્નલ પર પણ અભ્યાસ અટક્યા વિના ચાલે.",
+    lowInternetModeDesc: "ઑટો-કોમ્પ્રેસ્ડ ઑડિયો/વિડિયો જેથી ઓછા સિગ્નલ પર પણ શિક્ષણ અવિરત ચાલુ રહે.",
 
-    aboutTitle: "અમારો ઉદ્દેશ્ય અને સ્વપ્ન",
-    aboutSubtitle: "સ્માર્ટ ઑફલાઇન AI દ્વારા શહેરો અને દૂરના ગામડાઓ વચ્ચેનું અંતર ઘટાડવું.",
-    missionTitle: "ગ્રામીણ પ્રતિભાનો વિકાસ",
-    missionDesc: "60% થી વધુ ગ્રામીણ વિદ્યાર્થીઓ પાસે બ્રોડબેન્ડની સુવિધા નથી. અમે સરળ સોફ્ટવેર બનાવીએ છીએ જે ઇન્ટરનેટ વિના કાર્ય કરે છે.",
+    aboutTitle: "અમારું લક્ષ્ય અને સ્વપ્ન",
+    aboutSubtitle: "સ્માર્ટ ઑફલાઇન AI દ્વારા શહેરો અને દૂરના ગ્રામીણ વિસ્તારો વચ્ચેનું અંતર ઘટાડવું.",
+    missionTitle: "ગ્રામીણ વિદ્યાર્થીઓનું સશક્તિકરણ",
+    missionDesc: "60% થી વધુ ગ્રામીણ વિદ્યાર્થીઓ પાસે ઇન્ટરનેટ નથી. અમે ઇન્ટરનેટ વિના ચાલતું હલકું સોફ્ટવેર બનાવ્યું છે.",
     visionTitle: "સરળ અને રસપ્રદ",
-    visionDesc: "અમે બાળકોમાં જિજ્ઞાસા જગાડવા માટે એનિમેટેડ AI પાત્રોનો ઉપયોગ કરીએ છીએ, જેથી બાળકો ગોખવાને બદલે સમજે.",
-    ruralReachTitle: "સ્થાનિક ભાષાકીય સમજ",
-    ruralReachDesc: "સ્થાનિક બોલીઓ સમજવા અને સામાન્ય ફોન-ટેબ્લેટ સ્ક્રીન પર સરળતાથી ચાલવા માટે તૈયાર કરેલ છે.",
+    visionDesc: "બાળકોમાં જિજ્ઞાસા જગાવવા અમે એનિમેટેડ AI પાત્રોનો ઉપયોગ કરીએ છીએ, જેથી બાળકો માત્ર ગોખણપટ્ટી ન કરે પણ સમજે.",
+    ruralReachTitle: "સ્થાનિક ભાષાઓની સમજ",
+    ruralReachDesc: "સ્થાનિક બોલીઓ સમજવા અને સામાન્ય ફોન-ટેબ્લેટ પર સરળતાથી ચાલવા માટે ડિઝાઇન કરવામાં આવ્યું છે.",
 
     featuresTitle: "ગ્રામીણ જરૂરિયાતો અનુસાર નિર્મિત",
-    featuresSubtitle: "ઝડપી વાઇફાઇ નથી? કોઈ વાંધો નહીં! અમે અભ્યાસને સરળ અને સુલભ બનાવીએ છીએ.",
+    featuresSubtitle: "ઝડપી વાઇફાઇ નથી? વાંચવામાં તકલીફ? ચિંતા કરશો નહીં! અમે શિક્ષણ સરળ બનાવીએ છીએ.",
     featureTTS: "અવાજ દ્વારા વાંચન સહાયક (TTS)",
-    featureTTSDesc: "કોઈપણ વાક્યને સ્પર્શ કરો, અને એક મૈત્રીપૂર્ણ અવાજ તે વાંચી સંભળાવશે! બાળકો સ્વતંત્ર રીતે ઉચ્ચાર શીખી શકે છે.",
+    featureTTSDesc: "કોઈપણ વાક્યને સ્પર્શ કરો, અને એક અવાજ તે વાંચી સંભળાવશે! બાળકો જાતે યોગ્ય ઉચ્ચાર શીખી શકે છે.",
     featureVideos: "રસપ્રદ AI વિડિયો પાઠ",
-    featureVideosDesc: "એનિમેટેડ કાર્ટૂન શિક્ષકો તમારા પ્રશ્નોના જવાબો વિડિયો અને એનિમેશન દ્વારા સરળ રીતે આપે છે.",
+    featureVideosDesc: "એનિમેટેડ કાર્ટૂન શિક્ષકો તમારા પ્રશ્નોના ઉત્તરો વિડિયો દ્વારા સરળ ભાષામાં આપે છે.",
     featureOffline: "ઑફલાઇન અભ્યાસ અને સિંક",
-    featureOfflineDesc: "પાઠ, ઑડિયો અને ક્વિઝ તમારા ડિવાઇસ પર સાચવો. બફરિંગની કોઈ સમસ્યા નહીં.",
-    featureQuizzes: "રસપ્રદ ક્વિઝ સ્પર્ધા",
-    featureQuizzesDesc: "દરેક વિડિયો પાઠના અંતે સરળ ક્વિઝ. સાચા જવાબો આપો, પોઈન્ટ્સ મેળવો અને મેડલ જીતો!",
+    featureOfflineDesc: "પાઠ, ઑડિયો અને ક્વિઝ તમારા ફોન પર સાચવો. બફરિંગની સમસ્યા નહીં અને ડેટાનો ખર્ચ પણ નહીં.",
+    featureQuizzes: "રમતા રમતા ક્વિઝ",
+    featureQuizzesDesc: "દરેક વિડિયો પાઠના અંતે સરળ ક્વિઝ. સાચા જવાબો આપો, પોઇન્ટ્સ મેળવો અને મેડલ જીતો!",
 
-    loginTitle: "વર્ગખંડમાં ફરી સ્વાગત છે!",
+    loginTitle: "વર્ગમાં પુનઃ સ્વાગત છે!",
     signupTitle: "નવું ખાતું બનાવો",
     mobileLabel: "10 અંકનો મોબાઈલ નંબર દાખલ કરો",
     mobilePlaceholder: "દા.ત. 9876543210",
-    sendOTP: "ચકાસણી કોડ (OTP) મોકલો",
+    sendOTP: "સત્યાપન કોડ (OTP) મોકલો",
     otpLabel: "6 અંકનો સુરક્ષા કોડ (OTP)",
     otpPlaceholder: "6 અંકનો કોડ દાખલ કરો (બાયપાસ માટે 123456 વાપરો)",
     verifyOTP: "સુરક્ષા કોડ ચકાસો",
     fullNameLabel: "વિદ્યાર્થીનું પૂરું નામ",
     fullNamePlaceholder: "તમારું પૂરું નામ લખો",
-    selectLanguageLabel: "તમારી મૂળભૂત અભ્યાસ ભાષા પસંદ કરો",
-    alreadyHaveAccount: "પહેલેથી નોંધાયેલા છો? અહીં લોગિન કરો",
+    selectLanguageLabel: "તમારી ડિફૉલ્ટ અભ્યાસ ભાષા પસંદ કરો",
+    alreadyHaveAccount: "પહેલેથી નોંધાયેલા છો? અહીં લૉગિન કરો",
     dontHaveAccount: "નવા વિદ્યાર્થી છો? પહેલા નોંધણી કરો",
-    otpSentMessage: "તમારા મોબાઈલ પર સુરક્ષિત OTP કોડ મોકલી દેવાયો છે!",
-    logInBtn: "ડિજિટલ વર્ગખંડમાં પ્રવેશ કરો",
+    otpSentMessage: "તમારા મોબાઈલ પર સુરક્ષિત OTP મોકલવામાં આવ્યો છે!",
+    logInBtn: "ડિજિટલ વર્ગમાં પ્રવેશ કરો",
     signUpBtn: "નોંધણી કરો અને શીખવાનું શરૂ કરો"
   },
   mr: {
@@ -252,6 +281,13 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     navSignUp: "नोंदणी करा",
     navDashboard: "माझा वर्ग",
     navLogout: "बाहेर पडा",
+
+    footerDesc: "2G नेटवर्कवरही सुरक्षितपणे चालणारा विशेष डिजिटल शिक्षण सहाय्यक. स्थानिक ऑफलाइन सिंक आणि टेक्स्ट-टू-स्पीच भाषा साहाय्यासाठी निर्मित.",
+    footerCopyright: "© 2026 ज्ञानबॉट. भारत प्राथमिक ग्रामीण वर्ग पुढाकार.",
+    footerAdminLogin: "प्रशासक पोर्टल लॉगिन",
+    footerQuickLinks: "जलद नेव्हिगेशन",
+    footerTagline: "विशेष ग्रामीण डिजिटल शिक्षण मंच",
+    footerBuiltFor: "ग्रामीण शिक्षण आणि ऑफलाइन अभ्यासासाठी निर्मित",
     
     heroTitle: "प्रत्येक ग्रामीण शाळेसाठी AI शिक्षक",
     heroSubtitle: "इंटरनेटशिवाय चालणारे आवाज आणि व्हिडिओ शिक्षण. तुमच्या मातृभाषेत बोला, पाहा आणि शिका!",
@@ -268,11 +304,11 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     missionTitle: "ग्रामीण विद्यार्थ्यांचे सबलीकरण",
     missionDesc: "६०% पेक्षा जास्त ग्रामीण विद्यार्थ्यांकडे इंटरनेट नाही. आम्ही इंटरनेटशिवाय चालणारे हलके सॉफ्टवेअर तयार केले आहे.",
     visionTitle: "सोपे आणि रंजक",
-    visionDesc: "मुलांमध्ये जिज्ञासा निर्माण करण्यासाठी आम्ही ॲनिमेटेड AI पात्रांचा वापर करतो, ज्यामुळे मुले पाठांतर न करता समजून घेतात.",
-    ruralReachTitle: "मातृभाषा आणि स्थानिक समज",
-    ruralReachDesc: "स्थानिक भाषा समजण्यासाठी आणि साध्या फोन किंवा टॅब्लेट स्क्रीनवर सुरळीत चालण्यासाठी तयार केले गेले आहे.",
+    visionDesc: "मुलांमध्ये जिज्ञासा निर्माण करण्यासाठी आम्ही ॲनिमेटेड AI पात्रांचा वापर करतो, ज्यामुळे मुले केवळ पाठांतर न करता समजून घेतात.",
+    ruralReachTitle: "स्थानिक भाषांची समज",
+    ruralReachDesc: "स्थानिक बोलीभाषा समजण्यासाठी आणि सामान्य फोन-टॅब्लेटवर सहजतेने चालण्यासाठी डिझाइन केलेले आहे.",
 
-    featuresTitle: "ग्रामीण गरजांनुसार विकसित",
+    featuresTitle: "ग्रामीण गरजांनुसार निर्मित",
     featuresSubtitle: "वेगवान वायफाय नाही? वाचनात अडचण? काळजी नको! आम्ही शिक्षण सोपे करतो.",
     featureTTS: "आवाजी वाचन सहाय्यक (TTS)",
     featureTTSDesc: "कोणत्याही वाक्याला स्पर्श करा, आणि एक आवाज ते वाचून दाखवेल! मुले स्वतःहून योग्य उच्चार शिकू शकतात.",
@@ -309,6 +345,13 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     navSignUp: "பதிவு செய்தல்",
     navDashboard: "என் வகுப்பறை",
     navLogout: "வெளியேறு",
+
+    footerDesc: "2G நெட்வொர்க்கிலும் சிறப்பாக செயல்படும் சிறப்பு டிஜிட்டல் கல்வி உதவியாளர். ஆஃப்லைன் சின்க் மற்றும் குரல் வாசிப்பு உதவியுடன் உருவாக்கப்பட்டது.",
+    footerCopyright: "© 2026 ஞான்பாட். இந்திய முதன்மை கிராமப்புற வகுப்பறைகள் முயற்சி.",
+    footerAdminLogin: "நிர்வாகி உள்நுழைவு",
+    footerQuickLinks: "விரைவு இணைப்புகள்",
+    footerTagline: "கிராமப்புற டிஜிட்டல் கற்றல் தளம்",
+    footerBuiltFor: "கிராமப்புற கல்வி மற்றும் ஆஃப்லைன் கற்றலுக்காக உருவாக்கப்பட்டது",
     
     heroTitle: "ஒவ்வொரு கிராம பள்ளிக்கும் AI ஆசிரியர்",
     heroSubtitle: "இணையம் இல்லாமல் இயங்கும் குரல் மற்றும் வீடியோ கல்வி. உங்கள் தாய்மொழியில் பேசவும், பார்க்கவும், கற்றுக்கொள்ளவும்!",
@@ -366,6 +409,13 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     navSignUp: "రిజిస్ట్రేషన్",
     navDashboard: "నా తరగతి గది",
     navLogout: "తరగతి నుండి నిష్క్రమించు",
+
+    footerDesc: "2G నెట్‌వర్క్‌లో కూడా సురక్షితంగా పనిచేసే ప్రత్యేక డిజిటల్ లెర్నింగ్ అసిస్టెంట్. లోకల్ ఆఫ్‌లైన్ సింక్ మరియు టెక్స్ట్-టు-స్పీచ్ సౌలభ్యంతో రూపొందించబడింది.",
+    footerCopyright: "© 2026 జ్ఞానబోట్. భారత ప్రాథమిక గ్రామీణ తరగతి గదుల కార్యక్రమం.",
+    footerAdminLogin: "అడ్మిన్ పోర్టల్ లాగిన్",
+    footerQuickLinks: "త్వరిత నావిగేషన్",
+    footerTagline: "ప్రత్యేక గ్రామీణ డిజిటల్ లెర్నింగ్ ప్లాట్‌ఫామ్",
+    footerBuiltFor: "గ్రామీణ విద్య మరియు ఆఫ్‌లైన్ అభ్యసనం కోసం నిర్మించబడింది",
     
     heroTitle: "ప్రతి గ్రామ పాఠశాల కోసం AI ఉపాధ్యాయుడు",
     heroSubtitle: "ఇంటర్నెట్ అవసరం లేని వాయిస్ మరియు వీడియో లెర్నింగ్! మీ మాతృభాషలో మాట్లాడండి, చూడండి, మరియు నేర్చుకోండి.",
@@ -375,7 +425,7 @@ export const TRANSLATIONS: Record<LanguageCode, TranslationSet> = {
     offlineReadyTitle: "పూర్తి ఆఫ్‌లైన్ సపోర్ట్",
     offlineReadyDesc: "పంచాయతీ కేంద్రాలు లేదా బస్టాండ్‌లలో వీడియోలను ఒకసారి డౌన్‌లోడ్ చేసుకొని, ఎక్కడైనా ఆఫ్‌లైన్‌లో చదువుకోవచ్చు.",
     lowInternetMode: "2G నెట్‌వర్క్ సపోర్ట్",
-    lowInternetModeDesc: "ఆటో-కంప్రెషన్ వల్ల సిग्నల్స్ చాలా బలహీనంగా ఉన్నప్పటికీ ఆడియో, వీడియోలు ఎలాంటి ఆటంకం లేకుండా పనిచేస్తాయి.",
+    lowInternetModeDesc: "ఆటో-కంప్రెషన్ వల్ల సిగ్నల్స్ చాలా బలహీనంగా ఉన్నప్పటికీ ఆడియో, వీడియోలు ఎలాంటి ఆటంకం లేకుండా పనిచేస్తాయి.",
 
     aboutTitle: "మా లక్ష్యం & కల",
     aboutSubtitle: "స్మార్ట్ ఆఫ్‌లైన్ ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ (AI) తో నగరాలు మరియు మారుమూల గ్రామాలను దగ్గర చేయడం.",
@@ -702,7 +752,7 @@ export const UI_COMMON_I18N: Record<LanguageCode, Record<string, string>> = {
     cancelBtn: "రద్దు చేయండి",
     saveBtn: "భద్రపరచండి",
     deleteBtn: "తొలగించండి",
-    downloadPdf: "PDF డౌన్‌లోడ్ చేయండి",
+    downloadPdf: "PDF డౌన్‌లోડ చేయండి",
     shareBtn: "షేర్ చేయండి",
     loading: "లోడ్ అవుతోంది...",
     noDataFound: "ఎలాంటి సమాచారం కనుగొనబడలేదు",

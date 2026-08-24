@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, FormEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { safeFetchJson } from '../../utils/safeFetch';
 import { LanguageCode, User, QuizQuestion, OfflineResource } from '../../types';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../../data/translations';
 import { offlineSyncManager } from '../../utils/offlineSync';
@@ -2944,16 +2945,15 @@ JSON Schema:
         };
       }
 
-      const response = await fetch("/api/gemini/chat", {
+      const data = await safeFetchJson("/api/gemini/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(reqPayload)
       });
 
       setGenerationProgress(75);
-      const data = await response.json();
 
-      if (data.success && data.text) {
+      if (data.text || data.success) {
         let cleanText = data.text.trim();
         if (cleanText.startsWith('```')) {
           const lines = cleanText.split('\n');

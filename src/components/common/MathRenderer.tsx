@@ -5,6 +5,7 @@ import 'katex/dist/katex.min.css';
 interface MathRendererProps {
   content: string;
   isUser?: boolean;
+  isDark?: boolean;
   className?: string;
 }
 
@@ -363,18 +364,36 @@ export function normalizeMathText(rawText: string): string {
  * - Never shows raw \frac syntax or merges text words into italic math font.
  * - Supports bold text (**...**), lists, headers, and multilingual scripts.
  */
-export const MathRenderer: React.FC<MathRendererProps> = ({ content, isUser = false, className = '' }) => {
+export const MathRenderer: React.FC<MathRendererProps> = ({ 
+  content, 
+  isUser = false, 
+  isDark = false, 
+  className = '' 
+}) => {
   if (!content) return null;
+
+  // Determine if dark styling should be applied
+  const isDarkMode = isDark || isUser || className.includes('text-slate-100') || className.includes('text-slate-200') || className.includes('text-white') || className.includes('prose-invert');
 
   const normalized = normalizeMathText(content);
   const lines = normalized.split('\n');
 
   return (
-    <div className={`space-y-1.5 w-full max-w-full overflow-hidden break-words text-sm sm:text-base leading-relaxed ${className}`}>
+    <div className={`space-y-2 w-full max-w-full overflow-hidden break-words text-sm sm:text-base leading-relaxed ${isDarkMode ? 'text-slate-100' : 'text-slate-800'} ${className}`}>
       {lines.map((line, lineIdx) => {
         const trimmedLine = line.trim();
         if (!trimmedLine) {
           return <div key={`empty-${lineIdx}`} className="h-1.5" />;
+        }
+
+        // Horizontal dividers: --- or *** or ___
+        if (/^(\-{3,}|\*{3,}|\_{3,})$/.test(trimmedLine)) {
+          return (
+            <div
+              key={`hr-${lineIdx}`}
+              className={`my-3 border-t ${isDarkMode ? 'border-slate-700/80' : 'border-slate-200'}`}
+            />
+          );
         }
 
         // Check if the entire line is a standalone single-dollar equation: $...$
@@ -393,8 +412,8 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ content, isUser = fa
           return (
             <div
               key={`standalone-${lineIdx}`}
-              className={`my-1.5 py-0.5 overflow-x-auto text-left scrollbar-none font-normal tracking-wide flex items-baseline gap-1 ${
-                isUser ? 'text-white' : 'text-slate-900 dark:text-slate-100'
+              className={`my-2 py-1 overflow-x-auto text-left scrollbar-none font-normal tracking-wide flex items-baseline gap-1 ${
+                isDarkMode ? 'text-slate-100' : 'text-slate-900'
               }`}
             >
               <InlineMath
@@ -426,17 +445,25 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ content, isUser = fa
           cleanLine = trimmedLine.substring(2);
         } else if (isBullet) {
           cleanLine = trimmedLine.substring(2);
-          prefixNode = <span className="inline-block mr-1.5 text-indigo-500">•</span>;
+          prefixNode = (
+            <span className={`inline-block mr-2 font-bold ${isDarkMode ? 'text-purple-400' : 'text-indigo-600'}`}>
+              •
+            </span>
+          );
         } else if (isNumbered) {
           const numMatch = trimmedLine.match(/^([0-9]+[\.\)])\s+(.*)$/);
           if (numMatch) {
             cleanLine = numMatch[2];
-            prefixNode = <span className="inline-block mr-1.5 font-semibold text-indigo-600 dark:text-indigo-400">{numMatch[1]}</span>;
+            prefixNode = (
+              <span className={`inline-block mr-2 font-bold font-mono ${isDarkMode ? 'text-purple-400' : 'text-indigo-600'}`}>
+                {numMatch[1]}
+              </span>
+            );
           }
         }
 
-        // Parse inline math ($...$) and bold markdown (**...**) within the line
-        // Regex splits on $...$ blocks
+        // Parse inline math ($...$), bold markdown (**...**), and inline code (`...`) within the line
+        // Regex splits on $...$ blocks first
         const mathTokens = cleanLine.split(/(\$[^\$\n]+?\$)/g);
 
         const renderedLineContent = mathTokens.map((token, tokenIdx) => {
@@ -457,7 +484,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ content, isUser = fa
               <span
                 key={`inline-math-${tokenIdx}`}
                 className={`inline-flex items-baseline px-0.5 mx-0.5 align-baseline ${
-                  isUser ? 'text-white' : 'text-slate-900 dark:text-slate-100'
+                  isDarkMode ? 'text-slate-100' : 'text-slate-900'
                 }`}
               >
                 <InlineMath
@@ -471,25 +498,39 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ content, isUser = fa
             );
           }
 
-          // Parse markdown bold **text** in non-math text
-          const boldRegex = /\*\*(.*?)\*\*/g;
+          // Parse markdown inline code (`...`) and bold (**...**) in non-math text
+          const codeAndBoldRegex = /(`[^`]+`|\*\*[^*]+\*\*)/g;
           const textSegments: (string | React.ReactNode)[] = [];
           let lastIndex = 0;
           let match;
 
-          while ((match = boldRegex.exec(token)) !== null) {
+          while ((match = codeAndBoldRegex.exec(token)) !== null) {
             if (match.index > lastIndex) {
               textSegments.push(token.substring(lastIndex, match.index));
             }
-            textSegments.push(
-              <strong
-                key={`bold-${tokenIdx}-${match.index}`}
-                className={isUser ? 'font-bold text-white' : 'font-bold text-slate-950 dark:text-white'}
-              >
-                {match[1]}
-              </strong>
-            );
-            lastIndex = boldRegex.lastIndex;
+            const matchedStr = match[0];
+            if (matchedStr.startsWith('`') && matchedStr.endsWith('`')) {
+              textSegments.push(
+                <code
+                  key={`code-${tokenIdx}-${match.index}`}
+                  className={`px-1.5 py-0.5 rounded text-xs font-mono ${
+                    isDarkMode ? 'bg-slate-800 text-purple-300 border border-slate-700' : 'bg-slate-100 text-purple-700'
+                  }`}
+                >
+                  {matchedStr.slice(1, -1)}
+                </code>
+              );
+            } else if (matchedStr.startsWith('**') && matchedStr.endsWith('**')) {
+              textSegments.push(
+                <strong
+                  key={`bold-${tokenIdx}-${match.index}`}
+                  className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+                >
+                  {matchedStr.slice(2, -2)}
+                </strong>
+              );
+            }
+            lastIndex = codeAndBoldRegex.lastIndex;
           }
           if (lastIndex < token.length) {
             textSegments.push(token.substring(lastIndex));
@@ -503,7 +544,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ content, isUser = fa
             <div
               key={`h1-${lineIdx}`}
               className={`font-black text-base sm:text-lg mt-3 mb-1 tracking-tight ${
-                isUser ? 'text-white' : 'text-slate-900 dark:text-white'
+                isDarkMode ? 'text-white' : 'text-slate-900'
               }`}
             >
               {renderedLineContent}
@@ -516,7 +557,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ content, isUser = fa
             <div
               key={`h2-${lineIdx}`}
               className={`font-bold text-sm sm:text-base mt-2.5 mb-1 ${
-                isUser ? 'text-white' : 'text-slate-900 dark:text-white'
+                isDarkMode ? 'text-white' : 'text-slate-900'
               }`}
             >
               {renderedLineContent}
@@ -528,8 +569,8 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ content, isUser = fa
           return (
             <div
               key={`bullet-${lineIdx}`}
-              className={`flex items-start ml-2 sm:ml-3 text-sm sm:text-base leading-relaxed ${
-                isUser ? 'text-white/95' : 'text-slate-800 dark:text-slate-200'
+              className={`flex items-start ml-1.5 sm:ml-2 text-sm sm:text-base leading-relaxed ${
+                isDarkMode ? 'text-slate-100' : 'text-slate-800'
               }`}
             >
               <span className="shrink-0">{prefixNode}</span>
@@ -542,8 +583,8 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ content, isUser = fa
           return (
             <div
               key={`num-${lineIdx}`}
-              className={`flex items-start ml-1.5 sm:ml-2 text-sm sm:text-base leading-relaxed ${
-                isUser ? 'text-white/95' : 'text-slate-800 dark:text-slate-200'
+              className={`flex items-start ml-1 sm:ml-1.5 text-sm sm:text-base leading-relaxed ${
+                isDarkMode ? 'text-slate-100' : 'text-slate-800'
               }`}
             >
               <span className="shrink-0">{prefixNode}</span>
@@ -556,7 +597,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({ content, isUser = fa
           <div
             key={`line-${lineIdx}`}
             className={`text-sm sm:text-base leading-relaxed ${
-              isUser ? 'text-white' : 'text-slate-800 dark:text-slate-200'
+              isDarkMode ? 'text-slate-100' : 'text-slate-800'
             }`}
           >
             {renderedLineContent}

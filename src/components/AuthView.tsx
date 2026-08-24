@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
 import { LanguageCode, User } from '../types';
+import { safeFetchJson } from '../utils/safeFetch';
 import SpeakButton from './SpeakButton';
 import { Smartphone, Lock, UserCheck, Globe, RefreshCw, Send, ChevronDown, Check, Search, GraduationCap, MapPin, School, BookOpen } from 'lucide-react';
 import { getFirebaseUser, setFirebaseUser } from '../lib/firebase';
@@ -96,14 +97,13 @@ export default function AuthView({
         }
       }
 
-      const response = await fetch('/api/otp/generate', {
+      const data = await safeFetchJson('/api/otp/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile }),
       });
-      const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (data.success) {
         if (data.isSimulated && data.simulatedOtp) {
           setGeneratedOtp(data.simulatedOtp);
           setIsSimulated(true);
@@ -138,7 +138,7 @@ export default function AuthView({
 
     setIsVerifying(true);
     try {
-      const response = await fetch('/api/otp/verify', {
+      const data = await safeFetchJson('/api/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -148,9 +148,8 @@ export default function AuthView({
           isSignup: mode === 'signup'
         }),
       });
-      const data = await response.json();
 
-      if (response.ok && data.success && data.verified) {
+      if (data.success && data.verified) {
         if (mode === 'signup') {
           // Register user profile in Firebase Firestore with all school/location details
           const newUserPayload = {

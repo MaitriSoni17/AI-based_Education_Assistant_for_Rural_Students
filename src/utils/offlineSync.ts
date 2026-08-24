@@ -1,4 +1,5 @@
 import { LanguageCode } from '../types';
+import { safeFetchJson } from './safeFetch';
 
 export interface LearningFeedEvent {
   id: string;
@@ -316,15 +317,13 @@ class OfflineSyncManager {
             }
 
             // Fire response to live back-end setup
-            const response = await fetch("/api/gemini/chat", {
+            const data = await safeFetchJson("/api/gemini/chat", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(bodyPayload)
             });
 
-            const data = await response.json();
-
-            if (data.success) {
+            if (data.success || data.text) {
               // Append to character chat logs, removing the 'pending' tag from user message
               const history = this.getChatHistory(chat.characterId, userMobile);
               

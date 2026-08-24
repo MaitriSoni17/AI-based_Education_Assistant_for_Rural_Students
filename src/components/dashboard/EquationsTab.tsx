@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { safeFetchJson } from '../../utils/safeFetch';
 import { LanguageCode, User } from '../../types';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { 
@@ -1882,7 +1883,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
       }));
 
     try {
-      const response = await fetch('/api/gemini/chat', {
+      const data = await safeFetchJson('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1895,12 +1896,11 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
         })
       });
 
-      const data = await response.json();
-      if (data.success) {
+      if (data.text || data.success) {
         const botMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           sender: 'bot',
-          text: data.text,
+          text: data.text || data.message || "Unable to solve equation at this time.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         updateChatAndSession(prev => [...prev, botMsg]);
@@ -2448,7 +2448,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
         ? `[REPLYING TO PREVIOUS ${currentReply.sender === 'bot' ? 'AI SOLVER RESPONSE' : 'USER QUERY'}: "${currentReply.text}"]\n\n${userMsg.text}`
         : userMsg.text;
 
-      const response = await fetch('/api/gemini/chat', {
+      const data = await safeFetchJson('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2461,12 +2461,11 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
         })
       });
 
-      const data = await response.json();
-      if (data.success) {
+      if (data.text || data.success) {
         const botMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           sender: 'bot',
-          text: data.text,
+          text: data.text || data.message || "Unable to solve equation at this time.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         updateChatAndSession(prev => [...prev, botMsg]);

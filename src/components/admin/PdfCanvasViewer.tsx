@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { safeFetchJson } from '../../utils/safeFetch';
 import MathRenderer from '../common/MathRenderer';
 import { 
   ChevronLeft, 
   ChevronRight, 
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
+  ChevronUp,
   ZoomIn, 
   ZoomOut, 
   RotateCw, 
@@ -32,11 +35,15 @@ import {
   ArrowRight,
   Star,
   Mic,
-  Languages
+  Languages,
+  Hand,
+  MousePointer,
+  Move
 } from 'lucide-react';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import SpeechInputButton from '../SpeechInputButton';
 import { LanguageCode } from '../../types';
+import { CustomSelect } from '../common/CustomSelect';
 
 interface PdfCanvasViewerProps {
   fileId: string;
@@ -70,14 +77,6 @@ interface PdfPageItemProps {
   onCopyPageText?: (pageNum: number, text: string) => void;
 }
 
-interface TextOverlayItem {
-  str: string;
-  left: number;
-  top: number;
-  fontSize: number;
-  width: number;
-}
-
 const PdfPageItem: React.FC<PdfPageItemProps> = ({
   pdfDoc,
   pageNum,
@@ -98,11 +97,11 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
   onCopyPageText,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [textOverlayItems, setTextOverlayItems] = useState<TextOverlayItem[]>([]);
   const [pageFullText, setPageFullText] = useState<string>('');
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const textLayerRef = useRef<HTMLDivElement | null>(null);
   const renderTaskRef = useRef<any>(null);
 
   // High performance virtualization observers
@@ -144,7 +143,7 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
     };
   }, [pageNum, onPageVisible]);
 
-  // Matrix multiplier helper for exact PDF coordinate transform
+  // Matrix multiplier helper for exact PDF coordinate transform fallback
   const transformMatrix = (m1: number[], m2: number[]): number[] => {
     return [
       m1[0] * m2[0] + m1[2] * m2[1],
@@ -156,7 +155,28 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
     ];
   };
 
-  // Handle PDF Canvas rendering & text layer extraction
+  // Helper to apply search highlight inside text layer spans
+  const applySearchHighlights = useCallback((container: HTMLElement, query: string) => {
+    if (!container || !query.trim()) return;
+    const q = query.trim().toLowerCase();
+    const spans = container.querySelectorAll('span');
+
+    spans.forEach((span) => {
+      const originalText = span.getAttribute('data-original-text') || span.textContent || '';
+      if (!span.hasAttribute('data-original-text')) {
+        span.setAttribute('data-original-text', originalText);
+      }
+
+      if (originalText.toLowerCase().includes(q)) {
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        span.innerHTML = originalText.replace(regex, '<mark class="highlight">$1</mark>');
+      } else {
+        span.textContent = originalText;
+      }
+    });
+  }, []);
+
+  // Handle PDF Canvas rendering & Native Text Layer extraction
   useEffect(() => {
     if (!isVisible || !pdfDoc) {
       if (renderTaskRef.current) {
@@ -200,74 +220,164 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
 
         await renderTask.promise;
 
-        // Fetch Text Layer Content for overlay, copy selection & highlight rendering
+        // Render Native Text Layer for pixel-perfect alignment & authentic browser text selection
         if (isMounted) {
           const textContent = await page.getTextContent();
-          const items: TextOverlayItem[] = [];
-          let fullTxt = '';
+          const fullTxt = textContent.items.map((i: any) => i.str || '').join(' ').trim();
+          setPageFullText(fullTxt || fallbackText || '');
 
-          const pdfjsUtil = (window as any).pdfjsLib?.Util;
+          const textLayerDiv = textLayerRef.current;
+          if (textLayerDiv) {
+            textLayerDiv.innerHTML = '';
+            textLayerDiv.style.width = `${Math.floor(viewport.width)}px`;
+            textLayerDiv.style.height = `${Math.floor(viewport.height)}px`;
 
-          for (const item of textContent.items) {
-            if (!item.str || !item.transform) continue;
-            fullTxt += item.str + ' ';
+            const pdfjsLib = (window as any).pdfjsLib;
+            let renderedNative = false;
 
-            let tx: number[];
-            if (pdfjsUtil && typeof pdfjsUtil.transform === 'function') {
-              tx = pdfjsUtil.transform(viewport.transform, item.transform);
-            } else {
-              tx = transformMatrix(viewport.transform, item.transform);
+            if (pdfjsLib && typeof pdfjsLib.renderTextLayer === 'function' && textContent.items.length > 0) {
+              try {
+                const textLayerTask = pdfjsLib.renderTextLayer({
+                  textContent,
+                  container: textLayerDiv,
+                  viewport,
+                  textDivs: [],
+                });
+                await textLayerTask.promise;
+                renderedNative = true;
+              } catch (err) {
+                console.warn(`PDF.js native textLayer failed for page ${pageNum}:`, err);
+              }
             }
 
-            const fontSize = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
-            const left = tx[4];
-            const top = tx[5] - fontSize * 0.82; // baseline offset
-            const width = item.width ? item.width * scale : fontSize * item.str.length * 0.55;
+            // Fallback manual layout generator when native textLayer is not applicable
+            if (!renderedNative) {
+              textLayerDiv.innerHTML = '';
+              const pdfjsUtil = (window as any).pdfjsLib?.Util;
 
-            items.push({
-              str: item.str,
-              left,
-              top,
-              fontSize,
-              width,
-            });
-          }
+              if (textContent.items.length > 0) {
+                for (const item of textContent.items) {
+                  if (!item.str || !item.transform) continue;
 
-          // Fallback for image-based or AI-generated PDFs where PDF.js extracts 0 text items
-          if (items.length === 0 && fallbackText) {
-            fullTxt = fallbackText;
-            const lines = fallbackText.split('\n').map(l => l.trim()).filter(Boolean);
-            const startY = 60 * scale;
-            const lineHeight = 20 * scale;
-            const startX = 35 * scale;
-            const fontSz = Math.max(10, Math.min(15, 12 * scale));
+                  let tx: number[];
+                  if (pdfjsUtil && typeof pdfjsUtil.transform === 'function') {
+                    tx = pdfjsUtil.transform(viewport.transform, item.transform);
+                  } else {
+                    tx = transformMatrix(viewport.transform, item.transform);
+                  }
 
-            lines.forEach((line, lineIdx) => {
-              const words = line.split(/\s+/);
-              let currentX = startX;
-              const currentY = startY + lineIdx * lineHeight;
+                  const fontSize = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
+                  const fontAscent = fontSize * 0.82;
+                  const left = tx[4];
+                  const top = tx[5] - fontAscent;
 
-              words.forEach(word => {
-                if (!word) return;
-                const wordWidth = fontSz * word.length * 0.55;
-                items.push({
-                  str: word + ' ',
-                  left: currentX,
-                  top: currentY,
-                  fontSize: fontSz,
-                  width: wordWidth,
-                });
-                currentX += wordWidth + fontSz * 0.35;
-                if (viewport && currentX > viewport.width - 40 * scale) {
-                  currentX = startX;
+                  const span = document.createElement('span');
+                  span.textContent = item.str;
+                  span.setAttribute('data-original-text', item.str);
+                  span.style.left = `${left}px`;
+                  span.style.top = `${top}px`;
+                  span.style.fontSize = `${fontSize}px`;
+                  span.style.fontFamily = item.fontName || 'sans-serif';
+                  span.style.lineHeight = '1';
+                  span.style.position = 'absolute';
+                  span.style.whiteSpace = 'pre';
+                  span.style.color = 'transparent';
+                  span.style.cursor = 'text';
+
+                  if (item.width && item.width > 0) {
+                    const expectedWidth = item.width * scale;
+                    const approxWidth = fontSize * item.str.length * 0.52;
+                    if (approxWidth > 0) {
+                      span.style.transform = `scaleX(${expectedWidth / approxWidth})`;
+                      span.style.transformOrigin = '0% 0%';
+                    }
+                  }
+
+                  textLayerDiv.appendChild(span);
                 }
-              });
-            });
-          }
+              } else if (fallbackText) {
+                // High-precision structured selectable overlay for AI generated documents
+                const containerBlock = document.createElement('div');
+                containerBlock.className = 'w-full h-full';
+                containerBlock.style.position = 'absolute';
+                containerBlock.style.inset = '0';
+                containerBlock.style.padding = `${32 * scale}px ${42 * scale}px`;
+                containerBlock.style.boxSizing = 'border-box';
+                containerBlock.style.pointerEvents = 'auto';
+                containerBlock.style.userSelect = 'text';
+                containerBlock.style.overflow = 'hidden';
+                containerBlock.style.display = 'flex';
+                containerBlock.style.flexDirection = 'column';
+                containerBlock.style.gap = `${6 * scale}px`;
 
-          if (isMounted) {
-            setTextOverlayItems(items);
-            setPageFullText(fullTxt.trim());
+                const rawLines = fallbackText.split('\n').filter(l => l.trim().length > 0);
+                rawLines.forEach(line => {
+                  const trimmed = line.trim();
+                  const cleanLine = trimmed
+                    .replace(/^#+\s*/, '')
+                    .replace(/^>\s*/, '')
+                    .replace(/^[-*]\s*/, '')
+                    .replace(/\*\*(.*?)\*\*/g, '$1');
+
+                  const p = document.createElement('div');
+                  p.style.margin = '0';
+                  p.style.color = 'transparent';
+                  p.style.userSelect = 'text';
+                  p.style.cursor = 'text';
+                  p.style.lineHeight = '1.8';
+                  p.style.wordBreak = 'break-word';
+                  p.style.whiteSpace = 'pre-wrap';
+
+                  if (trimmed.startsWith('# ')) {
+                    p.style.fontSize = `${16 * scale}px`;
+                    p.style.fontWeight = 'bold';
+                    p.style.margin = `${10 * scale}px 0 ${4 * scale}px 0`;
+                  } else if (trimmed.startsWith('## ')) {
+                    p.style.fontSize = `${13.5 * scale}px`;
+                    p.style.fontWeight = 'bold';
+                    p.style.margin = `${8 * scale}px 0 ${3 * scale}px 0`;
+                  } else if (trimmed.startsWith('### ')) {
+                    p.style.fontSize = `${12.5 * scale}px`;
+                    p.style.fontWeight = 'bold';
+                    p.style.margin = `${6 * scale}px 0 ${2 * scale}px 0`;
+                  } else {
+                    p.style.fontSize = `${11.5 * scale}px`;
+                  }
+
+                  const words = cleanLine.split(/(\s+)/);
+                  words.forEach(w => {
+                    if (w.trim()) {
+                      const span = document.createElement('span');
+                      span.textContent = w;
+                      span.setAttribute('data-original-text', w);
+                      span.style.color = 'transparent';
+                      span.style.userSelect = 'text';
+                      span.style.cursor = 'text';
+                      span.style.display = 'inline';
+                      p.appendChild(span);
+                    } else {
+                      p.appendChild(document.createTextNode(w));
+                    }
+                  });
+
+                  containerBlock.appendChild(p);
+                });
+
+                textLayerDiv.appendChild(containerBlock);
+              }
+            }
+
+            // Tag each span with original text attribute for query highlighting
+            const allSpans = textLayerDiv.querySelectorAll('span');
+            allSpans.forEach(s => {
+              if (!s.hasAttribute('data-original-text')) {
+                s.setAttribute('data-original-text', s.textContent || '');
+              }
+            });
+
+            if (searchQuery.trim()) {
+              applySearchHighlights(textLayerDiv, searchQuery.trim());
+            }
           }
         }
       } catch (err: any) {
@@ -285,114 +395,27 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
         renderTaskRef.current.cancel();
       }
     };
-  }, [isVisible, pdfDoc, scale, rotation, pageNum]);
+  }, [isVisible, pdfDoc, scale, rotation, pageNum, fallbackText, searchQuery, applySearchHighlights]);
+
+  // Reactive updates to search highlights without re-rendering the full canvas
+  useEffect(() => {
+    const textLayerDiv = textLayerRef.current;
+    if (!textLayerDiv) return;
+
+    const spans = textLayerDiv.querySelectorAll('span');
+    spans.forEach(span => {
+      const orig = span.getAttribute('data-original-text') || span.textContent || '';
+      span.textContent = orig;
+    });
+
+    if (searchQuery.trim()) {
+      applySearchHighlights(textLayerDiv, searchQuery.trim());
+    }
+  }, [searchQuery, applySearchHighlights]);
 
   const isRotatedLandscape = rotation === 90 || rotation === 270;
   const width = (isRotatedLandscape ? pageSize.height : pageSize.width) * scale;
   const height = (isRotatedLandscape ? pageSize.width : pageSize.height) * scale;
-
-  // Helper to render text item with on-canvas keyword search highlight
-  const renderHighlightedTextItem = (item: TextOverlayItem, index: number) => {
-    const { str, left, top, fontSize, width } = item;
-    const query = searchQuery.trim();
-
-    if (!query) {
-      return (
-        <span
-          key={`txt-item-${index}`}
-          style={{
-            position: 'absolute',
-            left: `${left}px`,
-            top: `${top}px`,
-            fontSize: `${fontSize}px`,
-            lineHeight: '1.1',
-            whiteSpace: 'pre',
-            color: 'transparent',
-            cursor: 'text',
-          }}
-          className="select-text"
-        >
-          {str}
-        </span>
-      );
-    }
-
-    const lowerStr = str.toLowerCase();
-    const lowerQuery = query.toLowerCase();
-
-    if (!lowerStr.includes(lowerQuery)) {
-      return (
-        <span
-          key={`txt-item-${index}`}
-          style={{
-            position: 'absolute',
-            left: `${left}px`,
-            top: `${top}px`,
-            fontSize: `${fontSize}px`,
-            lineHeight: '1.1',
-            whiteSpace: 'pre',
-            color: 'transparent',
-            cursor: 'text',
-          }}
-          className="select-text"
-        >
-          {str}
-        </span>
-      );
-    }
-
-    // Split string into non-matching parts and highlighted mark elements
-    const parts: React.ReactNode[] = [];
-    let lastIdx = 0;
-    let matchIdx = lowerStr.indexOf(lowerQuery, lastIdx);
-
-    while (matchIdx !== -1) {
-      if (matchIdx > lastIdx) {
-        parts.push(str.substring(lastIdx, matchIdx));
-      }
-
-      const matchText = str.substring(matchIdx, matchIdx + query.length);
-
-      parts.push(
-        <mark
-          key={`m-${matchIdx}`}
-          className="bg-yellow-300 text-slate-950 font-black px-1 rounded-2xs ring-2 ring-amber-500 shadow-md z-30 inline-block"
-          style={{
-            fontSize: `${Math.max(11, fontSize)}px`,
-            lineHeight: '1.1',
-          }}
-        >
-          {matchText}
-        </mark>
-      );
-
-      lastIdx = matchIdx + query.length;
-      matchIdx = lowerStr.indexOf(lowerQuery, lastIdx);
-    }
-
-    if (lastIdx < str.length) {
-      parts.push(str.substring(lastIdx));
-    }
-
-    return (
-      <span
-        key={`txt-item-${index}`}
-        style={{
-          position: 'absolute',
-          left: `${left}px`,
-          top: `${top}px`,
-          fontSize: `${fontSize}px`,
-          lineHeight: '1.1',
-          whiteSpace: 'pre',
-          color: 'transparent',
-          cursor: 'text',
-        }}
-        className="select-text"
-      >
-        {parts}
-      </span>
-    );
-  };
 
   return (
     <div className="flex flex-col items-center shrink-0 w-fit">
@@ -403,19 +426,19 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
           setRef(pageNum, el);
         }}
         style={{ width: `${width}px`, height: `${height}px` }}
-        className="relative bg-white border border-slate-200 shadow-xl rounded-2xl overflow-hidden flex items-center justify-center shrink-0 transition-all"
+        className="relative bg-white border border-slate-200 shadow-xl rounded-2xl overflow-hidden flex items-center justify-center shrink-0 transition-all select-text"
       >
         {isVisible ? (
           <>
-            <canvas ref={canvasRef} className="w-full h-full block bg-white" />
+            {/* Base Vector Canvas */}
+            <canvas ref={canvasRef} className="w-full h-full block bg-white pointer-events-none" />
 
-            {/* Accessible Selectable Text Layer Overlay with Search Word Highlighting */}
+            {/* Native High-Precision Selectable Text Layer Overlay */}
             <div
-              className="absolute inset-0 overflow-hidden pointer-events-auto select-text z-10"
+              ref={textLayerRef}
+              className="textLayer pdf-text-layer absolute inset-0 overflow-hidden select-text pointer-events-auto z-10"
               style={{ width: `${width}px`, height: `${height}px` }}
-            >
-              {textOverlayItems.map((item, idx) => renderHighlightedTextItem(item, idx))}
-            </div>
+            />
           </>
         ) : (
           <div className="text-center space-y-2 text-slate-500">
@@ -478,6 +501,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
   // AI Task Assistant State
   const [showAiAssistant, setShowAiAssistant] = useState<boolean>(false);
+  const [showQuickAiTools, setShowQuickAiTools] = useState<boolean>(true);
   const [targetLanguage, setTargetLanguage] = useState<string>(() => {
     if (lang === 'hi') return 'Hindi';
     if (lang === 'gu') return 'Gujarati';
@@ -511,6 +535,14 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
   const [pageInputVal, setPageInputVal] = useState<string>('1');
   const [isEditingPageInput, setIsEditingPageInput] = useState<boolean>(false);
+
+  // Hand / Pan Tool mode state
+  const [isPanMode, setIsPanMode] = useState<boolean>(false);
+  const isDraggingRef = useRef<boolean>(false);
+  const dragStartRef = useRef<{ x: number; y: number; scrollLeft: number; scrollTop: number }>({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
+  const [isMouseDownDragging, setIsMouseDownDragging] = useState<boolean>(false);
+  const touchStartDistRef = useRef<number | null>(null);
+  const touchStartScaleRef = useRef<number>(1);
 
   // Keep page input synced with active page when user is not actively editing
   useEffect(() => {
@@ -555,24 +587,159 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Mouse pan drag handlers
+  const handleMouseDownOnViewport = (e: React.MouseEvent) => {
+    // Enable pan on left click when in Pan Mode OR middle mouse click anytime
+    if ((isPanMode && e.button === 0) || e.button === 1) {
+      if (!scrollContainerRef.current) return;
+      isDraggingRef.current = true;
+      setIsMouseDownDragging(true);
+      dragStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        scrollLeft: scrollContainerRef.current.scrollLeft,
+        scrollTop: scrollContainerRef.current.scrollTop
+      };
+      e.preventDefault();
+    }
+  };
+
+  const handleMouseMoveOnViewport = (e: React.MouseEvent) => {
+    if (isDraggingRef.current && scrollContainerRef.current) {
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      scrollContainerRef.current.scrollLeft = dragStartRef.current.scrollLeft - dx;
+      scrollContainerRef.current.scrollTop = dragStartRef.current.scrollTop - dy;
+    }
+  };
+
+  const handleMouseUpOnViewport = () => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      setIsMouseDownDragging(false);
+    }
+  };
+
+  // Ctrl + Wheel / Trackpad pinch zoom listener on the container
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.1 : -0.1;
+        setScale(prev => Math.min(3.0, Math.max(0.4, Number((prev + delta).toFixed(2)))));
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
+  // Multi-touch pinch zoom for mobile and tablets
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        touchStartDistRef.current = dist;
+        touchStartScaleRef.current = scale;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && touchStartDistRef.current !== null) {
+        e.preventDefault();
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const factor = dist / touchStartDistRef.current;
+        const newScale = Math.min(3.0, Math.max(0.4, Number((touchStartScaleRef.current * factor).toFixed(2))));
+        setScale(newScale);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      touchStartDistRef.current = null;
+    };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchmove', handleTouchMove, { passive: false });
+    el.addEventListener('touchend', handleTouchEnd);
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchmove', handleTouchMove);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [scale]);
+
+  // Keyboard navigation shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        if (activePageNum > 1) jumpToPage(activePageNum - 1);
+      } else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault();
+        if (activePageNum < (numPages || 1)) jumpToPage(activePageNum + 1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        jumpToPage(1);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        if (numPages > 0) jumpToPage(numPages);
+      } else if (e.key === '+' || e.key === '=') {
+        zoomIn();
+      } else if (e.key === '-') {
+        zoomOut();
+      } else if (e.key.toLowerCase() === 'h') {
+        setIsPanMode(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activePageNum, numPages, jumpToPage]);
+
   // Selection change listener for Floating Copy & AI Popover Menu
   useEffect(() => {
-    const handleMouseUp = () => {
+    const updateSelectionState = () => {
       const sel = window.getSelection();
-      const text = sel ? sel.toString().trim() : '';
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        setSelectedText('');
+        setSelectionPos(null);
+        return;
+      }
 
+      const text = sel.toString().trim();
       if (text.length > 2) {
-        setSelectedText(text);
         try {
-          const range = sel?.getRangeAt(0);
+          const range = sel.getRangeAt(0);
           const rect = range?.getBoundingClientRect();
-          if (rect) {
+          if (rect && (rect.width > 0 || rect.height > 0)) {
+            setSelectedText(text);
             setSelectionPos({
-              x: Math.max(10, Math.min(window.innerWidth - 220, rect.left + rect.width / 2 - 100)),
-              y: Math.max(10, rect.top - 50)
+              x: Math.max(10, Math.min(window.innerWidth - 240, rect.left + rect.width / 2 - 110)),
+              y: Math.max(10, rect.top - 52)
             });
+          } else {
+            setSelectedText('');
+            setSelectionPos(null);
           }
         } catch {
+          setSelectedText('');
           setSelectionPos(null);
         }
       } else {
@@ -581,9 +748,45 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       }
     };
 
-    document.addEventListener('mouseup', handleMouseUp);
+    const handleSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+        setSelectedText('');
+        setSelectionPos(null);
+      }
+    };
+
+    const handleMouseUpOrTouchEnd = () => {
+      // Small timeout to allow browser selection range to settle
+      setTimeout(updateSelectionState, 20);
+    };
+
+    // When clicking outside the selection menu, if selection is gone or collapsed, clear immediately
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      // If user clicked inside the popup itself, allow button action
+      if (target && target.closest('[data-selection-popup="true"]')) {
+        return;
+      }
+
+      // Check current selection
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+        setSelectedText('');
+        setSelectionPos(null);
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    document.addEventListener('mouseup', handleMouseUpOrTouchEnd);
+    document.addEventListener('touchend', handleMouseUpOrTouchEnd);
+    document.addEventListener('mousedown', handlePointerDown);
+
     return () => {
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('selectionchange', handleSelectionChange);
+      document.removeEventListener('mouseup', handleMouseUpOrTouchEnd);
+      document.removeEventListener('touchend', handleMouseUpOrTouchEnd);
+      document.removeEventListener('mousedown', handlePointerDown);
     };
   }, []);
 
@@ -895,21 +1098,21 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     setAiMessages(prev => [...prev, newUserMsg]);
 
     try {
-      const response = await fetch('/api/gemini/chat', {
+      const data = await safeFetchJson('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: promptText,
+          prompt: promptText,
           systemInstruction: `You are GyaanBot's expert AI Solver Chatbot. Help the student understand the study material document "${fileName}". Provide clear, well-structured educational explanations with markdown formatting.`,
         })
       });
 
-      const data = await response.json();
-      if (data.success) {
+      if (data.text || data.success) {
         const aiMsg = {
           id: 'ai-' + Date.now(),
           sender: 'assistant' as const,
-          text: data.text,
+          text: data.text || data.message || "Here is information based on the document.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         setAiMessages(prev => [...prev, aiMsg]);
@@ -936,8 +1139,52 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     }
   };
 
-  const zoomIn = () => setScale((prev) => Math.min(prev + 0.15, 2.2));
-  const zoomOut = () => setScale((prev) => Math.max(prev - 0.15, 0.65));
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState<boolean>(false);
+  const [showZoomMenu, setShowZoomMenu] = useState<boolean>(false);
+
+  // Smooth Zoom Controls with expanded range (0.35x to 3.0x) for rural students on varied screens
+  const zoomIn = () => {
+    setScale((prev) => Math.min(Number((prev + 0.2).toFixed(2)), 3.0));
+  };
+
+  const zoomOut = () => {
+    setScale((prev) => Math.max(Number((prev - 0.2).toFixed(2)), 0.35));
+  };
+
+  const setZoomLevel = (newScale: number) => {
+    setScale(Math.max(0.35, Math.min(3.0, Number(newScale.toFixed(2)))));
+    setShowZoomMenu(false);
+  };
+
+  const fitWidth = useCallback(() => {
+    if (scrollContainerRef.current && pageSize.width > 0) {
+      const containerWidth = scrollContainerRef.current.clientWidth;
+      if (containerWidth > 0) {
+        const paddingX = containerWidth < 640 ? 16 : 40;
+        const targetScale = (containerWidth - paddingX) / pageSize.width;
+        setScale(Math.max(0.35, Math.min(2.5, Number(targetScale.toFixed(2)))));
+      }
+    }
+    setShowZoomMenu(false);
+  }, [pageSize.width]);
+
+  const fitPage = useCallback(() => {
+    if (scrollContainerRef.current && pageSize.height > 0) {
+      const containerHeight = scrollContainerRef.current.clientHeight;
+      if (containerHeight > 0) {
+        const paddingY = containerHeight < 640 ? 40 : 80;
+        const targetScale = (containerHeight - paddingY) / pageSize.height;
+        setScale(Math.max(0.35, Math.min(2.0, Number(targetScale.toFixed(2)))));
+      }
+    }
+    setShowZoomMenu(false);
+  }, [pageSize.height]);
+
+  const resetZoom = () => {
+    setScale(1.0);
+    setShowZoomMenu(false);
+  };
+
   const rotate = () => setRotation((prev) => (prev + 90) % 360);
 
   const pagesArray = useMemo(() => Array.from({ length: numPages }, (_, i) => i + 1), [numPages]);
@@ -970,12 +1217,16 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       {/* Floating Selection AI Menu Popover */}
       {selectedText && selectionPos && (
         <div
+          data-selection-popup="true"
           style={{ left: `${selectionPos.x}px`, top: `${selectionPos.y}px` }}
           className="fixed z-50 bg-slate-950 border border-slate-700/80 shadow-2xl rounded-2xl p-1.5 flex items-center gap-1.5 text-white animate-fade-in select-none"
         >
           {!isAiGenerated && (
             <button
-              onClick={handleCopySelectedText}
+              onClick={() => {
+                handleCopySelectedText();
+                window.getSelection()?.removeAllRanges();
+              }}
               className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md"
               title="Copy Selected Text"
             >
@@ -984,7 +1235,11 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             </button>
           )}
           <button
-            onClick={() => handleRunAiTask('explain_selection')}
+            onClick={() => {
+              handleRunAiTask('explain_selection');
+              setSelectedText('');
+              setSelectionPos(null);
+            }}
             className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md"
             title="Explain Selected Text with AI"
           >
@@ -999,133 +1254,278 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             <Volume2 className="w-3.5 h-3.5" />
           </button>
           <button
-            onClick={() => { setSelectedText(''); setSelectionPos(null); }}
+            onClick={() => {
+              setSelectedText('');
+              setSelectionPos(null);
+              window.getSelection()?.removeAllRanges();
+            }}
             className="p-1 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white cursor-pointer"
+            title="Dismiss"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Top Reader Control Panel */}
-      <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-slate-950 border-b border-slate-800 text-xs text-slate-300 gap-3 shrink-0 z-20">
+      {/* Top Reader Control Panel - Highly Responsive for Mobile & Desktop */}
+      <div className="flex flex-col bg-slate-950 border-b border-slate-800 shrink-0 z-20">
         
-        {/* Left: Interactive Page Number Navigation & Jump */}
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          {/* First Page Shortcut */}
-          <button
-            onClick={() => jumpToPage(1)}
-            disabled={activePageNum <= 1}
-            className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
-            title="First Page (Page 1)"
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </button>
+        {/* Main Toolbar Row */}
+        <div className="flex items-center justify-between px-2.5 sm:px-4 py-2 text-xs text-slate-300 gap-2 shrink-0">
+          
+          {/* Left: Interactive Page Number Navigation & Jump */}
+          <div className="flex items-center gap-1">
+            {/* First Page Shortcut (Desktop) */}
+            <button
+              onClick={() => jumpToPage(1)}
+              disabled={activePageNum <= 1}
+              className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white hidden sm:block"
+              title="First Page (Page 1)"
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </button>
 
-          {/* Previous Page */}
-          <button
-            onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
-            disabled={activePageNum <= 1}
-            className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
-            title="Previous Page"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+            {/* Previous Page */}
+            <button
+              onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
+              disabled={activePageNum <= 1}
+              className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
+              title="Previous Page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
 
-          {/* Interactive Editable Page Number Input Box & Dropdown Select */}
-          <div className="flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded-xl border border-slate-800">
-            <span className="text-[11px] font-bold text-slate-400 hidden sm:inline">Page</span>
-            
-            {/* Direct Number Input Form */}
-            <form onSubmit={handlePageInputSubmit} className="flex items-center">
-              <input
-                type="number"
-                min={1}
-                max={numPages || 1}
-                value={pageInputVal}
-                onFocus={() => setIsEditingPageInput(true)}
-                onChange={(e) => setPageInputVal(e.target.value)}
-                onBlur={() => handlePageInputSubmit()}
-                className="w-12 bg-slate-950 border border-slate-700/80 focus:border-emerald-500 rounded-lg text-center font-extrabold text-emerald-400 text-xs py-0.5 px-1 focus:outline-none transition-colors shadow-inner"
-                title="Click or type page number and press Enter to change page"
-              />
-            </form>
+            {/* Page Number Indicator / Direct Input */}
+            <div className="flex items-center gap-1.5 bg-slate-900/90 px-2 py-1 rounded-xl border border-slate-800 shrink-0 whitespace-nowrap">
+              <span className="text-[11px] font-bold text-slate-400 hidden sm:inline select-none">Page</span>
+              
+              <form onSubmit={handlePageInputSubmit} className="flex items-center">
+                <input
+                  type="number"
+                  min={1}
+                  max={numPages || 1}
+                  value={pageInputVal}
+                  onFocus={() => setIsEditingPageInput(true)}
+                  onChange={(e) => setPageInputVal(e.target.value)}
+                  onBlur={() => handlePageInputSubmit()}
+                  className="w-10 sm:w-12 h-6 bg-slate-950 border border-slate-700/80 focus:border-emerald-500 rounded-lg text-center font-bold text-emerald-400 text-xs py-0 px-1 focus:outline-none transition-colors shadow-inner"
+                  title="Type page number and press Enter"
+                />
+              </form>
 
-            {/* Quick Page Dropdown Picker */}
-            {numPages > 1 && (
-              <select
-                value={activePageNum}
-                onChange={(e) => {
-                  const pg = parseInt(e.target.value, 10);
-                  if (pg) jumpToPage(pg);
-                }}
-                className="bg-slate-950 text-slate-300 text-[11px] font-medium border border-slate-800 rounded-lg py-0.5 px-1 focus:outline-none focus:border-emerald-500 cursor-pointer hidden md:block max-w-[95px]"
-                title="Jump to specific page"
-              >
-                {Array.from({ length: numPages }, (_, i) => i + 1).map((pg) => (
-                  <option key={`p-opt-${pg}`} value={pg}>
-                    Page {pg}
-                  </option>
-                ))}
-              </select>
-            )}
+              <span className="text-slate-400 text-xs font-mono select-none flex items-center gap-1 whitespace-nowrap">
+                <span>/</span>
+                <strong className="text-slate-200 font-bold">{numPages || 1}</strong>
+              </span>
+            </div>
 
-            <span className="text-slate-400 text-xs font-mono">
-              of <strong className="text-slate-200">{numPages || '?'}</strong>
-            </span>
+            {/* Next Page */}
+            <button
+              onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
+              disabled={activePageNum >= numPages}
+              className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
+              title="Next Page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+
+            {/* Last Page Shortcut (Desktop) */}
+            <button
+              onClick={() => numPages > 0 && jumpToPage(numPages)}
+              disabled={activePageNum >= numPages}
+              className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white hidden sm:block"
+              title={`Last Page (Page ${numPages})`}
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </button>
+
+            {/* Hand Tool / Text Select Tool Toggle */}
+            <button
+              onClick={() => setIsPanMode(!isPanMode)}
+              className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
+                isPanMode
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs'
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border-slate-800'
+              }`}
+              title={isPanMode ? "Hand / Pan Tool Active (Click to switch to Text Select)" : "Text Selection Mode (Click for Hand / Pan Tool)"}
+            >
+              {isPanMode ? <Hand className="w-3.5 h-3.5" /> : <MousePointer className="w-3.5 h-3.5" />}
+              <span className="hidden xl:inline">{isPanMode ? "Hand Tool" : "Select Text"}</span>
+            </button>
           </div>
 
-          {/* Next Page */}
-          <button
-            onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
-            disabled={activePageNum >= numPages}
-            className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
-            title="Next Page"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+          {/* Center: Desktop Word Search Field */}
+          {!isAiGenerated && (
+            <div className="hidden lg:flex items-center gap-2 flex-1 max-w-xs min-w-[160px] relative mx-2">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Search in PDF..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-7 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => handleSearch('')}
+                    className="absolute right-2 top-2 text-slate-500 hover:text-white cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+              {indexingText && (
+                <Loader2 className="h-3.5 w-3.5 text-emerald-500 animate-spin shrink-0" />
+              )}
+            </div>
+          )}
 
-          {/* Last Page Shortcut */}
-          <button
-            onClick={() => numPages > 0 && jumpToPage(numPages)}
-            disabled={activePageNum >= numPages}
-            className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
-            title={`Last Page (Page ${numPages})`}
-          >
-            <ChevronsRight className="h-4 w-4" />
-          </button>
+          {/* Right Side: Zoom Controls & Quick Actions */}
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            
+            {/* Mobile Search Toggle Button */}
+            {!isAiGenerated && (
+              <button
+                onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                className={`p-1.5 rounded-xl cursor-pointer transition-colors lg:hidden ${
+                  isMobileSearchOpen || searchQuery
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-900 hover:bg-slate-800 text-slate-300'
+                }`}
+                title="Search text in document"
+              >
+                <Search className="h-3.5 w-3.5" />
+              </button>
+            )}
+
+            {/* Zoom Controls Pill with Preset Menu */}
+            <div className="relative flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5">
+              <button
+                onClick={zoomOut}
+                className="p-1 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white cursor-pointer"
+                title="Zoom Out"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </button>
+              
+              <button
+                onClick={() => setShowZoomMenu(!showZoomMenu)}
+                className="px-1.5 sm:px-2 py-0.5 font-mono text-[11px] text-slate-300 hover:text-white font-bold cursor-pointer rounded transition-colors"
+                title="Click for Zoom Presets"
+              >
+                {Math.round(scale * 100)}%
+              </button>
+
+              <button
+                onClick={zoomIn}
+                className="p-1 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white cursor-pointer"
+                title="Zoom In"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </button>
+
+              {/* Zoom Presets Dropdown */}
+              {showZoomMenu && (
+                <div className="absolute top-full right-0 mt-1.5 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 min-w-[120px] animate-fade-in text-xs">
+                  <button
+                    onClick={fitWidth}
+                    className="px-2.5 py-1 text-left text-emerald-400 hover:bg-slate-900 rounded-lg font-bold flex items-center justify-between"
+                  >
+                    <span>Fit Width</span>
+                    <Maximize2 className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={fitPage}
+                    className="px-2.5 py-1 text-left text-slate-300 hover:bg-slate-900 rounded-lg"
+                  >
+                    Fit Page
+                  </button>
+                  <div className="h-px bg-slate-800 my-0.5" />
+                  {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((lvl) => (
+                    <button
+                      key={`zoom-lvl-${lvl}`}
+                      onClick={() => setZoomLevel(lvl)}
+                      className={`px-2.5 py-1 text-left rounded-lg font-mono flex items-center justify-between ${
+                        Math.round(scale * 100) === Math.round(lvl * 100)
+                          ? 'bg-purple-950/60 text-purple-300 font-bold'
+                          : 'text-slate-300 hover:bg-slate-900'
+                      }`}
+                    >
+                      <span>{Math.round(lvl * 100)}%</span>
+                      {Math.round(scale * 100) === Math.round(lvl * 100) && <Check className="w-3 h-3 text-purple-400" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Fit Width Quick Button (Desktop) */}
+            <button
+              onClick={fitWidth}
+              className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 cursor-pointer hidden md:flex items-center gap-1"
+              title="Fit to Page Width"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+
+            {/* AI Task Assistant Toggle Button */}
+            <button
+              onClick={() => setShowAiAssistant(!showAiAssistant)}
+              className={`px-2.5 sm:px-3 py-1.5 font-bold rounded-xl flex items-center gap-1.5 transition-all text-xs cursor-pointer ${
+                showAiAssistant
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40 ring-1 ring-purple-400'
+                  : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md'
+              }`}
+              title="AI Study & Solver Assistant"
+            >
+              <Bot className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+              <span className="hidden sm:inline">AI Solver</span>
+              <span className="sm:hidden font-bold">AI</span>
+            </button>
+
+            {/* Save to Saved Material Button (Desktop) */}
+            <button
+              onClick={() => {
+                if (onDownload) onDownload();
+                setToastMessage('⭐ Saved to My Saved Material!');
+                setTimeout(() => setToastMessage(null), 3000);
+              }}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl hidden sm:flex items-center gap-1 cursor-pointer border border-amber-500/40 transition-colors text-xs shrink-0"
+              title="Save to My Material"
+            >
+              <Star className="h-3.5 w-3.5 text-amber-300 fill-amber-300" />
+              <span className="hidden md:inline">Save</span>
+            </button>
+          </div>
         </div>
 
-        {/* Middle: Word Search field */}
-        {!isAiGenerated && (
-          <div className="flex items-center gap-2 flex-1 max-w-xs min-w-[160px] relative">
-            <div className="relative w-full">
+        {/* Expandable Mobile Search Bar */}
+        {!isAiGenerated && isMobileSearchOpen && (
+          <div className="px-3 py-2 bg-slate-900 border-t border-slate-800 flex items-center gap-2 lg:hidden animate-fade-in">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-slate-500" />
               <input
                 type="text"
-                placeholder="Search word in PDF..."
+                autoFocus
+                placeholder="Search word in document..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-8 pr-7 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
               />
               {searchQuery && (
                 <button
                   onClick={() => handleSearch('')}
-                  className="absolute right-2 top-2 text-slate-500 hover:text-white cursor-pointer"
+                  className="absolute right-2 top-1.5 text-slate-500 hover:text-white cursor-pointer"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
-            {indexingText && (
-              <span title="Indexing text...">
-                <Loader2 className="h-3.5 w-3.5 text-emerald-500 animate-spin shrink-0" />
-              </span>
-            )}
 
             {searchResults.length > 0 && (
-              <div className="flex items-center gap-1 shrink-0 bg-slate-900 px-2 py-0.5 rounded-lg border border-slate-800">
-                <span className="text-[10px] text-slate-400 font-mono select-none">
+              <div className="flex items-center gap-1 shrink-0 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 text-xs">
+                <span className="text-[10px] text-slate-400 font-mono">
                   {currentSearchResultIndex + 1}/{searchResults.length}
                 </span>
                 <button
@@ -1150,85 +1550,23 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 </button>
               </div>
             )}
+
+            <button
+              onClick={() => setIsMobileSearchOpen(false)}
+              className="p-1 text-slate-400 hover:text-white cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
-
-        {/* Right Side: Zoom, Integrated AI Tools & Download */}
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
-          <button
-            onClick={zoomOut}
-            className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white cursor-pointer"
-            title="Zoom Out"
-          >
-            <ZoomOut className="h-4 w-4" />
-          </button>
-          <span className="font-mono text-xs text-slate-400 bg-slate-900 px-2 py-1 rounded-lg border border-slate-800 select-none">
-            {Math.round(scale * 100)}%
-          </span>
-          <button
-            onClick={zoomIn}
-            className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white cursor-pointer"
-            title="Zoom In"
-          >
-            <ZoomIn className="h-4 w-4" />
-          </button>
-
-          <div className="h-4 w-px bg-slate-800 mx-0.5 hidden sm:block" />
-
-          {/* AI Task Assistant Toggle Button */}
-          <button
-            onClick={() => setShowAiAssistant(!showAiAssistant)}
-            className={`px-3 py-1.5 font-bold rounded-xl flex items-center gap-1.5 transition-all text-xs cursor-pointer ${
-              showAiAssistant
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
-                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white'
-            }`}
-          >
-            <Bot className="h-3.5 w-3.5 text-amber-300" />
-            <span className="hidden sm:inline">AI Assistant</span>
-          </button>
-
-          {/* Copy Full Document Text Button */}
-          {!isAiGenerated && (
-            <button
-              onClick={handleCopyFullDocumentText}
-              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer border border-slate-700 transition-colors text-xs"
-              title="Copy Full Document Text"
-            >
-              <Copy className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="hidden md:inline">Copy Text</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => {
-              if (onDownload) onDownload();
-              setToastMessage('⭐ Saved into My Saved Material!');
-              setTimeout(() => setToastMessage(null), 3000);
-            }}
-            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl flex items-center gap-1.5 cursor-pointer border border-amber-500/40 transition-colors text-xs"
-            title="Save to My Saved Material"
-          >
-            <Star className="h-3.5 w-3.5 text-amber-300 fill-amber-300" />
-            <span className="hidden sm:inline">Save</span>
-          </button>
-
-          <button
-            onClick={onDownload}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-xl flex items-center gap-1 cursor-pointer transition-colors"
-            title="Download PDF"
-          >
-            <Download className="h-4 w-4" />
-          </button>
-        </div>
       </div>
 
-      {/* Main Container: Sidebar + Canvas Viewport + AI Assistant Panel */}
+      {/* Main Content Area: PDF Viewport + Mobile/Desktop AI Assistant */}
       <div className="flex-1 flex min-h-0 relative w-full overflow-hidden">
         
-        {/* Search Results Sidebar */}
+        {/* Search Results Left Sidebar (Desktop) */}
         {searchQuery.trim() !== '' && (
-          <div className="w-72 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 h-full overflow-hidden">
+          <div className="w-72 bg-slate-950 border-r border-slate-800 hidden md:flex flex-col shrink-0 h-full overflow-hidden z-10">
             <div className="p-3 border-b border-slate-850 flex items-center justify-between shrink-0">
               <span className="font-bold text-slate-200 text-xs">Search Matches ({searchResults.length})</span>
               <button onClick={() => handleSearch('')} className="p-1 text-slate-500 hover:text-white cursor-pointer">
@@ -1264,12 +1602,50 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           </div>
         )}
 
-        {/* Central PDF Canvas Viewport */}
+        {/* Central PDF Canvas Viewport with Virtualized Rendering & Smooth Pan Controls */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-auto bg-slate-950 flex flex-col items-center gap-8 py-8 px-4 scrollbar-thin select-text min-h-0 relative w-full"
-          style={{ height: '100%' }}
+          onMouseDown={handleMouseDownOnViewport}
+          onMouseMove={handleMouseMoveOnViewport}
+          onMouseUp={handleMouseUpOnViewport}
+          onMouseLeave={handleMouseUpOnViewport}
+          className={`flex-1 overflow-auto bg-slate-950 flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-8 px-2 sm:px-4 scrollbar-thin select-text min-h-0 relative w-full ${
+            isPanMode
+              ? isMouseDownDragging
+                ? 'cursor-grabbing'
+                : 'cursor-grab'
+              : 'cursor-default'
+          }`}
+          style={{ height: '100%', touchAction: isPanMode ? 'none' : 'auto' }}
         >
+          {/* Floating Left Page Arrow (Quick device accessible navigation) */}
+          {activePageNum > 1 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                jumpToPage(activePageNum - 1);
+              }}
+              className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-purple-600 text-slate-300 hover:text-white rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md transition-all cursor-pointer hidden sm:flex items-center justify-center group opacity-80 hover:opacity-100 hover:scale-110 active:scale-95"
+              title="Previous Page (Arrow Left)"
+            >
+              <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
+            </button>
+          )}
+
+          {/* Floating Right Page Arrow (Quick device accessible navigation) */}
+          {activePageNum < numPages && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                jumpToPage(activePageNum + 1);
+              }}
+              className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-purple-600 text-slate-300 hover:text-white rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md transition-all cursor-pointer hidden sm:flex items-center justify-center group opacity-80 hover:opacity-100 hover:scale-110 active:scale-95"
+              title="Next Page (Arrow Right)"
+            >
+              <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          )}
+
           {loading ? (
             <div className="my-auto flex flex-col items-center justify-center gap-3">
               <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
@@ -1311,92 +1687,227 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             })
           )}
 
+          {/* Floating Quick Navigation & Zoom HUD (Designed for All Devices - Mobile, Tablet, Desktop) */}
+          <div className="sticky bottom-4 z-30 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 shadow-2xl rounded-2xl p-1 sm:p-1.5 flex items-center gap-1 sm:gap-1.5 text-white animate-fade-in">
+            {/* Prev Page Button */}
+            <button
+              onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
+              disabled={activePageNum <= 1}
+              className="p-1.5 hover:bg-slate-800 disabled:opacity-20 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
+              title="Previous Page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
 
+            {/* Page indicator */}
+            <span className="text-[11px] font-mono font-bold text-slate-300 px-1 select-none">
+              {activePageNum} / {numPages || 1}
+            </span>
+
+            {/* Next Page Button */}
+            <button
+              onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
+              disabled={activePageNum >= numPages}
+              className="p-1.5 hover:bg-slate-800 disabled:opacity-20 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
+              title="Next Page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            <div className="h-4 w-px bg-slate-700 mx-0.5" />
+
+            {/* Hand Pan Tool Toggle */}
+            <button
+              onClick={() => setIsPanMode(!isPanMode)}
+              className={`p-1.5 rounded-xl cursor-pointer active:scale-95 transition-all ${
+                isPanMode
+                  ? 'bg-amber-500/30 text-amber-300 border border-amber-400/50'
+                  : 'hover:bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+              title={isPanMode ? "Hand Pan Mode (Active)" : "Switch to Hand Pan Tool"}
+            >
+              <Hand className="w-4 h-4" />
+            </button>
+
+            <div className="h-4 w-px bg-slate-700 mx-0.5" />
+
+            {/* Zoom Out */}
+            <button
+              onClick={zoomOut}
+              className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+
+            {/* Fit Width */}
+            <button
+              onClick={fitWidth}
+              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-mono font-bold text-emerald-400 cursor-pointer flex items-center gap-1 transition-all"
+              title="Click to Fit to Width"
+            >
+              <span>{Math.round(scale * 100)}%</span>
+              <Maximize2 className="w-3 h-3 text-slate-400" />
+            </button>
+
+            {/* Zoom In */}
+            <button
+              onClick={zoomIn}
+              className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+
+            <div className="h-4 w-px bg-slate-700 mx-0.5" />
+
+            {/* Rotate */}
+            <button
+              onClick={rotate}
+              className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer"
+              title="Rotate 90°"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
-        {/* AI Task Assistant Side Panel */}
+        {/* AI Task Assistant Panel (Desktop Sidebar or Mobile Overlay Drawer) */}
         {showAiAssistant && (
-          <div className="w-80 sm:w-96 bg-slate-950 border-l border-slate-800 flex flex-col shrink-0 h-full overflow-hidden z-30 shadow-2xl animate-fade-in">
-            {/* AI Assistant Header */}
-            <div className="p-3.5 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between shrink-0">
+          <div className="fixed inset-0 md:static md:w-96 bg-slate-950 border-l border-slate-800 flex flex-col shrink-0 h-full overflow-hidden z-40 md:z-30 shadow-2xl animate-fade-in">
+            
+            {/* AI Assistant Header with Mobile Back Button */}
+            <div className="p-3 sm:p-3.5 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-purple-600/30 rounded-xl border border-purple-500/30 text-purple-300">
+                <button
+                  onClick={() => setShowAiAssistant(false)}
+                  className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white cursor-pointer md:hidden"
+                  title="Back to PDF"
+                >
+                  <ChevronLeft className="w-5 h-5 text-purple-300" />
+                </button>
+                <div className="p-1.5 sm:p-2 bg-purple-600/30 rounded-xl border border-purple-500/30 text-purple-300">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-xs text-slate-100 flex items-center gap-1.5">
+                  <h4 className="font-bold text-xs sm:text-sm text-slate-100 flex items-center gap-1.5">
                     <span>AI Solver Chatbot</span>
                     <Sparkles className="w-3 h-3 text-amber-300" />
                   </h4>
-                  <span className="text-[10px] text-slate-400 font-mono">Multi-Language • Page {activePageNum} of {numPages}</span>
+                  <span className="text-[10px] text-slate-400 font-mono">{targetLanguage} • Page {activePageNum} of {numPages}</span>
                 </div>
               </div>
-              <button
-                onClick={() => setShowAiAssistant(false)}
-                className="p-1 text-slate-400 hover:text-white cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Quick AI Task Actions Grid */}
-            <div className="p-3 bg-slate-900/80 border-b border-slate-800 shrink-0">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                {/* 1. Solve Page Questions */}
-                <button
-                  onClick={() => handleRunAiTask('solve_questions')}
-                  disabled={aiLoading}
-                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-colors"
-                  title="Solve all questions on active page"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate">Solve Questions</span>
-                </button>
+              <div className="flex items-center gap-1.5">
+                <div className="w-28">
+                  <CustomSelect
+                    value={targetLanguage}
+                    onChange={(val) => setTargetLanguage(val)}
+                    options={[
+                      { value: 'English', label: 'English', badge: 'EN' },
+                      { value: 'Hindi', label: 'Hindi (हिंदी)', badge: 'HI' },
+                      { value: 'Gujarati', label: 'Gujarati (ગુજ)', badge: 'GU' },
+                      { value: 'Marathi', label: 'Marathi (मराठी)', badge: 'MR' },
+                      { value: 'Tamil', label: 'Tamil (தமிழ்)', badge: 'TA' },
+                      { value: 'Telugu', label: 'Telugu (తెలుగు)', badge: 'TE' },
+                    ]}
+                    theme="compact-dark"
+                    placeholder="Language"
+                  />
+                </div>
 
-                {/* 2. Key Formulas */}
                 <button
-                  onClick={() => handleRunAiTask('key_concepts')}
-                  disabled={aiLoading}
-                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-colors"
-                  title="Extract key formulas & concepts"
+                  onClick={() => setShowAiAssistant(false)}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl cursor-pointer"
+                  title="Close AI Assistant"
                 >
-                  <Wand2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span className="truncate">Key Formulas</span>
-                </button>
-
-                {/* 3. Practice Quiz */}
-                <button
-                  onClick={() => handleRunAiTask('quiz')}
-                  disabled={aiLoading}
-                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-colors"
-                  title="Generate 5 practice questions"
-                >
-                  <HelpCircle className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                  <span className="truncate">5 Practice Quiz</span>
-                </button>
-
-                {/* 4. Summarize Page */}
-                <button
-                  onClick={() => handleRunAiTask('summarize_page')}
-                  disabled={aiLoading}
-                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-colors"
-                  title="Summarize page in bullet points"
-                >
-                  <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                  <span className="truncate">Page Summary</span>
-                </button>
-
-                {/* 5. Revision Notes */}
-                <button
-                  onClick={() => handleRunAiTask('short_notes')}
-                  disabled={aiLoading}
-                  className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-300 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-colors col-span-2 sm:col-span-1"
-                  title="Create revision short notes"
-                >
-                  <Star className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span className="truncate">Revision Notes</span>
+                  <X className="w-4 h-4" />
                 </button>
               </div>
+            </div>
+
+            {/* Quick AI Task Actions Section with Show/Hide Toggle */}
+            <div className="bg-slate-900/95 border-b border-slate-800 shrink-0">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800/60 bg-slate-950/40">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300 select-none">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Quick AI Tasks</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickAiTools((prev) => !prev)}
+                  className="px-2 py-0.5 rounded-lg text-[11px] font-bold text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-1 cursor-pointer transition-all border border-slate-800 select-none"
+                  title={showQuickAiTools ? 'Hide Quick Actions' : 'Show Quick Actions'}
+                >
+                  <span>{showQuickAiTools ? 'Hide' : 'Show'}</span>
+                  {showQuickAiTools ? (
+                    <ChevronUp className="w-3 h-3 text-slate-400" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3 text-slate-400" />
+                  )}
+                </button>
+              </div>
+
+              {showQuickAiTools && (
+                <div className="p-2.5 sm:p-3 animate-fade-in">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {/* 1. Solve Page Questions */}
+                    <button
+                      onClick={() => handleRunAiTask('solve_questions')}
+                      disabled={aiLoading}
+                      className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors shadow-sm"
+                      title="Solve all questions on active page"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span className="truncate">Solve Questions</span>
+                    </button>
+
+                    {/* 2. Key Formulas */}
+                    <button
+                      onClick={() => handleRunAiTask('key_concepts')}
+                      disabled={aiLoading}
+                      className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors shadow-sm"
+                      title="Extract key formulas & concepts"
+                    >
+                      <Wand2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">Key Formulas</span>
+                    </button>
+
+                    {/* 3. Practice Quiz */}
+                    <button
+                      onClick={() => handleRunAiTask('quiz')}
+                      disabled={aiLoading}
+                      className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors shadow-sm"
+                      title="Generate 5 practice questions"
+                    >
+                      <HelpCircle className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                      <span className="truncate">5 Practice Quiz</span>
+                    </button>
+
+                    {/* 4. Summarize Page */}
+                    <button
+                      onClick={() => handleRunAiTask('summarize_page')}
+                      disabled={aiLoading}
+                      className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors shadow-sm"
+                      title="Summarize page in bullet points"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                      <span className="truncate">Page Summary</span>
+                    </button>
+
+                    {/* 5. Revision Notes */}
+                    <button
+                      onClick={() => handleRunAiTask('short_notes')}
+                      disabled={aiLoading}
+                      className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors shadow-sm col-span-2 sm:col-span-1"
+                      title="Create revision short notes"
+                    >
+                      <Star className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                      <span className="truncate">Revision Notes</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* AI Messages Chat History */}
@@ -1404,23 +1915,23 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               {aiMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex flex-col text-xs leading-relaxed ${
+                  className={`flex flex-col text-xs sm:text-sm leading-relaxed ${
                     msg.sender === 'user' ? 'items-end' : 'items-start'
                   }`}
                 >
                   <div
-                    className={`p-3 rounded-2xl max-w-[92%] space-y-1.5 shadow-sm ${
+                    className={`p-3 sm:p-3.5 rounded-2xl max-w-[92%] space-y-1.5 shadow-sm ${
                       msg.sender === 'user'
                         ? 'bg-purple-600 text-white rounded-br-2xs'
-                        : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-2xs'
+                        : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-2xs'
                     }`}
                   >
                     {msg.sender === 'assistant' ? (
-                      <div className="prose prose-invert prose-xs max-w-none">
-                        <MathRenderer content={msg.text} isUser={false} className="text-slate-200" />
+                      <div className="w-full max-w-none">
+                        <MathRenderer content={msg.text} isUser={false} isDark={true} className="text-slate-100" />
                       </div>
                     ) : (
-                      <p>{msg.text}</p>
+                      <p className="text-white font-medium">{msg.text}</p>
                     )}
 
                     <div className="flex items-center justify-between text-[9px] text-slate-400 font-mono pt-1">
@@ -1446,10 +1957,10 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                               const speechLang = codeMap[targetLanguage] || 'en';
                               speakText(msg.text, speechLang);
                             }}
-                            className="hover:text-white cursor-pointer"
+                            className="hover:text-white cursor-pointer p-1 rounded hover:bg-slate-800"
                             title={`Speak Response (${targetLanguage})`}
                           >
-                            <Volume2 className="w-3 h-3 text-purple-300" />
+                            <Volume2 className="w-3.5 h-3.5 text-purple-300" />
                           </button>
                         </div>
                       )}
@@ -1460,14 +1971,14 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
               {aiLoading && (
                 <div className="flex items-center gap-2 p-3 bg-slate-900 rounded-2xl text-xs text-purple-300 border border-purple-900/30 animate-pulse">
-                  <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                  <Loader2 className="w-4 h-4 animate-spin text-purple-400 shrink-0" />
                   <span>AI Solver Chatbot working in {targetLanguage}...</span>
                 </div>
               )}
             </div>
 
             {/* AI Prompt Input Bar with Speech-to-Text */}
-            <div className="p-3 bg-slate-900 border-t border-slate-800 shrink-0">
+            <div className="p-2.5 sm:p-3 bg-slate-900 border-t border-slate-800 shrink-0">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -1476,11 +1987,11 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                     setAiPromptInput('');
                   }
                 }}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1.5 sm:gap-2"
               >
                 <input
                   type="text"
-                  placeholder={`Ask AI Solver in ${targetLanguage} about Page ${activePageNum}...`}
+                  placeholder={`Ask AI Solver in ${targetLanguage}...`}
                   value={aiPromptInput}
                   onChange={(e) => setAiPromptInput(e.target.value)}
                   className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
@@ -1504,7 +2015,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 <button
                   type="submit"
                   disabled={!aiPromptInput.trim() || aiLoading}
-                  className="p-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white rounded-xl cursor-pointer shadow-md transition-all"
+                  className="p-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white rounded-xl cursor-pointer shadow-md transition-all shrink-0"
                   title="Send Message"
                 >
                   <Send className="w-4 h-4" />

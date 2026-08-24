@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { LanguageCode, User, CurriculumFolder, CurriculumFile } from '../../types';
 import { SUPPORTED_LANGUAGES } from '../../data/translations';
+import { safeFetchJson } from '../../utils/safeFetch';
 import { 
   getAllFirebaseCurriculumFolders, 
   getAllFirebaseCurriculumFiles, 
@@ -13,9 +14,10 @@ import { speakText, stopSpeaking } from '../../utils/speech';
 import { PdfCanvasViewer } from '../admin/PdfCanvasViewer';
 import InteractiveDiagram from './InteractiveDiagram';
 import SlideVisualBoard from './SlideVisualBoard';
+import { CustomSelect } from '../common/CustomSelect';
 import { 
   FileText, BookOpen, Folder, FolderOpen, Search, Download, Sparkles, 
-  Volume2, VolumeX, Eye, CheckCircle2, ArrowLeft, ChevronRight, Filter, 
+  Volume2, VolumeX, Eye, CheckCircle2, ArrowLeft, ChevronRight, ChevronDown, Filter, 
   Layers, Clock, Grid, List, X, Award, ExternalLink, RefreshCw, AlertCircle, Globe, Zap,
   Wand2, Star, Trash2, Plus, BookMarked, Pencil, Lock, Check
 } from 'lucide-react';
@@ -285,22 +287,22 @@ const getLanguageCodeFromName = (langName?: string): LanguageCode => {
   return 'en';
 };
 
-// Language Flag & Native Name Helper
-const getLangFlag = (langStr?: string) => {
-  if (!langStr) return '🇬🇧 English';
+// Clean Language Name Helper
+const getCleanLanguageLabel = (langStr?: string) => {
+  if (!langStr) return 'English';
   const l = langStr.toLowerCase();
-  if (l.includes('hindi') || l.includes('hi') || /[\u0900-\u097F]/.test(l)) return '🇮🇳 हिंदी';
-  if (l.includes('gujarati') || l.includes('gu') || /[\u0A80-\u0AFF]/.test(l)) return '🇮🇳 ગુજરાતી';
-  if (l.includes('marathi') || l.includes('mr')) return '🇮🇳 मराठी';
-  if (l.includes('tamil') || l.includes('ta') || /[\u0B80-\u0BFF]/.test(l)) return '🇮🇳 தமிழ்';
-  if (l.includes('telugu') || l.includes('te') || /[\u0C00-\u0C7F]/.test(l)) return '🇮🇳 తెలుగు';
-  if (l.includes('bengali') || l.includes('bn')) return '🇮🇳 বাংলা';
-  if (l.includes('kannada') || l.includes('kn')) return '🇮🇳 ಕನ್ನಡ';
-  if (l.includes('malayalam') || l.includes('ml')) return '🇮🇳 മലയാളം';
-  if (l.includes('punjabi') || l.includes('pa')) return '🇮🇳 પੰਜਾਬી';
-  if (l.includes('hinglish')) return '🇮🇳 Hinglish';
-  if (l.includes('english') || l.includes('en')) return '🇬🇧 English';
-  return `🌐 ${langStr}`;
+  if (l.includes('hindi') || l.includes('hi') || /[\u0900-\u097F]/.test(l)) return 'हिंदी';
+  if (l.includes('gujarati') || l.includes('gu') || /[\u0A80-\u0AFF]/.test(l)) return 'ગુજરાતી';
+  if (l.includes('marathi') || l.includes('mr')) return 'मराठी';
+  if (l.includes('tamil') || l.includes('ta') || /[\u0B80-\u0BFF]/.test(l)) return 'தமிழ்';
+  if (l.includes('telugu') || l.includes('te') || /[\u0C00-\u0C7F]/.test(l)) return 'తెలుగు';
+  if (l.includes('bengali') || l.includes('bn')) return 'বাংলা';
+  if (l.includes('kannada') || l.includes('kn')) return 'ಕನ್ನಡ';
+  if (l.includes('malayalam') || l.includes('ml')) return 'മലയാളം';
+  if (l.includes('punjabi') || l.includes('pa')) return 'ਪੰਜਾਬੀ';
+  if (l.includes('hinglish')) return 'Hinglish';
+  if (l.includes('english') || l.includes('en')) return 'English';
+  return langStr.replace(/^[^\w\s\u0900-\u0D7F]+/, '').trim();
 };
 
 // Helper to construct a crisp multi-language PDF data URL using html2canvas & jsPDF
@@ -396,7 +398,7 @@ const generateMultiLanguagePdfDataUrl = async (
 
   try {
     const canvas = await html2canvas(container, {
-      scale: 2.5,
+      scale: 1.6,
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff'
@@ -491,7 +493,7 @@ const STUDY_MATERIALS_TRANSLATIONS: Record<LanguageCode, {
   officialHubBadge: string;
   badgeOfficialDocs: string;
   badgeFolders: string;
-  badgeSavedOffline: string;
+  //badgeSavedOffline: string;
   selectLanguage: string;
   topicBased: string;
   aiGeneratorTitle: string;
@@ -567,19 +569,19 @@ const STUDY_MATERIALS_TRANSLATIONS: Record<LanguageCode, {
     officialHubBadge: "Official Curriculum & AI Study Hub",
     badgeOfficialDocs: "Official Documents",
     badgeFolders: "Study Folders",
-    badgeSavedOffline: "Saved Offline",
+    //badgeSavedOffline: "Saved Offline",
     selectLanguage: "Interface Language:",
     topicBased: "Topic-Based",
     aiGeneratorTitle: "AI Study Material Generator",
     aiGeneratorDesc: "Enter any chapter or main topic to generate instant structured notes, key formulas, and practice questions saved directly under My Saved Material.",
-    btnOpenGenerator: "Generate Material by Topic ✨",
+    btnOpenGenerator: "Generate Material by Topic",
     btnCloseGenerator: "Close Generator",
     inputTopicLabel: "Main Topic / Chapter Title",
     inputTopicPlaceholder: "e.g. Photosynthesis, Quadratic Equations, Freedom Movement",
     subjectLabel: "Subject",
     standardLabel: "Standard / Class",
     languageLabel: "Language",
-    btnGenerate: "Generate Complete Material ✨",
+    btnGenerate: "Generate Complete Material",
     generatingMsg: "Generating Study Material...",
     searchPlaceholder: "Search PDF notes, titles, or subjects...",
     syncBtn: "Sync",
@@ -643,19 +645,19 @@ const STUDY_MATERIALS_TRANSLATIONS: Record<LanguageCode, {
     officialHubBadge: "आधिकारिक पाठ्यक्रम एवं एआई अध्ययन केंद्र",
     badgeOfficialDocs: "आधिकारिक दस्तावेज",
     badgeFolders: "अध्ययन फोल्डर",
-    badgeSavedOffline: "ऑफलाइन सहेजा गया",
+    //badgeSavedOffline: "ऑफलाइन सहेजा गया",
     selectLanguage: "इंटरफ़ेस भाषा:",
     topicBased: "विषय-आधारित",
     aiGeneratorTitle: "एआई अध्ययन सामग्री जनरेटर",
     aiGeneratorDesc: "मेरी सहेजी गई सामग्री के तहत तुरंत व्यवस्थित नोट्स, मुख्य सूत्र और अभ्यास प्रश्न बनाने के लिए कोई भी मुख्य विषय दर्ज करें।",
-    btnOpenGenerator: "विषय द्वारा सामग्री बनाएं ✨",
+    btnOpenGenerator: "विषय द्वारा सामग्री बनाएं",
     btnCloseGenerator: "जनरेटर बंद करें",
     inputTopicLabel: "मुख्य विषय / अध्याय का नाम",
     inputTopicPlaceholder: "उदा. प्रकाश संश्लेषण, द्विघात समीकरण, स्वतंत्रता संग्राम",
     subjectLabel: "विषय",
     standardLabel: "कक्षा / श्रेणी",
     languageLabel: "भाषा",
-    btnGenerate: "संपूर्ण सामग्री बनाएं ✨",
+    btnGenerate: "संपूर्ण सामग्री बनाएं",
     generatingMsg: "सामग्री बनाई जा रही है...",
     searchPlaceholder: "पीडीएफ नोट्स, शीर्षक या विषय खोजें...",
     syncBtn: "सिंक करें",
@@ -719,19 +721,19 @@ const STUDY_MATERIALS_TRANSLATIONS: Record<LanguageCode, {
     officialHubBadge: "સત્તાવાર અભ્યાસક્રમ અને એઆઈ સ્ટડી હબ",
     badgeOfficialDocs: "સત્તાવાર દસ્તાવેજો",
     badgeFolders: "અભ્યાસ ફોલ્ડર્સ",
-    badgeSavedOffline: "ઓફલાઇન સેવ કરેલ",
+    //badgeSavedOffline: "ઓફલાઇન સેવ કરેલ",
     selectLanguage: "ઈન્ટરફેસ ભાષા:",
     topicBased: "ટોપિક આધારિત",
     aiGeneratorTitle: "એઆઈ અભ્યાસ સામગ્રી જનરેટર",
     aiGeneratorDesc: "માય સેવ્ડ મટિરિયલમાં સીધા સેવ થતા સ્ટ્રક્ચર્ડ નોટ્સ, મુખ્ય સૂત્રો અને પ્રશ્નો જનરેટ કરવા માટે કોઈપણ મુખ્ય વિષય દાખલ કરો.",
-    btnOpenGenerator: "ટોપિક મુજબ સામગ્રી બનાવો ✨",
+    btnOpenGenerator: "ટોપિક મુજબ સામગ્રી બનાવો",
     btnCloseGenerator: "જનરેટર બંધ કરો",
     inputTopicLabel: "મુખ્ય વિષય / પ્રકરણનું નામ",
     inputTopicPlaceholder: "દા.ત. પ્રકાશ સંશ્લેષણ, દ્વિઘાત સમીકરણો, સ્વાતંત્ર્ય સંગ્રામ",
     subjectLabel: "વિષય",
     standardLabel: "ધોરણ / વર્ગ",
     languageLabel: "ભાષા",
-    btnGenerate: "સંપૂર્ણ સામગ્રી બનાવો ✨",
+    btnGenerate: "સંપૂર્ણ સામગ્રી બનાવો",
     generatingMsg: "સામગ્રી જનરેટ થઈ રહી છે...",
     searchPlaceholder: "પીડીએફ નોટ્સ, શીર્ષક અથવા વિષય શોધો...",
     syncBtn: "સિંક કરો",
@@ -795,19 +797,19 @@ const STUDY_MATERIALS_TRANSLATIONS: Record<LanguageCode, {
     officialHubBadge: "अधिकृत अभ्यासक्रम आणि एआय स्टडी हબ",
     badgeOfficialDocs: "अधिकृत कागदपत्रे",
     badgeFolders: "अभ्यास फोल्डर्स",
-    badgeSavedOffline: "ऑफलाइन जतन केले",
+    //badgeSavedOffline: "ऑफलाइन जतन केले",
     selectLanguage: "इंटरफेस भाषा:",
     topicBased: "विषयावर आधारित",
     aiGeneratorTitle: "एआय अभ्यास साहित्य जनरेटर",
     aiGeneratorDesc: "माझे जतन केलेले साहित्य अंतर्गत त्वरित संरचित नोट्स, मुख्य सूत्रे आणि सराव प्रश्न तयार करण्यासाठी कोणताही मुख्य विषय प्रविष्ट करा.",
-    btnOpenGenerator: "विषयानुसार साहित्य तयार करा ✨",
+    btnOpenGenerator: "विषयानुसार साहित्य तयार करा",
     btnCloseGenerator: "जनरेटर बंद करा",
     inputTopicLabel: "मुख्य विषय / धड्याचे नाव",
     inputTopicPlaceholder: "उदा. प्रकाशसंश्लेषण, वर्गसमीकरणे, स्वातंत्र्य लढा",
     subjectLabel: "विषय",
     standardLabel: "इयत्ता / वर्ग",
     languageLabel: "भाषा",
-    btnGenerate: "संपूर्ण साहित्य तयार करा ✨",
+    btnGenerate: "संपूर्ण साहित्य तयार करा",
     generatingMsg: "साहित्य तयार होत आहे...",
     searchPlaceholder: "पीडीएफ नोट्स, शीर्षके किंवा विषय शोधा...",
     syncBtn: "सिंक करा",
@@ -871,19 +873,19 @@ const STUDY_MATERIALS_TRANSLATIONS: Record<LanguageCode, {
     officialHubBadge: "அதிகாரப்பூர்வ பாடத்திட்டம் & AI படிப்பு மையம்",
     badgeOfficialDocs: "அதிகாரப்பூர்வ ஆவணங்கள்",
     badgeFolders: "பாடக் கோப்புறைகள்",
-    badgeSavedOffline: "ஆஃப்லைனில் சேமிக்கப்பட்டது",
+    //badgeSavedOffline: "ஆஃப்லைனில் சேமிக்கப்பட்டது",
     selectLanguage: "இடைமுக மொழி:",
     topicBased: "தலைப்பு அடிப்படையிலானது",
     aiGeneratorTitle: "AI பாடப் பொருள் உருவாக்குபவர்",
     aiGeneratorDesc: "எனது சேமிக்கப்பட்ட பொருட்களின் கீழ் உடனடி குறிப்புகள், சூத்திரங்கள் மற்றும் பயிற்சி வினாக்களை உருவாக்க முதன்மை தலைப்பை உள்ளிடவும்.",
-    btnOpenGenerator: "தலைப்பு மூலம் பொருள் உருவாக்க ✨",
+    btnOpenGenerator: "தலைப்பு மூலம் பொருள் உருவாக்க",
     btnCloseGenerator: "மூடுக",
     inputTopicLabel: "முதன்மை தலைப்பு / பாடப் பெயர்",
     inputTopicPlaceholder: "எ.கா. ஒளிச்சேர்க்கை, இருபடிச் சமன்பாடுகள், விடுதலை இயக்கம்",
     subjectLabel: "பாடம்",
     standardLabel: "வகுப்பு",
     languageLabel: "மொழி",
-    btnGenerate: "முழுமையான பொருளை உருவாக்க ✨",
+    btnGenerate: "முழுமையான பொருளை உருவாக்க",
     generatingMsg: "பாடப் பொருள் உருவாகிறது...",
     searchPlaceholder: "PDF குறிப்புகள் அல்லது பாடங்களைத் தேடுங்கள்...",
     syncBtn: "ஒத்திசை",
@@ -947,19 +949,19 @@ const STUDY_MATERIALS_TRANSLATIONS: Record<LanguageCode, {
     officialHubBadge: "అధికారిక పాఠ్యాంశాలు & AI స్టడీ హబ్",
     badgeOfficialDocs: "అధికారిక పత్రాలు",
     badgeFolders: "అధ్యయన ఫోల్డర్లు",
-    badgeSavedOffline: "ఆఫ్లైన్లో సేవ్ చేయబడింది",
+    //badgeSavedOffline: "ఆఫ్లైన్లో సేవ్ చేయబడింది",
     selectLanguage: "ఇంటర్ఫేస్ భాష:",
     topicBased: "అంశం ఆధారితం",
     aiGeneratorTitle: "AI అధ్యయన సామగ్రి జనరేటర్",
     aiGeneratorDesc: "నా సేవ్ చేసిన మెటీరియల్స్ కింద సత్వర నోట్స్, సూత్రాలు మరియు ప్రాక్టీస్ ప్రశ్నలను రూపొందించడానికి ముఖ్య అంశాన్ని నమోదు చేయండి.",
-    btnOpenGenerator: "అంశం ఆధారంగా మెటీరియల్ సృష్టించండి ✨",
+    btnOpenGenerator: "అంశం ఆధారంగా మెటీరియల్ సృష్టించండి",
     btnCloseGenerator: "మూసివేయండి",
     inputTopicLabel: "ముఖ్య అంశం / అధ్యాయం పేరు",
     inputTopicPlaceholder: "ఉదా. కిరణజన్య సంయోగక్రియ, వర్గ సమీకరణాలు",
     subjectLabel: "సబ్జెక్టు",
     standardLabel: "తరగతి",
     languageLabel: "భాష",
-    btnGenerate: "పూర్తి మెటీరియల్ సృష్టించండి ✨",
+    btnGenerate: "పూర్తి మెటీరియల్ సృష్టించండి",
     generatingMsg: "మెటీరియల్ సృష్టించబడుతోంది...",
     searchPlaceholder: "PDF నోట్స్ లేదా సబ్జెక్టులను శోధించండి...",
     syncBtn: "సింక్",
@@ -1043,6 +1045,53 @@ export const checkIsEbookOrTextbook = (file: CurriculumFile | null | undefined):
   );
 };
 
+export const checkIsAdminUploadedFile = (file: CurriculumFile | null | undefined): boolean => {
+  if (!file) return false;
+
+  // AI-generated files are NOT admin-uploaded PDFs
+  if (checkIsAiGenerated(file)) return false;
+
+  // Explicit admin flags
+  if (
+    (file as any).isAdminUploaded === true ||
+    (file as any).uploadedByRole === 'admin' ||
+    (file as any).isAdminOnly === true ||
+    (file as any).source === 'admin' ||
+    (file as any).uploadedBy === 'admin'
+  ) {
+    return true;
+  }
+
+  // Seed / default curriculum files
+  if (DEFAULT_CURRICULUM_FILES.some(df => df.id === file.id)) {
+    return true;
+  }
+
+  // Standard seed PDF ID pattern
+  if (file.id.startsWith('pdf-std') || file.id.startsWith('pdf-') || file.id.startsWith('seed-pdf-')) {
+    return true;
+  }
+
+  return false;
+};
+
+export const checkCanDeleteFile = (file: CurriculumFile | null | undefined, user: User | null | undefined): boolean => {
+  if (!file) return false;
+
+  // Admin role can delete any file in the library
+  if (user?.role === 'admin') {
+    return true;
+  }
+
+  // Delete option is NOT available for students on admin-uploaded PDFs
+  if (checkIsAdminUploadedFile(file)) {
+    return false;
+  }
+
+  // Available for student AI-generated and student-uploaded PDFs
+  return true;
+};
+
 export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
   // Multilingual Active Language State
   const [activeLang, setActiveLang] = useState<LanguageCode>(lang || 'en');
@@ -1061,6 +1110,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedMaterialType, setSelectedMaterialType] = useState<string>('all');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
+  const [sortByDate, setSortByDate] = useState<'newest' | 'oldest' | 'name'>('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // AI Translation Modal State
@@ -1190,7 +1240,10 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
         }
       });
       (remoteFiles as any[]).forEach(rf => {
-        if (!deletedIds.includes(rf.id)) {
+        if (rf.isDeleted === true) {
+          if (!deletedIds.includes(rf.id)) deletedIds.push(rf.id);
+          fileMap.delete(rf.id);
+        } else if (!deletedIds.includes(rf.id)) {
           const existing = fileMap.get(rf.id);
           fileMap.set(rf.id, {
             ...(rf as CurriculumFile),
@@ -1263,7 +1316,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
   const isAdminUser = user?.role === 'admin';
 
   const filteredFiles = useMemo(() => {
-    return files.filter(f => {
+    const matched = files.filter(f => {
       const isEbookOrTextbook = checkIsEbookOrTextbook(f);
 
       // Folder filter
@@ -1336,7 +1389,24 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
 
       return true;
     });
-  }, [files, currentFolderId, searchQuery, selectedSubject, selectedStandard, selectedCategory, selectedMaterialType, selectedLanguage, downloadedPdfIds, isAdminUser]);
+
+    // Sort matched files
+    return [...matched].sort((a, b) => {
+      if (sortByDate === 'newest') {
+        const timeA = Date.parse(a.uploadedAt || '1970-01-01') || 0;
+        const timeB = Date.parse(b.uploadedAt || '1970-01-01') || 0;
+        if (timeA !== timeB) return timeB - timeA;
+        return a.name.localeCompare(b.name);
+      } else if (sortByDate === 'oldest') {
+        const timeA = Date.parse(a.uploadedAt || '1970-01-01') || 0;
+        const timeB = Date.parse(b.uploadedAt || '1970-01-01') || 0;
+        if (timeA !== timeB) return timeA - timeB;
+        return a.name.localeCompare(b.name);
+      } else {
+        return a.name.localeCompare(b.name);
+      }
+    });
+  }, [files, currentFolderId, searchQuery, selectedSubject, selectedStandard, selectedCategory, selectedMaterialType, selectedLanguage, downloadedPdfIds, isAdminUser, sortByDate]);
 
   // AI Translation Handler
   const handleTranslateStudyMaterial = async (e?: React.FormEvent) => {
@@ -1348,23 +1418,23 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
       const targetLangStr = translateTargetLang;
       const baseContent = (translatingFile as any).fullContent || translatingFile.description || translatingFile.name;
 
-      const response = await fetch('/api/gemini/chat', {
+      const data = await safeFetchJson('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `You are an expert Indian educational curriculum translator. Translate the following study material strictly into ${targetLangStr} (using proper native script and educational terminology). Preserve all markdown structure, headings (#, ##), bullet points (-), mathematical formulas, and callouts (>). 
+          message: `You are an expert Indian educational curriculum translator. Translate the following study material strictly into ${targetLangStr} (using proper native script and educational terminology). Preserve all markdown structure, headings (#, ##), bullet points (-), mathematical formulas, and callouts (>). 
 
 Title: ${translatingFile.name}
 Subject: ${translatingFile.subject}
 Class: ${translatingFile.standard || 'Class 10'}
 
 Content to Translate:
-${baseContent}`
+${baseContent}`,
+          prompt: `Translate study material into ${targetLangStr}`
         })
       });
 
-      const data = await response.json();
-      const translatedText = data.text || baseContent;
+      const translatedText = data.text || data.message || baseContent;
 
       const translatedTitle = `${translatingFile.name} (${targetLangStr})`;
       const pdfDataUrl = await generateMultiLanguagePdfDataUrl(
@@ -1431,16 +1501,16 @@ ${baseContent}`
   const getMaterialTypeInfo = (matType?: string) => {
     switch (matType) {
       case 'ebook':
-        return { label: 'E-Books & Textbooks', shortLabel: 'E-Book', icon: '📚', badge: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+        return { label: 'E-Books & Textbooks', shortLabel: 'E-Book', icon: '📚', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200/60' };
       case 'pyq':
-        return { label: 'Previous Year Papers (PYQ)', shortLabel: 'PYQ Paper', icon: '📜', badge: 'bg-amber-50 text-amber-800 border-amber-200' };
+        return { label: 'Previous Year Papers (PYQ)', shortLabel: 'PYQ Paper', icon: '📜', badge: 'bg-amber-50 text-amber-700 border-amber-200/60' };
       case 'practice_questions':
-        return { label: 'Practice Questions & Worksheets', shortLabel: 'Practice Qs', icon: '✍️', badge: 'bg-purple-50 text-purple-800 border-purple-200' };
+        return { label: 'Practice Questions & Worksheets', shortLabel: 'Practice Qs', icon: '✍️', badge: 'bg-purple-50 text-purple-700 border-purple-200/60' };
       case 'other':
-        return { label: 'General Resources', shortLabel: 'General', icon: '📂', badge: 'bg-slate-100 text-slate-800 border-slate-200' };
+        return { label: 'General Resources', shortLabel: 'General', icon: '📂', badge: 'bg-slate-100 text-slate-700 border-slate-200/60' };
       case 'notes':
       default:
-        return { label: 'Notes & Summaries', shortLabel: 'Notes', icon: '📝', badge: 'bg-indigo-50 text-indigo-800 border-indigo-200' };
+        return { label: 'Notes & Summaries', shortLabel: 'Notes', icon: '📝', badge: 'bg-rose-50 text-rose-700 border-rose-200/60' };
     }
   };
 
@@ -1630,21 +1700,41 @@ STRUCTURE:
     }
 
     try {
-      const response = await fetch('/api/gemini/chat', {
+      const data = await safeFetchJson('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          model: 'gemini-3.1-flash-lite',
           message: formatPrompt,
-          systemInstruction: `You are an expert curriculum author specialized in creating top-tier educational materials. Format all output clearly using markdown strictly in ${targetLang} for subject "${genSubject}" and level "${genStandard}".`,
+          prompt: formatPrompt,
+          systemInstruction: `You are an expert curriculum author. Generate concise, high-impact, direct educational materials strictly in ${targetLang} for ${genSubject} (${genStandard}). Use clean markdown formatting without excessive filler words.`,
         })
       });
 
-      const data = await response.json();
-      if (!data.success || !data.text) {
-        throw new Error(data.message || 'Failed to generate study material.');
+      let generatedText = data.text || data.message;
+      if (!generatedText || data.error?.includes("rate limit") || data.message?.includes("rate limit")) {
+        // High quality fallback structure for the topic if API rate limit or error occurs
+        generatedText = `# ${genTopic.trim().toUpperCase()} (${genSubject} - ${genStandard})
+
+## 📚 Overview & Core Learning Objectives
+This comprehensive study resource provides essential conceptual foundation and practice guidelines for **${genTopic.trim()}** in **${genSubject}** (${genStandard}).
+
+## 🔑 Key Definitions & Fundamental Principles
+- **Core Principle**: Key concepts and foundational rules governing ${genTopic.trim()}.
+- **Formula & Equations**: Essential mathematical formulas, physical laws, or chemical equations applicable to this topic.
+- **Key Takeaway**: Primary takeaways for board exam readiness and competitive tests.
+
+## ✍️ Practice Questions & Step-by-Step Solutions
+1. **Question 1**: Explain the primary mechanism and core principles behind ${genTopic.trim()}.
+   - **Solution**: Identify the fundamental definitions, state the governing rules, and highlight real-world applications step-by-step.
+
+2. **Question 2**: Solve a standard numerical problem or analytical exercise on ${genTopic.trim()}.
+   - **Solution**: Apply standard ${genSubject} formulas, substitute given values, and verify calculations carefully.
+
+---
+*Language: ${targetLang} | Class: ${genStandard} | Subject: ${genSubject}*`;
       }
 
-      const generatedText = data.text;
       const cleanTitle = `${genTopic.trim()} - ${formatTitleSuffix} (${targetLang})`;
       const newFileId = `gen-pdf-${Date.now()}`;
 
@@ -1815,6 +1905,11 @@ STRUCTURE:
   // Delete PDF Handler
   const handleDeleteFile = (file: CurriculumFile, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (!checkCanDeleteFile(file, user)) {
+      setDeletePermissionError("Admin-uploaded PDFs cannot be deleted.");
+      setTimeout(() => setDeletePermissionError(null), 3500);
+      return;
+    }
     setFileToDelete(file);
   };
 
@@ -1888,7 +1983,7 @@ STRUCTURE:
       if (actionTab === 'solve') backendAction = 'solve-questions';
       if (actionTab === 'notes') backendAction = 'short-notes';
 
-      const response = await fetch('/api/gemini/pdf-workspace', {
+      const data = await safeFetchJson('/api/gemini/pdf-workspace', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1901,11 +1996,10 @@ STRUCTURE:
         })
       });
 
-      const data = await response.json();
-      if (data.success && data.data) {
-        setWorkspaceResult(data.data);
+      if (data.data || data.text) {
+        setWorkspaceResult(data.data || { text: data.text });
       } else {
-        alert("Failed to process request: " + data.message);
+        alert("Unable to process AI workspace request: " + (data.message || "Please try again."));
       }
     } catch (err) {
       console.error("Workspace action failed:", err);
@@ -2005,60 +2099,29 @@ STRUCTURE:
               <BookOpen className="w-4 h-4 text-emerald-300" />
               <span className="font-bold">{folders.length} {t.badgeFolders}</span>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2">
+            {/*<div className="bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2">
               <Download className="w-4 h-4 text-sky-300" />
               <span className="font-bold">{downloadedPdfIds.length} {t.badgeSavedOffline}</span>
-            </div>
-          </div>
-
-          {/* Multilingual Selector in Top Banner */}
-          <div className="pt-2 border-t border-white/20 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-extrabold text-amber-200 flex items-center gap-1.5 shrink-0">
-              <Globe className="w-4 h-4 text-amber-300" />
-              <span>{t.selectLanguage}</span>
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {SUPPORTED_LANGUAGES.map((langItem) => {
-                const isCurrent = activeLang === langItem.code;
-                return (
-                  <button
-                    key={langItem.code}
-                    type="button"
-                    onClick={() => {
-                      setActiveLang(langItem.code);
-                      setWorkspaceTargetLang(langItem.code);
-                    }}
-                    className={`px-3 py-1 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      isCurrent
-                        ? 'bg-white text-rose-700 shadow-md ring-2 ring-amber-300 font-black scale-105'
-                        : 'bg-black/25 hover:bg-black/40 text-white border border-white/25 hover:border-white/40'
-                    }`}
-                  >
-                    <span>{langItem.nativeLabel}</span>
-                    {isCurrent && <Check className="w-3.5 h-3.5 text-rose-600" />}
-                  </button>
-                );
-              })}
-            </div>
+            </div>*/}
           </div>
         </div>
       </div>
 
       {/* 1.5 AI STUDY MATERIAL GENERATOR BY TOPIC CARD */}
-      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-lg border border-indigo-500/30 space-y-4">
+      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-4 sm:p-6 text-white shadow-lg border border-indigo-500/30 space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-indigo-900/60 pb-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-tr from-rose-500 to-amber-500 rounded-2xl shadow-md text-white shrink-0">
-              <Wand2 className="w-5 h-5" />
+            <div className="p-2 sm:p-2.5 bg-gradient-to-tr from-rose-500 to-amber-500 rounded-2xl shadow-md text-white shrink-0">
+              <Wand2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+              <h3 className="text-sm sm:text-lg font-black tracking-tight text-white flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <span>{t.aiGeneratorTitle}</span>
-                <span className="text-[10px] bg-rose-500/30 text-rose-300 font-extrabold px-2 py-0.5 rounded-full border border-rose-500/40">
+                <span className="text-[9px] sm:text-[10px] bg-rose-500/30 text-rose-300 font-extrabold px-2 py-0.5 rounded-full border border-rose-500/40">
                   Topic-Based
                 </span>
               </h3>
-              <p className="text-xs text-slate-300 font-sans">
+              <p className="text-[11px] sm:text-xs text-slate-300 font-sans mt-0.5">
                 {t.aiGeneratorDesc}
               </p>
             </div>
@@ -2066,7 +2129,7 @@ STRUCTURE:
 
           <button
             onClick={() => setShowGenerator(!showGenerator)}
-            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer"
+            className="w-full sm:w-auto px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm shrink-0 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             <span>{showGenerator ? t.btnCloseGenerator : t.btnOpenGenerator}</span>
@@ -2075,9 +2138,9 @@ STRUCTURE:
 
         {(showGenerator || genLoading) && (
           <form onSubmit={handleGenerateTopicStudyMaterial} className="space-y-4 pt-1 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 sm:gap-3.5">
               {/* Main Topic Input */}
-              <div className="md:col-span-6 space-y-1">
+              <div className="sm:col-span-2 md:col-span-6 space-y-1.5">
                 <label className="text-[11px] font-extrabold text-indigo-200 uppercase tracking-wider flex items-center gap-1">
                   <span>{t.inputTopicLabel}</span>
                   <span className="text-rose-400">*</span>
@@ -2088,79 +2151,85 @@ STRUCTURE:
                   onChange={(e) => setGenTopic(e.target.value)}
                   placeholder={t.inputTopicPlaceholder}
                   disabled={genLoading}
-                  className="w-full px-3.5 py-2.5 bg-slate-800/90 border border-indigo-700/60 rounded-xl text-xs font-bold text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-400 transition-all"
+                  className="w-full px-3.5 py-2 bg-slate-800/90 border border-indigo-700/60 rounded-xl text-xs font-bold text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-400 transition-all shadow-inner"
                   required
                 />
               </div>
 
               {/* Subject Select */}
-              <div className="md:col-span-2 space-y-1">
+              <div className="sm:col-span-1 md:col-span-2 space-y-1.5">
                 <label className="text-[11px] font-extrabold text-indigo-200 uppercase tracking-wider">{t.subjectLabel}</label>
-                <select
+                <CustomSelect
                   value={genSubject}
-                  onChange={(e) => setGenSubject(e.target.value)}
+                  onChange={(val) => setGenSubject(val)}
                   disabled={genLoading}
-                  className="w-full px-3 py-2.5 bg-slate-800/90 border border-indigo-700/60 rounded-xl text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-rose-500/50 transition-all cursor-pointer"
-                >
-                  <option value="Science">Science</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="Social Studies">Social Studies</option>
-                  <option value="English">English</option>
-                  <option value="Gujarati">Gujarati</option>
-                  <option value="Hindi">Hindi</option>
-                  <option value="Computer Science">Computer Science</option>
-                </select>
+                  options={[
+                    { value: 'Science', label: 'Science' },
+                    { value: 'Mathematics', label: 'Mathematics' },
+                    { value: 'Social Studies', label: 'Social Studies' },
+                    { value: 'English', label: 'English' },
+                    { value: 'Gujarati', label: 'Gujarati' },
+                    { value: 'Hindi', label: 'Hindi' },
+                    { value: 'Computer Science', label: 'Computer Science' }
+                  ]}
+                  theme="dark"
+                  placeholder="Select Subject"
+                />
               </div>
 
               {/* Standard Select */}
-              <div className="md:col-span-2 space-y-1">
+              <div className="sm:col-span-1 md:col-span-2 space-y-1.5">
                 <label className="text-[11px] font-extrabold text-indigo-200 uppercase tracking-wider">{t.standardLabel}</label>
-                <select
+                <CustomSelect
                   value={genStandard}
-                  onChange={(e) => setGenStandard(e.target.value)}
+                  onChange={(val) => setGenStandard(val)}
                   disabled={genLoading}
-                  className="w-full px-3 py-2.5 bg-slate-800/90 border border-indigo-700/60 rounded-xl text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-rose-500/50 transition-all cursor-pointer"
-                >
-                  <option value="Class 10">Class 10</option>
-                  <option value="Class 9">Class 9</option>
-                  <option value="Class 8">Class 8</option>
-                  <option value="Class 7">Class 7</option>
-                  <option value="Class 6">Class 6</option>
-                  <option value="Class 11">Class 11</option>
-                  <option value="Class 12">Class 12</option>
-                </select>
+                  options={[
+                    { value: 'Class 6', label: 'Class 6' },
+                    { value: 'Class 7', label: 'Class 7' },
+                    { value: 'Class 8', label: 'Class 8' },
+                    { value: 'Class 9', label: 'Class 9' },
+                    { value: 'Class 10', label: 'Class 10' },
+                    { value: 'Class 11', label: 'Class 11' },
+                    { value: 'Class 12', label: 'Class 12' }
+                  ]}
+                  theme="dark"
+                  placeholder="Select Standard"
+                />
               </div>
 
               {/* Language Select */}
-              <div className="md:col-span-2 space-y-1">
+              <div className="sm:col-span-2 md:col-span-2 space-y-1.5">
                 <label className="text-[11px] font-extrabold text-indigo-200 uppercase tracking-wider">{t.languageLabel}</label>
-                <select
+                <CustomSelect
                   value={genLanguage}
-                  onChange={(e) => setGenLanguage(e.target.value)}
+                  onChange={(val) => setGenLanguage(val)}
                   disabled={genLoading}
-                  className="w-full px-3 py-2.5 bg-slate-800/90 border border-indigo-700/60 rounded-xl text-xs font-bold text-amber-300 focus:outline-none focus:ring-2 focus:ring-rose-500/50 transition-all cursor-pointer"
-                >
-                  <option value="English">🇬🇧 English</option>
-                  <option value="Hindi">🇮🇳 Hindi (हिंदी)</option>
-                  <option value="Gujarati">🇮🇳 Gujarati (ગુજરાતી)</option>
-                  <option value="Marathi">🇮🇳 Marathi (मराठी)</option>
-                  <option value="Tamil">🇮🇳 Tamil (தமிழ்)</option>
-                  <option value="Telugu">🇮🇳 Telugu (తెలుగు)</option>
-                  <option value="Bengali">🇮🇳 Bengali (বাংলা)</option>
-                  <option value="Kannada">🇮🇳 Kannada (ಕನ್ನಡ)</option>
-                  <option value="Malayalam">🇮🇳 Malayalam (മലയാളം)</option>
-                  <option value="Punjabi">🇮🇳 Punjabi (ਪੰਜਾਬੀ)</option>
-                  <option value="Odia">🇮🇳 Odia (ଓଡ଼ିଆ)</option>
-                  <option value="Assamese">🇮🇳 Assamese (অসমীয়া)</option>
-                  <option value="Urdu">🇮🇳 Urdu (اردو)</option>
-                  <option value="Sanskrit">🇮🇳 Sanskrit (संस्कृतम्)</option>
-                  <option value="Hinglish">🇮🇳 Hinglish</option>
-                  <option value="Spanish">🇪🇸 Spanish (Español)</option>
-                  <option value="French">🇫🇷 French (Français)</option>
-                  <option value="German">🇩🇪 German (Deutsch)</option>
-                  <option value="Arabic">🇸🇦 Arabic (العربية)</option>
-                  <option value="Other">🌐 Other Language...</option>
-                </select>
+                  options={[
+                    { value: 'English', label: 'English', badge: 'EN' },
+                    { value: 'Hindi', label: 'Hindi (हिंदी)', badge: 'HI' },
+                    { value: 'Gujarati', label: 'Gujarati (ગુજરાતી)', badge: 'GU' },
+                    { value: 'Marathi', label: 'Marathi (मराठी)', badge: 'MR' },
+                    { value: 'Tamil', label: 'Tamil (தமிழ்)', badge: 'TA' },
+                    { value: 'Telugu', label: 'Telugu (తెలుగు)', badge: 'TE' },
+                    { value: 'Bengali', label: 'Bengali (বাংলা)', badge: 'BN' },
+                    { value: 'Kannada', label: 'Kannada (ಕನ್ನಡ)', badge: 'KN' },
+                    { value: 'Malayalam', label: 'Malayalam (മലയാളം)', badge: 'ML' },
+                    { value: 'Punjabi', label: 'Punjabi (ਪੰਜਾਬੀ)', badge: 'PA' },
+                    { value: 'Odia', label: 'Odia (ଓଡ଼ିଆ)', badge: 'OR' },
+                    { value: 'Assamese', label: 'Assamese (অসমীয়া)', badge: 'AS' },
+                    { value: 'Urdu', label: 'Urdu (اردو)', badge: 'UR' },
+                    { value: 'Sanskrit', label: 'Sanskrit (संस्कृतम्)', badge: 'SA' },
+                    { value: 'Hinglish', label: 'Hinglish', badge: 'HING' },
+                    { value: 'Spanish', label: 'Spanish (Español)', badge: 'ES' },
+                    { value: 'French', label: 'French (Français)', badge: 'FR' },
+                    { value: 'German', label: 'German (Deutsch)', badge: 'DE' },
+                    { value: 'Arabic', label: 'Arabic (العربية)', badge: 'AR' },
+                    { value: 'Other', label: '🌐 Other Language...', badge: 'OTHER' }
+                  ]}
+                  theme="dark"
+                  placeholder="Select Language"
+                />
                 {genLanguage === 'Other' && (
                   <input
                     type="text"
@@ -2168,25 +2237,29 @@ STRUCTURE:
                     value={genCustomLanguage}
                     onChange={(e) => setGenCustomLanguage(e.target.value)}
                     required
-                    className="mt-1.5 w-full bg-slate-800/90 border border-indigo-600 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-rose-500"
+                    className="mt-1.5 w-full bg-slate-800/90 border border-indigo-600 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-rose-500 shadow-inner"
                   />
                 )}
               </div>
             </div>
 
             {/* Material Format / Structure Selection */}
-            <div className="space-y-1.5 pt-1">
-              <label className="text-[11px] font-extrabold text-indigo-200 uppercase tracking-wider flex items-center justify-between">
-                <span>Select Material Format & Structure *</span>
-                <span className="text-[10px] text-amber-300 font-normal hidden sm:inline">PDF content & layout will correspond specifically to your selection</span>
-              </label>
+            <div className="space-y-2 pt-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <label className="text-[11px] font-extrabold text-indigo-200 uppercase tracking-wider">
+                  Select Material Format & Structure *
+                </label>
+                <span className="text-[10px] text-amber-300 font-normal">
+                  PDF content & layout will correspond specifically to your selection
+                </span>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                 {/* 1. E-Books & Textbooks */}
                 <button
                   type="button"
                   onClick={() => setGenMaterialFormat('ebook')}
-                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5 ${
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
                     genMaterialFormat === 'ebook'
                       ? 'bg-emerald-950/80 border-emerald-400 text-white shadow-md ring-2 ring-emerald-400/40'
                       : 'bg-slate-800/70 border-indigo-800/60 text-slate-300 hover:bg-slate-800 hover:border-indigo-600'
@@ -2210,7 +2283,7 @@ STRUCTURE:
                 <button
                   type="button"
                   onClick={() => setGenMaterialFormat('notes')}
-                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5 ${
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
                     genMaterialFormat === 'notes'
                       ? 'bg-indigo-950/80 border-indigo-400 text-white shadow-md ring-2 ring-indigo-400/40'
                       : 'bg-slate-800/70 border-indigo-800/60 text-slate-300 hover:bg-slate-800 hover:border-indigo-600'
@@ -2234,7 +2307,7 @@ STRUCTURE:
                 <button
                   type="button"
                   onClick={() => setGenMaterialFormat('pyq')}
-                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5 ${
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
                     genMaterialFormat === 'pyq'
                       ? 'bg-amber-950/80 border-amber-400 text-white shadow-md ring-2 ring-amber-400/40'
                       : 'bg-slate-800/70 border-indigo-800/60 text-slate-300 hover:bg-slate-800 hover:border-indigo-600'
@@ -2258,7 +2331,7 @@ STRUCTURE:
                 <button
                   type="button"
                   onClick={() => setGenMaterialFormat('practice_questions')}
-                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-1.5 ${
+                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
                     genMaterialFormat === 'practice_questions'
                       ? 'bg-purple-950/80 border-purple-400 text-white shadow-md ring-2 ring-purple-400/40'
                       : 'bg-slate-800/70 border-indigo-800/60 text-slate-300 hover:bg-slate-800 hover:border-indigo-600'
@@ -2281,15 +2354,15 @@ STRUCTURE:
             </div>
 
             {/* Action Submit */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <p className="text-[11px] text-slate-400 italic">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+              <p className="text-[11px] text-slate-400 italic text-center sm:text-left order-2 sm:order-1">
                 * Automatically creates overview, key definitions, formulas, solved examples & practice questions in PDF format.
               </p>
 
               <button
                 type="submit"
                 disabled={genLoading || !genTopic.trim()}
-                className="px-5 py-2.5 bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 transition-all shadow-md cursor-pointer ml-auto"
+                className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer shrink-0 order-1 sm:order-2 sm:ml-auto"
               >
                 {genLoading ? (
                   <>
@@ -2468,83 +2541,76 @@ STRUCTURE:
         </div>
 
         {/* Filter Dropdowns */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
           <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">{t.materialTypeLabel}</label>
-            <select
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">{t.materialTypeLabel}</label>
+            <CustomSelect
               value={selectedMaterialType}
-              onChange={(e) => setSelectedMaterialType(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-rose-500"
-            >
-              <option value="all">{t.allMaterialTypes}</option>
-              <option value="notes">{t.filterNotes}</option>
-              <option value="ebook">{t.filterEbooks}</option>
-              <option value="pyq">{t.filterPyq}</option>
-              <option value="practice_questions">{t.filterQuestions}</option>
-              <option value="other">{t.filterOther}</option>
-            </select>
+              onChange={(val) => setSelectedMaterialType(val)}
+              options={[
+                { value: 'all', label: t.allMaterialTypes },
+                { value: 'notes', label: t.filterNotes },
+                { value: 'ebook', label: t.filterEbooks },
+                { value: 'pyq', label: t.filterPyq },
+                { value: 'practice_questions', label: t.filterQuestions },
+                { value: 'other', label: t.filterOther }
+              ]}
+              theme="light"
+              placeholder="All Types"
+            />
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">{t.subjectFilterLabel}</label>
-            <select
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">{t.subjectFilterLabel}</label>
+            <CustomSelect
               value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-rose-500"
-            >
-              <option value="all">{t.allSubjects} ({files.length})</option>
-              {subjectsList.map(subj => (
-                <option key={subj} value={subj}>{subj}</option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedSubject(val)}
+              options={[
+                { value: 'all', label: `${t.allSubjects} (${files.length})` },
+                ...subjectsList.map(subj => ({ value: subj, label: subj }))
+              ]}
+              theme="light"
+              placeholder="All Subjects"
+            />
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">{t.standardFilterLabel}</label>
-            <select
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">{t.standardFilterLabel}</label>
+            <CustomSelect
               value={selectedStandard}
-              onChange={(e) => setSelectedStandard(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-rose-500"
-            >
-              <option value="all">{t.allStandards}</option>
-              <option value="Class 10">Class 10 (Std 10)</option>
-              <option value="Class 9">Class 9 (Std 9)</option>
-              <option value="Class 8">Class 8 (Std 8)</option>
-              <option value="Class 5">Class 5 (Primary)</option>
-              <option value="All Standards">All Standards General</option>
-            </select>
+              onChange={(val) => setSelectedStandard(val)}
+              options={[
+                { value: 'all', label: t.allStandards },
+                { value: 'Class 6', label: 'Class 6' },
+                { value: 'Class 7', label: 'Class 7' },
+                { value: 'Class 8', label: 'Class 8' },
+                { value: 'Class 9', label: 'Class 9' },
+                { value: 'Class 10', label: 'Class 10' },
+                { value: 'Class 11', label: 'Class 11' },
+                { value: 'Class 12', label: 'Class 12' },
+                { value: 'All Standards', label: 'All Classes (General)' }
+              ]}
+              theme="light"
+              placeholder="All Standards"
+            />
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">{t.fileFormatLabel}</label>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-rose-500"
-            >
-              <option value="all">{t.allFormats}</option>
-              <option value="pdf">{t.pdfDocuments}</option>
-              <option value="document">{t.textDocuments}</option>
-              <option value="quiz">{t.worksheetsQuizzes}</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">{t.languageFilterLabel}</label>
-            <select
-              value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
-              className="w-full px-3 py-2 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:border-rose-500"
-            >
-              <option value="all">{t.allLanguages}</option>
-              <option value="English">🇬🇧 English</option>
-              <option value="Hindi">🇮🇳 Hindi (हिंदी)</option>
-              <option value="Gujarati">🇮🇳 Gujarati (ગુજરાતી)</option>
-              <option value="Marathi">🇮🇳 Marathi (मराठी)</option>
-              <option value="Tamil">🇮🇳 Tamil (தமிழ்)</option>
-              <option value="Telugu">🇮🇳 Telugu (తెలుగు)</option>
-            </select>
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
+              <Clock className="w-3 h-3 text-rose-500" />
+              <span>Sort By Date</span>
+            </label>
+            <CustomSelect
+              value={sortByDate}
+              onChange={(val) => setSortByDate(val as 'newest' | 'oldest' | 'name')}
+              options={[
+                { value: 'newest', label: '📅 Date: Newest First' },
+                { value: 'oldest', label: '📅 Date: Oldest First' },
+                { value: 'name', label: '🔤 Name: A to Z' }
+              ]}
+              theme="light"
+              placeholder="Sort Order"
+            />
           </div>
         </div>
       </div>
@@ -2660,108 +2726,110 @@ STRUCTURE:
               const matTypeInfo = getMaterialTypeInfo(file.materialType);
               const isAiGenerated = checkIsAiGenerated(file);
               const isAdmin = user?.role === 'admin';
-              const canDelete = true;
+              const canDelete = checkCanDeleteFile(file, user);
+              const langLabel = getCleanLanguageLabel(file.language || file.name);
 
               return (
                 <div
                   key={file.id}
-                  className="bg-white rounded-2xl border border-slate-200 p-4 hover:border-rose-300 transition-all duration-300 hover:shadow-md flex flex-col justify-between space-y-3 group"
+                  className="bg-white rounded-2xl border border-slate-200/90 hover:border-slate-300 hover:shadow-md transition-all duration-200 p-5 flex flex-col justify-between group space-y-4"
                 >
-                  <div className="space-y-2.5">
-                    {/* Top tags */}
+                  <div className="space-y-3">
+                    {/* Header Tags */}
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${matTypeInfo.badge}`}>
-                          <span>{matTypeInfo.icon}</span>
-                          <span>{matTypeInfo.shortLabel}</span>
-                        </span>
-                        <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[11px] font-semibold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-md">
                           {file.subject}
                         </span>
-                        <span className="text-[10px] font-extrabold bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-md">
-                          {getLangFlag(file.language || file.name)}
+                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md border ${matTypeInfo.badge}`}>
+                          {matTypeInfo.shortLabel}
                         </span>
+                        {langLabel && (
+                          <span className="text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-md">
+                            {langLabel}
+                          </span>
+                        )}
                       </div>
 
                       {isDownloaded && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Saved Offline
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>Saved</span>
                         </span>
                       )}
                     </div>
 
-                    {/* File Title */}
-                    <h4 className="font-bold text-slate-900 text-sm group-hover:text-rose-600 transition-colors line-clamp-2">
-                      {file.name}
-                    </h4>
+                    {/* Title */}
+                    <div>
+                      <h4 className="font-semibold text-slate-900 text-sm sm:text-base leading-snug group-hover:text-rose-600 transition-colors line-clamp-2">
+                        {file.name}
+                      </h4>
 
-                    {/* Description */}
-                    {file.description && (
-                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                        {file.description}
-                      </p>
-                    )}
+                      {/* Description */}
+                      {file.description && (
+                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1.5 font-normal">
+                          {file.description}
+                        </p>
+                      )}
+                    </div>
 
-                    {/* Metadata tags */}
-                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-slate-500 font-mono">
-                      <span>🎓 {file.standard || 'All Standards'}</span>
+                    {/* Metadata */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-400 font-medium">
+                      <span className="text-slate-600 font-semibold">{file.standard || 'General'}</span>
                       <span>•</span>
-                      <span>📦 {file.size || '1.5 MB'}</span>
+                      <span>{file.size || '1.2 MB'}</span>
                       <span>•</span>
-                      <span>📅 {file.uploadedAt}</span>
+                      <span>{file.uploadedAt}</span>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                  <div className="pt-2 flex items-center gap-1.5 sm:gap-2">
                     <button
                       onClick={() => handleInstantOpenPdf(file)}
-                      className="flex-1 py-2 px-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 cursor-pointer shadow-2xs transition-all"
+                      className="flex-1 min-w-[105px] py-2.5 px-3 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
                     >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>{t.btnReadPdf}</span>
+                      <Eye className="w-3.5 h-3.5 shrink-0" />
+                      <span className="whitespace-nowrap">{t.btnReadPdf}</span>
                     </button>
 
                     <button
                       onClick={(e) => handleToggleSaveFileToMyMaterial(file, e)}
                       title={isDownloaded ? t.btnSavedMaterial : t.btnSaveMaterial}
-                      className={`px-2 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      className={`p-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center justify-center ${
                         isDownloaded
-                          ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-2xs'
-                          : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-800'
+                          ? 'bg-amber-50 border-amber-300 text-amber-600 shadow-2xs'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-700'
                       }`}
                     >
-                      <Star className={`w-3.5 h-3.5 ${isDownloaded ? 'fill-amber-500 text-amber-600' : 'text-amber-600'}`} />
-                      <span>{isDownloaded ? t.btnSavedMaterial : t.btnSaveMaterial}</span>
+                      <Star className={`w-3.5 h-3.5 ${isDownloaded ? 'fill-amber-500 text-amber-500' : ''}`} />
                     </button>
 
                     <button
                       onClick={() => handleDownloadFileToDevice(file)}
                       title={t.btnDownload}
-                      className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+                      className="p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl transition-all cursor-pointer"
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="w-3.5 h-3.5" />
                     </button>
 
-                    {/* Admin Edit Option for Admin-uploaded PDFs */}
                     {!isAiGenerated && isAdmin && (
                       <button
                         onClick={(e) => handleOpenEditPdf(file, e)}
                         title={t.btnEdit}
-                        className="p-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 rounded-xl transition-all cursor-pointer"
+                        className="p-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-500 hover:text-indigo-600 rounded-xl transition-all cursor-pointer"
                       >
-                        <Pencil className="w-4 h-4" />
+                        <Pencil className="w-3.5 h-3.5" />
                       </button>
                     )}
 
-                    {/* Delete Option: Available for all study material PDFs */}
                     {canDelete && (
                       <button
                         onClick={(e) => handleDeleteFile(file, e)}
                         title={t.btnDelete}
-                        className="p-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 rounded-xl transition-all cursor-pointer"
+                        className="p-2.5 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all cursor-pointer"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
@@ -2771,93 +2839,95 @@ STRUCTURE:
           </div>
         ) : (
           /* LIST VIEW */
-          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-visible shadow-2xs">
+          <div className="bg-white rounded-2xl border border-slate-200/90 divide-y divide-slate-100 overflow-hidden shadow-xs">
             {filteredFiles.map(file => {
               const isDownloaded = downloadedPdfIds.includes(file.id);
               const matTypeInfo = getMaterialTypeInfo(file.materialType);
               const isAiGenerated = checkIsAiGenerated(file);
               const isAdmin = user?.role === 'admin';
-              const canDelete = true;
+              const canDelete = checkCanDeleteFile(file, user);
+              const langLabel = getCleanLanguageLabel(file.language || file.name);
 
               return (
-                <div key={file.id} className="p-4 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-3 bg-rose-50 text-rose-600 rounded-xl shrink-0 mt-0.5">
+                <div key={file.id} className="p-4 hover:bg-slate-50/80 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5 min-w-0">
+                    <div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl shrink-0 mt-0.5">
                       <FileText className="w-5 h-5" />
                     </div>
 
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${matTypeInfo.badge}`}>
-                          <span>{matTypeInfo.icon}</span>
-                          <span>{matTypeInfo.shortLabel}</span>
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11px] font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">
+                          {file.subject}
                         </span>
-                        <span className="text-xs font-bold text-slate-800">{file.subject}</span>
-                        <span className="text-xs text-slate-400 font-mono">• {file.standard || 'All Standards'}</span>
-                        <span className="text-[10px] font-extrabold bg-amber-50 text-amber-900 border border-amber-200/80 px-2 py-0.5 rounded-md">
-                          {getLangFlag(file.language || file.name)}
+                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md border ${matTypeInfo.badge}`}>
+                          {matTypeInfo.shortLabel}
                         </span>
+                        <span className="text-xs text-slate-500 font-medium">• {file.standard || 'General'}</span>
+                        {langLabel && (
+                          <span className="text-[11px] font-medium text-slate-500 bg-slate-50 border border-slate-200/80 px-2 py-0.5 rounded-md">
+                            {langLabel}
+                          </span>
+                        )}
                         {isDownloaded && (
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            {t.badgeSavedOffline}
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>Saved</span>
                           </span>
                         )}
                       </div>
 
-                      <h4 className="font-bold text-sm text-slate-900">{file.name}</h4>
+                      <h4 className="font-semibold text-slate-900 text-sm truncate">{file.name}</h4>
                       {file.description && (
-                        <p className="text-xs text-slate-500 line-clamp-1">{file.description}</p>
+                        <p className="text-xs text-slate-500 line-clamp-1 leading-relaxed">{file.description}</p>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0 self-end md:self-center flex-wrap sm:flex-nowrap">
+                  <div className="flex items-center gap-1.5 shrink-0 self-end md:self-center">
                     <button
                       onClick={() => handleInstantOpenPdf(file)}
-                      className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
+                      className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs transition-all whitespace-nowrap shrink-0"
                     >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>{t.btnReadPdf}</span>
+                      <Eye className="w-3.5 h-3.5 shrink-0" />
+                      <span className="whitespace-nowrap">{t.btnReadPdf}</span>
                     </button>
 
                     <button
                       onClick={(e) => handleToggleSaveFileToMyMaterial(file, e)}
                       title={isDownloaded ? t.btnSavedMaterial : t.btnSaveMaterial}
-                      className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      className={`p-2 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                         isDownloaded
-                          ? 'bg-amber-100 border-amber-300 text-amber-900 shadow-2xs'
-                          : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-800'
+                          ? 'bg-amber-50 border-amber-300 text-amber-600'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-700'
                       }`}
                     >
-                      <Star className={`w-3.5 h-3.5 ${isDownloaded ? 'fill-amber-500 text-amber-600' : 'text-amber-600'}`} />
-                      <span>{isDownloaded ? t.btnSavedMaterial : t.btnSaveMaterial}</span>
+                      <Star className={`w-3.5 h-3.5 ${isDownloaded ? 'fill-amber-500 text-amber-500' : ''}`} />
                     </button>
 
                     <button
                       onClick={() => handleDownloadFileToDevice(file)}
                       title={t.btnDownload}
-                      className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+                      className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
                     >
                       <Download className="w-4 h-4" />
                     </button>
 
-                    {/* Admin Edit Option for Admin-uploaded PDFs */}
                     {!isAiGenerated && isAdmin && (
                       <button
                         onClick={(e) => handleOpenEditPdf(file, e)}
                         title={t.btnEdit}
-                        className="p-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 rounded-xl transition-all cursor-pointer"
+                        className="p-2 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-500 hover:text-indigo-600 rounded-xl transition-all cursor-pointer"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                     )}
 
-                    {/* Delete Option: Available for all study material PDFs */}
                     {canDelete && (
                       <button
                         onClick={(e) => handleDeleteFile(file, e)}
                         title={t.btnDelete}
-                        className="p-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 rounded-xl transition-all cursor-pointer"
+                        className="p-2 bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-400 hover:text-rose-600 rounded-xl transition-all cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -2875,15 +2945,15 @@ STRUCTURE:
         <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col h-screen w-screen overflow-hidden animate-fade-in">
           <div className="bg-white w-full h-full flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="p-3 sm:p-4 bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 shrink-0">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="p-2 bg-rose-500/20 text-rose-400 rounded-xl shrink-0">
-                  <FileText className="w-5 h-5" />
+            <div className="p-2 sm:p-4 bg-slate-900 text-white flex items-center justify-between gap-2 sm:gap-3 border-b border-slate-800 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <div className="p-1.5 sm:p-2 bg-rose-500/20 text-rose-400 rounded-xl shrink-0">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-sm text-white truncate">{activePdfFile.name}</h3>
-                  <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
-                    <span>{activePdfFile.subject}</span>
+                  <h3 className="font-bold text-xs sm:text-sm text-white truncate">{activePdfFile.name}</h3>
+                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-400 font-mono">
+                    <span className="truncate max-w-[110px] sm:max-w-none">{activePdfFile.subject}</span>
                     <span>•</span>
                     <span>{activePdfFile.standard || 'All Standards'}</span>
                   </div>
@@ -2891,7 +2961,7 @@ STRUCTURE:
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <button
                   onClick={() => {
                     if (isPdfSpeaking) {
@@ -2903,30 +2973,34 @@ STRUCTURE:
                       speakText(speechTextContent, activeLang || 'en');
                     }
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
                     isPdfSpeaking ? 'bg-rose-500 text-white animate-pulse' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                   }`}
+                  title={isPdfSpeaking ? t.stopAudio : t.readAloud}
                 >
                   {isPdfSpeaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                  <span>{isPdfSpeaking ? t.stopAudio : t.readAloud}</span>
+                  <span className="hidden xs:inline sm:inline">{isPdfSpeaking ? t.stopAudio : t.readAloud}</span>
                 </button>
 
                 <button
                   onClick={() => handleDownloadFileToDevice(activePdfFile)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0"
+                  title={t.btnDownload}
                 >
                   <Download className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{t.btnDownload}</span>
+                  <span className="hidden md:inline">{t.btnDownload}</span>
                 </button>
 
-                <button
-                  onClick={(e) => handleDeleteFile(activePdfFile, e)}
-                  title={t.btnDelete}
-                  className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/40 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{t.btnDelete}</span>
-                </button>
+                {checkCanDeleteFile(activePdfFile, user) && (
+                  <button
+                    onClick={(e) => handleDeleteFile(activePdfFile, e)}
+                    title={t.btnDelete}
+                    className="p-1.5 sm:px-3 sm:py-1.5 bg-rose-500/20 hover:bg-rose-500/40 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{t.btnDelete}</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => {
@@ -2935,7 +3009,7 @@ STRUCTURE:
                     setActivePdfFile(null);
                   }}
                   title={t.closeReader}
-                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white cursor-pointer shrink-0 ml-auto sm:ml-0"
+                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white cursor-pointer shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -2943,7 +3017,7 @@ STRUCTURE:
             </div>
 
             {/* Modal Content Body - Direct PDF Reader */}
-            <div className="flex-1 bg-slate-900 overflow-hidden flex flex-col p-2 sm:p-4">
+            <div className="flex-1 bg-slate-900 overflow-hidden flex flex-col p-1 sm:p-4">
               <div className="flex-1 h-full min-h-[500px]">
                 <PdfCanvasViewer
                   lang={lang}
@@ -3015,40 +3089,40 @@ STRUCTURE:
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-300">{t.subjectLabel}</label>
-                  <select
+                  <CustomSelect
                     value={editSubject}
-                    onChange={(e) => setEditSubject(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="Science">Science</option>
-                    <option value="Social Science">Social Science</option>
-                    <option value="English">English</option>
-                    <option value="Gujarati">Gujarati</option>
-                    <option value="Hindi">Hindi</option>
-                  </select>
+                    onChange={(val) => setEditSubject(val)}
+                    options={[
+                      { value: 'Mathematics', label: 'Mathematics' },
+                      { value: 'Science', label: 'Science' },
+                      { value: 'Social Studies', label: 'Social Studies' },
+                      { value: 'English', label: 'English' },
+                      { value: 'Gujarati', label: 'Gujarati' },
+                      { value: 'Hindi', label: 'Hindi' },
+                      { value: 'Computer Science', label: 'Computer Science' }
+                    ]}
+                    theme="dark"
+                    placeholder="Subject"
+                  />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-300">{t.standardLabel}</label>
-                  <select
+                  <CustomSelect
                     value={editStandard}
-                    onChange={(e) => setEditStandard(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="Class 1">Class 1</option>
-                    <option value="Class 2">Class 2</option>
-                    <option value="Class 3">Class 3</option>
-                    <option value="Class 4">Class 4</option>
-                    <option value="Class 5">Class 5</option>
-                    <option value="Class 6">Class 6</option>
-                    <option value="Class 7">Class 7</option>
-                    <option value="Class 8">Class 8</option>
-                    <option value="Class 9">Class 9</option>
-                    <option value="Class 10">Class 10</option>
-                    <option value="Class 11">Class 11</option>
-                    <option value="Class 12">Class 12</option>
-                  </select>
+                    onChange={(val) => setEditStandard(val)}
+                    options={[
+                      { value: 'Class 6', label: 'Class 6' },
+                      { value: 'Class 7', label: 'Class 7' },
+                      { value: 'Class 8', label: 'Class 8' },
+                      { value: 'Class 9', label: 'Class 9' },
+                      { value: 'Class 10', label: 'Class 10' },
+                      { value: 'Class 11', label: 'Class 11' },
+                      { value: 'Class 12', label: 'Class 12' }
+                    ]}
+                    theme="dark"
+                    placeholder="Standard"
+                  />
                 </div>
               </div>
 

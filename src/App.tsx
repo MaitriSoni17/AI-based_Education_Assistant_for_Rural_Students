@@ -490,16 +490,16 @@ export default function App() {
             </span>
           </div>
           <p className="font-sans text-xs max-w-md mx-auto text-[#3D405B]/70 leading-relaxed">
-            A specialized digital learning assistant designed to operate securely under 2G bandwidth. Built for local offline synchronization and text-to-speech literacy assistance.
+            {currentTranslation.footerDesc}
           </p>
           <div className="flex items-center justify-center gap-4 text-[10px] font-mono text-[#3D405B]/50 uppercase tracking-widest">
-            <span>© 2026 GyaanBot. India Primary Rural Classrooms Initiatives.</span>
+            <span>{currentTranslation.footerCopyright}</span>
             <span>•</span>
             <button
               id="footer-admin-portal-link"
               onClick={() => setCurrentView('admin-login')}
-              title="Admin Portal Login"
-              aria-label="Admin Portal Login"
+              title={currentTranslation.footerAdminLogin}
+              aria-label={currentTranslation.footerAdminLogin}
               className="text-[#3D405B]/60 hover:text-[#E07A5F] transition-colors p-1 rounded-md hover:bg-[#F2CC8F]/20 cursor-pointer flex items-center justify-center"
             >
               <Shield className="h-3.5 w-3.5 text-amber-500" />

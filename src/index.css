@@ -170,25 +170,84 @@ button, a {
 .markdown-content th, .markdown-content td { @apply border border-gray-200 p-2 text-left; }
 .markdown-content th { @apply bg-gray-50 font-bold; }
 
-/* PDF Text Layer Selection Overlay - Fixes text jumbling on word selection */
+/* PDF Text Layer Selection Overlay - Fixes text jumbling and white ghost text on selection */
+.textLayer,
 .pdf-text-layer {
-  line-height: 1;
-}
-
-.pdf-text-layer span {
-  color: transparent !important;
+  position: absolute;
+  text-align: initial;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 1;
+  line-height: 1.0 !important;
+  text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  forced-color-adjust: none;
   transform-origin: 0 0;
+  z-index: 10;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  pointer-events: auto;
+  caret-color: transparent !important;
 }
 
+.textLayer span,
+.textLayer br,
+.textLayer div,
+.pdf-text-layer span,
+.pdf-text-layer br,
+.pdf-text-layer div {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  box-sizing: border-box;
+}
+
+/* Force text to remain 100% transparent on selection so only the crisp canvas text is visible under the blue highlight */
+.textLayer ::selection,
+.textLayer span::selection,
+.textLayer *::selection,
+.pdf-text-layer ::selection,
 .pdf-text-layer span::selection,
-.pdf-text-layer ::selection {
-  background-color: rgba(59, 130, 246, 0.35) !important;
+.pdf-text-layer *::selection {
+  background: rgba(37, 99, 235, 0.35) !important;
   color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
+.textLayer ::-moz-selection,
+.textLayer span::-moz-selection,
+.textLayer *::-moz-selection,
+.pdf-text-layer ::-moz-selection,
 .pdf-text-layer span::-moz-selection,
-.pdf-text-layer ::-moz-selection {
-  background-color: rgba(59, 130, 246, 0.35) !important;
+.pdf-text-layer *::-moz-selection {
+  background: rgba(37, 99, 235, 0.35) !important;
   color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Search highlight styling inside text layers */
+.textLayer mark,
+.pdf-text-layer mark {
+  background-color: rgba(250, 204, 21, 0.45) !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.5);
+}
+
+.textLayer mark::selection,
+.pdf-text-layer mark::selection {
+  background-color: rgba(37, 99, 235, 0.35) !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
 }
 

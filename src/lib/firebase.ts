@@ -834,7 +834,7 @@ export async function deleteFirebaseCurriculumFile(id: string): Promise<void> {
     await Promise.all(deletePromises);
 
     const docRef = doc(db, "curriculum_files", id);
-    await deleteDoc(docRef);
+    await setDoc(docRef, { id, isDeleted: true, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (error: any) {
     if (error?.message?.includes("resource-exhausted") || error?.message?.includes("quota")) {
       isQuotaExceeded = true;

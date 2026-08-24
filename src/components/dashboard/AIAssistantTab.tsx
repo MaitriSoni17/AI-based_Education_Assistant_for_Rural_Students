@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { safeFetchJson } from '../../utils/safeFetch';
 import { LanguageCode, User } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
@@ -904,19 +905,17 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
         bodyPayload.image = targetMsg.image;
       }
 
-      const response = await fetch("/api/gemini/chat", {
+      const data = await safeFetchJson("/api/gemini/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bodyPayload)
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (data.text || data.success) {
         const aiMsg: ChatMessage = {
           id: 'ai-' + Date.now(),
           sender: 'assistant',
-          text: data.text,
+          text: data.text || data.message || "Unable to generate response right now.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
 
@@ -1055,19 +1054,17 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
         bodyPayload.image = imagePayload;
       }
 
-      const response = await fetch("/api/gemini/chat", {
+      const data = await safeFetchJson("/api/gemini/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bodyPayload)
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (data.text || data.success) {
         const aiMsg: ChatMessage = {
           id: 'ai-' + Date.now(),
           sender: 'assistant',
-          text: data.text,
+          text: data.text || data.message || "Unable to generate response right now.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LanguageCode, User } from '../../types';
+import { safeFetchJson } from '../../utils/safeFetch';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { Award, HelpCircle, BookOpen, Brain, Sparkles, AlertTriangle, CheckCircle, Flame, RefreshCw, Timer, ShieldCheck, Download, Printer, X } from 'lucide-react';
@@ -1878,7 +1879,7 @@ CRITICAL REQUIREMENTS:
 3. The number of questions and the order/number of options per question must match the input exactly.
 4. Return ONLY valid JSON that matches the input structure. Do NOT wrap the response in markdown code blocks like \`\`\`json. Return the raw string of JSON only. Do NOT add any extra text, introductory remarks, or conversation.`;
 
-    const response = await fetch("/api/gemini/chat", {
+    const data = await safeFetchJson("/api/gemini/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1893,8 +1894,7 @@ CRITICAL REQUIREMENTS:
       })
     });
 
-    const data = await response.json();
-    if (data.success && data.text) {
+    if (data.text || data.success) {
       let cleanText = data.text.trim();
       if (cleanText.startsWith('```')) {
         const lines = cleanText.split('\n');
@@ -1980,7 +1980,7 @@ JSON Schema:
   ]
 }`;
 
-    const response = await fetch("/api/gemini/chat", {
+    const data = await safeFetchJson("/api/gemini/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1991,8 +1991,7 @@ JSON Schema:
       })
     });
 
-    const data = await response.json();
-    if (data.success && data.text) {
+    if (data.text || data.success) {
       let cleanText = data.text.trim();
       if (cleanText.startsWith('```')) {
         const lines = cleanText.split('\n');

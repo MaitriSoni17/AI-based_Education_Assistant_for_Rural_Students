@@ -1091,7 +1091,7 @@ Instructions:
   // API ROUTE: MULTI-MODAL GEMINI CHAT
   app.post("/api/gemini/chat", async (req, res) => {
     try {
-      const { message, image, file, history, systemInstruction, board, lang } = req.body;
+      const { message, image, file, history, systemInstruction, board, lang, model } = req.body;
 
       if (!message && !image && !file) {
         return res.status(400).json({
@@ -1465,14 +1465,13 @@ You are an expert Math and Science Problem-Solving Assistant.
       let response: any = null;
       let lastError: any = null;
       let success = false;
-      const modelsToTry = [
+      const modelsToTry = Array.from(new Set([
+        ...(model ? [model] : []),
         "gemini-3.1-flash-lite",
-        "gemini-2.5-flash",
         "gemini-3.7-flash",
         "gemini-flash-latest",
-        "gemini-1.5-flash",
         "gemini-3.1-pro-preview"
-      ];
+      ]));
 
       for (const modelName of modelsToTry) {
         const maxRetries = 2; // Retry 2 times per model before trying fallback
