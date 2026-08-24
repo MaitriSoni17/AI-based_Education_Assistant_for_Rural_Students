@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 
 // Interfaces for OTP states and rate limits
@@ -3039,7 +3040,9 @@ Generate a concise JSON feedback object with this exact structure:
     app.use(vite.middlewares);
     console.log("[VITE] Mounted Vite Asset Dev server middleware for local hot-module replacement.");
   } else {
-    const distPath = path.join(process.cwd(), "dist");
+    const distPath = fs.existsSync(path.join(process.cwd(), "dist"))
+      ? path.join(process.cwd(), "dist")
+      : path.join(process.cwd(), "build");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));

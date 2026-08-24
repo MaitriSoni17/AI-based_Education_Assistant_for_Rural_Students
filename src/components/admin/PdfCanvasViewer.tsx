@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import { safeFetchJson } from '../../utils/safeFetch';
-import MathRenderer from '../common/MathRenderer';
+import MathRenderer, { normalizeMathText } from '../common/MathRenderer';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -56,6 +58,161 @@ interface PdfCanvasViewerProps {
   onDownload: () => void;
   onPagesTextExtracted?: (pages: { pageNum: number; text: string }[]) => void;
 }
+
+// Helper to render high-precision structured transparent text selection layer over canvas
+const renderAiStructuredTextLayer = (
+  containerDiv: HTMLElement,
+  text: string,
+  viewportWidth: number,
+  viewportHeight: number
+) => {
+  containerDiv.innerHTML = '';
+
+  // Standard container width for A4 layout rendering is 794px
+  const sf = viewportWidth / 794;
+
+  const outerBlock = document.createElement('div');
+  outerBlock.className = 'w-full h-full';
+  outerBlock.style.position = 'absolute';
+  outerBlock.style.inset = '0';
+  outerBlock.style.width = `${viewportWidth}px`;
+  outerBlock.style.height = `${viewportHeight}px`;
+  outerBlock.style.padding = `${48 * sf}px ${56 * sf}px ${64 * sf}px ${56 * sf}px`;
+  outerBlock.style.boxSizing = 'border-box';
+  outerBlock.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Hind", "Gujarati", "Mukta", sans-serif';
+  outerBlock.style.overflow = 'hidden';
+  outerBlock.style.pointerEvents = 'auto';
+  outerBlock.style.userSelect = 'text';
+
+  const normalizedText = normalizeMathText(text || '');
+
+  // Helper for inline math rendering into KaTeX HTML
+  const renderInlineMathHtml = (segment: string): string => {
+    if (!segment) return '';
+    return segment.replace(/\$([^\$\n]+?)\$/g, (_match, mathExpr) => {
+      let rawMath = mathExpr.trim();
+      let trailingPunct = '';
+      const punctMatch = rawMath.match(/([\.\,\;\:\!\?])$/);
+      if (punctMatch) {
+        trailingPunct = punctMatch[1];
+        rawMath = rawMath.slice(0, -1).trim();
+      }
+      try {
+        const katexHtml = katex.renderToString(rawMath, {
+          displayMode: false,
+          throwOnError: false,
+          output: 'html',
+        });
+        return `<span style="display: inline-block; vertical-align: middle; margin: 0 ${2 * sf}px;">${katexHtml}</span>${trailingPunct}`;
+      } catch {
+        return `<span style="font-family: Cambria Math, serif; font-style: italic;">${rawMath}</span>${trailingPunct}`;
+      }
+    });
+  };
+
+  const formattedHtml = normalizedText
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return `<div style="height: ${14 * sf}px;"></div>`;
+
+      // Standalone KaTeX display equation
+      if (trimmed.startsWith('$') && trimmed.endsWith('$') && trimmed.length > 2 && !trimmed.slice(1, -1).includes('$')) {
+        let mathExpr = trimmed.slice(1, -1).trim();
+        let trailingPunct = '';
+        const punctMatch = mathExpr.match(/([\.\,\;\:\!\?])$/);
+        if (punctMatch) {
+          trailingPunct = punctMatch[1];
+          mathExpr = mathExpr.slice(0, -1).trim();
+        }
+        try {
+          const katexDisplayHtml = katex.renderToString(mathExpr, {
+            displayMode: true,
+            throwOnError: false,
+            output: 'html',
+          });
+          return `<div style="margin: ${14 * sf}px 0; padding: ${12 * sf}px ${18 * sf}px; text-align: center; overflow-x: auto;">${katexDisplayHtml}${trailingPunct}</div>`;
+        } catch {
+          return `<div style="margin: ${10 * sf}px 0; font-family: Cambria Math, serif; font-style: italic; text-align: center;">${mathExpr}${trailingPunct}</div>`;
+        }
+      }
+
+      // H1 Title
+      if (trimmed.startsWith('# ')) {
+        const titleText = renderInlineMathHtml(trimmed.replace(/^#\s*/, ''));
+        return `<h1 style="font-size: ${24 * sf}px; font-weight: 900; margin: ${26 * sf}px 0 ${14 * sf}px 0; padding-bottom: ${8 * sf}px; border-bottom: ${3 * sf}px solid transparent; letter-spacing: -0.3px;">${titleText}</h1>`;
+      }
+      // H2 Heading
+      if (trimmed.startsWith('## ')) {
+        const titleText = renderInlineMathHtml(trimmed.replace(/^##\s*/, ''));
+        return `<h2 style="font-size: ${17 * sf}px; font-weight: 800; margin: ${24 * sf}px 0 ${12 * sf}px 0; padding: ${10 * sf}px ${16 * sf}px; display: block; letter-spacing: -0.2px;">${titleText}</h2>`;
+      }
+      // H3 Heading
+      if (trimmed.startsWith('### ')) {
+        const titleText = renderInlineMathHtml(trimmed.replace(/^###\s*/, ''));
+        return `<h3 style="font-size: ${15 * sf}px; font-weight: 800; margin: ${18 * sf}px 0 ${8 * sf}px 0; padding-bottom: ${4 * sf}px;">${titleText}</h3>`;
+      }
+      // Callout Block
+      if (trimmed.startsWith('> ')) {
+        const t = renderInlineMathHtml(trimmed.replace(/^>\s*/, ''));
+        return `<div style="padding: ${14 * sf}px ${18 * sf}px; margin: ${14 * sf}px 0; font-size: ${14.5 * sf}px; font-weight: 600; line-height: 1.8;">${t}</div>`;
+      }
+      // Numbered List
+      if (/^\d+\./.test(trimmed)) {
+        const contentWithMath = renderInlineMathHtml(trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
+        return `<div style="font-weight: 700; margin-top: ${10 * sf}px; margin-bottom: ${6 * sf}px; font-size: ${14.5 * sf}px; padding-left: ${4 * sf}px; line-height: 1.8;">${contentWithMath}</div>`;
+      }
+      // Bullet List
+      if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+        const itemContent = renderInlineMathHtml(trimmed.substring(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
+        return `<div style="padding-left: ${24 * sf}px; position: relative; margin-bottom: ${8 * sf}px; font-size: ${14.5 * sf}px; font-weight: 500; line-height: 1.8;"><span style="position: absolute; left: ${6 * sf}px; font-weight: 900; font-size: ${16 * sf}px;">•</span> ${itemContent}</div>`;
+      }
+
+      const paragraphContent = renderInlineMathHtml(trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
+      return `<p style="margin: 0 0 ${12 * sf}px 0; font-weight: 500; line-height: 1.8; font-size: ${14.5 * sf}px;">${paragraphContent}</p>`;
+    })
+    .join('');
+
+  outerBlock.innerHTML = `
+    <div style="border-bottom: ${3.5 * sf}px solid transparent; padding-bottom: ${20 * sf}px; margin-bottom: ${26 * sf}px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${12 * sf}px;">
+        <span style="font-size: ${12 * sf}px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Gramin Shiksha • AI Study Guide</span>
+        <span style="font-size: ${12 * sf}px; padding: ${5 * sf}px ${16 * sf}px; font-weight: 800;">Language: Study Document</span>
+      </div>
+      <h1 style="font-size: ${25 * sf}px; font-weight: 900; margin: 0 0 ${12 * sf}px 0; line-height: 1.3; letter-spacing: -0.4px;">Gramin Shiksha</h1>
+      <div style="font-size: ${13.5 * sf}px; font-weight: 700; display: flex; gap: ${28 * sf}px;">
+        <span>Subject: <strong>General</strong></span>
+        <span>Standard: <strong>Class 10</strong></span>
+      </div>
+    </div>
+    <div style="font-size: ${14.5 * sf}px; line-height: 1.8;">
+      ${formattedHtml}
+    </div>
+  `;
+
+  // Apply transparent color to all text nodes so selection blue highlight box sits over crisp canvas
+  const allNodes = outerBlock.querySelectorAll('*');
+  allNodes.forEach((node) => {
+    const htmlEl = node as HTMLElement;
+    htmlEl.style.color = 'transparent';
+    htmlEl.style.webkitTextFillColor = 'transparent';
+    htmlEl.style.borderColor = 'transparent';
+    htmlEl.style.backgroundColor = 'transparent';
+    htmlEl.style.boxShadow = 'none';
+    htmlEl.style.userSelect = 'text';
+    htmlEl.style.cursor = 'text';
+  });
+
+  // Tag every text element with original text attribute for query highlighting & copy
+  const spans = outerBlock.querySelectorAll('span, p, h1, h2, h3, div');
+  spans.forEach((s) => {
+    if (s.children.length === 0 && s.textContent?.trim()) {
+      s.setAttribute('data-original-text', s.textContent);
+    }
+  });
+
+  containerDiv.appendChild(outerBlock);
+};
 
 interface PdfPageItemProps {
   pdfDoc: any;
@@ -232,30 +389,30 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
             textLayerDiv.style.width = `${Math.floor(viewport.width)}px`;
             textLayerDiv.style.height = `${Math.floor(viewport.height)}px`;
 
-            const pdfjsLib = (window as any).pdfjsLib;
-            let renderedNative = false;
+            if (textContent.items && textContent.items.length > 0) {
+              const pdfjsLib = (window as any).pdfjsLib;
+              let renderedNative = false;
 
-            if (pdfjsLib && typeof pdfjsLib.renderTextLayer === 'function' && textContent.items.length > 0) {
-              try {
-                const textLayerTask = pdfjsLib.renderTextLayer({
-                  textContent,
-                  container: textLayerDiv,
-                  viewport,
-                  textDivs: [],
-                });
-                await textLayerTask.promise;
-                renderedNative = true;
-              } catch (err) {
-                console.warn(`PDF.js native textLayer failed for page ${pageNum}:`, err);
+              if (pdfjsLib && typeof pdfjsLib.renderTextLayer === 'function') {
+                try {
+                  const textLayerTask = pdfjsLib.renderTextLayer({
+                    textContent,
+                    container: textLayerDiv,
+                    viewport,
+                    textDivs: [],
+                  });
+                  await textLayerTask.promise;
+                  renderedNative = true;
+                } catch (err) {
+                  console.warn(`PDF.js native textLayer failed for page ${pageNum}:`, err);
+                }
               }
-            }
 
-            // Fallback manual layout generator when native textLayer is not applicable
-            if (!renderedNative) {
-              textLayerDiv.innerHTML = '';
-              const pdfjsUtil = (window as any).pdfjsLib?.Util;
+              // Fallback manual layout generator when native textLayer is not applicable
+              if (!renderedNative) {
+                textLayerDiv.innerHTML = '';
+                const pdfjsUtil = (window as any).pdfjsLib?.Util;
 
-              if (textContent.items.length > 0) {
                 for (const item of textContent.items) {
                   if (!item.str || !item.transform) continue;
 
@@ -295,76 +452,9 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
 
                   textLayerDiv.appendChild(span);
                 }
-              } else if (fallbackText) {
-                // High-precision structured selectable overlay for AI generated documents
-                const containerBlock = document.createElement('div');
-                containerBlock.className = 'w-full h-full';
-                containerBlock.style.position = 'absolute';
-                containerBlock.style.inset = '0';
-                containerBlock.style.padding = `${32 * scale}px ${42 * scale}px`;
-                containerBlock.style.boxSizing = 'border-box';
-                containerBlock.style.pointerEvents = 'auto';
-                containerBlock.style.userSelect = 'text';
-                containerBlock.style.overflow = 'hidden';
-                containerBlock.style.display = 'flex';
-                containerBlock.style.flexDirection = 'column';
-                containerBlock.style.gap = `${6 * scale}px`;
-
-                const rawLines = fallbackText.split('\n').filter(l => l.trim().length > 0);
-                rawLines.forEach(line => {
-                  const trimmed = line.trim();
-                  const cleanLine = trimmed
-                    .replace(/^#+\s*/, '')
-                    .replace(/^>\s*/, '')
-                    .replace(/^[-*]\s*/, '')
-                    .replace(/\*\*(.*?)\*\*/g, '$1');
-
-                  const p = document.createElement('div');
-                  p.style.margin = '0';
-                  p.style.color = 'transparent';
-                  p.style.userSelect = 'text';
-                  p.style.cursor = 'text';
-                  p.style.lineHeight = '1.8';
-                  p.style.wordBreak = 'break-word';
-                  p.style.whiteSpace = 'pre-wrap';
-
-                  if (trimmed.startsWith('# ')) {
-                    p.style.fontSize = `${16 * scale}px`;
-                    p.style.fontWeight = 'bold';
-                    p.style.margin = `${10 * scale}px 0 ${4 * scale}px 0`;
-                  } else if (trimmed.startsWith('## ')) {
-                    p.style.fontSize = `${13.5 * scale}px`;
-                    p.style.fontWeight = 'bold';
-                    p.style.margin = `${8 * scale}px 0 ${3 * scale}px 0`;
-                  } else if (trimmed.startsWith('### ')) {
-                    p.style.fontSize = `${12.5 * scale}px`;
-                    p.style.fontWeight = 'bold';
-                    p.style.margin = `${6 * scale}px 0 ${2 * scale}px 0`;
-                  } else {
-                    p.style.fontSize = `${11.5 * scale}px`;
-                  }
-
-                  const words = cleanLine.split(/(\s+)/);
-                  words.forEach(w => {
-                    if (w.trim()) {
-                      const span = document.createElement('span');
-                      span.textContent = w;
-                      span.setAttribute('data-original-text', w);
-                      span.style.color = 'transparent';
-                      span.style.userSelect = 'text';
-                      span.style.cursor = 'text';
-                      span.style.display = 'inline';
-                      p.appendChild(span);
-                    } else {
-                      p.appendChild(document.createTextNode(w));
-                    }
-                  });
-
-                  containerBlock.appendChild(p);
-                });
-
-                textLayerDiv.appendChild(containerBlock);
               }
+            } else if (fallbackText) {
+              renderAiStructuredTextLayer(textLayerDiv, fallbackText, Math.floor(viewport.width), Math.floor(viewport.height));
             }
 
             // Tag each span with original text attribute for query highlighting

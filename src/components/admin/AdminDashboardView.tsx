@@ -2234,7 +2234,9 @@ startxref
           externalUrl: item.externalUrl.trim() || undefined,
           description: item.description.trim() || undefined,
           isAdminUploaded: true,
-          uploadedByRole: 'admin'
+          uploadedByRole: 'admin',
+          isVisible: true,
+          createdBy: adminUser?.mobile || 'admin'
         } as any;
 
         createdFiles.push(fileObj);
@@ -2410,7 +2412,9 @@ startxref
         externalUrl: newFileExternalUrl.trim() || undefined,
         description: newFileDesc.trim() || undefined,
         isAdminUploaded: true,
-        uploadedByRole: 'admin'
+        uploadedByRole: 'admin',
+        isVisible: true,
+        createdBy: adminUser?.mobile || 'admin'
       } as any;
 
       // Save file payload to IndexedDB for offline persistence & localStorage cache
@@ -2531,6 +2535,14 @@ startxref
         localStorage.setItem('gramin_deleted_file_ids_v1', JSON.stringify(deletedFileIds));
       }
 
+      const deletedFileIds2: string[] = (() => {
+        try { return JSON.parse(localStorage.getItem('gramin_curriculum_deleted_files_v2') || '[]'); } catch { return []; }
+      })();
+      if (!deletedFileIds2.includes(fileId)) {
+        deletedFileIds2.push(fileId);
+        localStorage.setItem('gramin_curriculum_deleted_files_v2', JSON.stringify(deletedFileIds2));
+      }
+
       const updatedFiles = curriculumFiles.filter((f) => f.id !== fileId);
       setCurriculumFiles(updatedFiles);
       try {
@@ -2556,13 +2568,20 @@ startxref
       const deletedFileIds: string[] = (() => {
         try { return JSON.parse(localStorage.getItem('gramin_deleted_file_ids_v1') || '[]'); } catch { return []; }
       })();
+      const deletedFileIds2: string[] = (() => {
+        try { return JSON.parse(localStorage.getItem('gramin_curriculum_deleted_files_v2') || '[]'); } catch { return []; }
+      })();
 
       idsToDelete.forEach((id) => {
         if (!deletedFileIds.includes(id)) {
           deletedFileIds.push(id);
         }
+        if (!deletedFileIds2.includes(id)) {
+          deletedFileIds2.push(id);
+        }
       });
       localStorage.setItem('gramin_deleted_file_ids_v1', JSON.stringify(deletedFileIds));
+      localStorage.setItem('gramin_curriculum_deleted_files_v2', JSON.stringify(deletedFileIds2));
 
       const updatedFiles = curriculumFiles.filter((f) => !idsToDelete.includes(f.id));
       setCurriculumFiles(updatedFiles);

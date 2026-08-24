@@ -97,6 +97,13 @@ export interface CurriculumFile {
   board?: string;
   language?: string;
   isGenerated?: boolean;
+  isUserGenerated?: boolean;
+  isPrivate?: boolean;
+  createdBy?: string;
+  userId?: string;
+  creatorName?: string;
+  isAdminUploaded?: boolean;
+  uploadedByRole?: 'admin' | 'student' | 'teacher';
   fullContent?: string;
   isVisible?: boolean;
 }

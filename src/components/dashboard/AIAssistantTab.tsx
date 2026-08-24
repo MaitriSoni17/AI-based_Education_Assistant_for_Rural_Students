@@ -2718,10 +2718,13 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
             {/* Student Question Block */}
             {pdfExportQuestion && (
               <div className="mb-8">
-                <h2 className="text-sm font-bold text-[#E07A5F] tracking-wider uppercase mb-3">
+                <h2 className="text-sm font-bold text-[#C55A3E] tracking-wider uppercase mb-3">
                   {(PDF_LABELS[lang] || PDF_LABELS['en']).academicQuestion}
                 </h2>
-                <div className="bg-[#FDF6ED] border-l-4 border-[#E07A5F] rounded-r-2xl p-5 text-sm text-slate-900 font-semibold leading-relaxed shadow-3xs">
+                <div 
+                  className="bg-white border-2 border-[#E07A5F] rounded-2xl p-5 text-sm text-[#0F172A] font-bold leading-relaxed shadow-sm"
+                  style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
+                >
                   {pdfExportQuestion}
                 </div>
               </div>
@@ -2836,9 +2839,10 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                     key={msg.id || index}
                     className={`rounded-2xl p-5 border ${
                       isUser 
-                        ? 'bg-[#FDF6ED] border-l-4 border-l-[#E07A5F] border-amber-200/90 shadow-3xs' 
+                        ? 'bg-white border-2 border-[#E07A5F] shadow-sm' 
                         : 'bg-white border-[#E6E1D7] shadow-3xs'
                     }`}
+                    style={isUser ? { backgroundColor: '#ffffff', borderColor: '#E07A5F' } : { backgroundColor: '#ffffff' }}
                   >
                     {/* Speaker Header & Timestamp */}
                     <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-gray-200/70 text-xs">
@@ -2857,11 +2861,14 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                     </div>
 
                     {/* Message Body Content */}
-                    <div className={`text-sm leading-relaxed space-y-3 ${isUser ? 'text-slate-900 font-semibold' : 'text-slate-800'}`}>
+                    <div 
+                      className={`text-sm leading-relaxed space-y-3 ${isUser ? 'text-[#0F172A] font-bold' : 'text-slate-800'}`}
+                      style={isUser ? { color: '#0F172A' } : { color: '#1E293B' }}
+                    >
                       <MathRenderer 
                         content={parsed.text} 
                         isUser={false} 
-                        className={isUser ? 'text-slate-900 font-semibold' : 'text-slate-800'} 
+                        className={isUser ? 'text-[#0F172A] font-bold' : 'text-slate-800'} 
                       />
                       
                       {!isUser && parsed.diagram && (

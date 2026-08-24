@@ -1,6 +1,18 @@
 import React from 'react';
-import { InlineMath } from 'react-katex';
+import katex from 'katex';
 import 'katex/dist/katex.min.css';
+
+const renderKaTeX = (math: string) => {
+  try {
+    const html = katex.renderToString(math, {
+      displayMode: false,
+      throwOnError: false,
+    });
+    return <span dangerouslySetInnerHTML={{ __html: html }} />;
+  } catch {
+    return <span className="font-serif italic text-base px-0.5">{math}</span>;
+  }
+};
 
 interface MathRendererProps {
   content: string;
@@ -417,12 +429,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
                 isDarkMode ? 'text-slate-100' : 'text-slate-900'
               }`}
             >
-              <InlineMath
-                math={math}
-                renderError={(_error) => (
-                  <span className="font-serif italic text-base px-1">{math}</span>
-                )}
-              />
+              {renderKaTeX(math)}
               {trailingPunct && <span className="opacity-90">{trailingPunct}</span>}
             </div>
           );
@@ -488,12 +495,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
                   isDarkMode ? 'text-slate-100' : 'text-slate-900'
                 }`}
               >
-                <InlineMath
-                  math={math}
-                  renderError={(_error) => (
-                    <span className="font-serif italic text-base px-0.5">{math}</span>
-                  )}
-                />
+                {renderKaTeX(math)}
                 {trailingPunct && <span className="opacity-90">{trailingPunct}</span>}
               </span>
             );

@@ -197,17 +197,22 @@ button, a {
 }
 
 .textLayer span,
-.textLayer br,
-.textLayer div,
-.pdf-text-layer span,
-.pdf-text-layer br,
-.pdf-text-layer div {
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
+.textLayer > span,
+.textLayer > div,
+.pdf-text-layer > span,
+.pdf-text-layer > div {
   position: absolute;
   white-space: pre;
-  cursor: text;
   transform-origin: 0% 0%;
+}
+
+.textLayer,
+.textLayer *,
+.pdf-text-layer,
+.pdf-text-layer * {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  cursor: text;
   box-sizing: border-box;
 }
 

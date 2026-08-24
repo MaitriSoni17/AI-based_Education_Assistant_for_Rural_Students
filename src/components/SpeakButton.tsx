@@ -1,4 +1,4 @@
-import { useState, useEffect, MouseEvent } from 'react';
+import React, { useState, useEffect, MouseEvent } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { speakText, stopSpeaking } from '../utils/speech';
 import { LanguageCode } from '../types';

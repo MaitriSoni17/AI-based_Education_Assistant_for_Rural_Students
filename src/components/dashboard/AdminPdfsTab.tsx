@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+import { normalizeMathText } from '../common/MathRenderer';
 import { LanguageCode, User, CurriculumFolder, CurriculumFile } from '../../types';
 import { SUPPORTED_LANGUAGES } from '../../data/translations';
 import { safeFetchJson } from '../../utils/safeFetch';
@@ -27,253 +30,9 @@ interface AdminPdfsTabProps {
   lang: LanguageCode;
 }
 
-// Default Seed Folders & Files in multiple languages (English, Hindi, Gujarati, Marathi, Tamil, Telugu)
+// Default Seed Folders & Files
 const DEFAULT_CURRICULUM_FOLDERS: CurriculumFolder[] = [];
-const DEFAULT_CURRICULUM_FILES: CurriculumFile[] = [
-  {
-    id: 'pdf-std10-sci-notes',
-    name: 'Photosynthesis & Cellular Respiration - Revision Notes',
-    subject: 'Science',
-    standard: 'Class 10',
-    category: 'pdf',
-    materialType: 'notes',
-    language: 'English',
-    folderId: null,
-    size: '1.2 MB',
-    uploadedAt: '2026-08-01',
-    description: 'Complete Class 10 Science revision notes on Light Reactions, Dark Reactions, and ATP synthesis in English.',
-    isVisible: true,
-    fullContent: `# Chapter 6: Life Processes - Photosynthesis & Respiration
-
-## 1. Overview of Photosynthesis
-Photosynthesis is the autotrophic process by which green plants synthesize glucose from carbon dioxide ($CO_2$) and water ($H_2O$) in the presence of sunlight and chlorophyll.
-
-### Chemical Equation:
-6CO2 + 6H2O --(Sunlight / Chlorophyll)--> C6H12O6 + 6O2
-
-> **Key Definition:** Chloroplasts in leaves contain green pigment chlorophyll which absorbs photons of solar energy to drive photolysis of water.
-
----
-
-## 2. Main Steps of Light & Dark Reactions
-1. **Absorption of Light Energy:** Chlorophyll molecules absorb solar radiation.
-2. **Photolysis of Water:** Light splits $H_2O$ molecules into $H^+$, electrons, and oxygen gas ($O_2$).
-3. **Reduction of $CO_2$:** $CO_2$ is reduced to carbohydrate (Glucose) via the Calvin Cycle.
-
----
-
-## 3. Practice Questions & Board Exam Questions
-- **Q1:** What is the primary function of stomata during photosynthesis?
-  - *Answer:* Stomata facilitate gas exchange ($CO_2$ uptake and $O_2$ release) and transpiration.
-- **Q2:** Differentiate between aerobic and anaerobic respiration.
-  - *Answer:* Aerobic respiration requires oxygen and produces 38 ATP per glucose; anaerobic occurs without oxygen producing 2 ATP and lactic acid/ethanol.`
-  },
-  {
-    id: 'pdf-std10-sci-hi',
-    name: 'प्रकाश संश्लेषण और कोशिकीय श्वसन - रिवीज़न नोट्स',
-    subject: 'Science',
-    standard: 'Class 10',
-    category: 'pdf',
-    materialType: 'notes',
-    language: 'Hindi',
-    folderId: null,
-    size: '1.4 MB',
-    uploadedAt: '2026-08-02',
-    description: 'कक्षा 10 विज्ञान अध्याय: प्रकाश संश्लेषण, प्रकाश अभिक्रियाएं, हरीतलवक और एटीपी निर्माण के विस्तृत नोट्स हिंदी में।',
-    isVisible: true,
-    fullContent: `# अध्याय 6: जैव प्रक्रम - प्रकाश संश्लेषण एवं श्वसन
-
-## 1. प्रकाश संश्लेषण की परिभाषा
-प्रकाश संश्लेषण वह स्वपोषण प्रक्रिया है जिसके द्वारा हरे पौधे सूर्य के प्रकाश तथा क्लोरोफिल की उपस्थिति में जल ($H_2O$) और कार्बन डाइऑक्साइड ($CO_2$) से ग्लूकोज का निर्माण करते हैं।
-
-### रासायनिक समीकरण:
-6CO2 + 6H2O --(सूर्य का प्रकाश / क्लोरोफिल)--> C6H12O6 + 6O2
-
-> **मुख्य परिभाषा:** पत्तियों के हरितलवक (क्लोरोप्लास्ट) में उपस्थित क्लोरोफिल सौर ऊर्जा का अवशोषण कर जल का प्रकाशिक अपघटन (Photolysis) करता है।
-
----
-
-## 2. मुख्य चरण (प्रकाशिक एवं अप्रकाशिक अभिक्रियाएं)
-1. **प्रकाश ऊर्जा का अवशोषण:** क्लोरोफिल सौर ऊर्जा को अवशोषित करता है।
-2. **जल का अपघटन:** जल अणु हाइड्रोजन आयन, इलेक्ट्रॉन और ऑक्सीजन गैस ($O_2$) में विभाजित होते हैं।
-3. **कार्बन डाइऑक्साइड का अपचयन:** केल्विन चक्र के माध्यम से $CO_2$ का कार्बोहाइड्रेट (ग्लूकोज) में अपचयन होता है।
-
----
-
-## 3. बोर्ड परीक्षा अभ्यास प्रश्न
-- **प्रश्न 1:** प्रकाश संश्लेषण में रंध्रों (Stomata) की मुख्य भूमिका क्या है?
-  - *उत्तर:* रंध्र गैसों के विनिमय ($CO_2$ का ग्रहण और $O_2$ का निष्कासन) तथा वाष्पोत्सर्जन को नियंत्रित करते हैं।
-- **प्रश्न 2:** वायवीय और अवायवीय श्वसन में अंतर स्पष्ट कीजिए।
-  - *उत्तर:* वायवीय श्वसन ऑक्सीजन की उपस्थिति में 38 ATP उत्पन्न करता है; अवायवीय श्वसन ऑक्सीजन के बिना 2 ATP तथा लैक्टिक अम्ल बनाता है।`
-  },
-  {
-    id: 'pdf-std10-sci-gu',
-    name: 'પ્રકાશસંશ્લેષણ અને કોષીય શ્વસન - રિવિઝન નોટ્સ',
-    subject: 'Science',
-    standard: 'Class 10',
-    category: 'pdf',
-    materialType: 'notes',
-    language: 'Gujarati',
-    folderId: null,
-    size: '1.3 MB',
-    uploadedAt: '2026-08-03',
-    description: 'ધોરણ 10 વિજ્ઞાન: પ્રકાશ સંશ્લેષણ, પ્રકાશ પ્રક્રિયાઓ, હરિતકણ અને એટીપી નિર્માણ માટે સંપૂર્ણ રિવિઝન નોટ્સ ગુજરાતીમાં.',
-    isVisible: true,
-    fullContent: `# પ્રકરણ 6: જૈવિક ક્રિયાઓ - પ્રકાશસંશ્લેષણ અને શ્વસન
-
-## 1. પ્રકાશસંશ્લેષણની વ્યાખ્યા
-પ્રકાશસંશ્લેષણ એ સ્વયંપોષી પ્રક્રિયા છે જેના દ્વારા લીલી વનસ્પતિ સૂર્યપ્રકાશ અને ક્લોરોફિલની હાજરીમાં કાર્બન ડાયોક્સાઇડ ($CO_2$) અને પાણી ($H_2O$) માંથી ગ્લુકોઝનું નિર્માણ કરે છે.
-
-### રાસાયણિક સમીકરણ:
-6CO2 + 6H2O --(સૂર્યપ્રકાશ / ક્લોરોફિલ)--> C6H12O6 + 6O2
-
-> **મુખ્ય વ્યાખ્યા:** પર્ણોમાં આવેલા હરિતકણ (Chloroplasts) સૂર્યઉર્જાનું શોષણ કરી પાણીનું પ્રકાશ વિઘટન કરે છે.
-
----
-
-## 2. પ્રકાશસંશ્લેષણના મુખ્ય તબક્કા
-1. **પ્રકાશ ઉર્જાનું શોષણ:** ક્લોરોફિલ સૂર્યપ્રકાશનું શોષણ કરે છે.
-2. **પાણીનું પ્રકાશ વિઘટન:** પાણીના અણુઓનું હાઇડ્રોજન અને ઓક્સિજન ($O_2$) માં વિભાજન થાય છે.
-3. **$CO_2$ નું રિડક્શન:** કાર્બન ડાયોક્સાઇડનું ગ્લુકોઝમાં રૂપાંતર થાય છે.
-
----
-
-## 3. બોર્ડ પરીક્ષા પ્રશ્નોત્તરી
-- **પ્રશ્ન 1:** પર્ણરંધ્રો (Stomata) નું મુખ્ય કાર્ય શું છે?
-  - *જવાબ:* વાયુ વિનિમય ($CO_2$ ગ્રહણ અને $O_2$ મુક્ત કરવું) અને બાષ્પોત્સર્જન.
-- **પ્રશ્ન 2:** જારક અને અજારક શ્વસન વચ્ચેનો તફાવત જણાવો.
-  - *જવાબ:* જારક શ્વસન ઓક્સિજનની હાજરીમાં 38 ATP ઉર્જા મુક્ત કરે છે; અજારક શ્વસન ઓક્સિજન વગર 2 ATP અને લેક્ટિક એસિડ બનાવે છે.`
-  },
-  {
-    id: 'pdf-std10-math-mr',
-    name: 'द्विघात समीकरणे आणि बीजगणित - नियम व सूत्रे',
-    subject: 'Mathematics',
-    standard: 'Class 10',
-    category: 'pdf',
-    materialType: 'notes',
-    language: 'Marathi',
-    folderId: null,
-    size: '1.1 MB',
-    uploadedAt: '2026-08-04',
-    description: 'इयत्ता १० वी गणित: वर्गसमीकरणे, सूत्र पद्धत, विवेचक आणि सराव उदाहरणे मराठीत.',
-    isVisible: true,
-    fullContent: `# प्रकरण २: वर्गसमीकरणे (Quadratic Equations)
-
-## १. वर्गसमीकरणाचे मानक रूप
-कोणतेही वर्गसमीकरण मानक रूपात $ax^2 + bx + c = 0$ असे लिहिले जाते, जिथे $a \neq 0$.
-
-### महत्त्वाचे सूत्र:
-x = [-b ± √(b² - 4ac)] / (2a)
-
-> **विवेचक (Discriminant):** $\Delta = b^2 - 4ac$
-> - जर $\Delta > 0$, मुळे वास्तव व असमान असतात.
-> - जर $\Delta = 0$, मुळे वास्तव व समान असतात.
-> - जर $\Delta < 0$, मुळे वास्तव नसतात.
-
----
-
-## २. सराव उदाहरणे
-- **उदाहरण १:** $x^2 - 7x + 12 = 0$ अवयव पद्धतीने सोडवा.
-  - *उकल:* $(x - 3)(x - 4) = 0 \implies x = 3$ किंवा $x = 4$.`
-  },
-  {
-    id: 'pdf-std10-sci-ta',
-    name: 'ஒளிச்சேர்க்கை மற்றும் செல் சுவாசம் - பாடக் குறிப்புகள்',
-    subject: 'Science',
-    standard: 'Class 10',
-    category: 'pdf',
-    materialType: 'notes',
-    language: 'Tamil',
-    folderId: null,
-    size: '1.2 MB',
-    uploadedAt: '2026-08-05',
-    description: 'பத்தாம் வகுப்பு அறிவியல்: ஒளிச்சேர்க்கை, ஏடிபி உருவாக்கம் மற்றும் தாவர சுவாசம் பற்றிய முழுமையான பாடக் குறிப்புகள் தமிழில்.',
-    isVisible: true,
-    fullContent: `# பாடம் 6: உயிர்ச் செயல்பாடுகள் - ஒளிச்சேர்க்கை
-
-## 1. ஒளிச்சேர்க்கை விளக்கம்
-பசுந்தாவரங்கள் சூரிய ஒளி மற்றும் பச்சையத்தின் முன்னிலையில் கார்பன் டை ஆக்சைடு மற்றும் நீரிலிருந்து குளுக்கோஸைத் தயாரிக்கும் தற்சார்பு ஊட்டமுறை ஒளிச்சேர்க்கை எனப்படும்.
-
-### வேதியியல் சமன்பாடு:
-6CO2 + 6H2O --(சூரிய ஒளி / பச்சையம்)--> C6H12O6 + 6O2
-
----
-
-## 2. முக்கிய நிலைகள்
-1. பச்சையம் சூரிய ஆற்றலை உறிஞ்சுதல்.
-2. நீர் மூலக்கூறுகள் ஹைட்ரஜன் மற்றும் ஆக்சிஜனாகப் பிளக்கப்படுதல்.
-3. கார்பன் டை ஆக்சைடு குளுக்கோஸாக ஒடுக்கப்படுதல்.`
-  },
-  {
-    id: 'pdf-std10-math-te',
-    name: 'వర్గ సమీకరణాలు మరియు రేఖా గణితం - సూత్రాలు',
-    subject: 'Mathematics',
-    standard: 'Class 10',
-    category: 'pdf',
-    materialType: 'notes',
-    language: 'Telugu',
-    folderId: null,
-    size: '1.3 MB',
-    uploadedAt: '2026-08-06',
-    description: 'పదో తరగతి గణితం: వర్గ సమీకరణాలు, సూత్రాలు మరియు సాధించిన ఉదాహరణలు తెలుగులో.',
-    isVisible: true,
-    fullContent: `# అధ్యాయం 2: వర్గ సమీకరణాలు (Quadratic Equations)
-
-## 1. ప్రమాణ రూపం
-వర్గ సమీకరణం యొక్క ప్రమాణ రూపం $ax^2 + bx + c = 0$ ($a \neq 0$).
-
-### వర్గ సమీకరణ సూత్రం:
-x = [-b ± √(b² - 4ac)] / (2a)
-
-> **విచక్షణి (Discriminant):** $\Delta = b^2 - 4ac$`
-  },
-  {
-    id: 'pdf-std10-pyq-hi',
-    name: 'कक्षा 10 बोर्ड परीक्षा - मॉडल विज्ञान प्रश्न पत्र एवं हल',
-    subject: 'Science',
-    standard: 'Class 10',
-    category: 'pdf',
-    materialType: 'pyq',
-    language: 'Hindi',
-    folderId: null,
-    size: '1.8 MB',
-    uploadedAt: '2026-08-07',
-    description: 'मॉडल प्रश्न पत्र: बहुविकल्पीय प्रश्न, लघु उत्तरीय एवं दीर्घ उत्तरीय प्रश्नों के सटीक हल हिंदी में।',
-    isVisible: true,
-    fullContent: `# कक्षा 10 विज्ञान - मॉडल बोर्ड प्रश्न पत्र (PYQ)
-
-## खण्ड 'क' (बहुविकल्पीय प्रश्न)
-1. **मनुष्य में वृक्क (Kidney) एक तंत्र का भाग है जो संबंधित है:**
-   - (A) पोषण से  (B) श्वसन से  (C) उत्सर्जन से  (D) परिवहन से
-   - *उत्तर:* (C) उत्सर्जन से
-
-2. **अम्लीय विलयन का pH मान होता है:**
-   - (A) 7 से कम  (B) 7 से अधिक  (C) 7  (D) शून्य
-   - *उत्तर:* (A) 7 से कम`
-  },
-  {
-    id: 'pdf-std10-ebook-gu',
-    name: 'ધોરણ 10 વિજ્ઞાન - પાઠ્યપુસ્તક પ્રકરણ 1: રાસાયણિક પ્રક્રિયાઓ',
-    subject: 'Science',
-    standard: 'Class 10',
-    category: 'pdf',
-    materialType: 'ebook',
-    language: 'Gujarati',
-    folderId: null,
-    size: '2.1 MB',
-    uploadedAt: '2026-08-08',
-    description: 'સત્તાવાર પાઠ્યપુસ્તક ઈ-બુક: રાસાયણિક સમીકરણો, સંતુલન, સંયોગીકરણ અને વિઘટન પ્રક્રિયાઓ ગુજરાતીમાં.',
-    isVisible: true,
-    fullContent: `# ધોરણ 10 વિજ્ઞાન - પ્રકરણ 1: રાસાયણિક પ્રક્રિયાઓ અને સમીકરણો
-
-## 1. રાસાયણિક પ્રક્રિયાના લક્ષણો
-જ્યારે રાસાયણિક ફેરફાર થાય છે ત્યારે રાસાયણિક પ્રક્રિયા થઈ તેમ કહેવાય:
-1. અવસ્થામાં પરિવર્તન
-2. રંગમાં પરિવર્તન
-3. વાયુનો ઉદ્ભવ
-4. તાપમાનમાં ફેરફાર`
-  }
-];
+const DEFAULT_CURRICULUM_FILES: CurriculumFile[] = [];
 
 // Language Code Detection Helper
 const getLanguageCodeFromName = (langName?: string): LanguageCode => {
@@ -309,7 +68,7 @@ const getCleanLanguageLabel = (langStr?: string) => {
 const pdfDataUrlMemoryCache = new Map<string, string>();
 const pdfGenerationPromises = new Map<string, Promise<string>>();
 
-// Helper to construct a crisp multi-language PDF data URL using html2canvas & jsPDF with aggressive caching
+// Helper to construct a crisp multi-language PDF data URL using html2canvas & jsPDF with KaTeX equation rendering and invisible text selection layer
 const generateMultiLanguagePdfDataUrl = async (
   title: string,
   subject: string,
@@ -343,47 +102,94 @@ const generateMultiLanguagePdfDataUrl = async (
     container.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Hind", "Gujarati", "Mukta", sans-serif';
     container.style.boxSizing = 'border-box';
 
-    // Format markdown headings, bullet points, callouts and code blocks for maximum student readability
-    const formattedHtml = fullBodyText
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a; font-weight: 800;">$1</strong>')
+    // Normalize math syntax first to ensure standard $ ... $ or $$ ... $$ blocks for KaTeX
+    const normalizedBodyText = normalizeMathText(fullBodyText || '');
+
+    // Helper to render KaTeX math expressions within inline text
+    const renderInlineMath = (textSegment: string): string => {
+      if (!textSegment) return '';
+      return textSegment.replace(/\$([^\$\n]+?)\$/g, (_match, mathExpr) => {
+        let rawMath = mathExpr.trim();
+        let trailingPunct = '';
+        const punctMatch = rawMath.match(/([\.\,\;\:\!\?])$/);
+        if (punctMatch) {
+          trailingPunct = punctMatch[1];
+          rawMath = rawMath.slice(0, -1).trim();
+        }
+        try {
+          const katexHtml = katex.renderToString(rawMath, {
+            displayMode: false,
+            throwOnError: false,
+            output: 'html',
+          });
+          return `<span style="display: inline-block; vertical-align: middle; margin: 0 2px;">${katexHtml}</span>${trailingPunct}`;
+        } catch {
+          return `<span style="font-family: Cambria Math, 'Times New Roman', serif; font-style: italic;">${rawMath}</span>${trailingPunct}`;
+        }
+      });
+    };
+
+    // Format markdown headings, bullet points, callouts, and KaTeX equations for maximum student readability
+    const formattedHtml = normalizedBodyText
       .split('\n')
       .map(line => {
         const trimmed = line.trim();
         if (!trimmed) return '<div style="height: 14px;"></div>';
 
+        // Check if line is a standalone KaTeX display equation: $ ... $
+        if (trimmed.startsWith('$') && trimmed.endsWith('$') && trimmed.length > 2 && !trimmed.slice(1, -1).includes('$')) {
+          let mathExpr = trimmed.slice(1, -1).trim();
+          let trailingPunct = '';
+          const punctMatch = mathExpr.match(/([\.\,\;\:\!\?])$/);
+          if (punctMatch) {
+            trailingPunct = punctMatch[1];
+            mathExpr = mathExpr.slice(0, -1).trim();
+          }
+          try {
+            const katexDisplayHtml = katex.renderToString(mathExpr, {
+              displayMode: true,
+              throwOnError: false,
+              output: 'html',
+            });
+            return `<div style="margin: 14px 0; padding: 12px 18px; background-color: #f8fafc; border-radius: 8px; border: 1.5px solid #e2e8f0; text-align: center; overflow-x: auto; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">${katexDisplayHtml}${trailingPunct}</div>`;
+          } catch {
+            return `<div style="margin: 10px 0; font-family: Cambria Math, serif; font-style: italic; text-align: center;">${mathExpr}${trailingPunct}</div>`;
+          }
+        }
+
         // H1 Main Title
         if (trimmed.startsWith('# ')) {
-          const titleText = trimmed.replace(/^#\s*/, '');
+          const titleText = renderInlineMath(trimmed.replace(/^#\s*/, ''));
           return `<h1 style="font-size: 24px; font-weight: 900; color: #be123c; margin: 26px 0 14px 0; border-bottom: 3px solid #be123c; padding-bottom: 8px; letter-spacing: -0.3px;">${titleText}</h1>`;
         }
         // H2 Heading
         if (trimmed.startsWith('## ')) {
-          const titleText = trimmed.replace(/^##\s*/, '');
+          const titleText = renderInlineMath(trimmed.replace(/^##\s*/, ''));
           return `<h2 style="font-size: 17px; font-weight: 800; color: #0369a1; margin: 24px 0 12px 0; background-color: #f0f9ff; padding: 10px 16px; border-left: 6px solid #0284c7; border-radius: 6px; display: block; letter-spacing: -0.2px;">${titleText}</h2>`;
         }
         // H3 Heading
         if (trimmed.startsWith('### ')) {
-          const titleText = trimmed.replace(/^###\s*/, '');
-          return `<h3 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 18px 0 8px 0; border-bottom: 2px border-slate-200 #cbd5e1; padding-bottom: 4px;">${titleText}</h3>`;
+          const titleText = renderInlineMath(trimmed.replace(/^###\s*/, ''));
+          return `<h3 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 18px 0 8px 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 4px;">${titleText}</h3>`;
         }
         // Callout Block
         if (trimmed.startsWith('> ')) {
-          const text = trimmed.replace(/^>\s*/, '');
+          const text = renderInlineMath(trimmed.replace(/^>\s*/, ''));
           return `<div style="background-color: #fffbe0; border: 1.5px solid #fde68a; border-left: 5px solid #d97706; padding: 14px 18px; border-radius: 8px; margin: 14px 0; font-size: 14.5px; color: #0f172a; font-weight: 600; line-height: 1.8; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">${text}</div>`;
         }
         // Numbered List
         if (/^\d+\./.test(trimmed)) {
-          return `<div style="font-weight: 700; color: #0f172a; margin-top: 10px; margin-bottom: 6px; font-size: 14.5px; padding-left: 4px; line-height: 1.8;">${trimmed}</div>`;
+          const contentWithMath = renderInlineMath(trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
+          return `<div style="font-weight: 700; color: #0f172a; margin-top: 10px; margin-bottom: 6px; font-size: 14.5px; padding-left: 4px; line-height: 1.8;">${contentWithMath}</div>`;
         }
         // Bullet List
         if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-          const itemContent = trimmed.substring(2);
+          const itemContent = renderInlineMath(trimmed.substring(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
           return `<div style="padding-left: 24px; position: relative; margin-bottom: 8px; color: #0f172a; font-size: 14.5px; font-weight: 500; line-height: 1.8;"><span style="position: absolute; left: 6px; color: #e11d48; font-weight: 900; font-size: 16px;">•</span> ${itemContent}</div>`;
         }
 
-        return `<p style="margin: 0 0 12px 0; color: #0f172a; font-weight: 500; line-height: 1.8; font-size: 14.5px;">${trimmed}</p>`;
+        const paragraphContent = renderInlineMath(trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
+        return `<p style="margin: 0 0 12px 0; color: #0f172a; font-weight: 500; line-height: 1.8; font-size: 14.5px;">${paragraphContent}</p>`;
       })
       .join('');
 
@@ -410,6 +216,107 @@ const generateMultiLanguagePdfDataUrl = async (
     `;
 
     document.body.appendChild(container);
+
+    // Measure exact DOM text node coordinates relative to container before html2canvas
+    const containerRect = container.getBoundingClientRect();
+    const mmPerPx = 210 / (containerRect.width || 794);
+
+    interface DOMMeasuredTextLine {
+      text: string;
+      xMm: number;
+      yMm: number;
+      fontSizePt: number;
+    }
+
+    const domMeasuredLines: DOMMeasuredTextLine[] = [];
+
+    const walkAndMeasureNodes = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const rawTxt = node.textContent;
+        if (rawTxt && rawTxt.trim().length > 0) {
+          const parent = node.parentElement;
+          if (parent) {
+            const compStyle = window.getComputedStyle(parent);
+            const fontPx = parseFloat(compStyle.fontSize) || 14.5;
+            const fontSizePt = fontPx * mmPerPx * 2.83465;
+
+            // Split into word & whitespace tokens to accurately measure each visual line of wrapped text
+            const tokens = rawTxt.match(/\S+|\s+/g) || [rawTxt];
+            let tokenOffset = 0;
+
+            interface MeasuredToken {
+              text: string;
+              left: number;
+              top: number;
+            }
+
+            const tokensMeasured: MeasuredToken[] = [];
+            const range = document.createRange();
+
+            for (const token of tokens) {
+              const tokenLen = token.length;
+              try {
+                range.setStart(node, tokenOffset);
+                range.setEnd(node, tokenOffset + tokenLen);
+                const r = range.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0) {
+                  tokensMeasured.push({
+                    text: token,
+                    left: r.left - containerRect.left,
+                    top: r.top - containerRect.top,
+                  });
+                }
+              } catch {
+                // Ignore range boundary errors if any
+              }
+              tokenOffset += tokenLen;
+            }
+
+            if (tokensMeasured.length > 0) {
+              let currentLine: MeasuredToken[] = [tokensMeasured[0]];
+              let currentTop = tokensMeasured[0].top;
+
+              const pushCurrentLine = (lineTokens: MeasuredToken[]) => {
+                const lineText = lineTokens.map(t => t.text).join('').trim();
+                if (lineText.length > 0) {
+                  const xMm = lineTokens[0].left * mmPerPx;
+                  const yMm = lineTokens[0].top * mmPerPx;
+                  domMeasuredLines.push({
+                    text: lineText,
+                    xMm: Math.max(8, Math.min(198, xMm)),
+                    yMm,
+                    fontSizePt: Math.max(6, Math.min(28, fontSizePt)),
+                  });
+                }
+              };
+
+              for (let i = 1; i < tokensMeasured.length; i++) {
+                const tok = tokensMeasured[i];
+                if (Math.abs(tok.top - currentTop) < 4) {
+                  currentLine.push(tok);
+                } else {
+                  pushCurrentLine(currentLine);
+                  currentLine = [tok];
+                  currentTop = tok.top;
+                }
+              }
+              if (currentLine.length > 0) {
+                pushCurrentLine(currentLine);
+              }
+            }
+          }
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        if (el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE' && !el.classList.contains('katex-mathml')) {
+          for (let i = 0; i < node.childNodes.length; i++) {
+            walkAndMeasureNodes(node.childNodes[i]);
+          }
+        }
+      }
+    };
+
+    walkAndMeasureNodes(container);
 
     try {
       const canvas = await html2canvas(container, {
@@ -446,8 +353,36 @@ const generateMultiLanguagePdfDataUrl = async (
         heightLeft -= pageHeight;
       }
 
-      // Add page numbers, running headers and footers to ALL generated PDF pages
       const totalPages = (pdf as any).internal.getNumberOfPages();
+
+      // Embed pixel-accurate invisible selectable text layer into PDF document stream
+      try {
+        for (const lineItem of domMeasuredLines) {
+          const pageIndex = Math.floor(lineItem.yMm / 297);
+          const pageNum = pageIndex + 1;
+          if (pageNum <= totalPages) {
+            pdf.setPage(pageNum);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(lineItem.fontSizePt);
+
+            const yOnPage = (lineItem.yMm % 297) + (lineItem.fontSizePt / 2.83465) * 0.78;
+
+            try {
+              pdf.text(lineItem.text, lineItem.xMm, yOnPage, { renderingMode: 'invisible' });
+            } catch {
+              try {
+                pdf.text(lineItem.text, lineItem.xMm, yOnPage, { renderingMode: 3 } as any);
+              } catch {
+                // Fallback
+              }
+            }
+          }
+        }
+      } catch (textLayerErr) {
+        console.warn("Invisible text layer attachment notice:", textLayerErr);
+      }
+
+      // Add page numbers, running headers and footers to ALL generated PDF pages
       for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
         pdf.setPage(pageNum);
 
@@ -1049,6 +984,7 @@ export const checkIsAiGenerated = (file: CurriculumFile | null | undefined): boo
   return (
     (file as any).isGenerated === true ||
     (file as any).isAiGenerated === true ||
+    (file as any).isUserGenerated === true ||
     file.id.startsWith('gen-pdf-') ||
     file.id.startsWith('ai-') ||
     (file.category as string) === 'ai_generated' ||
@@ -1071,13 +1007,16 @@ export const checkIsEbookOrTextbook = (file: CurriculumFile | null | undefined):
 export const checkIsAdminUploadedFile = (file: CurriculumFile | null | undefined): boolean => {
   if (!file) return false;
 
-  // AI-generated files are NOT admin-uploaded PDFs
-  if (checkIsAiGenerated(file)) return false;
+  // Personal user-generated or explicitly private student files belong ONLY to that student
+  if ((file as any).isUserGenerated === true || (file as any).isPrivate === true) {
+    return false;
+  }
 
   // Explicit admin flags
   if (
     (file as any).isAdminUploaded === true ||
     (file as any).uploadedByRole === 'admin' ||
+    (file as any).uploadedByRole === 'teacher' ||
     (file as any).isAdminOnly === true ||
     (file as any).source === 'admin' ||
     (file as any).uploadedBy === 'admin'
@@ -1085,13 +1024,14 @@ export const checkIsAdminUploadedFile = (file: CurriculumFile | null | undefined
     return true;
   }
 
-  // Seed / default curriculum files
-  if (DEFAULT_CURRICULUM_FILES.some(df => df.id === file.id)) {
+  // Check creator field
+  const creator = (file as any).createdBy || (file as any).userId || (file as any).creatorMobile;
+  if (creator === 'admin' || creator === '9999999999' || creator === 'system' || (file as any).uploadedByRole !== 'student') {
     return true;
   }
 
-  // Standard seed PDF ID pattern
-  if (file.id.startsWith('pdf-std') || file.id.startsWith('pdf-') || file.id.startsWith('seed-pdf-')) {
+  // If NOT marked as user-generated/private and not created by a student, treat as public admin curriculum material
+  if (!(file as any).isUserGenerated && !(file as any).isPrivate && (file as any).uploadedByRole !== 'student') {
     return true;
   }
 
@@ -1101,18 +1041,55 @@ export const checkIsAdminUploadedFile = (file: CurriculumFile | null | undefined
 export const checkCanDeleteFile = (file: CurriculumFile | null | undefined, user: User | null | undefined): boolean => {
   if (!file) return false;
 
-  // Admin role can delete any file in the library
+  // 1. If this is an Admin-uploaded or official seed PDF, ONLY Admin role can delete it. Students CANNOT.
+  if (checkIsAdminUploadedFile(file)) {
+    return user?.role === 'admin';
+  }
+
+  // 2. Admin role can delete any file in the library
   if (user?.role === 'admin') {
     return true;
   }
 
-  // Delete option is NOT available for students on admin-uploaded PDFs
-  if (checkIsAdminUploadedFile(file)) {
-    return false;
+  // 3. For student/user generated files, ONLY the student who created it can delete it
+  const userMobile = user?.mobile || '';
+  if (userMobile && ((file as any).createdBy === userMobile || (file as any).userId === userMobile || (file as any).creatorMobile === userMobile)) {
+    return true;
   }
 
-  // Available for student AI-generated and student-uploaded PDFs
-  return true;
+  // Students cannot delete any other file
+  return false;
+};
+
+export const isUserAuthorizedForFile = (file: CurriculumFile, user: User | null | undefined): boolean => {
+  if (!file) return false;
+  if ((file as any).isDeleted === true) return false;
+
+  // Admins see all non-deleted materials
+  if (user?.role === 'admin') return true;
+
+  // If Admin explicitly hid this file from students, students CANNOT access it
+  if (file.isVisible === false) return false;
+
+  // Official Admin-uploaded curriculum is accessible to all students (if visible and not deleted)
+  if (checkIsAdminUploadedFile(file)) {
+    return true;
+  }
+
+  // Public non-private curriculum materials (not explicitly user-generated or private) are accessible to all students
+  if (!(file as any).isUserGenerated && !(file as any).isPrivate && (file as any).uploadedByRole !== 'student') {
+    return true;
+  }
+
+  // For user-generated / private / AI-generated files, ONLY the student who created it can see it
+  const userMobile = user?.mobile || '';
+  const fileCreator = (file as any).createdBy || (file as any).userId || (file as any).creatorMobile;
+
+  if (fileCreator) {
+    return fileCreator === userMobile;
+  }
+
+  return false;
 };
 
 export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
@@ -1157,9 +1134,9 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
   const [downloadedPdfIds, setDownloadedPdfIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem(`${user.mobile}_downloaded_admin_pdfs`);
-      return saved ? JSON.parse(saved) : ['pdf-std10-sci-notes', 'pdf-std10-math-formulas'];
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return ['pdf-std10-sci-notes', 'pdf-std10-math-formulas'];
+      return [];
     }
   });
 
@@ -1206,6 +1183,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
   // Load Curriculum Files from Firestore & LocalStorage
   const loadCurriculumData = async () => {
     setLoading(true);
+    const userMobile = user?.mobile || 'student';
     try {
       // 0. Read deleted file IDs to prevent deleted items from reappearing
       let deletedIds: string[] = [];
@@ -1217,8 +1195,23 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
       } catch (e) {
         console.warn("Error reading deleted files list:", e);
       }
+      
+      // Ensure dummy seed file IDs are marked deleted and excluded
+      const dummySeedIds = ['file-real-numbers-ch1', 'file-english-class9-ch2'];
+      dummySeedIds.forEach(did => {
+        if (!deletedIds.includes(did)) deletedIds.push(did);
+      });
 
-      // 1. Load from localStorage first for instant speed
+      // 1. Load from user-scoped storage for user's own generated study materials
+      let userGeneratedFiles: CurriculumFile[] = [];
+      try {
+        const userSaved = localStorage.getItem(`gramin_user_generated_pdfs_${userMobile}`);
+        if (userSaved) userGeneratedFiles = JSON.parse(userSaved);
+      } catch (e) {
+        console.warn("Error reading user generated files:", e);
+      }
+
+      // 2. Load global folders and files from localStorage
       let localFolders: CurriculumFolder[] = [];
       let localFiles: CurriculumFile[] = [];
 
@@ -1236,11 +1229,18 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
         console.warn("Error reading local files:", e);
       }
 
-      // 2. Fetch remote Firestore items
+      // 3. Fetch remote Firestore items
       const [remoteFolders, remoteFiles] = await Promise.all([
         getAllFirebaseCurriculumFolders().catch(() => []),
         getAllFirebaseCurriculumFiles().catch(() => [])
       ]);
+
+      // Collect all deleted IDs from remote files
+      (remoteFiles as any[]).forEach(rf => {
+        if (rf.isDeleted === true && !deletedIds.includes(rf.id)) {
+          deletedIds.push(rf.id);
+        }
+      });
 
       // Merge folders
       const folderMap = new Map<string, CurriculumFolder>();
@@ -1248,37 +1248,77 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
       localFolders.forEach(f => folderMap.set(f.id, f));
       (remoteFolders as any[]).forEach(rf => folderMap.set(rf.id, rf as CurriculumFolder));
 
-      // Merge files
+      // Merge files with strict user-privacy & visibility filtering
       const fileMap = new Map<string, CurriculumFile>();
+      
+      // 1. Default standard files (Admin seed): ONLY add if NOT deleted and if remote files have not deleted/hidden it
       DEFAULT_CURRICULUM_FILES.forEach(f => {
-        if (!deletedIds.includes(f.id)) fileMap.set(f.id, f);
-      });
-      localFiles.forEach(f => {
-        if (!deletedIds.includes(f.id)) {
-          const existing = fileMap.get(f.id);
-          fileMap.set(f.id, {
-            ...f,
-            fileDataUrl: f.fileDataUrl || (existing ? existing.fileDataUrl : undefined)
-          });
+        if (!deletedIds.includes(f.id) && (f as any).isDeleted !== true) {
+          const remoteRecord = (remoteFiles as any[]).find(rf => rf.id === f.id);
+          if (remoteRecord) {
+            if (remoteRecord.isDeleted === true) return;
+            if (user?.role !== 'admin' && remoteRecord.isVisible === false) return;
+            const merged = { ...f, ...remoteRecord };
+            if (isUserAuthorizedForFile(merged as CurriculumFile, user)) {
+              fileMap.set(f.id, merged as CurriculumFile);
+            }
+          } else {
+            if (isUserAuthorizedForFile(f, user)) {
+              fileMap.set(f.id, f);
+            }
+          }
         }
       });
+
+      // 2. User's own generated files from local storage
+      userGeneratedFiles.forEach(f => {
+        if (!deletedIds.includes(f.id) && (f as any).isDeleted !== true) {
+          if (isUserAuthorizedForFile(f, user)) {
+            fileMap.set(f.id, f);
+          }
+        }
+      });
+
+      // 3. Local files (Filter by authorization)
+      localFiles.forEach(f => {
+        if (!deletedIds.includes(f.id) && (f as any).isDeleted !== true) {
+          if (isUserAuthorizedForFile(f, user)) {
+            const existing = fileMap.get(f.id);
+            fileMap.set(f.id, {
+              ...f,
+              fileDataUrl: f.fileDataUrl || (existing ? existing.fileDataUrl : undefined)
+            });
+          } else {
+            fileMap.delete(f.id);
+          }
+        }
+      });
+
+      // 4. Remote Firestore files (Precedence over local/default)
       (remoteFiles as any[]).forEach(rf => {
-        if (rf.isDeleted === true) {
-          if (!deletedIds.includes(rf.id)) deletedIds.push(rf.id);
+        if (rf.isDeleted === true || deletedIds.includes(rf.id)) {
           fileMap.delete(rf.id);
-        } else if (!deletedIds.includes(rf.id)) {
-          const existing = fileMap.get(rf.id);
-          fileMap.set(rf.id, {
-            ...(rf as CurriculumFile),
-            fileDataUrl: (rf as CurriculumFile).fileDataUrl || (existing ? existing.fileDataUrl : undefined)
-          });
+        } else {
+          if (isUserAuthorizedForFile(rf as CurriculumFile, user)) {
+            const existing = fileMap.get(rf.id);
+            fileMap.set(rf.id, {
+              ...(rf as CurriculumFile),
+              fileDataUrl: (rf as CurriculumFile).fileDataUrl || (existing ? existing.fileDataUrl : undefined)
+            });
+          } else {
+            fileMap.delete(rf.id);
+          }
         }
       });
 
       setFolders(Array.from(folderMap.values()));
       
-      // Filter visible files
-      const allMergedFiles = Array.from(fileMap.values()).filter(f => f.isVisible !== false);
+      // Filter final visible files: Admins see all non-deleted files (with status tags); Students see ONLY visible, authorized, non-deleted files.
+      const allMergedFiles = Array.from(fileMap.values()).filter(f => {
+        if ((f as any).isDeleted === true || deletedIds.includes(f.id)) return false;
+        if (user?.role === 'admin') return true;
+        return f.isVisible !== false && isUserAuthorizedForFile(f, user);
+      });
 
       // Async load local file dataUrl from IndexedDB for custom uploaded files missing fileDataUrl
       await Promise.all(
@@ -1298,9 +1338,22 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
 
       setFiles(allMergedFiles);
     } catch (err) {
-      console.warn("Failed to load curriculum files, using default seed:", err);
+      console.warn("Failed to load curriculum files:", err);
+      let deletedIds: string[] = [];
+      try {
+        const savedDeleted1 = localStorage.getItem('gramin_curriculum_deleted_files_v2');
+        if (savedDeleted1) deletedIds.push(...JSON.parse(savedDeleted1));
+        const savedDeleted2 = localStorage.getItem('gramin_deleted_file_ids_v1');
+        if (savedDeleted2) deletedIds.push(...JSON.parse(savedDeleted2));
+      } catch {}
+
+      const safeDefaults = DEFAULT_CURRICULUM_FILES.filter(f =>
+        !deletedIds.includes(f.id) &&
+        (f as any).isDeleted !== true &&
+        isUserAuthorizedForFile(f, user)
+      );
       setFolders(DEFAULT_CURRICULUM_FOLDERS);
-      setFiles(DEFAULT_CURRICULUM_FILES);
+      setFiles(safeDefaults);
     } finally {
       setLoading(false);
     }
@@ -1469,6 +1522,7 @@ ${baseContent}`,
         `AI Translated Material (${targetLangStr})`
       );
 
+      const userMobile = user?.mobile || 'student';
       const newFileId = `gen-pdf-trans-${Date.now()}`;
       const newFile: CurriculumFile = {
         id: newFileId,
@@ -1483,6 +1537,11 @@ ${baseContent}`,
         size: '1.4 MB',
         isVisible: true,
         isGenerated: true,
+        isUserGenerated: true,
+        isPrivate: true,
+        createdBy: userMobile,
+        userId: userMobile,
+        creatorName: user?.name || 'Student',
         language: targetLangStr,
         fullContent: translatedText
       } as any;
@@ -1491,6 +1550,11 @@ ${baseContent}`,
       setFiles(prev => [newFile, ...prev]);
 
       try {
+        // Save to user-scoped storage so this user always has it
+        const userGenKey = `gramin_user_generated_pdfs_${userMobile}`;
+        const userSavedList = JSON.parse(localStorage.getItem(userGenKey) || '[]');
+        localStorage.setItem(userGenKey, JSON.stringify([newFile, ...userSavedList.filter((f: any) => f.id !== newFileId)]));
+
         const savedList = JSON.parse(localStorage.getItem('gramin_curriculum_files_v2') || '[]');
         localStorage.setItem('gramin_curriculum_files_v2', JSON.stringify([newFile, ...savedList]));
         await saveFirebaseCurriculumFile(newFile).catch(() => {});
@@ -1824,6 +1888,7 @@ This comprehensive study resource provides essential conceptual foundation and p
 *Language: ${targetLang} | Class: ${genStandard} | Subject: ${genSubject}*`;
       }
 
+      const userMobile = user?.mobile || 'student';
       const cleanTitle = `${genTopic.trim()} - ${formatTitleSuffix} (${targetLang})`;
       const newFileId = `gen-pdf-${Date.now()}`;
 
@@ -1849,6 +1914,11 @@ This comprehensive study resource provides essential conceptual foundation and p
         size: '1.5 MB',
         isVisible: true,
         isGenerated: true,
+        isUserGenerated: true,
+        isPrivate: true,
+        createdBy: userMobile,
+        userId: userMobile,
+        creatorName: user?.name || 'Student',
         language: targetLang,
         fullContent: generatedText
       } as any;
@@ -1856,8 +1926,12 @@ This comprehensive study resource provides essential conceptual foundation and p
       // Update state
       setFiles(prev => [newFile, ...prev]);
 
-      // Save to localStorage
+      // Save to user-scoped storage so this user always has it
       try {
+        const userGenKey = `gramin_user_generated_pdfs_${userMobile}`;
+        const userSavedList = JSON.parse(localStorage.getItem(userGenKey) || '[]');
+        localStorage.setItem(userGenKey, JSON.stringify([newFile, ...userSavedList.filter((f: any) => f.id !== newFileId)]));
+
         const savedList = JSON.parse(localStorage.getItem('gramin_curriculum_files_v2') || '[]');
         localStorage.setItem('gramin_curriculum_files_v2', JSON.stringify([newFile, ...savedList]));
       } catch (err) {
@@ -2034,6 +2108,12 @@ This comprehensive study resource provides essential conceptual foundation and p
 
       // 3. Remove from localStorage saved files and cache if present
       try {
+        const userMobile = user?.mobile || 'student';
+        const userGenKey = `gramin_user_generated_pdfs_${userMobile}`;
+        const userSavedList = JSON.parse(localStorage.getItem(userGenKey) || '[]');
+        const updatedUserList = userSavedList.filter((f: any) => f.id !== file.id);
+        localStorage.setItem(userGenKey, JSON.stringify(updatedUserList));
+
         const savedList = JSON.parse(localStorage.getItem('gramin_curriculum_files_v2') || '[]');
         const updatedList = savedList.filter((f: any) => f.id !== file.id);
         localStorage.setItem('gramin_curriculum_files_v2', JSON.stringify(updatedList));
