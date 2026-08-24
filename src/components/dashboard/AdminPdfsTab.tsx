@@ -305,7 +305,11 @@ const getCleanLanguageLabel = (langStr?: string) => {
   return langStr.replace(/^[^\w\s\u0900-\u0D7F]+/, '').trim();
 };
 
-// Helper to construct a crisp multi-language PDF data URL using html2canvas & jsPDF
+// High-performance in-memory cache and promise deduplication for PDF Data URLs
+const pdfDataUrlMemoryCache = new Map<string, string>();
+const pdfGenerationPromises = new Map<string, Promise<string>>();
+
+// Helper to construct a crisp multi-language PDF data URL using html2canvas & jsPDF with aggressive caching
 const generateMultiLanguagePdfDataUrl = async (
   title: string,
   subject: string,
@@ -314,171 +318,190 @@ const generateMultiLanguagePdfDataUrl = async (
   fullBodyText: string,
   materialTypeHeaderLabel?: string
 ): Promise<string> => {
-  const { default: jsPDF } = await import('jspdf');
-  const { default: html2canvas } = await import('html2canvas');
+  const cacheKey = `${title}_${subject}_${std}_${language}_${fullBodyText.length}_${materialTypeHeaderLabel || ''}`;
+  
+  if (pdfDataUrlMemoryCache.has(cacheKey)) {
+    return pdfDataUrlMemoryCache.get(cacheKey)!;
+  }
 
-  const container = document.createElement('div');
-  container.style.position = 'absolute';
-  container.style.left = '-9999px';
-  container.style.top = '-9999px';
-  container.style.width = '794px'; // A4 pixel width at 96 DPI
-  container.style.backgroundColor = '#ffffff';
-  container.style.color = '#0f172a';
-  container.style.padding = '48px 56px 64px 56px';
-  container.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Hind", "Gujarati", "Mukta", sans-serif';
-  container.style.boxSizing = 'border-box';
+  if (pdfGenerationPromises.has(cacheKey)) {
+    return await pdfGenerationPromises.get(cacheKey)!;
+  }
 
-  // Format markdown headings, bullet points, callouts and code blocks for maximum student readability
-  const formattedHtml = fullBodyText
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a; font-weight: 800;">$1</strong>')
-    .split('\n')
-    .map(line => {
-      const trimmed = line.trim();
-      if (!trimmed) return '<div style="height: 14px;"></div>';
+  const generationPromise = (async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const { default: html2canvas } = await import('html2canvas');
 
-      // H1 Main Title
-      if (trimmed.startsWith('# ')) {
-        const titleText = trimmed.replace(/^#\s*/, '');
-        return `<h1 style="font-size: 24px; font-weight: 900; color: #be123c; margin: 26px 0 14px 0; border-bottom: 3px solid #be123c; padding-bottom: 8px; letter-spacing: -0.3px;">${titleText}</h1>`;
-      }
-      // H2 Heading
-      if (trimmed.startsWith('## ')) {
-        const titleText = trimmed.replace(/^##\s*/, '');
-        return `<h2 style="font-size: 17px; font-weight: 800; color: #0369a1; margin: 24px 0 12px 0; background-color: #f0f9ff; padding: 10px 16px; border-left: 6px solid #0284c7; border-radius: 6px; display: block; letter-spacing: -0.2px;">${titleText}</h2>`;
-      }
-      // H3 Heading
-      if (trimmed.startsWith('### ')) {
-        const titleText = trimmed.replace(/^###\s*/, '');
-        return `<h3 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 18px 0 8px 0; border-bottom: 2px border-slate-200 #cbd5e1; padding-bottom: 4px;">${titleText}</h3>`;
-      }
-      // Callout Block
-      if (trimmed.startsWith('> ')) {
-        const text = trimmed.replace(/^>\s*/, '');
-        return `<div style="background-color: #fffbe0; border: 1.5px solid #fde68a; border-left: 5px solid #d97706; padding: 14px 18px; border-radius: 8px; margin: 14px 0; font-size: 14.5px; color: #0f172a; font-weight: 600; line-height: 1.8; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">${text}</div>`;
-      }
-      // Numbered List
-      if (/^\d+\./.test(trimmed)) {
-        return `<div style="font-weight: 700; color: #0f172a; margin-top: 10px; margin-bottom: 6px; font-size: 14.5px; padding-left: 4px; line-height: 1.8;">${trimmed}</div>`;
-      }
-      // Bullet List
-      if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-        const itemContent = trimmed.substring(2);
-        return `<div style="padding-left: 24px; position: relative; margin-bottom: 8px; color: #0f172a; font-size: 14.5px; font-weight: 500; line-height: 1.8;"><span style="position: absolute; left: 6px; color: #e11d48; font-weight: 900; font-size: 16px;">•</span> ${itemContent}</div>`;
-      }
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '-9999px';
+    container.style.width = '794px'; // A4 pixel width at 96 DPI
+    container.style.backgroundColor = '#ffffff';
+    container.style.color = '#0f172a';
+    container.style.padding = '48px 56px 64px 56px';
+    container.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Hind", "Gujarati", "Mukta", sans-serif';
+    container.style.boxSizing = 'border-box';
 
-      return `<p style="margin: 0 0 12px 0; color: #0f172a; font-weight: 500; line-height: 1.8; font-size: 14.5px;">${trimmed}</p>`;
-    })
-    .join('');
+    // Format markdown headings, bullet points, callouts and code blocks for maximum student readability
+    const formattedHtml = fullBodyText
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a; font-weight: 800;">$1</strong>')
+      .split('\n')
+      .map(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return '<div style="height: 14px;"></div>';
 
-  const headerBadge = materialTypeHeaderLabel || 'AI Study Guide';
+        // H1 Main Title
+        if (trimmed.startsWith('# ')) {
+          const titleText = trimmed.replace(/^#\s*/, '');
+          return `<h1 style="font-size: 24px; font-weight: 900; color: #be123c; margin: 26px 0 14px 0; border-bottom: 3px solid #be123c; padding-bottom: 8px; letter-spacing: -0.3px;">${titleText}</h1>`;
+        }
+        // H2 Heading
+        if (trimmed.startsWith('## ')) {
+          const titleText = trimmed.replace(/^##\s*/, '');
+          return `<h2 style="font-size: 17px; font-weight: 800; color: #0369a1; margin: 24px 0 12px 0; background-color: #f0f9ff; padding: 10px 16px; border-left: 6px solid #0284c7; border-radius: 6px; display: block; letter-spacing: -0.2px;">${titleText}</h2>`;
+        }
+        // H3 Heading
+        if (trimmed.startsWith('### ')) {
+          const titleText = trimmed.replace(/^###\s*/, '');
+          return `<h3 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 18px 0 8px 0; border-bottom: 2px border-slate-200 #cbd5e1; padding-bottom: 4px;">${titleText}</h3>`;
+        }
+        // Callout Block
+        if (trimmed.startsWith('> ')) {
+          const text = trimmed.replace(/^>\s*/, '');
+          return `<div style="background-color: #fffbe0; border: 1.5px solid #fde68a; border-left: 5px solid #d97706; padding: 14px 18px; border-radius: 8px; margin: 14px 0; font-size: 14.5px; color: #0f172a; font-weight: 600; line-height: 1.8; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">${text}</div>`;
+        }
+        // Numbered List
+        if (/^\d+\./.test(trimmed)) {
+          return `<div style="font-weight: 700; color: #0f172a; margin-top: 10px; margin-bottom: 6px; font-size: 14.5px; padding-left: 4px; line-height: 1.8;">${trimmed}</div>`;
+        }
+        // Bullet List
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          const itemContent = trimmed.substring(2);
+          return `<div style="padding-left: 24px; position: relative; margin-bottom: 8px; color: #0f172a; font-size: 14.5px; font-weight: 500; line-height: 1.8;"><span style="position: absolute; left: 6px; color: #e11d48; font-weight: 900; font-size: 16px;">•</span> ${itemContent}</div>`;
+        }
 
-  container.innerHTML = `
-    <div style="border-bottom: 3.5px solid #e11d48; padding-bottom: 20px; margin-bottom: 26px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <span style="font-size: 12px; font-weight: 900; color: #e11d48; text-transform: uppercase; letter-spacing: 1px;">Gramin Shiksha • ${headerBadge}</span>
-        <span style="font-size: 12px; background-color: #ffe4e6; padding: 5px 16px; border-radius: 14px; font-weight: 800; color: #9f1239;">Language: ${language}</span>
+        return `<p style="margin: 0 0 12px 0; color: #0f172a; font-weight: 500; line-height: 1.8; font-size: 14.5px;">${trimmed}</p>`;
+      })
+      .join('');
+
+    const headerBadge = materialTypeHeaderLabel || 'AI Study Guide';
+
+    container.innerHTML = `
+      <div style="border-bottom: 3.5px solid #e11d48; padding-bottom: 20px; margin-bottom: 26px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-size: 12px; font-weight: 900; color: #e11d48; text-transform: uppercase; letter-spacing: 1px;">Gramin Shiksha • ${headerBadge}</span>
+          <span style="font-size: 12px; background-color: #ffe4e6; padding: 5px 16px; border-radius: 14px; font-weight: 800; color: #9f1239;">Language: ${language}</span>
+        </div>
+        <h1 style="font-size: 25px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.3; letter-spacing: -0.4px;">${title}</h1>
+        <div style="font-size: 13.5px; color: #334155; font-weight: 700; display: flex; gap: 28px;">
+          <span>Subject: <strong style="color: #0f172a;">${subject}</strong></span>
+          <span>Standard: <strong style="color: #0f172a;">${std}</strong></span>
+        </div>
       </div>
-      <h1 style="font-size: 25px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.3; letter-spacing: -0.4px;">${title}</h1>
-      <div style="font-size: 13.5px; color: #334155; font-weight: 700; display: flex; gap: 28px;">
-        <span>Subject: <strong style="color: #0f172a;">${subject}</strong></span>
-        <span>Standard: <strong style="color: #0f172a;">${std}</strong></span>
+      <div style="font-size: 14.5px; line-height: 1.8; color: #0f172a;">
+        ${formattedHtml}
       </div>
-    </div>
-    <div style="font-size: 14.5px; line-height: 1.8; color: #0f172a;">
-      ${formattedHtml}
-    </div>
-    <div style="margin-top: 44px; border-top: 1px solid #cbd5e1; padding-top: 16px; text-align: center; font-size: 11.5px; color: #475569; font-weight: 600;">
-      Gramin Shiksha AI Educational Platform • Official Study Document (${language})
-    </div>
-  `;
+      <div style="margin-top: 44px; border-top: 1px solid #cbd5e1; padding-top: 16px; text-align: center; font-size: 11.5px; color: #475569; font-weight: 600;">
+        Gramin Shiksha AI Educational Platform • Official Study Document (${language})
+      </div>
+    `;
 
-  document.body.appendChild(container);
+    document.body.appendChild(container);
 
-  try {
-    const canvas = await html2canvas(container, {
-      scale: 1.6,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
-    });
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 1.6,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
 
-    if (document.body.contains(container)) {
-      document.body.removeChild(container);
-    }
+      if (document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-    const imgWidth = 210; // A4 width mm
-    const pageHeight = 297; // A4 height mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
+      const imgWidth = 210; // A4 width mm
+      const pageHeight = 297; // A4 height mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
 
-    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 5) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
       pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
-    }
 
-    // Add page numbers, running headers and footers to ALL generated PDF pages
-    const totalPages = (pdf as any).internal.getNumberOfPages();
-    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      pdf.setPage(pageNum);
-
-      // White overlay rectangle at the bottom footer area to ensure page number is crisp and legible
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 278, 210, 19, 'F');
-
-      // Thin decorative divider line above page footer
-      pdf.setDrawColor(226, 232, 240); // Slate-200
-      pdf.setLineWidth(0.4);
-      pdf.line(15, 280, 195, 280);
-
-      // Page Number Footer ("Page 1 of 3", "Page 2 of 3", etc.)
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(9);
-      pdf.setTextColor(30, 41, 59); // Slate-800
-      pdf.text(`Page ${pageNum} of ${totalPages}`, 105, 287, { align: 'center' });
-
-      // Branding & Metadata
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(7.5);
-      pdf.setTextColor(100, 116, 139); // Slate-500
-      pdf.text(`Gramin Shiksha AI Study Guide • ${subject} (${std})`, 105, 292, { align: 'center' });
-
-      // Top running header for page 2 onwards
-      if (pageNum > 1) {
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(0, 0, 210, 12, 'F');
-        pdf.setDrawColor(241, 245, 249);
-        pdf.line(15, 10, 195, 10);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(8);
-        pdf.setTextColor(71, 85, 105);
-        pdf.text(`${title.substring(0, 55)}`, 15, 7);
-        pdf.text(`Class ${std}`, 195, 7, { align: 'right' });
+      while (heightLeft > 5) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
       }
-    }
 
-    return pdf.output('datauristring');
-  } catch (err) {
-    if (document.body.contains(container)) {
-      document.body.removeChild(container);
+      // Add page numbers, running headers and footers to ALL generated PDF pages
+      const totalPages = (pdf as any).internal.getNumberOfPages();
+      for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+        pdf.setPage(pageNum);
+
+        // White overlay rectangle at the bottom footer area to ensure page number is crisp and legible
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, 278, 210, 19, 'F');
+
+        // Thin decorative divider line above page footer
+        pdf.setDrawColor(226, 232, 240); // Slate-200
+        pdf.setLineWidth(0.4);
+        pdf.line(15, 280, 195, 280);
+
+        // Page Number Footer ("Page 1 of 3", "Page 2 of 3", etc.)
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(9);
+        pdf.setTextColor(30, 41, 59); // Slate-800
+        pdf.text(`Page ${pageNum} of ${totalPages}`, 105, 287, { align: 'center' });
+
+        // Branding & Metadata
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(100, 116, 139); // Slate-500
+        pdf.text(`Gramin Shiksha AI Study Guide • ${subject} (${std})`, 105, 292, { align: 'center' });
+
+        // Top running header for page 2 onwards
+        if (pageNum > 1) {
+          pdf.setFillColor(255, 255, 255);
+          pdf.rect(0, 0, 210, 12, 'F');
+          pdf.setDrawColor(241, 245, 249);
+          pdf.line(15, 10, 195, 10);
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(8);
+          pdf.setTextColor(71, 85, 105);
+          pdf.text(`${title.substring(0, 55)}`, 15, 7);
+          pdf.text(`Class ${std}`, 195, 7, { align: 'right' });
+        }
+      }
+
+      const outputDataUrl = pdf.output('datauristring');
+      pdfDataUrlMemoryCache.set(cacheKey, outputDataUrl);
+      return outputDataUrl;
+    } catch (err) {
+      if (document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
+      console.error("html2canvas/jsPDF conversion error:", err);
+      throw err;
+    } finally {
+      pdfGenerationPromises.delete(cacheKey);
     }
-    console.error("html2canvas/jsPDF conversion error:", err);
-    throw err;
-  }
+  })();
+
+  pdfGenerationPromises.set(cacheKey, generationPromise);
+  return await generationPromise;
 };
 
 // Legacy/Fallback helper that delegates to generateMultiLanguagePdfDataUrl
@@ -1514,30 +1537,96 @@ ${baseContent}`,
     }
   };
 
+  // Pre-warm PDF cache for curriculum files in background during browser idle time
+  useEffect(() => {
+    let isCancelled = false;
+
+    const prewarmPdfs = async () => {
+      for (const file of DEFAULT_CURRICULUM_FILES) {
+        if (isCancelled) break;
+        if (file.fileDataUrl || pdfDataUrlMemoryCache.has(file.id)) continue;
+        
+        try {
+          const cachedLocal = await getFileLocal(file.id);
+          if (cachedLocal) {
+            pdfDataUrlMemoryCache.set(file.id, cachedLocal);
+            continue;
+          }
+          
+          if ((file as any).fullContent) {
+            const dataUrl = await generateStandardPdfDataUrl(
+              file.name,
+              file.subject,
+              file.standard || 'Class 10',
+              file.description || 'Study Guide Notes',
+              (file as any).fullContent
+            );
+            if (dataUrl && !isCancelled) {
+              pdfDataUrlMemoryCache.set(file.id, dataUrl);
+              saveFileLocal(file.id, dataUrl).catch(() => {});
+            }
+          }
+        } catch (e) {
+          // Non-blocking prewarm catch
+        }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => prewarmPdfs(), { timeout: 4000 });
+      } else {
+        prewarmPdfs();
+      }
+    }, 1200);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, []);
+
   // Open PDF instantly without loading delays
   const handleInstantOpenPdf = async (file: CurriculumFile) => {
-    let dataUrl = file.fileDataUrl;
-    if (!dataUrl) {
-      dataUrl = (await getFileLocal(file.id)) || undefined;
-    }
-    if (!dataUrl) {
-      dataUrl = localStorage.getItem('gramin_pdf_cache_' + file.id) || undefined;
-    }
-    if (!dataUrl) {
-      dataUrl = await generateStandardPdfDataUrl(
-        file.name,
-        file.subject,
-        file.standard || 'Class 10',
-        file.description || 'Study Guide Notes',
-        (file as any).fullContent
-      );
-    }
+    // 1. Check in-memory cache first for instant synchronous data URL
+    let dataUrl = file.fileDataUrl || pdfDataUrlMemoryCache.get(file.id);
 
+    // 2. Open reader immediately with zero perceived UI delay
     setActivePdfFile({
       ...file,
       fileDataUrl: dataUrl
     });
     setPdfWorkspaceTab('reader');
+
+    // 3. If dataUrl is already found, we are fully loaded
+    if (dataUrl) return;
+
+    // 4. Concurrently resolve from IndexedDB or generate in background
+    try {
+      dataUrl = (await getFileLocal(file.id)) || undefined;
+      if (!dataUrl) {
+        dataUrl = localStorage.getItem('gramin_pdf_cache_' + file.id) || undefined;
+      }
+      if (!dataUrl) {
+        dataUrl = await generateStandardPdfDataUrl(
+          file.name,
+          file.subject,
+          file.standard || 'Class 10',
+          file.description || 'Study Guide Notes',
+          (file as any).fullContent
+        );
+        if (dataUrl) {
+          saveFileLocal(file.id, dataUrl).catch(() => {});
+        }
+      }
+
+      if (dataUrl) {
+        pdfDataUrlMemoryCache.set(file.id, dataUrl);
+        setActivePdfFile(prev => (prev && prev.id === file.id ? { ...prev, fileDataUrl: dataUrl } : prev));
+      }
+    } catch (err) {
+      console.warn("Background PDF generation notice:", err);
+    }
   };
 
   // Toggle or Save PDF File into My Saved Material

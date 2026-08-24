@@ -2143,73 +2143,109 @@ JSON Schema:
     } else {
       setRoundFinished(true);
       
-      // Generate certificate ID
-      const randHash = Math.floor(100000 + Math.random() * 900000);
-      const generatedCertId = `CERT-SWAMI-${randHash}`;
-      setCertificateId(generatedCertId);
+      const isPassed = (roundMinsScore / activeQuiz.questions.length) >= 0.5;
 
-      // Build chat logs of the quiz session for the separate Certificates page
-      const currentChatLogs = activeQuiz.questions.map((q, qIdx) => {
-        // Ensure userAnswer is retrieved safely
-        const chosenIndex = userAnswers[qIdx] !== undefined ? userAnswers[qIdx] : -1;
-        return {
-          question: q.question,
-          options: q.options,
-          correctAnswerIndex: q.answerIndex,
-          selectedAnswerIndex: chosenIndex,
-          explanation: q.explanation
+      if (isPassed) {
+        // Generate certificate ID for passed quiz
+        const randHash = Math.floor(100000 + Math.random() * 900000);
+        const generatedCertId = `CERT-SWAMI-${randHash}`;
+        setCertificateId(generatedCertId);
+
+        // Build chat logs of the quiz session for the separate Certificates page
+        const currentChatLogs = activeQuiz.questions.map((q, qIdx) => {
+          // Ensure userAnswer is retrieved safely
+          const chosenIndex = userAnswers[qIdx] !== undefined ? userAnswers[qIdx] : -1;
+          return {
+            question: q.question,
+            options: q.options,
+            correctAnswerIndex: q.answerIndex,
+            selectedAnswerIndex: chosenIndex,
+            explanation: q.explanation
+          };
+        });
+
+        const dateNow = new Date();
+        const formattedDate = dateNow.toLocaleDateString(lang === 'en' ? 'en-US' : lang, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        const formattedTime = dateNow.toLocaleTimeString(lang === 'en' ? 'en-US' : lang, {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        const savedName = user.certificateName || user.name || 'GyaanBot Scholar';
+
+        const certObj = {
+          id: generatedCertId,
+          quizTitle: activeQuiz.title,
+          quizId: activeQuiz.id,
+          score: roundMinsScore,
+          totalQuestions: activeQuiz.questions.length,
+          date: formattedDate,
+          time: formattedTime,
+          recipientName: savedName,
+          chatLogs: currentChatLogs
         };
-      });
 
-      const dateNow = new Date();
-      const formattedDate = dateNow.toLocaleDateString(lang === 'en' ? 'en-US' : lang, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-      const formattedTime = dateNow.toLocaleTimeString(lang === 'en' ? 'en-US' : lang, {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+        // Save to user object in state/Firestore so only PASSED quizzes appear in the certificates tab
+        let updatedCertificates = [];
+        try {
+          const existingRaw = user.earnedCertificates;
+          const existingList = existingRaw ? JSON.parse(existingRaw) : [];
+          // Keep only passed certificates
+          const passedOnly = existingList.filter((c: any) => (c.score / (c.totalQuestions || 1)) >= 0.5);
+          passedOnly.unshift(certObj); // Prepend so newest is first
+          updatedCertificates = passedOnly;
+        } catch (err) {
+          console.error("Error writing quiz certificate", err);
+          updatedCertificates = [certObj];
+        }
 
-      const savedName = user.certificateName || user.name || 'GyaanBot Scholar';
+        // Update global quiz points: +15 bonus points for passing!
+        const pointsGain = roundMinsScore * 10 + (roundMinsScore === activeQuiz.questions.length ? 15 : 0);
+        const updatedPoints = totalQuizPoints + pointsGain;
+        setTotalQuizPoints(updatedPoints);
 
-      const certObj = {
-        id: generatedCertId,
-        quizTitle: activeQuiz.title,
-        quizId: activeQuiz.id,
-        score: roundMinsScore,
-        totalQuestions: activeQuiz.questions.length,
-        date: formattedDate,
-        time: formattedTime,
-        recipientName: savedName,
-        chatLogs: currentChatLogs
-      };
+        onUpdateUser({
+          earnedCertificates: JSON.stringify(updatedCertificates),
+          totalPoints: updatedPoints
+        });
 
-      // Save to user object in state/Firestore so they are displayable on the separate certificates page
-      let updatedCertificates = [];
-      try {
-        const existingRaw = user.earnedCertificates;
-        const existingList = existingRaw ? JSON.parse(existingRaw) : [];
-        existingList.unshift(certObj); // Prepend so newest is first
-        updatedCertificates = existingList;
-      } catch (err) {
-        console.error("Error writing quiz certificate", err);
-      }
+        // Reconcile and buffer score records if in offline cache mode
+        if (!offlineSyncManager.isOnline()) {
+          offlineSyncManager.queuePendingProgress('quiz_points', pointsGain, user.mobile);
+        }
+      } else {
+        // Quiz was NOT passed (< 50% score). Strictly do NOT award or persist any certificate!
+        setCertificateId('');
 
-      // Update global quiz points: +15 points for passing!
-      const pointsGain = roundMinsScore * 10 + (roundMinsScore === activeQuiz.questions.length ? 15 : 0);
-      const updatedPoints = totalQuizPoints + pointsGain;
-      setTotalQuizPoints(updatedPoints);
+        // Award participation points if any questions were answered correctly
+        const pointsGain = roundMinsScore * 10;
+        const updatedPoints = totalQuizPoints + pointsGain;
+        setTotalQuizPoints(updatedPoints);
 
-      onUpdateUser({
-        earnedCertificates: JSON.stringify(updatedCertificates),
-        totalPoints: updatedPoints
-      });
+        // Sanitize existing certificates to ensure only passed quizzes exist
+        let cleanedCertificates = [];
+        try {
+          const existingRaw = user.earnedCertificates;
+          if (existingRaw) {
+            const existingList = JSON.parse(existingRaw);
+            cleanedCertificates = existingList.filter((c: any) => (c.score / (c.totalQuestions || 1)) >= 0.5);
+          }
+        } catch (err) {
+          cleanedCertificates = [];
+        }
 
-      // Reconcile and buffer score records if in offline cache mode
-      if (!offlineSyncManager.isOnline()) {
-        offlineSyncManager.queuePendingProgress('quiz_points', pointsGain, user.mobile);
+        onUpdateUser({
+          earnedCertificates: JSON.stringify(cleanedCertificates),
+          totalPoints: updatedPoints
+        });
+
+        if (!offlineSyncManager.isOnline() && pointsGain > 0) {
+          offlineSyncManager.queuePendingProgress('quiz_points', pointsGain, user.mobile);
+        }
       }
     }
   };
@@ -2903,8 +2939,21 @@ JSON Schema:
                 type="text"
                 value={certificateName}
                 onChange={(e) => {
-                  setCertificateName(e.target.value);
-                  onUpdateUser({ certificateName: e.target.value });
+                  const newName = e.target.value;
+                  setCertificateName(newName);
+                  let updatedList = [];
+                  try {
+                    const existingRaw = user.earnedCertificates;
+                    if (existingRaw) {
+                      const parsed = JSON.parse(existingRaw);
+                      updatedList = parsed.map((c: any) => c.id === certificateId ? { ...c, recipientName: newName } : c);
+                    }
+                  } catch (err) {}
+                  
+                  onUpdateUser({ 
+                    certificateName: newName,
+                    ...(updatedList.length > 0 ? { earnedCertificates: JSON.stringify(updatedList) } : {})
+                  });
                 }}
                 placeholder={lang === 'hi' ? "जैसे: राहुल कुमार" : "e.g., Jane Doe"}
                 className="w-full px-4 py-2 text-sm sm:text-base border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-gray-50/50"

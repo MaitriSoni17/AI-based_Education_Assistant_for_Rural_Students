@@ -373,7 +373,8 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
   if (!content) return null;
 
   // Determine if dark styling should be applied
-  const isDarkMode = isDark || isUser || className.includes('text-slate-100') || className.includes('text-slate-200') || className.includes('text-white') || className.includes('prose-invert');
+  const hasExplicitDarkText = className.includes('text-slate-800') || className.includes('text-slate-900') || className.includes('text-gray-800') || className.includes('text-gray-900') || className.includes('text-black');
+  const isDarkMode = !hasExplicitDarkText && (isDark || isUser || className.includes('text-slate-100') || className.includes('text-slate-200') || className.includes('text-white') || className.includes('prose-invert'));
 
   const normalized = normalizeMathText(content);
   const lines = normalized.split('\n');

@@ -453,6 +453,9 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
   );
 };
 
+// High-performance in-memory cache for parsed PDF documents
+const pdfDocCache = new Map<string, { pdf: any; width: number; height: number; numPages: number }>();
+
 export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   fileId,
   fileDataUrl,
@@ -817,9 +820,21 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     }
   }, [loading, pdfDoc, handleFitWidth]);
 
-  // Load PDF Engine
+  // Load PDF Engine with high-performance caching
   useEffect(() => {
     let isMounted = true;
+
+    // Check memory cache first for 0ms instant loading
+    const cacheKey = fileDataUrl ? `url_${fileDataUrl.slice(0, 100)}_${fileDataUrl.length}` : `id_${fileId}`;
+    if (pdfDocCache.has(cacheKey)) {
+      const cached = pdfDocCache.get(cacheKey)!;
+      setPageSize({ width: cached.width, height: cached.height });
+      setPdfDoc(cached.pdf);
+      setNumPages(cached.numPages);
+      setActivePageNum(1);
+      setLoading(false);
+      return;
+    }
 
     const loadPdfJs = async () => {
       try {
@@ -894,6 +909,14 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
         const firstPage = await pdf.getPage(1);
         const viewport = firstPage.getViewport({ scale: 1 });
+
+        // Store into memory cache
+        pdfDocCache.set(cacheKey, {
+          pdf,
+          width: viewport.width,
+          height: viewport.height,
+          numPages: pdf.numPages
+        });
 
         if (isMounted) {
           setPageSize({ width: viewport.width, height: viewport.height });

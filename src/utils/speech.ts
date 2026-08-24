@@ -15,6 +15,22 @@ let currentAudioIndex = 0;
 let activeFallbackTimeout: NodeJS.Timeout | null = null;
 let currentSpeechSession = 0;
 
+export function getSavedSpeechRate(): number {
+  if (typeof window === 'undefined') return 1;
+  try {
+    const saved = localStorage.getItem('speech_rate_multiplier');
+    if (saved) {
+      const parsed = parseFloat(saved);
+      if (!isNaN(parsed) && parsed >= 0.5 && parsed <= 2.0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    // safe fallback
+  }
+  return 1;
+}
+
 export function stopSpeaking() {
   // Invalidate any active asynchronous speech sessions immediately
   currentSpeechSession++;
@@ -280,7 +296,9 @@ export function speakText(
           const url = `/api/tts?tl=${detectedLang}&q=${encodeURIComponent(chunk)}`;
 
           try {
+            const userRate = getSavedSpeechRate();
             const audio = new Audio(url);
+            audio.playbackRate = userRate;
             activeAudioQueue.push(audio);
 
             audio.onended = () => {
@@ -369,8 +387,9 @@ function runNativeSpeechFallback(
       }
     }
 
+    const userRate = getSavedSpeechRate();
     utterance.lang = targetLang;
-    utterance.rate = rate; 
+    utterance.rate = Math.max(0.5, Math.min(2.0, rate * userRate)); 
     utterance.pitch = pitch;
 
     const voices = window.speechSynthesis.getVoices();

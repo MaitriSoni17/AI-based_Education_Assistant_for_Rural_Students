@@ -1039,7 +1039,8 @@ export default function TutorTab({
             else if (langCode === 'te') utterance.lang = 'te-IN';
             else utterance.lang = 'en-IN';
 
-            utterance.rate = 0.9;
+            const rateMult = parseFloat(localStorage.getItem('speech_rate_multiplier') || '1');
+            utterance.rate = Math.max(0.5, Math.min(2.0, 0.9 * (isNaN(rateMult) ? 1 : rateMult)));
             utterance.onend = () => {
                 isSpeaking = false;
                 updateVoiceControls();
@@ -3222,59 +3223,62 @@ JSON Schema:
       {/* 0. Mascot Board & Subject Character Selector */}
       <div id="mascot-board-selector" className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-gray-200/80 shadow-2xs flex flex-col gap-4">
         {/* Header Title, Board Tabs & Carousel Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
-          <div>
+        <div className="flex flex-col gap-3 border-b border-gray-100 pb-3">
+          {/* Top Row: Title + Mobile Carousel Controls */}
+          <div className="flex items-center justify-between gap-2">
             <h2 className="font-bold text-sm sm:text-base text-gray-900 flex items-center gap-2">
               <span>{lang === 'gu' ? 'મસ્કોટ ક્લાસ ટ્યુટર્સ' : lang === 'hi' ? 'मस्कट क्लास ट्यूटर' : 'Mascot Class Tutors'}</span>
               <span className="text-[10px] bg-slate-100 text-slate-700 border border-slate-200 font-semibold px-2 py-0.5 rounded-md uppercase">
                 {selectedBoard}
               </span>
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
+
+            {/* Carousel navigation controls for mobile (neatly placed at top right) */}
+            <div className="flex md:hidden items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0">
+              <button
+                type="button"
+                onClick={scrollMascotCarouselLeft}
+                className="w-6 h-6 rounded bg-white shadow-2xs flex items-center justify-center text-slate-700 hover:text-slate-900 active:scale-95 transition-all"
+                title="Previous"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] font-semibold text-slate-600 px-1">
+                Tutor
+              </span>
+              <button
+                type="button"
+                onClick={scrollMascotCarouselRight}
+                className="w-6 h-6 rounded bg-white shadow-2xs flex items-center justify-center text-slate-700 hover:text-slate-900 active:scale-95 transition-all"
+                title="Next"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Subtitle & Board Selector Tabs */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+            <p className="text-xs text-gray-500">
               {lang === 'gu' 
                 ? 'વિષય પસંદ કરો અથવા કોઈ પણ પ્રશ્ન પૂછો — AI આપમેળે યોગ્ય ટ્યુટર પસંદ કરશે:' 
                 : lang === 'hi' 
                 ? 'विषय चुनें या कोई भी प्रश्न पूछें — AI स्वचालित रूप से सही ट्यूटर चुनेगा:' 
                 : 'Select a subject tutor or ask any question to let AI auto-match:'}
             </p>
-          </div>
-
-          <div className="flex items-center gap-2 self-start md:self-auto">
-            {/* Carousel navigation controls for mobile */}
-            <div className="flex md:hidden items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80">
-              <button
-                type="button"
-                onClick={scrollMascotCarouselLeft}
-                className="w-6 h-6 rounded bg-white shadow-2xs flex items-center justify-center text-slate-700 hover:text-slate-900 active:scale-95 transition-all text-sm font-bold"
-                title="Previous"
-              >
-                ‹
-              </button>
-              <span className="text-[10px] font-medium text-slate-500 px-1">
-                {lang === 'hi' ? 'Tutor' : lang === 'gu' ? 'Tutor' : 'Tutor'}
-              </span>
-              <button
-                type="button"
-                onClick={scrollMascotCarouselRight}
-                className="w-6 h-6 rounded bg-white shadow-2xs flex items-center justify-center text-slate-700 hover:text-slate-900 active:scale-95 transition-all text-sm font-bold"
-                title="Next"
-              >
-                ›
-              </button>
-            </div>
 
             {/* Board Selector Tabs */}
             {!isSettingsBoardBlank && !showManualBoardPicker ? (
               <button
                 type="button"
                 onClick={() => setShowManualBoardPicker(true)}
-                className="text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1"
+                className="text-xs font-medium px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all cursor-pointer whitespace-nowrap shrink-0 self-start md:self-auto flex items-center gap-1"
               >
                 <span>⚙️</span>
                 <span>{lang === 'gu' ? 'બોર્ડ બદલો' : lang === 'hi' ? 'बोर्ड बदलें' : 'Change Board'}</span>
               </button>
             ) : (
-              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 md:pb-0 scrollbar-none">
+              <div className="w-full md:w-auto flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none shrink-0">
                 {[
                   { key: 'GSEB', label: 'GSEB' },
                   { key: 'CBSE', label: 'CBSE' },
@@ -3288,7 +3292,7 @@ JSON Schema:
                     onClick={() => handleSelectBoard(b.key)}
                     className={`text-xs font-semibold px-2.5 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 border ${
                       selectedBoard === b.key
-                        ? 'bg-slate-900 text-white border-slate-900'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
                         : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
                     }`}
                   >

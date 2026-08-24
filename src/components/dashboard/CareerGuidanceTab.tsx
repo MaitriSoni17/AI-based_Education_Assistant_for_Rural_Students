@@ -5,7 +5,7 @@ import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { 
   Compass, BookOpen, GraduationCap, ChevronRight, Sparkles, 
-  Smile, ArrowRight, Heart, ArrowLeft, Loader2, Sparkle, AlertCircle, CheckCircle, Award,
+  ArrowRight, Heart, ArrowLeft, Loader2, Sparkle, AlertCircle, CheckCircle, Award,
   IndianRupee, Wrench, Code, MessageSquare, ChevronDown
 } from 'lucide-react';
 
@@ -1553,14 +1553,7 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
 
   const [selectedCareer, setSelectedCareer] = useState<typeof CAREERS[0] | null>(null);
 
-  // Matchmaker Questionnaire states
-  const [inQuiz, setInQuiz] = useState(false);
-  const [step, setStep] = useState(1);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [resultCareer, setResultCareer] = useState<typeof CAREERS[0] | null>(null);
-
   const activeCareer = selectedCareer ? getTranslatedCareer(selectedCareer, lang) : null;
-  const activeResultCareer = resultCareer ? getTranslatedCareer(resultCareer, lang) : null;
 
   // AI Personalized Planner states
   const [showAIPlanner, setShowAIPlanner] = useState(false);
@@ -1581,44 +1574,6 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
       setAiAcademicLevel(user.standard);
     }
   }, [user?.standard]);
-
-  const startQuiz = () => {
-    stopSpeaking();
-    setShowAIPlanner(false);
-    setInQuiz(true);
-    setStep(1);
-    setAnswers({});
-    setResultCareer(null);
-    speakText("Welcome! Answer three simple questions, and I will match your career pathway!", lang, "Swami AI", "🤖 Swami AI");
-  };
-
-  const handleSelectAnswer = (ansKey: string) => {
-    const updated = { ...answers, [step]: ansKey };
-    setAnswers(updated);
-
-    if (step < 3) {
-      setStep(prev => prev + 1);
-    } else {
-      // Evaluate result career
-      const likesField = updated[1] === 'fields';
-      const favSub = updated[2];
-      
-      let matched = CAREERS[0]; // Default Agriculture
-      
-      if (likesField) {
-        if (favSub === 'science') matched = CAREERS[0]; // Agri Scientist
-        else if (favSub === 'math') matched = CAREERS[1]; // Renewable Eng
-        else matched = CAREERS[2]; // Vet Doctor
-      } else {
-        if (favSub === 'math' || favSub === 'science') matched = CAREERS[3]; // Software Coder
-        else matched = CAREERS[4]; // Civil Servant/Teacher
-      }
-
-      setResultCareer(matched);
-      setInQuiz(false);
-      speakText(`Evaluation complete! Your natural interests point beautifully to: ${matched.title}. Read the detail roadmap!`, lang, "Swami AI", "🤖 Swami AI");
-    }
-  };
 
   const handleGenerateRecommendations = async () => {
     if (!aiFavoriteSubject.trim()) {
@@ -1682,23 +1637,23 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
         </div>
 
         <div className="flex flex-wrap gap-2.5">
-          {!showAIPlanner && (
+          {!showAIPlanner ? (
             <button
-              onClick={() => { stopSpeaking(); setInQuiz(false); setResultCareer(null); setShowAIPlanner(true); }}
+              onClick={() => { stopSpeaking(); setShowAIPlanner(true); }}
               className="bg-gradient-to-tr from-[#81B29A] to-[#3D405B] hover:opacity-90 active:scale-95 text-white p-3 py-2 px-4 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer shadow-3xs transition-all"
             >
               <Sparkles className="h-4 w-4 text-[#F2CC8F] animate-pulse" />
               <span>{t('aiPlannerBtn')}</span>
             </button>
+          ) : (
+            <button
+              onClick={() => { stopSpeaking(); setShowAIPlanner(false); setAiResult(null); setAiError(null); }}
+              className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 p-3 py-2 px-4 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer shadow-3xs transition-all"
+            >
+              <BookOpen className="h-4 w-4 text-emerald-600" />
+              <span>{t('browseAllPaths') || 'Browse All Careers'}</span>
+            </button>
           )}
-
-          <button
-            onClick={startQuiz}
-            className="bg-gradient-to-tr from-[#3D405B] to-[#E07A5F] hover:opacity-90 active:scale-95 text-white p-3 py-2 px-4 rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 cursor-pointer shadow-3xs transition-all"
-          >
-            <Smile className="h-4 w-4 text-[#F2CC8F]" />
-            <span>{t('matchmakerBtn')}</span>
-          </button>
         </div>
       </div>
 
@@ -2289,255 +2244,6 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
             </div>
           )}
 
-        </div>
-      ) : inQuiz ? (
-        /* INTERACTIVE CAREER MATCHING GAME */
-        <div className="bg-white rounded-3xl border border-[#F2CC8F]/30 p-6 text-left max-w-xl mx-auto space-y-5 shadow-xs animate-fade-in">
-          <div className="flex justify-between items-center border-b border-gray-100 pb-2.5">
-            <h4 className="font-display font-extrabold text-xs text-[#3D405B] uppercase tracking-wider flex items-center gap-1">
-              <Sparkles className="h-4.5 w-4.5 text-amber-500 animate-pulse" />
-              {t('matchmakerTitle')}
-            </h4>
-            <button 
-              onClick={() => { stopSpeaking(); setInQuiz(false); }}
-              className="text-xs text-gray-400 hover:text-gray-600 font-mono"
-            >
-              X
-            </button>
-          </div>
-
-          <div className="text-xs font-mono font-bold text-amber-700">
-            {t('questChecklist').replace('{step}', String(step))}
-          </div>
-
-          {step === 1 && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="bg-[#FAF8F4] p-4 rounded-xl border border-[#F2CC8F]/30 text-xs sm:text-sm text-gray-900 font-sans font-semibold leading-relaxed">
-                {t('question1')}
-              </div>
-              <div className="grid grid-cols-1 gap-2.5">
-                <button
-                  onClick={() => handleSelectAnswer('fields')}
-                  className="w-full p-3 text-left bg-white hover:bg-[#FAF8F4] border border-gray-200 rounded-xl text-xs sm:text-sm font-sans flex items-center justify-between cursor-pointer group"
-                >
-                  <span>{t('q1Option1')}</span>
-                  <ChevronRight className="h-4 w-4 text-gray-300 group-hover:translate-x-1 group-hover:text-[#E07A5F] transition-all" />
-                </button>
-                <button
-                  onClick={() => handleSelectAnswer('desk')}
-                  className="w-full p-3 text-left bg-white hover:bg-[#FAF8F4] border border-gray-200 rounded-xl text-xs sm:text-sm font-sans flex items-center justify-between cursor-pointer group"
-                >
-                  <span>{t('q1Option2')}</span>
-                  <ChevronRight className="h-4 w-4 text-gray-300 group-hover:translate-x-1 group-hover:text-[#E07A5F] transition-all" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="bg-[#FAF8F4] p-4 rounded-xl border border-[#F2CC8F]/30 text-xs sm:text-sm text-gray-900 font-sans font-semibold leading-relaxed">
-                {t('question2')}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {[
-                  { key: 'science', label: t('q2Option1') },
-                  { key: 'math', label: t('q2Option2') },
-                  { key: 'lang', label: t('q2Option3') },
-                  { key: 'art', label: t('q2Option4') }
-                ].map(sub => (
-                  <button
-                    key={sub.key}
-                    onClick={() => handleSelectAnswer(sub.key)}
-                    className="p-3 text-left bg-white hover:bg-[#FAF8F4] border border-gray-200 rounded-xl text-xs sm:text-sm font-sans flex items-center justify-between cursor-pointer group"
-                  >
-                    <span>{sub.label}</span>
-                    <ChevronRight className="h-4 w-4 text-gray-300 group-hover:translate-x-1 group-hover:text-[#E07A5F] transition-all shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="bg-[#FAF8F4] p-4 rounded-xl border border-[#F2CC8F]/30 text-xs sm:text-sm text-gray-900 font-sans font-semibold leading-relaxed">
-                {t('question3')}
-              </div>
-              <div className="grid grid-cols-1 gap-2.5">
-                <button
-                  onClick={() => handleSelectAnswer('heal')}
-                  className="w-full p-3 text-left bg-white hover:bg-[#FAF8F4] border border-gray-200 rounded-xl text-xs sm:text-sm font-sans flex items-center justify-between cursor-pointer"
-                >
-                  <span>{t('q3Option1')}</span>
-                </button>
-                <button
-                  onClick={() => handleSelectAnswer('build')}
-                  className="w-full p-3 text-left bg-white hover:bg-[#FAF8F4] border border-gray-200 rounded-xl text-xs sm:text-sm font-sans flex items-center justify-between cursor-pointer"
-                >
-                  <span>{t('q3Option2')}</span>
-                </button>
-                <button
-                  onClick={() => handleSelectAnswer('leader')}
-                  className="w-full p-3 text-left bg-white hover:bg-[#FAF8F4] border border-gray-200 rounded-xl text-xs sm:text-sm font-sans flex items-center justify-between cursor-pointer"
-                >
-                  <span>{t('q3Option3')}</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-        </div>
-      ) : activeResultCareer !== null ? (
-        /* MATCH RESUL DECK */
-        <div className="bg-emerald-50 rounded-3xl border border-emerald-350 p-6 text-left max-w-xl mx-auto space-y-4 animate-fade-in">
-          <div className="text-center space-y-1 pb-2 border-b border-emerald-200">
-            <span className="text-4xl">🌟</span>
-            <h4 className="font-display font-extrabold text-[#3D405B] text-base">{t('recommendedCareerProfile')}</h4>
-            <h3 className="font-display font-black text-emerald-800 text-lg sm:text-xl pt-1">
-              {activeResultCareer.title}
-            </h3>
-          </div>
-
-          <div className="space-y-3.5 text-xs sm:text-sm">
-            <div className="space-y-1">
-              <span className="font-mono font-bold text-emerald-800 uppercase text-[9px] block">{t('roleDescriptionLabel')}</span>
-              <p className="text-gray-700 leading-normal font-sans font-medium">{activeResultCareer.desc}</p>
-            </div>
-
-            <div className="space-y-1">
-              <span className="font-mono font-bold text-emerald-800 uppercase text-[9px] block">{t('studyPathwayLabel')}</span>
-              <p className="text-[#3D405B] font-bold leading-normal">{activeResultCareer.roadmap}</p>
-            </div>
-
-            <div className="space-y-2">
-              <span className="font-mono font-bold text-emerald-800 uppercase text-[9px] block">{t('recommendedScholarshipsLabel')}</span>
-              <p className="text-amber-800 font-semibold italic bg-white/40 p-2 rounded-lg border border-emerald-200/30">{activeResultCareer.scholarship}</p>
-              
-              {activeResultCareer.scholarshipsList && activeResultCareer.scholarshipsList.length > 0 && (
-                <div className="grid grid-cols-1 gap-2 pt-1 text-left">
-                  {activeResultCareer.scholarshipsList.map((scholarship, idx) => (
-                    <div key={idx} className="bg-white/70 p-3 rounded-xl border border-emerald-200/40 space-y-1">
-                      <h5 className="font-sans font-bold text-xs text-emerald-900 flex items-center gap-1">
-                        <span>🏅</span> {scholarship.name}
-                      </h5>
-                      <div className="flex flex-wrap gap-1.5 text-[10px] pt-0.5">
-                        <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-mono font-bold border border-emerald-100">
-                          💰 {scholarship.amount}
-                        </span>
-                        <span className="bg-[#FAF8F4] text-amber-800 px-1.5 py-0.5 rounded border border-[#F2CC8F]/30 font-medium">
-                          🎓 {t('eligibilityLabel')}: {scholarship.eligibility}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-gray-600 pt-1 leading-relaxed">{scholarship.description}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {activeResultCareer.salary && (
-              <div className="space-y-2 pt-2 border-t border-emerald-200/50">
-                <span className="font-mono font-bold text-emerald-800 uppercase text-[9px] block flex items-center gap-1">
-                  <IndianRupee className="h-3.5 w-3.5 text-emerald-600" />
-                  {t('averageSalaryLabel')}
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="bg-emerald-100/30 p-2.5 rounded-xl border border-emerald-200/30">
-                    <span className="text-[9px] font-mono text-emerald-800 font-bold uppercase tracking-wider block">{t('beginnerLabel')}</span>
-                    <span className="text-xs font-black text-gray-800 block mt-0.5">{activeResultCareer.salary.beginner}</span>
-                  </div>
-                  <div className="bg-emerald-100/60 p-2.5 rounded-xl border border-emerald-200/50">
-                    <span className="text-[9px] font-mono text-emerald-800 font-bold uppercase tracking-wider block">{t('midLevelLabel')}</span>
-                    <span className="text-xs font-black text-gray-800 block mt-0.5">{activeResultCareer.salary.midLevel}</span>
-                  </div>
-                  <div className="bg-emerald-100/90 p-2.5 rounded-xl border border-emerald-200/70">
-                    <span className="text-[9px] font-mono text-emerald-800 font-bold uppercase tracking-wider block">{t('experiencedLabel')}</span>
-                    <span className="text-xs font-black text-gray-800 block mt-0.5">{activeResultCareer.salary.experienced}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeResultCareer.skills && (
-              <div className="space-y-3 pt-3 border-t border-emerald-200/50">
-                <span className="font-mono font-bold text-emerald-800 uppercase text-[9px] block flex items-center gap-1.5">
-                  <Wrench className="h-3.5 w-3.5 text-emerald-700" />
-                  {t('skillsToDevelopLabel')}
-                </span>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="bg-white/60 p-3 rounded-xl border border-emerald-200/40 space-y-1.5">
-                    <strong className="text-[10px] text-emerald-900 font-mono uppercase block flex items-center gap-1">
-                      <Code className="h-3 w-3 text-emerald-700" />
-                      {t('technicalSkillsLabel')}
-                    </strong>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {activeResultCareer.skills.technical.map((sk, idx) => (
-                        <span key={idx} className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-medium border border-emerald-100">
-                          {sk}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="bg-white/60 p-3 rounded-xl border border-emerald-200/40 space-y-1.5">
-                    <strong className="text-[10px] text-[#3D405B] font-mono uppercase block flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3 text-[#3D405B]" />
-                      {t('softSkillsLabel')}
-                    </strong>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {activeResultCareer.skills.soft.map((sk, idx) => (
-                        <span key={idx} className="bg-amber-50 text-amber-800 px-2 py-0.5 rounded text-[10px] font-medium border border-[#F2CC8F]/30">
-                          {sk}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeResultCareer.growth && (
-              <div className="space-y-3 pt-3 border-t border-emerald-200/50">
-                <span className="font-mono font-bold text-emerald-800 uppercase text-[9px] block flex items-center gap-1">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                  {t('growthProspectsLabel')}
-                </span>
-                <div className="grid grid-cols-1 gap-2.5">
-                  <div className="bg-white/60 p-3 rounded-xl border border-emerald-200/40 space-y-1">
-                    <strong className="text-[10px] text-emerald-900 font-mono uppercase block">{t('futureScopeLabel')}</strong>
-                    <p className="text-xs text-gray-700 leading-relaxed font-medium">{activeResultCareer.growth.futureScope}</p>
-                  </div>
-                  <div className="bg-white/60 p-3 rounded-xl border border-emerald-200/40 space-y-1">
-                    <strong className="text-[10px] text-emerald-900 font-mono uppercase block">{t('jobOpportunitiesLabel')}</strong>
-                    <p className="text-xs text-gray-700 leading-relaxed font-medium">{activeResultCareer.growth.jobOpportunities}</p>
-                  </div>
-                  <div className="bg-white/60 p-3 rounded-xl border border-emerald-200/40 space-y-1">
-                    <strong className="text-[10px] text-emerald-900 font-mono uppercase block">{t('marketDemandLabel')}</strong>
-                    <p className="text-xs text-gray-700 leading-relaxed font-medium">{activeResultCareer.growth.demand}</p>
-                  </div>
-                  <div className="bg-white/60 p-3 rounded-xl border border-emerald-200/40 space-y-1">
-                    <strong className="text-[10px] text-emerald-900 font-mono uppercase block">{t('careerGrowthLabel')}</strong>
-                    <p className="text-xs text-gray-700 leading-relaxed font-medium">{activeResultCareer.growth.careerGrowth}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2 justify-center pt-3">
-            <button
-              onClick={startQuiz}
-              className="px-4 py-1.5 bg-white border border-emerald-300 text-[#3D405B] hover:bg-emerald-100 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all"
-            >
-              {t('replayMatchmakerBtn')}
-            </button>
-            <button
-              onClick={() => { stopSpeaking(); setResultCareer(null); }}
-              className="px-4 py-1.5 bg-[#3D405B] hover:bg-[#2D2F44] text-white rounded-xl text-xs font-bold font-sans cursor-pointer transition-all"
-            >
-              {t('browseAllPathsBtn')}
-            </button>
-          </div>
         </div>
       ) : (
         /* MAIN CAREERS DIRECTORY */

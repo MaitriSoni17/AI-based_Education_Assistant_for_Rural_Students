@@ -447,6 +447,13 @@ const PDF_LABELS: Record<LanguageCode, {
   step: string;
   branches: string;
   connectedConcepts: string;
+  fullChatTitle: string;
+  fullChatSubTitle: string;
+  chatTranscript: string;
+  downloadFullChat: string;
+  preparingFullChat: string;
+  fullChatSuccess: string;
+  noMessagesToExport: string;
 }> = {
   en: {
     documentTitle: "ACADEMIC STUDY NOTES LOG",
@@ -466,7 +473,14 @@ const PDF_LABELS: Record<LanguageCode, {
     mainSubject: "MAIN SUBJECT",
     step: "STEP",
     branches: "BRANCHES / CONCEPTS",
-    connectedConcepts: "Connected Sub-concepts"
+    connectedConcepts: "Connected Sub-concepts",
+    fullChatTitle: "COMPLETE AI STUDY SESSION TRANSCRIPT",
+    fullChatSubTitle: "Full conversational study session and problem-solving logs",
+    chatTranscript: "CONVERSATION TRANSCRIPT",
+    downloadFullChat: "Download Full Chat PDF",
+    preparingFullChat: "Preparing your full study session PDF...",
+    fullChatSuccess: "Your full chat transcript PDF has been successfully generated and downloaded!",
+    noMessagesToExport: "No conversation messages available to export."
   },
   hi: {
     documentTitle: "शैक्षणिक अध्ययन नोट्स लॉग",
@@ -486,7 +500,14 @@ const PDF_LABELS: Record<LanguageCode, {
     mainSubject: "मुख्य विषय",
     step: "चरण",
     branches: "शाखाएँ / अवधारणाएँ",
-    connectedConcepts: "जुड़े हुए उप-विषय"
+    connectedConcepts: "जुड़े हुए उप-विषय",
+    fullChatTitle: "सम्पूर्ण AI अध्ययन सत्र प्रतिलिपि",
+    fullChatSubTitle: "संपूर्ण शैक्षणिक संवाद, प्रश्नोत्तर एवं समस्या समाधान लॉग",
+    chatTranscript: "संवाद प्रतिलिपि (चैट इतिहास)",
+    downloadFullChat: "सम्पूर्ण चैट PDF डाउनलोड करें",
+    preparingFullChat: "आपका सम्पूर्ण अध्ययन सत्र PDF तैयार किया जा रहा है...",
+    fullChatSuccess: "आपकी सम्पूर्ण चैट PDF सफलतापूर्वक डाउनलोड हो गई है!",
+    noMessagesToExport: "निर्यात करने के लिए कोई संवाद संदेश उपलब्ध नहीं है।"
   },
   gu: {
     documentTitle: "શૈક્ષણિક અભ્યાસ નોંધ લોગ",
@@ -506,7 +527,14 @@ const PDF_LABELS: Record<LanguageCode, {
     mainSubject: "મુખ્ય વિષય",
     step: "પગલું",
     branches: "શાખાઓ / વિભાવનાઓ",
-    connectedConcepts: "જોડાયેલા પેટા-ખ્યાલો"
+    connectedConcepts: "જોડાયેલા પેટા-ખ્યાલો",
+    fullChatTitle: "સંપૂર્ણ AI અભ્યાસ સત્ર ટ્રાંસ્ક્રિપ્ટ",
+    fullChatSubTitle: "સંપૂર્ણ શૈક્ષણિક વાતચીત અને સમસ્યા નિવારણ લોગ",
+    chatTranscript: "વાતચીત ટ્રાંસ્ક્રિપ્ટ",
+    downloadFullChat: "સંપૂર્ણ ચેટ PDF ડાઉનલોડ કરો",
+    preparingFullChat: "તમારી સંપૂર્ણ અભ્યાસ સત્ર PDF તૈયાર થઈ રહી છે...",
+    fullChatSuccess: "તમારી સંપૂર્ણ ચેટ ટ્રાંસ્ક્રિપ્ટ PDF સફળતાપૂર્વક ડાઉનલોડ થઈ ગઈ છે!",
+    noMessagesToExport: "નિકાસ કરવા માટે કોઈ સંદેશાઓ ઉપલબ્ધ નથી."
   },
   mr: {
     documentTitle: "शैक्षणिक अभ्यास नोट्स लॉग",
@@ -526,7 +554,14 @@ const PDF_LABELS: Record<LanguageCode, {
     mainSubject: "मुख्य विषय",
     step: "पायरी",
     branches: "शाखा / संकल्पना",
-    connectedConcepts: "संबंधित उप-संकल्पना"
+    connectedConcepts: "संबंधित उप-संकल्पना",
+    fullChatTitle: "संपूर्ण AI अभ्यास सत्र उतारे (ट्रान्सक्रिप्ट)",
+    fullChatSubTitle: "संपूर्ण शैक्षणिक संभाषण आणि समस्या निवारण लॉग",
+    chatTranscript: "संभाषण प्रतिलिपी",
+    downloadFullChat: "संपूर्ण चॅट PDF डाउनलोड करा",
+    preparingFullChat: "तुमचा संपूर्ण अभ्यास सत्र PDF तयार केला जात आहे...",
+    fullChatSuccess: "तुमचे संपूर्ण चॅट ट्रान्सक्रिप्ट PDF यशस्वीरित्या डाउनलोड झाले आहे!",
+    noMessagesToExport: "डाउनलोड करण्यासाठी कोणतेही संदेश उपलब्ध नाहीत."
   },
   ta: {
     documentTitle: "கல்வி ஆய்வு குறிப்புகள் பதிவு",
@@ -546,7 +581,14 @@ const PDF_LABELS: Record<LanguageCode, {
     mainSubject: "முதன்மை பொருள்",
     step: "படி",
     branches: "கிளைகள் / கருத்துக்கள்",
-    connectedConcepts: "தொடர்புடைய துணை கருத்துக்கள்"
+    connectedConcepts: "தொடர்புடைய துணை கருத்துக்கள்",
+    fullChatTitle: "முழு AI ஆய்வு அமர்வு ஆவணம்",
+    fullChatSubTitle: "முழு கல்வி உரையாடல் மற்றும் கேள்வி-பதில் பதிவுகள்",
+    chatTranscript: "உரையாடல் பதிவு",
+    downloadFullChat: "முழு அரட்டையையும் PDF ஆக பதிவிறக்கவும்",
+    preparingFullChat: "உங்கள் முழு அமர்வு PDF தயாராகிறது...",
+    fullChatSuccess: "உங்கள் முழு அரட்டை PDF வெற்றிகரமாக பதிவிறக்கம் செய்யப்பட்டது!",
+    noMessagesToExport: "பதிவிறக்க உரையாடல் செய்திகள் எதுவும் இல்லை."
   },
   te: {
     documentTitle: "అకడమిక్ స్టడీ నోట్స్ లాగ్",
@@ -566,7 +608,14 @@ const PDF_LABELS: Record<LanguageCode, {
     mainSubject: "ప్రధాన అంశం",
     step: "దశ",
     branches: "శాఖలు / భావనలు",
-    connectedConcepts: "అనుబంధ ఉప-భావనలు"
+    connectedConcepts: "అనుబంధ ఉప-భావనలు",
+    fullChatTitle: "పూర్తి AI అధ్యయన సెషన్ ట్రాన్స్క్రిప్ట్",
+    fullChatSubTitle: "పూర్తి విద్యా సంభాషణ మరియు సమస్య పరిష్కార లాగ్‌లు",
+    chatTranscript: "సంభాషణ ట్రాన్స్క్రిప్ట్",
+    downloadFullChat: "పూర్తి చాట్ PDFని డౌన్‌లోడ్ చేయండి",
+    preparingFullChat: "మీ పూర్తి అధ్యయన సెషన్ PDF సిద్ధం అవుతోంది...",
+    fullChatSuccess: "మీ పూర్తి చాట్ ట్రాన్స్క్రిప్ట్ PDF విజయవంతంగా డౌన్‌లోడ్ చేయబడింది!",
+    noMessagesToExport: "ఎగుమతి చేయడానికి సంభాషణ సందేశాలు లేవు."
   }
 };
 
@@ -586,6 +635,8 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   // PDF export state for non-English Unicode compatible HTML canvas capture
   const [pdfExportMessage, setPdfExportMessage] = useState<ChatMessage | null>(null);
   const [pdfExportQuestion, setPdfExportQuestion] = useState<string>("");
+  const [pdfExportFullChatMessages, setPdfExportFullChatMessages] = useState<ChatMessage[] | null>(null);
+  const [pdfExportFullChatTitle, setPdfExportFullChatTitle] = useState<string>("");
   const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
 
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => {
@@ -1343,6 +1394,140 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     }, 250);
   };
 
+  const handleExportFullChatPDF = (customMessages?: ChatMessage[], customTitle?: string) => {
+    const labels = PDF_LABELS[lang] || PDF_LABELS['en'];
+    const messagesToExport = customMessages || activeMessages;
+    
+    // Filter out bare welcome message if there are other conversation items
+    const meaningfulMessages = messagesToExport.filter(m => 
+      m.sender === 'user' || (m.sender === 'assistant' && !m.text.includes(selectedChar.welcome[lang] || selectedChar.welcome['en']))
+    );
+
+    const exportList = meaningfulMessages.length > 0 ? meaningfulMessages : messagesToExport;
+
+    if (exportList.length === 0) {
+      alert(labels.noMessagesToExport || "No messages available to export.");
+      return;
+    }
+
+    const sessionTitle = customTitle || (
+      exportList.find(m => m.sender === 'user')?.text.substring(0, 30) || `${selectedChar.name} Study Session`
+    );
+
+    speakText(
+      labels.preparingFullChat || "Preparing your full study session PDF...",
+      lang,
+      selectedChar.name,
+      `${selectedChar.char} ${selectedChar.name}`
+    );
+
+    setPdfExportMessage(null);
+    setPdfExportQuestion("");
+    setPdfExportFullChatMessages(exportList);
+    setPdfExportFullChatTitle(sessionTitle);
+    setIsExportingPDF(true);
+
+    setTimeout(() => {
+      const element = document.getElementById("ai-full-chat-pdf-template");
+      if (!element) {
+        setIsExportingPDF(false);
+        setPdfExportFullChatMessages(null);
+        setPdfExportFullChatTitle("");
+        return;
+      }
+
+      html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#FAF8F5',
+        logging: false,
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+        const printWidth = pageWidth - (margin * 2);
+
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const printHeight = printWidth * (canvasHeight / canvasWidth);
+
+        let pageCount = 0;
+
+        if (printHeight <= pageHeight - (margin * 2)) {
+          pdf.addImage(imgData, 'PNG', margin, margin, printWidth, printHeight);
+        } else {
+          let leftHeight = printHeight;
+          const pageImgHeight = pageHeight - (margin * 2);
+
+          while (leftHeight > 0) {
+            if (pageCount > 0) {
+              pdf.addPage();
+            }
+
+            pdf.addImage(
+              imgData,
+              'PNG',
+              margin,
+              margin - (pageCount * pageImgHeight),
+              printWidth,
+              printHeight
+            );
+
+            leftHeight -= pageImgHeight;
+            pageCount++;
+          }
+        }
+
+        const totalPages = (pdf.internal as any).getNumberOfPages();
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          pdf.setPage(pageNum);
+
+          pdf.setFillColor(250, 248, 245);
+          pdf.rect(0, pageHeight - 12, pageWidth, 12, 'F');
+
+          pdf.setDrawColor(220, 215, 205);
+          pdf.setLineWidth(0.3);
+          pdf.line(margin, pageHeight - 11, pageWidth - margin, pageHeight - 11);
+
+          pdf.setFont("Helvetica", "bold");
+          pdf.setFontSize(8.5);
+          pdf.setTextColor(100, 116, 139);
+          pdf.text(`${labels.page || 'Page'} ${pageNum} ${(labels as any).of || 'of'} ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: 'center' });
+
+          pdf.setFontSize(7.5);
+          pdf.setFont("Helvetica", "normal");
+          pdf.text(`GyaanBot AI Full Study Chat • ${selectedChar.name}`, margin, pageHeight - 5);
+        }
+
+        const safeTitle = sessionTitle.substring(0, 25).replace(/[^a-zA-Z0-9]/g, '_');
+        pdf.save(`AI_Full_Chat_${selectedChar.id}_${safeTitle}.pdf`);
+
+        setIsExportingPDF(false);
+        setPdfExportFullChatMessages(null);
+        setPdfExportFullChatTitle("");
+
+        speakText(
+          labels.fullChatSuccess || "Your full chat transcript PDF has been successfully generated and downloaded!",
+          lang,
+          selectedChar.name,
+          `${selectedChar.char} ${selectedChar.name}`
+        );
+      }).catch((err) => {
+        console.error("HTML to PDF full chat error:", err);
+        setIsExportingPDF(false);
+        setPdfExportFullChatMessages(null);
+        setPdfExportFullChatTitle("");
+      });
+    }, 300);
+  };
+
   const copyMessageToClipboard = (msg: ChatMessage) => {
     const parsed = parseMessageContent(msg.text);
     navigator.clipboard.writeText(parsed.text).then(() => {
@@ -1615,6 +1800,18 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Download Full Chat PDF Button */}
+            {activeMessages.some(m => m.sender === 'user') && !showHistory && (
+              <button
+                onClick={() => handleExportFullChatPDF()}
+                className="text-[11px] sm:text-xs bg-[#81B29A] hover:bg-[#6FA38B] text-white border border-transparent px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-3xs"
+                title={PDF_LABELS[lang]?.downloadFullChat || PDF_LABELS['en'].downloadFullChat}
+              >
+                <FileDown className="h-3.5 w-3.5 text-white" />
+                <span className="hidden sm:inline">{PDF_LABELS[lang]?.downloadFullChat || PDF_LABELS['en'].downloadFullChat}</span>
+              </button>
+            )}
+
             {/* View History Button */}
             <button
               onClick={() => setShowHistory(!showHistory)}
@@ -1939,6 +2136,19 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                                 title={lang === "hi" ? "हटाएं" : "Delete chat session"}
                               >
                                 <Trash className="h-3.5 w-3.5" />
+                              </button>
+
+                              {/* Export Session as PDF */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleExportFullChatPDF(session.messages, session.title);
+                                }}
+                                className="p-1.5 rounded-md text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                title={lang === "hi" ? "पूरा सत्र PDF डाउनलोड करें" : "Download session PDF"}
+                              >
+                                <FileDown className="h-3.5 w-3.5" />
                               </button>
                             </div>
 
@@ -2511,7 +2721,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                 <h2 className="text-sm font-bold text-[#E07A5F] tracking-wider uppercase mb-3">
                   {(PDF_LABELS[lang] || PDF_LABELS['en']).academicQuestion}
                 </h2>
-                <div className="bg-[#FDFBF7] border-l-4 border-[#F2CC8F] rounded-r-2xl p-5 text-sm text-gray-800 leading-relaxed shadow-3xs">
+                <div className="bg-[#FDF6ED] border-l-4 border-[#E07A5F] rounded-r-2xl p-5 text-sm text-slate-900 font-semibold leading-relaxed shadow-3xs">
                   {pdfExportQuestion}
                 </div>
               </div>
@@ -2522,12 +2732,12 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
               <h2 className="text-sm font-bold text-[#81B29A] tracking-wider uppercase mb-3">
                 {(PDF_LABELS[lang] || PDF_LABELS['en']).explanation}
               </h2>
-              <div className="bg-white border border-[#E6E1D7] rounded-2xl p-6 text-sm text-gray-800 leading-relaxed shadow-3xs space-y-4">
+              <div className="bg-white border border-[#E6E1D7] rounded-2xl p-6 text-sm text-slate-800 leading-relaxed shadow-3xs space-y-4">
                 {(() => {
                   const parsed = parseMessageContent(pdfExportMessage.text);
                   return (
                     <>
-                      <MathRenderer content={parsed.text} isUser={false} />
+                      <MathRenderer content={parsed.text} isUser={false} className="text-slate-800" />
                       {parsed.diagram && (
                         <div className="mt-6 pt-6 border-t border-gray-200">
                           <InteractiveDiagram data={parsed.diagram} lang={lang} />
@@ -2537,6 +2747,132 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                   );
                 })()}
               </div>
+            </div>
+
+            {/* Footer Accent Bar */}
+            <div className="h-1.5 bg-[#E07A5F] rounded-b-lg -mx-10 -mb-10 mt-10" />
+          </div>
+        )}
+
+        {/* OFFSCREEN HIGH-RESOLUTION FULL CHAT CONVERSATION PDF TEMPLATE */}
+        {isExportingPDF && pdfExportFullChatMessages && (
+          <div 
+            id="ai-full-chat-pdf-template"
+            className="fixed top-[-9999px] left-[-9999px] w-[800px] bg-[#FAF8F5] text-slate-800 p-10 font-sans border border-amber-200"
+            style={{ minHeight: '1100px' }}
+          >
+            {/* Header / Brand Banner */}
+            <div className="flex justify-between items-center border-b-2 border-[#E07A5F] pb-5 mb-6">
+              <div>
+                <h1 className="text-2xl font-serif font-extrabold text-[#3D405B] tracking-tight">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).fullChatTitle}
+                </h1>
+                <p className="text-xs text-gray-500 font-sans mt-1">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).fullChatSubTitle} • {pdfExportFullChatTitle}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-3xl">📚</span>
+                <p className="text-[10px] text-gray-400 font-mono mt-1 font-bold">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).docSubtitle}
+                </p>
+              </div>
+            </div>
+
+            {/* Student & Mentor Details Grid */}
+            <div className="grid grid-cols-2 gap-4 bg-[#F9F6F0] border border-[#E6E1D7] rounded-2xl p-5 mb-8 text-xs font-sans">
+              <div>
+                <p className="font-bold text-[#3D405B] uppercase mb-1">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).student}
+                </p>
+                <p className="text-gray-700 font-medium">
+                  {user.name || 'Verified Student'} ({localStorage.getItem(`${user.mobile}_profile_standard`) || user.standard || 'Primary Grade'})
+                </p>
+              </div>
+              <div>
+                <p className="font-bold text-[#3D405B] uppercase mb-1">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).mentor}
+                </p>
+                <p className="text-gray-700 font-medium">
+                  {selectedChar.name} ({selectedChar.role[lang] || selectedChar.role['en']})
+                </p>
+              </div>
+              <div>
+                <p className="font-bold text-[#3D405B] uppercase mb-1">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).date}
+                </p>
+                <p className="text-gray-700">
+                  {new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+              <div>
+                <p className="font-bold text-[#3D405B] uppercase mb-1">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).verification}
+                </p>
+                <p className="text-emerald-600 font-semibold">
+                  {(PDF_LABELS[lang] || PDF_LABELS['en']).verifiedText}
+                </p>
+              </div>
+            </div>
+
+            {/* Conversation Log Transcript Header */}
+            <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
+              <h2 className="text-sm font-bold text-[#3D405B] tracking-wider uppercase">
+                {(PDF_LABELS[lang] || PDF_LABELS['en']).chatTranscript} ({pdfExportFullChatMessages.length} {(lang === 'hi' ? 'संदेश' : 'messages')})
+              </h2>
+              <span className="text-xs text-gray-500 font-mono">
+                {selectedChar.char} {selectedChar.name}
+              </span>
+            </div>
+
+            {/* Messages Loop with pristine styling */}
+            <div className="space-y-6">
+              {pdfExportFullChatMessages.map((msg, index) => {
+                const isUser = msg.sender === 'user';
+                const parsed = parseMessageContent(msg.text);
+
+                return (
+                  <div 
+                    key={msg.id || index}
+                    className={`rounded-2xl p-5 border ${
+                      isUser 
+                        ? 'bg-[#FDF6ED] border-l-4 border-l-[#E07A5F] border-amber-200/90 shadow-3xs' 
+                        : 'bg-white border-[#E6E1D7] shadow-3xs'
+                    }`}
+                  >
+                    {/* Speaker Header & Timestamp */}
+                    <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-gray-200/70 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{isUser ? '👤' : (selectedChar.char.split(' ')[0] || '🤖')}</span>
+                        <span className={`font-extrabold ${isUser ? 'text-[#C55A3E]' : 'text-[#3D405B]'}`}>
+                          {isUser ? (user.name || (lang === 'hi' ? 'छात्र' : 'Student')) : selectedChar.name}
+                        </span>
+                        <span className="text-[10px] text-gray-500 font-semibold">
+                          ({isUser ? (lang === 'hi' ? 'प्रश्न' : 'Question') : (lang === 'hi' ? 'उत्तर / समाधान' : 'Response & Solution')})
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-500 font-mono font-medium">
+                        {msg.timestamp || `#${index + 1}`}
+                      </span>
+                    </div>
+
+                    {/* Message Body Content */}
+                    <div className={`text-sm leading-relaxed space-y-3 ${isUser ? 'text-slate-900 font-semibold' : 'text-slate-800'}`}>
+                      <MathRenderer 
+                        content={parsed.text} 
+                        isUser={false} 
+                        className={isUser ? 'text-slate-900 font-semibold' : 'text-slate-800'} 
+                      />
+                      
+                      {!isUser && parsed.diagram && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <InteractiveDiagram data={parsed.diagram} lang={lang} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Footer Accent Bar */}

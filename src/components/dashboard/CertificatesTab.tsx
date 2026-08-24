@@ -45,12 +45,12 @@ const TITLE_TRANSLATIONS: Record<string, string> = {
 };
 
 const SUBTITLE_TRANSLATIONS: Record<string, string> = {
-  en: "Access, customize, and print your officially earned success credentials and session transcripts.",
-  hi: "अपने आधिकारिक रूप से अर्जित सफलता प्रमाणपत्रों और सत्र ट्रांसक्रिप्ट को एक्सेस, कस्टमाइज़ और प्रिंट करें।",
-  gu: "તમે મેળવેલા સત્તાવાર પ્રમાણપત્રો અને ટ્રાન્સક્રિપ્ટ્સ જુઓ, કસ્ટમાઇઝ કરો અને ડાઉનલોડ કરો.",
-  mr: "तुम्ही मिळवलेली अधिकृत प्रमाणपत्रे आणि सत्र ट्रान्सक्रिप्ट पहा, कस्टमाइझ करा आणि प्रिंट करा.",
-  ta: "நீங்கள் பெற்ற சான்றிதழ்கள் மற்றும் அமர்வு பிரதிகள் ஆகியவற்றை அணுகவும், தனிப்பயனாக்கவும் மற்றும் அச்சிடவும்.",
-  te: "మీరు పొందిన అధికారిక ధృవీకరణ పత్రాలను మరియు సెషన్ వివరాలను వీక్షించండి, అనుకూలీకరించండి మరియు డౌన్‌లోడ్ చేయండి."
+  en: "Access, customize, and print official credentials and transcripts for academic quizzes you've successfully passed (50%+ score).",
+  hi: "सफलतापूर्वक उत्तीर्ण (50%+ स्कोर) की गई शैक्षणिक प्रश्नोत्तरियों के लिए अपने आधिकारिक प्रमाण पत्र और ट्रांसक्रिप्ट एक्सेस, कस्टमाइज़ और प्रिंट करें।",
+  gu: "સફળતાપૂર્વક પાસ કરેલ (50%+ સ્કોર) શૈક્ષણિક ક્વિઝ માટે તમારા સત્તાવાર પ્રમાણપત્રો જુઓ, કસ્ટમાઇઝ કરો અને ડાઉનલોડ કરો.",
+  mr: "यशस्वीरित्या उत्तीर्ण झालेल्या (50%+ गुण) शैक्षणिक प्रश्नमंजुषांसाठी तुमची अधिकृत प्रमाणपत्रे आणि ट्रान्सक्रिप्ट पहा, कस्टमाइझ करा आणि प्रिंट करा.",
+  ta: "வெற்றிகரமாக தேர்ச்சி பெற்ற (50%+ மதிப்பெண்) கல்வி வினாடி வினாக்களுக்கான சான்றிதழ்களைப் பார்க்கவும், தனிப்பயனாக்கவும் மற்றும் அச்சிடவும்.",
+  te: "విజయవంతంగా ఉత్తీర్ణులైన (50%+ స్కోరు) విద్యా సంబంధిత క్విజ్‌ల కోసం అధికారిక ధృవీకరణ పత్రాలను వీక్షించండి మరియు ప్రింట్ చేయండి."
 };
 
 export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateUser }: CertificatesTabProps) {
@@ -66,26 +66,39 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
   const [copiedId, setCopiedId] = useState(false);
   const [activeMobileDetailTab, setActiveMobileDetailTab] = useState<'preview' | 'transcript' | 'settings'>('preview');
 
-  // Load certificates from user object and sync when active user changes
+  // Load certificates from user object and sync when active user changes - ONLY PASSED QUIZZES (>= 50%)
   useEffect(() => {
     const raw = user.earnedCertificates;
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as EarnedCertificate[];
-        setCertificates(parsed);
-        if (parsed.length > 0) {
+        // Filter strictly to only quizzes that were PASSED (score / totalQuestions >= 0.5)
+        const passedOnly = Array.isArray(parsed) ? parsed.filter(c => {
+          const totalQ = c.totalQuestions || 1;
+          const score = c.score || 0;
+          return (score / totalQ) >= 0.5;
+        }) : [];
+
+        setCertificates(passedOnly);
+
+        // Sanitize persistent storage if any legacy failed attempts were present
+        if (Array.isArray(parsed) && passedOnly.length !== parsed.length) {
+          onUpdateUser({ earnedCertificates: JSON.stringify(passedOnly) });
+        }
+
+        if (passedOnly.length > 0) {
           if (selectedCert) {
-            const found = parsed.find(c => c.id === selectedCert.id);
+            const found = passedOnly.find(c => c.id === selectedCert.id);
             if (found) {
               setSelectedCert(found);
               setEditingName(found.recipientName || user.certificateName || user.name || 'GyaanBot Scholar');
             } else {
-              setSelectedCert(parsed[0]);
-              setEditingName(parsed[0].recipientName || user.certificateName || user.name || 'GyaanBot Scholar');
+              setSelectedCert(passedOnly[0]);
+              setEditingName(passedOnly[0].recipientName || user.certificateName || user.name || 'GyaanBot Scholar');
             }
           } else {
-            setSelectedCert(parsed[0]);
-            setEditingName(parsed[0].recipientName || user.certificateName || user.name || 'GyaanBot Scholar');
+            setSelectedCert(passedOnly[0]);
+            setEditingName(passedOnly[0].recipientName || user.certificateName || user.name || 'GyaanBot Scholar');
           }
         } else {
           setSelectedCert(null);
@@ -94,6 +107,10 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
         }
       } catch (err) {
         console.error("Error loading earned certificates", err);
+        setCertificates([]);
+        setSelectedCert(null);
+        setEditingName('');
+        setViewMode('gallery');
       }
     } else {
       setCertificates([]);
@@ -503,8 +520,8 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed font-sans">
               {lang === 'hi'
-                ? "स्वामी एआई के साथ किसी भी विषय पर प्रश्नोत्तरी पूरी करें और अपना पहला आधिकारिक डिजिटल प्रमाण पत्र अर्जित करें!"
-                : "Complete a certified quiz with Swami AI on any subject module to unlock and frame your very first achievement certificate!"}
+                ? "स्वामी एआई के साथ किसी भी शैक्षणिक प्रश्नोत्तरी में 50% या अधिक अंक प्राप्त करके परीक्षा उत्तीर्ण करें और अपना आधिकारिक डिजिटल प्रमाण पत्र अर्जित करें!"
+                : "Score 50% or higher on any academic quiz module with Swami AI to pass and unlock your official achievement certificate!"}
             </p>
           </div>
 
