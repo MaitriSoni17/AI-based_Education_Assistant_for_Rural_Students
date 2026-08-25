@@ -5,7 +5,7 @@ import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { Award, HelpCircle, BookOpen, Brain, Sparkles, AlertTriangle, CheckCircle, Flame, RefreshCw, Timer, ShieldCheck, Download, Printer, X } from 'lucide-react';
 import { offlineSyncManager } from '../../utils/offlineSync';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 
 interface QuizTabProps {

@@ -57,9 +57,12 @@ import {
   FileDown,
   RotateCcw,
   Trash2,
-  RefreshCw
+  Trash,
+  RefreshCw,
+  Pencil,
+  Plus
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import SpeechInputButton from '../SpeechInputButton';
@@ -1520,6 +1523,286 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
+
+  // Full Chat PDF Export state
+  const [pdfExportFullChatMessages, setPdfExportFullChatMessages] = useState<{
+    id: string;
+    sender: 'user' | 'assistant';
+    text: string;
+    timestamp: string;
+    replyTo?: { id: string; sender: 'user' | 'assistant'; text: string };
+  }[] | null>(null);
+  const [pdfExportFullChatTitle, setPdfExportFullChatTitle] = useState<string>('');
+
+  // PDF Chat History & Sessions state
+  const [chatSessions, setChatSessions] = useState<{
+    id: string;
+    title: string;
+    timestamp: string;
+    messages: {
+      id: string;
+      sender: 'user' | 'assistant';
+      text: string;
+      timestamp: string;
+      replyTo?: { id: string; sender: 'user' | 'assistant'; text: string };
+    }[];
+    starred?: boolean;
+    activePageNum?: number;
+  }[]>(() => {
+    try {
+      const storageKey = `gyaanbot_pdf_solver_sessions_${fileName || 'doc'}`;
+      const saved = localStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [historySearchQuery, setHistorySearchQuery] = useState<string>('');
+  const [historyFilterType, setHistoryFilterType] = useState<'all' | 'starred'>('all');
+  const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingSessionTitle, setEditingSessionTitle] = useState<string>('');
+
+  const saveChatSessionsToStorage = useCallback((sessions: typeof chatSessions) => {
+    try {
+      const storageKey = `gyaanbot_pdf_solver_sessions_${fileName || 'doc'}`;
+      localStorage.setItem(storageKey, JSON.stringify(sessions));
+    } catch (err) {
+      console.error("Failed to save PDF chat sessions:", err);
+    }
+  }, [fileName]);
+
+  useEffect(() => {
+    const userMsgCount = aiMessages.filter(m => m.sender === 'user').length;
+    if (userMsgCount === 0) return;
+
+    setChatSessions(prev => {
+      let updated: typeof prev;
+      const firstUserMsg = aiMessages.find(m => m.sender === 'user');
+      const defaultTitle = firstUserMsg
+        ? cleanPdfExtractedText(firstUserMsg.text).slice(0, 35) + (firstUserMsg.text.length > 35 ? '...' : '')
+        : `Page ${activePageNum} Study Session`;
+
+      if (activeSessionId) {
+        updated = prev.map(s => {
+          if (s.id === activeSessionId) {
+            return {
+              ...s,
+              messages: aiMessages,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              activePageNum
+            };
+          }
+          return s;
+        });
+      } else {
+        const newId = 'session-' + Date.now();
+        setActiveSessionId(newId);
+        const newSession = {
+          id: newId,
+          title: defaultTitle,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          messages: aiMessages,
+          activePageNum
+        };
+        updated = [newSession, ...prev];
+      }
+
+      saveChatSessionsToStorage(updated);
+      return updated;
+    });
+  }, [aiMessages, activeSessionId, activePageNum, saveChatSessionsToStorage]);
+
+  const handleStartNewChat = useCallback(() => {
+    const welcomeMsg = {
+      id: 'ai-welcome-' + Date.now(),
+      sender: 'assistant' as const,
+      text: `Hello! I am your **AI Study Task Assistant** for **${fileName}**. You can ask me to summarize pages, extract key formulas, generate quizzes, or answer questions!`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setAiMessages([welcomeMsg]);
+    setActiveSessionId(null);
+    setShowHistory(false);
+    setReplyingTo(null);
+    setToastMessage('Started a new study chat session');
+    setTimeout(() => setToastMessage(null), 2500);
+  }, [fileName]);
+
+  const handleExportFullChatPDF = useCallback((customMessages?: typeof aiMessages, customTitle?: string) => {
+    const messagesToExport = customMessages || aiMessages;
+    
+    const meaningfulMessages = messagesToExport.filter(m => 
+      m.sender === 'user' || (m.sender === 'assistant' && !m.text.includes("AI Study Task Assistant"))
+    );
+
+    const exportList = meaningfulMessages.length > 0 ? meaningfulMessages : messagesToExport;
+
+    if (exportList.length === 0) {
+      setToastMessage("No messages available to export.");
+      setTimeout(() => setToastMessage(null), 2500);
+      return;
+    }
+
+    const sessionTitle = customTitle || (
+      exportList.find(m => m.sender === 'user')?.text.substring(0, 35) || `${fileName} Page ${activePageNum} Session`
+    );
+
+    const codeMap: Record<string, LanguageCode> = {
+      'English': 'en',
+      'Hindi': 'hi',
+      'Gujarati': 'gu',
+      'Marathi': 'mr',
+      'Tamil': 'ta',
+      'Telugu': 'te',
+    };
+    const speechLang = codeMap[targetLanguage] || 'en';
+
+    speakText(
+      targetLanguage === 'Hindi'
+        ? "आपका संपूर्ण अध्ययन सत्र PDF तैयार किया जा रहा है..."
+        : "Preparing your full study session PDF...",
+      speechLang
+    );
+
+    setPdfExportMessage(null);
+    setPdfExportQuestion("");
+    setPdfExportFullChatMessages(exportList);
+    setPdfExportFullChatTitle(sessionTitle);
+    setIsExportingPDF(true);
+
+    setTimeout(() => {
+      const element = document.getElementById("pdf-canvas-viewer-full-chat-render-template");
+      if (!element) {
+        setIsExportingPDF(false);
+        setPdfExportFullChatMessages(null);
+        setPdfExportFullChatTitle("");
+        return;
+      }
+
+      html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#0f172a',
+        logging: false,
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+        const printWidth = pageWidth - (margin * 2);
+
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const printHeight = printWidth * (canvasHeight / canvasWidth);
+
+        let pageCount = 0;
+
+        if (printHeight <= pageHeight - (margin * 2)) {
+          pdf.addImage(imgData, 'PNG', margin, margin, printWidth, printHeight);
+        } else {
+          let leftHeight = printHeight;
+          const pageImgHeight = pageHeight - (margin * 2);
+
+          while (leftHeight > 0) {
+            if (pageCount > 0) {
+              pdf.addPage();
+            }
+
+            pdf.addImage(
+              imgData,
+              'PNG',
+              margin,
+              margin - (pageCount * pageImgHeight),
+              printWidth,
+              printHeight
+            );
+
+            leftHeight -= pageImgHeight;
+            pageCount++;
+          }
+        }
+
+        const safeTitle = sessionTitle.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 25);
+        pdf.save(`GyaanBot_AI_Solver_FullChat_${safeTitle}_Page_${activePageNum}.pdf`);
+        setToastMessage('Downloaded Full Chat PDF!');
+        setTimeout(() => setToastMessage(null), 3000);
+      }).catch(err => {
+        console.error("Failed to generate Full Chat PDF:", err);
+        setToastMessage('Failed to download Full Chat PDF');
+        setTimeout(() => setToastMessage(null), 3000);
+      }).finally(() => {
+        setIsExportingPDF(false);
+        setPdfExportFullChatMessages(null);
+        setPdfExportFullChatTitle("");
+      });
+    }, 300);
+  }, [aiMessages, fileName, activePageNum, targetLanguage]);
+
+  const handleToggleStarSession = useCallback((sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setChatSessions(prev => {
+      const updated = prev.map(s => s.id === sessionId ? { ...s, starred: !s.starred } : s);
+      saveChatSessionsToStorage(updated);
+      return updated;
+    });
+  }, [saveChatSessionsToStorage]);
+
+  const handleDeleteSession = useCallback((sessionId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (confirm(targetLanguage === 'Hindi' ? "क्या आप इस चैट सत्र को हटाना चाहते हैं?" : "Are you sure you want to delete this study session?")) {
+      setChatSessions(prev => {
+        const updated = prev.filter(s => s.id !== sessionId);
+        saveChatSessionsToStorage(updated);
+        return updated;
+      });
+      if (activeSessionId === sessionId) {
+        handleStartNewChat();
+      }
+      setToastMessage('Session deleted');
+      setTimeout(() => setToastMessage(null), 2000);
+    }
+  }, [targetLanguage, activeSessionId, handleStartNewChat, saveChatSessionsToStorage]);
+
+  const handleSaveRenameSession = useCallback((sessionId: string) => {
+    if (!editingSessionTitle.trim()) return;
+    setChatSessions(prev => {
+      const updated = prev.map(s => s.id === sessionId ? { ...s, title: editingSessionTitle.trim() } : s);
+      saveChatSessionsToStorage(updated);
+      return updated;
+    });
+    setEditingSessionId(null);
+    setEditingSessionTitle('');
+    setToastMessage('Renamed chat session');
+    setTimeout(() => setToastMessage(null), 2000);
+  }, [editingSessionTitle, saveChatSessionsToStorage]);
+
+  const handleClearAllHistory = useCallback(() => {
+    if (confirm(targetLanguage === 'Hindi' ? "क्या आप सचमुच पूरा इतिहास मिटाना चाहते हैं?" : "Are you sure you want to permanently clear all study search history?")) {
+      setChatSessions([]);
+      saveChatSessionsToStorage([]);
+      handleStartNewChat();
+      setToastMessage('Cleared all study history');
+      setTimeout(() => setToastMessage(null), 2500);
+    }
+  }, [targetLanguage, handleStartNewChat, saveChatSessionsToStorage]);
+
+  const handleRestoreSession = useCallback((session: typeof chatSessions[0]) => {
+    setAiMessages(session.messages);
+    setActiveSessionId(session.id);
+    setShowHistory(false);
+    setToastMessage('Restored study session!');
+    setTimeout(() => setToastMessage(null), 2500);
+  }, []);
+
   const [aiPromptInput, setAiPromptInput] = useState<string>('');
   const aiChatScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -3160,7 +3443,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             )}
 
             {/* AI Assistant Header with Showcase/Restore Controls, Width Presets, and Close */}
-            <div className="p-2 sm:p-3 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0 gap-1.5 overflow-hidden select-none">
+            <div className="p-2.5 sm:p-3 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0 gap-2 overflow-hidden select-none">
+              {/* Left Title & Mobile Back */}
               <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
                 <button
                   onClick={() => setShowAiAssistant(false)}
@@ -3178,111 +3462,150 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                     <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
                   </h4>
                   <span className="text-[10px] text-slate-400 font-mono truncate block">
-                    {targetLanguage} • {aiPanelMode === 'fullscreen' ? 'Showcase Full' : `Page ${activePageNum}`}
+                    {targetLanguage} • {aiPanelMode === 'fullscreen' ? 'Full Showcase' : `Page ${activePageNum}`}
                   </span>
                 </div>
               </div>
 
-              {/* Header Controls: Presets, Showcase Maximize/Minimize, Language, and Close */}
+              {/* Header Controls: Clean Actions & Utilities */}
               <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                
-                {/* Width Preset Buttons (Desktop Split Mode) */}
-                {aiPanelMode === 'split' && (
-                  <div className="hidden xl:flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5 text-[10px] font-mono">
-                    <button
-                      type="button"
-                      onClick={() => setAiPanelWidth(340)}
-                      className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
-                        aiPanelWidth <= 360 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                      title="Compact Width (340px)"
-                    >
-                      Compact
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAiPanelWidth(500)}
-                      className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
-                        aiPanelWidth > 360 && aiPanelWidth <= 560 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                      title="Medium Width (500px)"
-                    >
-                      50%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAiPanelWidth(720)}
-                      className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
-                        aiPanelWidth > 560 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                      title="Wide Width (720px)"
-                    >
-                      Wide
-                    </button>
-                  </div>
-                )}
-
-                {/* Freely Showcase / Fullscreen on Whole PDF Viewer Toggle Button */}
-                <button
-                  type="button"
-                  onClick={() => setAiPanelMode(prev => prev === 'fullscreen' ? 'split' : 'fullscreen')}
-                  className={`p-1.5 sm:px-2 sm:py-1 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all shrink-0 ${
-                    aiPanelMode === 'fullscreen'
-                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md'
-                      : 'bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-white border border-purple-500/20'
-                  }`}
-                  title={aiPanelMode === 'fullscreen' ? 'Restore Split View with PDF' : 'Freely showcase Chatbot on whole PDF Viewer'}
-                >
-                  {aiPanelMode === 'fullscreen' ? (
-                    <>
-                      <Minimize2 className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Split View</span>
-                    </>
-                  ) : (
-                    <>
-                      <Maximize2 className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Showcase Full</span>
-                    </>
-                  )}
-                </button>
-
-                {/* Regenerate Last Answer Button */}
-                {aiMessages.some(m => m.sender === 'user') && (
+                {/* Download Full Chat PDF Button */}
+                {aiMessages.some(m => m.sender === 'user') && !showHistory && (
                   <button
                     type="button"
-                    onClick={handleRegenerateLast}
-                    disabled={aiLoading}
-                    className="p-1.5 text-slate-400 hover:text-amber-300 hover:bg-slate-800 rounded-xl cursor-pointer shrink-0 transition-colors disabled:opacity-40"
-                    title="Regenerate Last Answer"
+                    onClick={() => handleExportFullChatPDF()}
+                    className="px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shadow-xs shrink-0"
+                    title={targetLanguage === 'Hindi' ? "सम्पूर्ण चैट PDF डाउनलोड करें" : "Download Full Chat PDF"}
                   >
-                    <RotateCcw className="w-4 h-4" />
+                    <FileDown className="w-3.5 h-3.5" />
+                    <span className="hidden xl:inline">
+                      {targetLanguage === 'Hindi' ? 'सम्पूर्ण चैट PDF' : 'Full PDF'}
+                    </span>
                   </button>
                 )}
 
-                {/* Clear Chat History Button */}
+                {/* History / Active Chat Toggle Button */}
                 <button
                   type="button"
-                  onClick={handleClearChat}
-                  className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl cursor-pointer shrink-0 transition-colors"
-                  title="Clear Chat History"
+                  onClick={() => setShowHistory(!showHistory)}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shadow-xs shrink-0 ${
+                    showHistory
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-white border border-purple-500/20'
+                  }`}
+                  title={showHistory ? 'Back to Active Chat' : 'Search & Session History'}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">
+                    {showHistory ? (targetLanguage === 'Hindi' ? 'संवाद' : 'Chat') : (targetLanguage === 'Hindi' ? 'इतिहास' : 'History')}
+                  </span>
                 </button>
 
-                {/* Close Button */}
+                {/* New Chat Button */}
                 <button
-                  onClick={() => setShowAiAssistant(false)}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl cursor-pointer shrink-0"
-                  title="Close AI Assistant"
+                  type="button"
+                  onClick={handleStartNewChat}
+                  className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shadow-xs shrink-0"
+                  title="Start New Chat Session"
                 >
-                  <X className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden lg:inline">New Chat</span>
                 </button>
+
+                {/* Utilities Toolbar Group */}
+                <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl p-0.5 shrink-0 gap-0.5">
+                  {/* Width Presets (Desktop Split Mode) */}
+                  {aiPanelMode === 'split' && (
+                    <div className="hidden 2xl:flex items-center border-r border-slate-800 pr-1 mr-0.5 text-[10px] font-mono gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setAiPanelWidth(340)}
+                        className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${
+                          aiPanelWidth <= 360 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Compact (340px)"
+                      >
+                        Compact
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAiPanelWidth(500)}
+                        className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${
+                          aiPanelWidth > 360 && aiPanelWidth <= 560 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Medium (500px)"
+                      >
+                        50%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAiPanelWidth(720)}
+                        className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-colors ${
+                          aiPanelWidth > 560 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                        title="Wide (720px)"
+                      >
+                        Wide
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Showcase Fullscreen Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setAiPanelMode(prev => prev === 'fullscreen' ? 'split' : 'fullscreen')}
+                    className={`p-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                      aiPanelMode === 'fullscreen'
+                        ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                    title={aiPanelMode === 'fullscreen' ? 'Restore Split View' : 'Showcase Fullscreen'}
+                  >
+                    {aiPanelMode === 'fullscreen' ? (
+                      <Minimize2 className="w-3.5 h-3.5" />
+                    ) : (
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+
+                  {/* Regenerate Last Answer Button */}
+                  {aiMessages.some(m => m.sender === 'user') && (
+                    <button
+                      type="button"
+                      onClick={handleRegenerateLast}
+                      disabled={aiLoading}
+                      className="p-1 text-slate-400 hover:text-amber-300 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors disabled:opacity-40"
+                      title="Regenerate Last Answer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+
+                  {/* Clear Chat History Button */}
+                  <button
+                    type="button"
+                    onClick={handleClearChat}
+                    className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors"
+                    title="Clear Chat History"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Close Button */}
+                  <button
+                    onClick={() => setShowAiAssistant(false)}
+                    className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer"
+                    title="Close AI Assistant"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Quick AI Task Actions Section with Show/Hide Toggle */}
             <div className="bg-slate-900/95 border-b border-slate-800 shrink-0">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800/60 bg-slate-950/40">
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-800/60 bg-slate-950/40">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300 select-none">
                   <Sparkles className="w-3.5 h-3.5 text-purple-400" />
                   <span>Quick AI Tasks</span>
@@ -3303,69 +3626,339 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               </div>
 
               {showQuickAiTools && (
-                <div className="p-2.5 sm:p-3 animate-fade-in">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                <div className="p-2 sm:p-2.5 animate-fade-in">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {/* 1. Solve Page Questions */}
                     <button
                       onClick={() => handleRunAiTask('solve_questions')}
                       disabled={aiLoading}
-                      className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors shadow-sm"
+                      className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-200 flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-40 transition-colors shadow-xs"
                       title="Solve all questions on active page"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span className="truncate">Solve Questions</span>
+                      <span>Solve Questions</span>
                     </button>
 
                     {/* 2. Key Formulas */}
                     <button
                       onClick={() => handleRunAiTask('key_concepts')}
                       disabled={aiLoading}
-                      className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors shadow-sm"
+                      className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-200 flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-40 transition-colors shadow-xs"
                       title="Extract key formulas & concepts"
                     >
                       <Wand2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span className="truncate">Key Formulas</span>
+                      <span>Key Formulas</span>
                     </button>
 
                     {/* 3. Practice Quiz */}
                     <button
                       onClick={() => handleRunAiTask('quiz')}
                       disabled={aiLoading}
-                      className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors shadow-sm"
+                      className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-200 flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-40 transition-colors shadow-xs"
                       title="Generate 5 practice questions"
                     >
                       <HelpCircle className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                      <span className="truncate">5 Practice Quiz</span>
+                      <span>5 Practice Quiz</span>
                     </button>
 
                     {/* 4. Summarize Page */}
                     <button
                       onClick={() => handleRunAiTask('summarize_page')}
                       disabled={aiLoading}
-                      className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors shadow-sm"
+                      className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-200 flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-40 transition-colors shadow-xs"
                       title="Summarize page in bullet points"
                     >
                       <FileText className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                      <span className="truncate">Page Summary</span>
+                      <span>Page Summary</span>
                     </button>
 
                     {/* 5. Revision Notes */}
                     <button
                       onClick={() => handleRunAiTask('short_notes')}
                       disabled={aiLoading}
-                      className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-left text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-40 transition-colors shadow-sm col-span-2 sm:col-span-1"
+                      className="px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-200 flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-40 transition-colors shadow-xs"
                       title="Create revision short notes"
                     >
                       <Star className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                      <span className="truncate">Revision Notes</span>
+                      <span>Revision Notes</span>
                     </button>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* AI Messages Chat History */}
-            <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin">
+            {/* AI Messages Chat History OR History & Search Sessions Panel */}
+            {showHistory ? (
+              <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 scrollbar-thin bg-slate-950/60">
+                {/* History Header Banner */}
+                <div className="bg-slate-900 border border-purple-900/40 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-3 shadow-md">
+                  <div>
+                    <h3 className="font-bold text-sm text-purple-200 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-purple-400" />
+                      <span>{targetLanguage === 'Hindi' ? 'मेरा सम्पूर्ण अध्ययन इतिहास' : 'My Entire PDF Study History'}</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {targetLanguage === 'Hindi'
+                        ? 'आपके द्वारा इस PDF के लिए पहले पूछे गए सभी प्रश्न और सत्र यहाँ सहेजे गए हैं।'
+                        : 'All your previously recorded study sessions and questions for this PDF are saved below.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                    {chatSessions.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllHistory}
+                        className="text-xs bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                      >
+                        <Trash className="w-3.5 h-3.5" />
+                        <span>{targetLanguage === 'Hindi' ? 'इतिहास साफ़ करें' : 'Clear All'}</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowHistory(false)}
+                      className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all active:scale-95"
+                    >
+                      {targetLanguage === 'Hindi' ? 'चैट पर वापस जाएं' : 'Back to Chat'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Search and Filters Controls */}
+                {chatSessions.length > 0 && (
+                  <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      {/* Search Input */}
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder={targetLanguage === 'Hindi' ? 'सत्र शीर्षक या प्रश्न खोजें...' : 'Search study sessions or questions...'}
+                          value={historySearchQuery}
+                          onChange={(e) => setHistorySearchQuery(e.target.value)}
+                          className="w-full pl-9 pr-8 py-1.5 text-xs rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-slate-950 text-slate-100 placeholder-slate-500"
+                        />
+                        {historySearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setHistorySearchQuery('')}
+                            className="absolute right-3 top-2.5 text-slate-400 hover:text-white font-bold"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filter Type Buttons */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setHistoryFilterType('all')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            historyFilterType === 'all'
+                              ? 'bg-purple-600 text-white shadow-sm'
+                              : 'bg-slate-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          All Sessions
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHistoryFilterType('starred')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                            historyFilterType === 'starred'
+                              ? 'bg-amber-500 text-slate-950 shadow-sm'
+                              : 'bg-slate-800 text-slate-400 hover:text-amber-300'
+                          }`}
+                        >
+                          <Star className={`w-3.5 h-3.5 ${historyFilterType === 'starred' ? 'fill-current text-slate-950' : 'text-amber-400'}`} />
+                          <span>Starred</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sessions Cards Container */}
+                {(() => {
+                  const filtered = chatSessions.filter(session => {
+                    const queryLower = historySearchQuery.toLowerCase();
+                    const titleMatch = session.title.toLowerCase().includes(queryLower);
+                    const msgMatch = (session.messages || []).some(m => m && m.text && m.text.toLowerCase().includes(queryLower));
+                    const matchesSearch = titleMatch || msgMatch;
+                    const matchesFilter = historyFilterType === 'starred' ? !!session.starred : true;
+                    return matchesSearch && matchesFilter;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="p-8 text-center bg-slate-900/60 rounded-2xl border border-slate-800/80 space-y-2">
+                        <BookOpen className="w-8 h-8 text-slate-600 mx-auto" />
+                        <p className="text-xs font-semibold text-slate-400">
+                          {chatSessions.length === 0
+                            ? (targetLanguage === 'Hindi' ? 'अभी तक कोई अध्ययन सत्र सहेजा नहीं गया है।' : 'No saved study sessions yet. Ask questions in chat to record history!')
+                            : (targetLanguage === 'Hindi' ? 'कोई मेल खाता हुआ सत्र नहीं मिला।' : 'No study sessions matched your search filter.')}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {filtered.map(session => (
+                        <div
+                          key={session.id}
+                          className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 transition-all hover:border-purple-800/60 shadow-sm"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            {/* Title & Star */}
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleStarSession(session.id, e)}
+                                className="p-1 text-amber-400 hover:text-amber-300 cursor-pointer"
+                                title={session.starred ? "Unstar session" : "Star session"}
+                              >
+                                <Star className={`w-4 h-4 ${session.starred ? 'fill-current text-amber-400' : 'text-slate-600'}`} />
+                              </button>
+
+                              {editingSessionId === session.id ? (
+                                <div className="flex items-center gap-1.5 flex-1">
+                                  <input
+                                    type="text"
+                                    value={editingSessionTitle}
+                                    onChange={(e) => setEditingSessionTitle(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveRenameSession(session.id)}
+                                    className="px-2 py-1 text-xs rounded-lg border border-purple-500 bg-slate-950 text-white w-full"
+                                    autoFocus
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveRenameSession(session.id)}
+                                    className="px-2 py-1 bg-purple-600 text-white text-xs font-bold rounded-lg cursor-pointer"
+                                  >
+                                    Save
+                                  </button>
+                                </div>
+                              ) : (
+                                <h4 className="font-bold text-xs sm:text-sm text-slate-100 truncate">
+                                  {session.title}
+                                </h4>
+                              )}
+                            </div>
+
+                            {/* Session Actions Toolbar */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              {/* Rename */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingSessionId(session.id);
+                                  setEditingSessionTitle(session.title);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-purple-300 hover:bg-slate-800 cursor-pointer transition-colors"
+                                title="Rename session"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteSession(session.id, e)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 cursor-pointer transition-colors"
+                                title="Delete session"
+                              >
+                                <Trash className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Download Session Full Chat PDF */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleExportFullChatPDF(session.messages, session.title);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 cursor-pointer transition-colors"
+                                title="Download full session PDF"
+                              >
+                                <FileDown className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Toggle Messages View */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExpandedSessions(prev => ({
+                                    ...prev,
+                                    [session.id]: !prev[session.id]
+                                  }));
+                                }}
+                                className="px-2 py-1 rounded-lg text-xs font-bold bg-slate-800 text-purple-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+                                title={expandedSessions[session.id] ? "Hide messages" : "View messages"}
+                              >
+                                {expandedSessions[session.id] ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                <span>{expandedSessions[session.id] ? 'Hide' : 'View'}</span>
+                              </button>
+
+                              {/* Restore Chat Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleRestoreSession(session)}
+                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                                title="Restore session to active chat"
+                              >
+                                <ArrowRight className="w-3.5 h-3.5" />
+                                <span>Open</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Sub-info details */}
+                          <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                            <span>{session.messages?.length || 0} Messages</span>
+                            <span>&bull;</span>
+                            <span>Page {session.activePageNum || 1}</span>
+                            <span>&bull;</span>
+                            <span>{session.timestamp}</span>
+                          </div>
+
+                          {/* Expanded Session Messages View */}
+                          {expandedSessions[session.id] && (
+                            <div className="pt-2 border-t border-slate-800/80 space-y-2 mt-2">
+                              {session.messages.map((m, idx) => (
+                                <div
+                                  key={m.id || idx}
+                                  className={`p-2.5 rounded-xl text-xs space-y-1 ${
+                                    m.sender === 'user'
+                                      ? 'bg-purple-950/60 border border-purple-800/40 text-purple-100 ml-4'
+                                      : 'bg-slate-950 border border-slate-800 text-slate-100 mr-4'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 pb-1 border-b border-white/5">
+                                    <span className={m.sender === 'user' ? 'text-purple-300' : 'text-emerald-400'}>
+                                      {m.sender === 'user' ? '👤 Student' : '🤖 AI Solver'}
+                                    </span>
+                                    <span className="font-mono">{m.timestamp}</span>
+                                  </div>
+                                  {m.sender === 'assistant' ? (
+                                    <MathRenderer content={m.text} isUser={false} isDark={true} className="text-slate-100 text-xs" />
+                                  ) : (
+                                    <p className="text-white">{m.text}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              /* REGULAR ACTIVE CHAT MESSAGES */
+              <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin">
               {aiMessages.map((msg) => (
                 <div
                   key={msg.id}
@@ -3500,6 +4093,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 </div>
               )}
             </div>
+          )}
 
             {/* Replying Context Banner */}
             {replyingTo && (
@@ -3572,7 +4166,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           </div>
         )}
 
-        {/* Offscreen PDF Render Template for PDF Export */}
+        {/* Offscreen PDF Render Template for Single Response Export */}
         {isExportingPDF && pdfExportMessage && (
           <div className="fixed left-[-9999px] top-[-9999px] pointer-events-none opacity-0">
             <div
@@ -3630,6 +4224,71 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
                 <span>GyaanBot Smart Reader AI &bull; Interactive PDF Solver</span>
                 <span>Page {activePageNum} Solution</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Offscreen PDF Render Template for Full Chat Export */}
+        {isExportingPDF && pdfExportFullChatMessages && (
+          <div className="fixed left-[-9999px] top-[-9999px] pointer-events-none opacity-0">
+            <div
+              id="pdf-canvas-viewer-full-chat-render-template"
+              className="w-[800px] p-8 bg-slate-950 text-slate-100 font-sans leading-relaxed border border-purple-900/50 space-y-6"
+              style={{ backgroundColor: '#0f172a', color: '#f8fafc' }}
+            >
+              {/* Full Chat Document Header */}
+              <div className="flex items-center justify-between pb-4 border-b-2 border-purple-500/40">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white font-extrabold text-xl shadow-md">
+                    G
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-extrabold tracking-tight text-white">
+                      {pdfExportFullChatTitle || 'Full PDF Study Session Chat'}
+                    </h1>
+                    <p className="text-xs text-purple-300 font-medium">
+                      {fileName} &bull; Page {activePageNum}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-slate-400">
+                  <p className="font-semibold text-purple-300">{targetLanguage} Edition</p>
+                  <p>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+              </div>
+
+              {/* Messages Stack */}
+              <div className="space-y-4">
+                {pdfExportFullChatMessages.map((msg, index) => (
+                  <div
+                    key={msg.id || index}
+                    className={`p-4 rounded-2xl space-y-2 border ${
+                      msg.sender === 'user'
+                        ? 'bg-purple-950/70 border-purple-800/80 text-purple-100 ml-8'
+                        : 'bg-slate-900 border-slate-800 text-slate-100 mr-8'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs font-bold pb-2 border-b border-white/10">
+                      <span className={msg.sender === 'user' ? 'text-purple-300' : 'text-emerald-400'}>
+                        {msg.sender === 'user' ? '👤 Student Question' : '🤖 AI Study Task Assistant'}
+                      </span>
+                      <span className="text-slate-400 font-mono text-[11px]">{msg.timestamp}</span>
+                    </div>
+
+                    {msg.sender === 'assistant' ? (
+                      <MathRenderer content={msg.text} isUser={false} isDark={true} className="text-slate-100 text-sm leading-relaxed" />
+                    ) : (
+                      <p className="text-white text-sm font-medium">{msg.text}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
+                <span>GyaanBot Smart Reader AI &bull; Full Study Session Transcript</span>
+                <span>Page {activePageNum} Session &bull; {pdfExportFullChatMessages.length} Messages</span>
               </div>
             </div>
           </div>
