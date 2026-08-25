@@ -441,6 +441,12 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
         const isHeading1 = !isHeading2 && !isHeading3 && trimmedLine.startsWith('# ');
         const isBullet = trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ') || trimmedLine.startsWith('• ');
         const isNumbered = /^[0-9]+[\.\)]\s+/.test(trimmedLine);
+        
+        // Detect subheaders (e.g., "Learning Objectives:", "Key Points:", "**Definition:**")
+        const isSubheader = !isHeading1 && !isHeading2 && !isHeading3 && !isBullet && !isNumbered && (
+          (trimmedLine.endsWith(':') && trimmedLine.length < 80) ||
+          (/^(\*\*|__)[^*_]+(\*\*|__):?$/.test(trimmedLine) && trimmedLine.length < 80)
+        );
 
         let cleanLine = line;
         let prefixNode: React.ReactNode = null;
@@ -560,6 +566,19 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
             <div
               key={`h2-${lineIdx}`}
               className={`font-bold text-sm sm:text-base mt-2.5 mb-1 ${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}
+            >
+              {renderedLineContent}
+            </div>
+          );
+        }
+
+        if (isSubheader) {
+          return (
+            <div
+              key={`sub-${lineIdx}`}
+              className={`font-bold text-sm sm:text-base mt-3 mb-1.5 tracking-tight ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
               }`}
             >

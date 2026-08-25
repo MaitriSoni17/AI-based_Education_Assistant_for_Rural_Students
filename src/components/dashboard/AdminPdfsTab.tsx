@@ -12,9 +12,10 @@ import {
   saveFirebaseCurriculumFile,
   deleteFirebaseCurriculumFile
 } from '../../lib/firebase';
-import { getFileLocal, saveFileLocal, deleteFileLocal } from '../../lib/indexedDbStore';
+import { getFileLocal, saveFileLocal, deleteFileLocal, saveFileMetaLocal, getAllFilesMetaLocal } from '../../lib/indexedDbStore';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { PdfCanvasViewer } from '../admin/PdfCanvasViewer';
+import { downloadSmartReaderPdf, generateSmartReaderPdfDataUrl } from '../../utils/pdfExport';
 import InteractiveDiagram from './InteractiveDiagram';
 import SlideVisualBoard from './SlideVisualBoard';
 import { CustomSelect } from '../common/CustomSelect';
@@ -98,9 +99,10 @@ const generateMultiLanguagePdfDataUrl = async (
     container.style.width = '794px'; // A4 pixel width at 96 DPI
     container.style.backgroundColor = '#ffffff';
     container.style.color = '#0f172a';
-    container.style.padding = '48px 56px 64px 56px';
+    container.style.padding = '44px 48px 56px 48px';
     container.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Hind", "Gujarati", "Mukta", sans-serif';
     container.style.boxSizing = 'border-box';
+    container.style.lineHeight = '1.7';
 
     // Normalize math syntax first to ensure standard $ ... $ or $$ ... $$ blocks for KaTeX
     const normalizedBodyText = normalizeMathText(fullBodyText || '');
@@ -129,12 +131,12 @@ const generateMultiLanguagePdfDataUrl = async (
       });
     };
 
-    // Format markdown headings, bullet points, callouts, and KaTeX equations for maximum student readability
+    // Format markdown headings, bullet points, callouts, tables, and KaTeX equations for maximum student readability
     const formattedHtml = normalizedBodyText
       .split('\n')
       .map(line => {
         const trimmed = line.trim();
-        if (!trimmed) return '<div style="height: 14px;"></div>';
+        if (!trimmed) return '<div style="height: 12px;"></div>';
 
         // Check if line is a standalone KaTeX display equation: $ ... $
         if (trimmed.startsWith('$') && trimmed.endsWith('$') && trimmed.length > 2 && !trimmed.slice(1, -1).includes('$')) {
@@ -151,66 +153,66 @@ const generateMultiLanguagePdfDataUrl = async (
               throwOnError: false,
               output: 'html',
             });
-            return `<div style="margin: 14px 0; padding: 12px 18px; background-color: #f8fafc; border-radius: 8px; border: 1.5px solid #e2e8f0; text-align: center; overflow-x: auto; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">${katexDisplayHtml}${trailingPunct}</div>`;
+            return `<div style="margin: 14px 0; padding: 12px 18px; background-color: #f8fafc; border-radius: 8px; border: 1.5px solid #e2e8f0; text-align: center; overflow-x: auto; box-shadow: 0 1px 2px rgba(0,0,0,0.03); page-break-inside: avoid; break-inside: avoid;">${katexDisplayHtml}${trailingPunct}</div>`;
           } catch {
-            return `<div style="margin: 10px 0; font-family: Cambria Math, serif; font-style: italic; text-align: center;">${mathExpr}${trailingPunct}</div>`;
+            return `<div style="margin: 10px 0; font-family: Cambria Math, serif; font-style: italic; text-align: center; page-break-inside: avoid; break-inside: avoid;">${mathExpr}${trailingPunct}</div>`;
           }
         }
 
-        // H1 Main Title
+        // H1 Main Title / Major Section
         if (trimmed.startsWith('# ')) {
           const titleText = renderInlineMath(trimmed.replace(/^#\s*/, ''));
-          return `<h1 style="font-size: 24px; font-weight: 900; color: #be123c; margin: 26px 0 14px 0; border-bottom: 3px solid #be123c; padding-bottom: 8px; letter-spacing: -0.3px;">${titleText}</h1>`;
+          return `<div style="page-break-inside: avoid; break-inside: avoid; margin-top: 24px; margin-bottom: 12px;"><h1 style="font-size: 21px; font-weight: 900; color: #be123c; margin: 0; border-bottom: 2.5px solid #be123c; padding-bottom: 6px; letter-spacing: -0.3px;">${titleText}</h1></div>`;
         }
         // H2 Heading
         if (trimmed.startsWith('## ')) {
           const titleText = renderInlineMath(trimmed.replace(/^##\s*/, ''));
-          return `<h2 style="font-size: 17px; font-weight: 800; color: #0369a1; margin: 24px 0 12px 0; background-color: #f0f9ff; padding: 10px 16px; border-left: 6px solid #0284c7; border-radius: 6px; display: block; letter-spacing: -0.2px;">${titleText}</h2>`;
+          return `<div style="page-break-inside: avoid; break-inside: avoid; margin-top: 20px; margin-bottom: 10px;"><h2 style="font-size: 16px; font-weight: 800; color: #0369a1; margin: 0; background-color: #f0f9ff; padding: 8px 14px; border-left: 5px solid #0284c7; border-radius: 6px; display: block; letter-spacing: -0.2px;">${titleText}</h2></div>`;
         }
         // H3 Heading
         if (trimmed.startsWith('### ')) {
           const titleText = renderInlineMath(trimmed.replace(/^###\s*/, ''));
-          return `<h3 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 18px 0 8px 0; border-bottom: 2px solid #cbd5e1; padding-bottom: 4px;">${titleText}</h3>`;
+          return `<div style="page-break-inside: avoid; break-inside: avoid; margin-top: 14px; margin-bottom: 6px;"><h3 style="font-size: 14.5px; font-weight: 800; color: #0f172a; margin: 0; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 4px;">${titleText}</h3></div>`;
         }
         // Callout Block
         if (trimmed.startsWith('> ')) {
           const text = renderInlineMath(trimmed.replace(/^>\s*/, ''));
-          return `<div style="background-color: #fffbe0; border: 1.5px solid #fde68a; border-left: 5px solid #d97706; padding: 14px 18px; border-radius: 8px; margin: 14px 0; font-size: 14.5px; color: #0f172a; font-weight: 600; line-height: 1.8; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">${text}</div>`;
+          return `<div style="background-color: #fffbe0; border: 1.5px solid #fde68a; border-left: 5px solid #d97706; padding: 12px 16px; border-radius: 8px; margin: 12px 0; font-size: 14px; color: #0f172a; font-weight: 600; line-height: 1.75; box-shadow: 0 1px 3px rgba(0,0,0,0.03); page-break-inside: avoid; break-inside: avoid;">${text}</div>`;
         }
         // Numbered List
         if (/^\d+\./.test(trimmed)) {
           const contentWithMath = renderInlineMath(trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
-          return `<div style="font-weight: 700; color: #0f172a; margin-top: 10px; margin-bottom: 6px; font-size: 14.5px; padding-left: 4px; line-height: 1.8;">${contentWithMath}</div>`;
+          return `<div style="font-weight: 600; color: #0f172a; margin-top: 8px; margin-bottom: 6px; font-size: 14px; padding-left: 4px; line-height: 1.75; page-break-inside: avoid; break-inside: avoid;">${contentWithMath}</div>`;
         }
         // Bullet List
         if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
           const itemContent = renderInlineMath(trimmed.substring(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
-          return `<div style="padding-left: 24px; position: relative; margin-bottom: 8px; color: #0f172a; font-size: 14.5px; font-weight: 500; line-height: 1.8;"><span style="position: absolute; left: 6px; color: #e11d48; font-weight: 900; font-size: 16px;">•</span> ${itemContent}</div>`;
+          return `<div style="padding-left: 20px; position: relative; margin-bottom: 6px; color: #0f172a; font-size: 14px; font-weight: 500; line-height: 1.75; page-break-inside: avoid; break-inside: avoid;"><span style="position: absolute; left: 4px; color: #e11d48; font-weight: 900; font-size: 15px;">•</span> ${itemContent}</div>`;
         }
 
         const paragraphContent = renderInlineMath(trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
-        return `<p style="margin: 0 0 12px 0; color: #0f172a; font-weight: 500; line-height: 1.8; font-size: 14.5px;">${paragraphContent}</p>`;
+        return `<p style="margin: 0 0 10px 0; color: #0f172a; font-weight: 500; line-height: 1.75; font-size: 14px;">${paragraphContent}</p>`;
       })
       .join('');
 
     const headerBadge = materialTypeHeaderLabel || 'AI Study Guide';
 
     container.innerHTML = `
-      <div style="border-bottom: 3.5px solid #e11d48; padding-bottom: 20px; margin-bottom: 26px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <span style="font-size: 12px; font-weight: 900; color: #e11d48; text-transform: uppercase; letter-spacing: 1px;">Gramin Shiksha • ${headerBadge}</span>
-          <span style="font-size: 12px; background-color: #ffe4e6; padding: 5px 16px; border-radius: 14px; font-weight: 800; color: #9f1239;">Language: ${language}</span>
+      <div style="border-bottom: 3px solid #e11d48; padding-bottom: 16px; margin-bottom: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-size: 11.5px; font-weight: 900; color: #e11d48; text-transform: uppercase; letter-spacing: 1px;">Gramin Shiksha • ${headerBadge}</span>
+          <span style="font-size: 11.5px; background-color: #ffe4e6; padding: 4px 14px; border-radius: 12px; font-weight: 800; color: #9f1239;">Language: ${language}</span>
         </div>
-        <h1 style="font-size: 25px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.3; letter-spacing: -0.4px;">${title}</h1>
-        <div style="font-size: 13.5px; color: #334155; font-weight: 700; display: flex; gap: 28px;">
+        <h1 style="font-size: 23px; font-weight: 900; color: #0f172a; margin: 0 0 10px 0; line-height: 1.3; letter-spacing: -0.4px;">${title}</h1>
+        <div style="font-size: 13px; color: #334155; font-weight: 700; display: flex; gap: 24px;">
           <span>Subject: <strong style="color: #0f172a;">${subject}</strong></span>
           <span>Standard: <strong style="color: #0f172a;">${std}</strong></span>
         </div>
       </div>
-      <div style="font-size: 14.5px; line-height: 1.8; color: #0f172a;">
+      <div style="font-size: 14px; line-height: 1.75; color: #0f172a;">
         ${formattedHtml}
       </div>
-      <div style="margin-top: 44px; border-top: 1px solid #cbd5e1; padding-top: 16px; text-align: center; font-size: 11.5px; color: #475569; font-weight: 600;">
+      <div style="margin-top: 36px; border-top: 1px solid #cbd5e1; padding-top: 14px; text-align: center; font-size: 11px; color: #475569; font-weight: 600;">
         Gramin Shiksha AI Educational Platform • Official Study Document (${language})
       </div>
     `;
@@ -1007,8 +1009,14 @@ export const checkIsEbookOrTextbook = (file: CurriculumFile | null | undefined):
 export const checkIsAdminUploadedFile = (file: CurriculumFile | null | undefined): boolean => {
   if (!file) return false;
 
-  // Personal user-generated or explicitly private student files belong ONLY to that student
-  if ((file as any).isUserGenerated === true || (file as any).isPrivate === true) {
+  // Personal user-generated, AI-generated, or explicitly private student files belong ONLY to that student
+  if (
+    (file as any).isUserGenerated === true ||
+    (file as any).isGenerated === true ||
+    (file as any).isPrivate === true ||
+    checkIsAiGenerated(file) ||
+    (file as any).uploadedByRole === 'student'
+  ) {
     return false;
   }
 
@@ -1026,12 +1034,18 @@ export const checkIsAdminUploadedFile = (file: CurriculumFile | null | undefined
 
   // Check creator field
   const creator = (file as any).createdBy || (file as any).userId || (file as any).creatorMobile;
-  if (creator === 'admin' || creator === '9999999999' || creator === 'system' || (file as any).uploadedByRole !== 'student') {
+  if (creator === 'admin' || creator === '9999999999' || creator === 'system') {
     return true;
   }
 
-  // If NOT marked as user-generated/private and not created by a student, treat as public admin curriculum material
-  if (!(file as any).isUserGenerated && !(file as any).isPrivate && (file as any).uploadedByRole !== 'student') {
+  // If NOT marked as user-generated/private/ai-generated and not created by a student, treat as public admin curriculum material
+  if (
+    !(file as any).isUserGenerated &&
+    !(file as any).isGenerated &&
+    !(file as any).isPrivate &&
+    (file as any).uploadedByRole !== 'student' &&
+    !checkIsAiGenerated(file)
+  ) {
     return true;
   }
 
@@ -1053,8 +1067,17 @@ export const checkCanDeleteFile = (file: CurriculumFile | null | undefined, user
 
   // 3. For student/user generated files, ONLY the student who created it can delete it
   const userMobile = user?.mobile || '';
-  if (userMobile && ((file as any).createdBy === userMobile || (file as any).userId === userMobile || (file as any).creatorMobile === userMobile)) {
-    return true;
+  const userId = (user as any)?.id || '';
+  const userEmail = (user as any)?.email || '';
+  const fileCreator = (file as any).createdBy || (file as any).userId || (file as any).creatorMobile;
+
+  if (fileCreator) {
+    return (
+      (userMobile && (fileCreator === userMobile || (file as any).creatorMobile === userMobile)) ||
+      (userId && fileCreator === userId) ||
+      (userEmail && fileCreator === userEmail) ||
+      (fileCreator === 'student')
+    );
   }
 
   // Students cannot delete any other file
@@ -1076,20 +1099,40 @@ export const isUserAuthorizedForFile = (file: CurriculumFile, user: User | null 
     return true;
   }
 
+  // Check if file is AI-generated, student-generated, or private
+  const isAiOrUserGenerated = 
+    checkIsAiGenerated(file) || 
+    (file as any).isUserGenerated === true || 
+    (file as any).isGenerated === true || 
+    (file as any).isPrivate === true || 
+    (file as any).uploadedByRole === 'student';
+
+  if (isAiOrUserGenerated) {
+    // ONLY the student who created this specific file can access it
+    const userMobile = (user?.mobile || '').trim();
+    const userId = ((user as any)?.id || '').trim();
+    const userEmail = ((user as any)?.email || '').trim();
+    const fileCreator = String((file as any).createdBy || (file as any).userId || (file as any).creatorMobile || '').trim();
+
+    if (!userMobile && !userId && !userEmail) {
+      // Guest / not logged in user: only see files created in the current guest session with 'student' marker
+      return fileCreator === 'student' || fileCreator === '';
+    }
+
+    if (fileCreator) {
+      if (userMobile && (fileCreator === userMobile || (file as any).creatorMobile === userMobile)) return true;
+      if (userId && fileCreator === userId) return true;
+      if (userEmail && fileCreator === userEmail) return true;
+      // If user created as 'student' guest before logging in with this session
+      if (fileCreator === 'student') return true;
+      return false; // Belongs to a different student!
+    }
+
+    return false;
+  }
+
   // Public non-private curriculum materials (not explicitly user-generated or private) are accessible to all students
-  if (!(file as any).isUserGenerated && !(file as any).isPrivate && (file as any).uploadedByRole !== 'student') {
-    return true;
-  }
-
-  // For user-generated / private / AI-generated files, ONLY the student who created it can see it
-  const userMobile = user?.mobile || '';
-  const fileCreator = (file as any).createdBy || (file as any).userId || (file as any).creatorMobile;
-
-  if (fileCreator) {
-    return fileCreator === userMobile;
-  }
-
-  return false;
+  return true;
 };
 
 export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
@@ -1141,12 +1184,13 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
   });
 
   useEffect(() => {
+    if (!user?.mobile) return;
     try {
       localStorage.setItem(`${user.mobile}_downloaded_admin_pdfs`, JSON.stringify(downloadedPdfIds));
     } catch (e) {
       console.warn("Failed to persist downloaded admin PDFs:", e);
     }
-  }, [downloadedPdfIds, user.mobile]);
+  }, [downloadedPdfIds, user?.mobile]);
 
   // Synchronize active language whenever lang prop changes
   useEffect(() => {
@@ -1180,10 +1224,39 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
   const [deletePermissionError, setDeletePermissionError] = useState<string | null>(null);
 
 
-  // Load Curriculum Files from Firestore & LocalStorage
+  // Helper to safely persist user-generated PDF metadata to IndexedDB & localStorage without quota errors
+  const safeSaveUserGeneratedPdfs = async (targetUserMobile: string, fileList: CurriculumFile[]) => {
+    // 1. Always persist to IndexedDB (virtually unlimited quota)
+    for (const f of fileList) {
+      await saveFileMetaLocal(f).catch(() => {});
+    }
+
+    // 2. Safely attempt to write lightweight metadata (no base64 dataUrls) to localStorage
+    try {
+      const lightweightList = fileList.map(f => {
+        const { fileDataUrl: _, ...rest } = f as any;
+        return rest;
+      });
+      const userGenKey = `gramin_user_generated_pdfs_${targetUserMobile}`;
+      localStorage.setItem(userGenKey, JSON.stringify(lightweightList.slice(0, 50)));
+    } catch (e) {
+      console.warn("localStorage quota reached, keeping in IndexedDB:", e);
+      // Clean up older keys if quota exceeded
+      try {
+        const userGenKey = `gramin_user_generated_pdfs_${targetUserMobile}`;
+        const trimmed = fileList.slice(0, 10).map(f => {
+          const { fileDataUrl: _, ...rest } = f as any;
+          return rest;
+        });
+        localStorage.setItem(userGenKey, JSON.stringify(trimmed));
+      } catch {}
+    }
+  };
+
+  // Load Curriculum Files from Firestore, IndexedDB & LocalStorage
   const loadCurriculumData = async () => {
     setLoading(true);
-    const userMobile = user?.mobile || 'student';
+    const userMobile = user?.mobile || (user as any)?.id || (user as any)?.email || 'student';
     try {
       // 0. Read deleted file IDs to prevent deleted items from reappearing
       let deletedIds: string[] = [];
@@ -1195,20 +1268,55 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
       } catch (e) {
         console.warn("Error reading deleted files list:", e);
       }
-      
+
       // Ensure dummy seed file IDs are marked deleted and excluded
       const dummySeedIds = ['file-real-numbers-ch1', 'file-english-class9-ch2'];
       dummySeedIds.forEach(did => {
         if (!deletedIds.includes(did)) deletedIds.push(did);
       });
 
-      // 1. Load from user-scoped storage for user's own generated study materials
+      // 1. Load from IndexedDB for durable offline metadata (resilient against quota exceeded)
+      const indexedDbMetaList = await getAllFilesMetaLocal().catch(() => []);
+
+      // 2. Load from user-scoped storage for THIS student's own generated study materials
       let userGeneratedFiles: CurriculumFile[] = [];
       try {
         const userSaved = localStorage.getItem(`gramin_user_generated_pdfs_${userMobile}`);
-        if (userSaved) userGeneratedFiles = JSON.parse(userSaved);
+        if (userSaved) {
+          const parsed: CurriculumFile[] = JSON.parse(userSaved);
+          if (Array.isArray(parsed)) {
+            userGeneratedFiles = parsed;
+          }
+        }
+        // If logged in, also check guest 'student' storage if any items belong to this user session
+        if (userMobile && userMobile !== 'student') {
+          const guestSaved = localStorage.getItem('gramin_user_generated_pdfs_student');
+          if (guestSaved) {
+            const parsed: CurriculumFile[] = JSON.parse(guestSaved);
+            if (Array.isArray(parsed)) {
+              parsed.forEach(f => {
+                if (!userGeneratedFiles.some(existing => existing.id === f.id)) {
+                  if (f.createdBy === userMobile || (f as any).creatorMobile === userMobile || f.createdBy === 'student' || !f.createdBy) {
+                    userGeneratedFiles.push(f);
+                  }
+                }
+              });
+            }
+          }
+        }
       } catch (e) {
         console.warn("Error reading user generated files:", e);
+      }
+
+      // Merge IndexedDB meta files belonging to this user
+      if (Array.isArray(indexedDbMetaList)) {
+        indexedDbMetaList.forEach((metaFile: any) => {
+          if (isUserAuthorizedForFile(metaFile as CurriculumFile, user)) {
+            if (!userGeneratedFiles.some(existing => existing.id === metaFile.id)) {
+              userGeneratedFiles.push(metaFile as CurriculumFile);
+            }
+          }
+        });
       }
 
       // 2. Load global folders and files from localStorage
@@ -1320,7 +1428,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
         return f.isVisible !== false && isUserAuthorizedForFile(f, user);
       });
 
-      // Async load local file dataUrl from IndexedDB for custom uploaded files missing fileDataUrl
+      // Async load local file dataUrl from IndexedDB for custom uploaded files missing fileDataUrl, with Firestore fallback
       await Promise.all(
         allMergedFiles.map(async (f) => {
           if (!f.fileDataUrl) {
@@ -1328,9 +1436,16 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
               const dbUrl = await getFileLocal(f.id);
               if (dbUrl) {
                 f.fileDataUrl = dbUrl;
+              } else {
+                // Fetch chunked PDF dataUrl from Firestore and cache it locally
+                const fbUrl = await getFirebaseCurriculumFileDataUrl(f.id);
+                if (fbUrl) {
+                  f.fileDataUrl = fbUrl;
+                  await saveFileLocal(f.id, fbUrl).catch(() => {});
+                }
               }
             } catch (e) {
-              console.warn("Could not load IndexedDB file dataUrl for:", f.id, e);
+              console.warn("Could not load IndexedDB or Firestore file dataUrl for:", f.id, e);
             }
           }
         })
@@ -1372,7 +1487,7 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
       window.removeEventListener('focus', handleFocusOrStorage);
       window.removeEventListener('storage', handleFocusOrStorage);
     };
-  }, []);
+  }, [user?.mobile, (user as any)?.id, (user as any)?.email]);
 
   // Filter logic
   const currentFolder = useMemo(() => {
@@ -1393,6 +1508,9 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
 
   const filteredFiles = useMemo(() => {
     const matched = files.filter(f => {
+      // Authorization check: Ensure only the creator or admin can view private/AI files
+      if (!isUserAuthorizedForFile(f, user)) return false;
+
       const isEbookOrTextbook = checkIsEbookOrTextbook(f);
 
       // Folder filter
@@ -1522,7 +1640,7 @@ ${baseContent}`,
         `AI Translated Material (${targetLangStr})`
       );
 
-      const userMobile = user?.mobile || 'student';
+      const userMobile = user?.mobile || (user as any)?.id || (user as any)?.email || 'student';
       const newFileId = `gen-pdf-trans-${Date.now()}`;
       const newFile: CurriculumFile = {
         id: newFileId,
@@ -1541,7 +1659,9 @@ ${baseContent}`,
         isPrivate: true,
         createdBy: userMobile,
         userId: userMobile,
+        creatorMobile: user?.mobile || undefined,
         creatorName: user?.name || 'Student',
+        uploadedByRole: 'student',
         language: targetLangStr,
         fullContent: translatedText
       } as any;
@@ -1549,29 +1669,30 @@ ${baseContent}`,
       // Update state & save
       setFiles(prev => [newFile, ...prev]);
 
-      try {
-        // Save to user-scoped storage so this user always has it
-        const userGenKey = `gramin_user_generated_pdfs_${userMobile}`;
-        const userSavedList = JSON.parse(localStorage.getItem(userGenKey) || '[]');
-        localStorage.setItem(userGenKey, JSON.stringify([newFile, ...userSavedList.filter((f: any) => f.id !== newFileId)]));
-
-        const savedList = JSON.parse(localStorage.getItem('gramin_curriculum_files_v2') || '[]');
-        localStorage.setItem('gramin_curriculum_files_v2', JSON.stringify([newFile, ...savedList]));
-        await saveFirebaseCurriculumFile(newFile).catch(() => {});
-        await saveFileLocal(newFileId, pdfDataUrl).catch(() => {});
-      } catch (err) {
-        console.warn("Save error during translation:", err);
-      }
+      // 1. Save locally to IndexedDB and metadata store
+      await safeSaveUserGeneratedPdfs(userMobile, [newFile]);
 
       setShowTranslateModal(false);
       setGenSuccessMsg(`✨ Successfully translated "${translatingFile.name}" into ${targetLangStr}!`);
+
+      try {
+        await saveFileLocal(newFileId, pdfDataUrl);
+      } catch (err) {
+        console.warn("Failed to save translated file to local IndexedDB:", err);
+      }
+
+      // 2. Upload to Firebase in the background asynchronously so the UI is completely unaffected by any network latency/timeouts
+      saveFirebaseCurriculumFile(newFile).catch(err => {
+        console.warn("Background Firebase curriculum file upload failed:", err);
+      });
+
+      setTranslateLoading(false);
       
       // Auto-open translated PDF
       handleInstantOpenPdf(newFile);
     } catch (err) {
       console.error("Translation failed:", err);
       alert("Translation failed. Please try again.");
-    } finally {
       setTranslateLoading(false);
     }
   };
@@ -1888,7 +2009,7 @@ This comprehensive study resource provides essential conceptual foundation and p
 *Language: ${targetLang} | Class: ${genStandard} | Subject: ${genSubject}*`;
       }
 
-      const userMobile = user?.mobile || 'student';
+      const userMobile = user?.mobile || (user as any)?.id || (user as any)?.email || 'student';
       const cleanTitle = `${genTopic.trim()} - ${formatTitleSuffix} (${targetLang})`;
       const newFileId = `gen-pdf-${Date.now()}`;
 
@@ -1918,7 +2039,9 @@ This comprehensive study resource provides essential conceptual foundation and p
         isPrivate: true,
         createdBy: userMobile,
         userId: userMobile,
+        creatorMobile: user?.mobile || undefined,
         creatorName: user?.name || 'Student',
+        uploadedByRole: 'student',
         language: targetLang,
         fullContent: generatedText
       } as any;
@@ -1926,41 +2049,30 @@ This comprehensive study resource provides essential conceptual foundation and p
       // Update state
       setFiles(prev => [newFile, ...prev]);
 
-      // Save to user-scoped storage so this user always has it
-      try {
-        const userGenKey = `gramin_user_generated_pdfs_${userMobile}`;
-        const userSavedList = JSON.parse(localStorage.getItem(userGenKey) || '[]');
-        localStorage.setItem(userGenKey, JSON.stringify([newFile, ...userSavedList.filter((f: any) => f.id !== newFileId)]));
+      // 1. Save locally to IndexedDB and metadata store
+      await safeSaveUserGeneratedPdfs(userMobile, [newFile]);
 
-        const savedList = JSON.parse(localStorage.getItem('gramin_curriculum_files_v2') || '[]');
-        localStorage.setItem('gramin_curriculum_files_v2', JSON.stringify([newFile, ...savedList]));
-      } catch (err) {
-        console.warn("Failed to save generated file to localStorage:", err);
-      }
-
-      // Cache locally in IndexedDB
       try {
         await saveFileLocal(newFileId, pdfDataUrl);
       } catch (err) {
-        console.warn("Local storage save error:", err);
+        console.warn("Failed to save study material to local IndexedDB:", err);
       }
 
-      // Persist to Firebase Firestore
-      try {
-        await saveFirebaseCurriculumFile(newFile as any);
-      } catch (err) {
-        console.warn("Firestore save error:", err);
-      }
+      // 2. Upload to Firebase in the background asynchronously so the UI is completely unaffected by any network latency/timeouts
+      saveFirebaseCurriculumFile(newFile as any).catch(err => {
+        console.warn("Background Firebase curriculum file upload failed:", err);
+      });
 
+      // 2. Update UI states
       const topicName = genTopic;
       setGenTopic('');
       setGenCustomLanguage('');
       setGenSuccessMsg(`✨ AI ${formatTitleSuffix} for "${topicName}" (${targetLang}) generated successfully!`);
       setSelectedMaterialType(materialTypeKey);
+      setGenLoading(false);
     } catch (err: any) {
       console.error("Study Material Generation Error:", err);
       alert(`Could not generate study material: ${err.message || 'Network error'}`);
-    } finally {
       setGenLoading(false);
     }
   };
@@ -1978,6 +2090,23 @@ This comprehensive study resource provides essential conceptual foundation and p
 
   // Trigger browser file download
   const handleDownloadFileToDevice = async (file: CurriculumFile) => {
+    // Only for AI generated files, use the high-fidelity Smart Reader PDF exporter
+    if (checkIsAiGenerated(file)) {
+      const textToExport = (file as any).fullContent || (file as any).generatedText || file.description || file.name;
+      await downloadSmartReaderPdf(
+        file.name.replace(/\.pdf$/i, ''),
+        file.subject || 'Study Material',
+        file.standard || 'Class 10',
+        (file as any).language || 'English',
+        textToExport,
+        'Smart Reader Study Guide'
+      );
+      if (!downloadedPdfIds.includes(file.id)) {
+        setDownloadedPdfIds(prev => [...prev, file.id]);
+      }
+      return;
+    }
+
     let dataUrl = file.fileDataUrl;
     if (!dataUrl) {
       dataUrl = (await getFileLocal(file.id)) || undefined;
@@ -2065,6 +2194,39 @@ This comprehensive study resource provides essential conceptual foundation and p
     setTimeout(() => setGenSuccessMsg(null), 3000);
   };
 
+  // Delete All Temporary PDFs Handler
+  // const handleDeleteAllTemporaryPdfs = async () => {
+  //   try {
+  //     const tempFiles = files.filter(f => checkIsAiGenerated(f) || (f as any).isUserGenerated || f.id.startsWith('gen-pdf-'));
+  //     for (const file of tempFiles) {
+  //       try {
+  //         const deleted1: string[] = JSON.parse(localStorage.getItem('gramin_curriculum_deleted_files_v2') || '[]');
+  //         if (!deleted1.includes(file.id)) deleted1.push(file.id);
+  //         localStorage.setItem('gramin_curriculum_deleted_files_v2', JSON.stringify(deleted1));
+  //       } catch {}
+
+  //       localStorage.removeItem('gramin_pdf_cache_' + file.id);
+  //       await deleteFileLocal(file.id).catch(() => {});
+  //       await deleteFirebaseCurriculumFile(file.id).catch(() => {});
+  //     }
+
+  //     const userMobile = user?.mobile || (user as any)?.id || (user as any)?.email || 'student';
+  //     localStorage.removeItem(`gramin_user_generated_pdfs_${userMobile}`);
+
+  //     setFiles(prev => prev.filter(f => !checkIsAiGenerated(f) && !(f as any).isUserGenerated && !f.id.startsWith('gen-pdf-')));
+  //     if (activePdfFile && (checkIsAiGenerated(activePdfFile) || (activePdfFile as any).isUserGenerated || activePdfFile.id.startsWith('gen-pdf-'))) {
+  //       setActivePdfFile(null);
+  //     }
+
+  //     setGenSuccessMsg(`🗑️ Successfully deleted all temporary & AI-generated PDFs!`);
+  //     setTimeout(() => setGenSuccessMsg(null), 4000);
+  //   } catch (err: any) {
+  //     console.error("Failed to delete temporary PDFs:", err);
+  //     setGenSuccessMsg(`❌ Error deleting temporary PDFs: ${err.message || ''}`);
+  //     setTimeout(() => setGenSuccessMsg(null), 4000);
+  //   }
+  // };
+
   // Delete PDF Handler
   const handleDeleteFile = (file: CurriculumFile, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -2108,7 +2270,7 @@ This comprehensive study resource provides essential conceptual foundation and p
 
       // 3. Remove from localStorage saved files and cache if present
       try {
-        const userMobile = user?.mobile || 'student';
+        const userMobile = user?.mobile || (user as any)?.id || (user as any)?.email || 'student';
         const userGenKey = `gramin_user_generated_pdfs_${userMobile}`;
         const userSavedList = JSON.parse(localStorage.getItem(userGenKey) || '[]');
         const updatedUserList = userSavedList.filter((f: any) => f.id !== file.id);
@@ -2657,6 +2819,13 @@ This comprehensive study resource provides essential conceptual foundation and p
               {files.filter(f => checkIsAiGenerated(f)).length}
             </span>
           </button>
+          {/*<button
+            onClick={handleDeleteAllTemporaryPdfs}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-300 ml-auto"
+            title="Delete all temporary/AI-generated PDFs"
+          >
+            <span>🗑️ Delete All Temp PDFs</span>
+          </button>*/}
           <button
             onClick={() => setSelectedMaterialType('notes')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
@@ -3111,89 +3280,29 @@ This comprehensive study resource provides essential conceptual foundation and p
 
       {/* 6. IMMERSIVE PDF READER & AI STUDY MODAL */}
       {activePdfFile && (
-        <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col h-screen w-screen overflow-hidden animate-fade-in">
-          <div className="bg-white w-full h-full flex flex-col overflow-hidden">
-            {/* Modal Header */}
-            <div className="p-2 sm:p-4 bg-slate-900 text-white flex items-center justify-between gap-2 sm:gap-3 border-b border-slate-800 shrink-0">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                <div className="p-1.5 sm:p-2 bg-rose-500/20 text-rose-400 rounded-xl shrink-0">
-                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-xs sm:text-sm text-white truncate">{activePdfFile.name}</h3>
-                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-400 font-mono">
-                    <span className="truncate max-w-[110px] sm:max-w-none">{activePdfFile.subject}</span>
-                    <span>•</span>
-                    <span>{activePdfFile.standard || 'All Standards'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                <button
-                  onClick={() => {
-                    if (isPdfSpeaking) {
-                      stopSpeaking();
-                      setIsPdfSpeaking(false);
-                    } else {
-                      setIsPdfSpeaking(true);
-                      const speechTextContent = `Document title: ${activePdfFile.name}. Subject: ${activePdfFile.subject}. Standard: ${activePdfFile.standard || 'All Standards'}. Summary: ${activePdfFile.description || 'Official study notes for students.'}`;
-                      speakText(speechTextContent, activeLang || 'en');
-                    }
-                  }}
-                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
-                    isPdfSpeaking ? 'bg-rose-500 text-white animate-pulse' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  }`}
-                  title={isPdfSpeaking ? t.stopAudio : t.readAloud}
-                >
-                  {isPdfSpeaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                  <span className="hidden xs:inline sm:inline">{isPdfSpeaking ? t.stopAudio : t.readAloud}</span>
-                </button>
-
-                <button
-                  onClick={() => handleDownloadFileToDevice(activePdfFile)}
-                  className="px-2 sm:px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0"
-                  title={t.btnDownload}
-                >
-                  <Download className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden md:inline">{t.btnDownload}</span>
-                </button>
-
-                {checkCanDeleteFile(activePdfFile, user) && (
-                  <button
-                    onClick={(e) => handleDeleteFile(activePdfFile, e)}
-                    title={t.btnDelete}
-                    className="p-1.5 sm:px-3 sm:py-1.5 bg-rose-500/20 hover:bg-rose-500/40 border border-rose-500/30 text-rose-300 text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shrink-0 transition-all"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">{t.btnDelete}</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => {
+        <div className="fixed inset-x-0 bottom-0 top-16 z-40 bg-slate-950 flex flex-col h-[calc(100vh-4rem)] w-screen overflow-hidden animate-fade-in">
+          <div className="bg-slate-900 w-full h-full flex flex-col overflow-hidden">
+            {/* Modal Content Body - Direct PDF Reader beneath standard top navbar */}
+            <div className="flex-1 bg-slate-900 overflow-hidden flex flex-col p-0">
+              <div className="flex-1 h-full min-h-[500px]">
+                <PdfCanvasViewer
+                  lang={lang}
+                  user={user}
+                  adminUser={user}
+                  onClose={() => {
                     stopSpeaking();
                     setIsPdfSpeaking(false);
                     setActivePdfFile(null);
                   }}
-                  title={t.closeReader}
-                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white cursor-pointer shrink-0"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Content Body - Direct PDF Reader */}
-            <div className="flex-1 bg-slate-900 overflow-hidden flex flex-col p-1 sm:p-4">
-              <div className="flex-1 h-full min-h-[500px]">
-                <PdfCanvasViewer
-                  lang={lang}
+                  onNavigateBack={() => {
+                    stopSpeaking();
+                    setIsPdfSpeaking(false);
+                    setActivePdfFile(null);
+                  }}
                   fileId={activePdfFile.id}
                   fileDataUrl={activePdfFile.fileDataUrl}
                   fileName={activePdfFile.name}
-                  fullContent={(activePdfFile as any).fullContent || (activePdfFile as any).generatedText || activePdfFile.description}
+                  fullContent={(activePdfFile as any).fullContent || (activePdfFile as any).generatedText}
                   isAiGenerated={checkIsAiGenerated(activePdfFile)}
                   onGetFileLocal={async (id) => {
                     if (activePdfFile.fileDataUrl) return activePdfFile.fileDataUrl;

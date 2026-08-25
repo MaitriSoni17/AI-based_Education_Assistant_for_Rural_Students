@@ -4,6 +4,7 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { safeFetchJson } from '../../utils/safeFetch';
 import MathRenderer, { normalizeMathText } from '../common/MathRenderer';
+import { downloadSmartReaderPdf, generateSmartReaderPdfDataUrl } from '../../utils/pdfExport';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -18,6 +19,7 @@ import {
   Download, 
   AlertCircle, 
   Maximize2, 
+  Minimize2,
   Search, 
   X,
   Copy,
@@ -40,12 +42,432 @@ import {
   Languages,
   Hand,
   MousePointer,
-  Move
+  Move,
+  BookOpen,
+  Type,
+  Sun,
+  Moon,
+  BookText,
+  Bookmark,
+  Printer,
+  GraduationCap,
+  LogOut,
+  Columns,
+  CornerUpLeft,
+  FileDown,
+  RotateCcw,
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import SpeechInputButton from '../SpeechInputButton';
-import { LanguageCode } from '../../types';
+import { LanguageCode, User } from '../../types';
 import { CustomSelect } from '../common/CustomSelect';
+
+/**
+ * Utility to convert Kruti Dev 010 / Devlys 010 ASCII text & clean up garbled NCERT PDF text
+ * (commonly extracted from Indian textbook PDFs with misplaced Devanagari matras)
+ * into standard, pristine Devanagari Unicode text.
+ */
+export function convertKrutiDevToUnicode(text: string): string {
+  return cleanPdfExtractedText(text);
+}
+
+export function cleanPdfExtractedText(rawText: string): string {
+  if (!rawText || typeof rawText !== 'string') return '';
+  let str = rawText.trim();
+  if (!str) return '';
+
+  // 1. If text is predominantly KrutiDev 8-bit ASCII, convert character mappings first
+  const devanagariCount = (str.match(/[\u0900-\u097F]/g) || []).length;
+  if (devanagariCount < str.length * 0.25) {
+    const isKrutiDev = /([iN]yh|d\{kk|esa\]|gsa|osQ|osq|fdl|idkj|la\[;k|ls\[kk|js\[kk|nsf\[k|vki|vkSj|fujwfir|vkd`fr|pqosQ|pudh)/.test(str);
+    if (isKrutiDev) {
+      const ligatures: [string, string][] = [
+        ['d{kkvsa', 'कक्षाओं'],
+        ['d{kkvks', 'कक्षाओं'],
+        ['d{kk', 'कक्षा'],
+        ['la[;k', 'संख्या'],
+        ['ls[kk', 'संख्या'],
+        ['js[kk', 'रेखा'],
+        ['nsf[k,', 'देखिए'],
+        ['nsf[k', 'देखि'],
+        ['fujwfir', 'निरूपित'],
+        ['fujwfi', 'निरूपि'],
+        ['idkj', 'प्रकार'],
+        ['fdl', 'किस'],
+        ['vki', 'आप'],
+        ['vkj', 'और'],
+        ['vkSj', 'और'],
+        ['ogka', 'वहाँ'],
+        ['osq', 'के'],
+        ['osQ', 'के'],
+        ['esa]', 'में,'],
+        ['esa', 'में'],
+        ['gsa', 'हैं'],
+        ['gS', 'है'],
+        ['vkd`fr', 'आकृति'],
+        ['ij', 'पर'],
+        ['iNyh', 'पिछली'],
+        ['iNys', 'पिछले'],
+        ['iNyk', 'पिछला'],
+        ['pqosQ', 'चुके'],
+        ['pudh', 'चुकी'],
+        ['pqdk', 'चुका'],
+        [';g', 'यह'],
+        ['Hkh', 'भी'],
+        ['rFkk', 'तथा'],
+        [',oa', 'एवं'],
+      ];
+      for (const [kruti, uni] of ligatures) {
+        str = str.split(kruti).join(uni);
+      }
+      const charMap: [string, string][] = [
+        ['k', 'ा'], ['h', 'ी'], ['q', 'ु'], ['w', 'ू'], ['s', 'े'], ['S', 'ै'], ['a', 'ं'], ['A', 'ॉ'],
+        ['f', 'ि'], ['i', 'ि'],
+        ['v', 'अ'], ['o', 'इ'], ['u', 'उ'], ['U', 'ऊ'], ['c', 'ब'], ['C', 'ण'], ['d', 'क'], ['D', 'क्'],
+        ['e', 'म'], ['E', 'म्'], ['g', 'ह'], ['G', 'ह्'], ['j', 'र'], ['J', 'र्'], ['l', 'स'], ['L', 'स्'],
+        ['m', 'स'], ['n', 'द'], ['N', 'छ'], ['p', 'च'], ['P', 'च्'], ['r', 'त'], ['R', 'त्'],
+        ['t', 'त'], ['T', 'त्'], ['y', 'ल'], ['Y', 'ल्'], ['b', 'इ'], ['B', 'ई'],
+        ['x', 'ग'], ['X', 'ग्'], ['z', '्र'], ['Z', 'र्'], ['[', 'ख'], ['{', 'क्ष'], [']', ','],
+        ['}', 'द्व'], ['|', '।']
+      ];
+      for (const [k, u] of charMap) {
+        str = str.split(k).join(u);
+      }
+    }
+  }
+
+  // 2. Fix specific NCERT Devanagari font artifacts & misplaced glyphs
+  // NCERT PDF font artifact: 'िफ' at start of word before consonant is 'प्र'
+  str = str.replace(/\bिफरारंभ/g, 'प्रारंभ');
+  str = str.replace(/\bिफारंभ/g, 'प्रारंभ');
+  str = str.replace(/\bिफथम/g, 'प्रथम');
+  str = str.replace(/\bिफयोग/g, 'प्रयोग');
+  str = str.replace(/\bिफकार/g, 'प्रकार');
+  str = str.replace(/\bिफशन/g, 'प्रश्न');
+  str = str.replace(/\bिफश्न/g, 'प्रश्न');
+  str = str.replace(/\bिफतियोग्यता/g, 'प्रतियोग्यता');
+  str = str.replace(/\bिफत्येक/g, 'प्रत्येक');
+  str = str.replace(/\bिफाप्त/g, 'प्राप्त');
+  str = str.replace(/\bिफक्रिया/g, 'प्रक्रिया');
+  str = str.replace(/\bिफति/g, 'प्रति');
+  str = str.replace(/\bिफि/g, 'प्र');
+
+  // Fix misplaced 'ि' inside conjuncts (NCERT PDF text layer defect)
+  str = str.replace(/कल्िपना/g, 'कल्पना');
+  str = str.replace(/कल्िप/g, 'कल्प');
+  str = str.replace(/ल्िप/g, 'ल्प');
+  str = str.replace(/न्ित/g, 'न्त');
+  str = str.replace(/त्िय/g, 'त्य');
+  str = str.replace(/स्ित/g, 'स्थित');
+  str = str.replace(/द्िव/g, 'द्वि');
+  str = str.replace(/द्िब/g, 'द्वि');
+  str = str.replace(/द्िय/g, 'द्वि');
+  str = str.replace(/त्िर/g, 'त्र');
+
+  // Fix misplaced \u093F ('ि' matra) occurring BEFORE a consonant (\u0915-\u0939):
+  // e.g. 'िक' (\u093F + क) -> 'कि' (क + \u093F)
+  str = str.replace(/\u093F([\u0915-\u0939]\u093C?)/g, '$1\u093F');
+
+  // Deduplicate repeated matras (e.g. 'किि' -> 'कि')
+  str = str.replace(/\u093F{2,}/g, '\u093F');
+
+  // 3. Fix NCERT Math / Symbol font artifacts
+  // '०ूऊ;' or '०ूऊ' -> '0'
+  str = str.replace(/['"]?०ूऊ;?['"]?/g, "'0'");
+  str = str.replace(/H\u093E|H\u0901|H/g, ''); // remove orphan H glyph artifacts
+  str = str.replace(/ↀ/g, '');
+  str = str.replace(/०ा/g, 'ा');
+  str = str.replace(/;\s*/g, ', ');
+  str = str.replace(/,\s*,/g, ',');
+
+  // Clean zero-width non-printable joiners/spaces
+  str = str.replace(/[\uFEFF\u200B\u200C\u200D]/g, '');
+  str = str.replace(/\s+/g, ' ');
+
+  return str.trim();
+}
+import { getDeterministicAvatar } from '../../utils/avatar';
+
+const TOP_NAV_LANGUAGES: { code: LanguageCode; name: string; nativeName: string; flag: string }[] = [
+  { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिंदी', flag: '🇮🇳' },
+  { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી', flag: '🇮🇳' },
+  { code: 'mr', name: 'Marathi', nativeName: 'मराठी', flag: '🇮🇳' },
+  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', flag: '🇮🇳' },
+  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', flag: '🇮🇳' },
+];
+
+export const PDF_VIEWER_I18N: Record<LanguageCode, {
+  smartReader: string;
+  pdfPages: string;
+  copyFullText: string;
+  copied: string;
+  page: string;
+  pageOf: (curr: number, total: number) => string;
+  zoomIn: string;
+  zoomOut: string;
+  fitWidth: string;
+  fitPage: string;
+  searchPlaceholder: string;
+  aiSolver: string;
+  aiSolverTitle: string;
+  downloadPdf: string;
+  save: string;
+  savedToMaterial: string;
+  close: string;
+  closePdf: string;
+  rotate: string;
+  loadingPdf: string;
+  unableToLoad: string;
+  showcaseFull: string;
+  splitView: string;
+  askAiPlaceholder: string;
+  light: string;
+  sepia: string;
+  dark: string;
+  compact: string;
+  wide: string;
+  handTool: string;
+  selectText: string;
+  firstPage: string;
+  lastPage: string;
+  previousPage: string;
+  nextPage: string;
+  translate: string;
+}> = {
+  en: {
+    smartReader: 'Smart Reader',
+    pdfPages: 'PDF Pages',
+    copyFullText: 'Copy Full Text',
+    copied: 'Copied!',
+    page: 'Page',
+    pageOf: (curr, total) => `Page ${curr} of ${total}`,
+    zoomIn: 'Zoom In',
+    zoomOut: 'Zoom Out',
+    fitWidth: 'Fit Width',
+    fitPage: 'Fit Page',
+    searchPlaceholder: 'Search in PDF...',
+    aiSolver: 'AI Solver',
+    aiSolverTitle: 'AI Solver Chatbot',
+    downloadPdf: 'Download PDF',
+    save: 'Save',
+    savedToMaterial: 'Saved to My Material!',
+    close: 'Close',
+    closePdf: 'Close PDF',
+    rotate: 'Rotate',
+    loadingPdf: 'Loading PDF document...',
+    unableToLoad: 'Unable to load PDF document',
+    showcaseFull: 'Showcase Full',
+    splitView: 'Split View',
+    askAiPlaceholder: 'Ask any question from this page...',
+    light: 'Light',
+    sepia: 'Sepia',
+    dark: 'Dark',
+    compact: 'Compact',
+    wide: 'Wide',
+    handTool: 'Hand Tool',
+    selectText: 'Select Text',
+    firstPage: 'First Page',
+    lastPage: 'Last Page',
+    previousPage: 'Previous Page',
+    nextPage: 'Next Page',
+    translate: 'Translate',
+  },
+  hi: {
+    smartReader: 'स्मार्ट रीडर',
+    pdfPages: 'पीडीएफ पृष्ठ',
+    copyFullText: 'पूरा पाठ कॉपी करें',
+    copied: 'कॉपी हो गया!',
+    page: 'पृष्ठ',
+    pageOf: (curr, total) => `पृष्ठ ${curr} / ${total}`,
+    zoomIn: 'ज़ूम इन',
+    zoomOut: 'ज़ूम आउट',
+    fitWidth: 'चौड़ाई के अनुसार',
+    fitPage: 'पूरा पृष्ठ',
+    searchPlaceholder: 'पीडीएफ में खोजें...',
+    aiSolver: 'एआई समाधानकर्ता',
+    aiSolverTitle: 'एआई अध्ययन सहायक',
+    downloadPdf: 'पीडीएफ डाउनलोड करें',
+    save: 'सहेजें',
+    savedToMaterial: 'मेरी सामग्री में सहेजा गया!',
+    close: 'बंद करें',
+    closePdf: 'पीडीएफ बंद करें',
+    rotate: 'घुमाएं',
+    loadingPdf: 'पीडीएफ दस्तावेज़ लोड हो रहा है...',
+    unableToLoad: 'पीडीएफ लोड करने में असमर्थ',
+    showcaseFull: 'पूर्ण दृश्य',
+    splitView: 'स्प्लिट दृश्य',
+    askAiPlaceholder: 'इस पृष्ठ से कोई प्रश्न पूछें...',
+    light: 'लाइट',
+    sepia: 'सेपिया',
+    dark: 'डार्क',
+    compact: 'छोटा',
+    wide: 'चौड़ा',
+    handTool: 'हैंड टूल',
+    selectText: 'पाठ चुनें',
+    firstPage: 'पहला पृष्ठ',
+    lastPage: 'अंतिम पृष्ठ',
+    previousPage: 'पिछला पृष्ठ',
+    nextPage: 'अगला पृष्ठ',
+    translate: 'अनुवाद करें',
+  },
+  gu: {
+    smartReader: 'સ્માર્ટ રીડર',
+    pdfPages: 'પીડીએફ પાના',
+    copyFullText: 'લખાણ નકલ કરો',
+    copied: 'નકલ થઈ ગઈ!',
+    page: 'પાનું',
+    pageOf: (curr, total) => `પાનું ${curr} / ${total}`,
+    zoomIn: 'ઝૂમ ઇન',
+    zoomOut: 'ઝૂમ આઉટ',
+    fitWidth: 'પહોળાઈ મુજબ',
+    fitPage: 'આખું પાનું',
+    searchPlaceholder: 'પીડીએફમાં શોધો...',
+    aiSolver: 'AI સોલ્વર',
+    aiSolverTitle: 'AI અભ્યાસ મદદગાર',
+    downloadPdf: 'પીડીએફ ડાઉનલોડ કરો',
+    save: 'સાચવો',
+    savedToMaterial: 'મારી સામગ્રીમાં સાચવવામાં આવ્યું!',
+    close: 'બંધ કરો',
+    closePdf: 'પીડીએફ બંધ કરો',
+    rotate: 'ફેરવો',
+    loadingPdf: 'પીડીએફ લોડ થઈ રહ્યું છે...',
+    unableToLoad: 'પીડીએફ લોડ કરવામાં નિષ્ફળ',
+    showcaseFull: 'પૂર્ણ સ્ક્રીન',
+    splitView: 'સ્પ્લિટ વ્યુ',
+    askAiPlaceholder: 'આ પાના પરથી પ્રશ્ન પૂછો...',
+    light: 'લાઈટ',
+    sepia: 'સેપિયા',
+    dark: 'ડાર્ક',
+    compact: 'નાનું',
+    wide: 'પહોળું',
+    handTool: 'હેન્ડ ટૂલ',
+    selectText: 'લખાણ પસંદ કરો',
+    firstPage: 'પ્રથમ પાનું',
+    lastPage: 'અંતિમ પાનું',
+    previousPage: 'અગાઉનું પાનું',
+    nextPage: 'પછીનું પાનું',
+    translate: 'અનુવાદ કરો',
+  },
+  mr: {
+    smartReader: 'स्मार्ट रीडर',
+    pdfPages: 'पीडीएफ पृष्ठे',
+    copyFullText: 'मजकूर कॉपी करा',
+    copied: 'कॉपी झाले!',
+    page: 'पृष्ठ',
+    pageOf: (curr, total) => `पृष्ठ ${curr} / ${total}`,
+    zoomIn: 'झूम इन',
+    zoomOut: 'झूम आउट',
+    fitWidth: 'रुंदीनुसार',
+    fitPage: 'पूर्ण पृष्ठ',
+    searchPlaceholder: 'पीडीएफमध्ये शोधा...',
+    aiSolver: 'AI सोल्वहर',
+    aiSolverTitle: 'AI अभ्यास सहाय्यक',
+    downloadPdf: 'पीडीएफ डाउनलोड करा',
+    save: 'साठवा',
+    savedToMaterial: 'माझ्या सामग्रीत जतन केले!',
+    close: 'बंद करा',
+    closePdf: 'पीडीएफ बंद करा',
+    rotate: 'फिरवा',
+    loadingPdf: 'पीडीएफ लोड होत आहे...',
+    unableToLoad: 'पीडीएफ लोड करू शकत नाही',
+    showcaseFull: 'पूर्ण दृश्य',
+    splitView: 'स्प्लिट दृश्य',
+    askAiPlaceholder: 'या पृष्ठावरून प्रश्न विचारा...',
+    light: 'लाइट',
+    sepia: 'सेपिया',
+    dark: 'डार्क',
+    compact: 'कॉम्पॅक्ट',
+    wide: 'रुंद',
+    handTool: 'हँड टूल',
+    selectText: 'मजकूर निवडा',
+    firstPage: 'पहिले पृष्ठ',
+    lastPage: 'शेवटचे पृष्ठ',
+    previousPage: 'मागील पृष्ठ',
+    nextPage: 'पुढील पृष्ठ',
+    translate: 'भाषांतर करा',
+  },
+  ta: {
+    smartReader: 'ஸ்மார்ட் ரீடர்',
+    pdfPages: 'PDF பக்கங்கள்',
+    copyFullText: 'உரையை நகலெடு',
+    copied: 'நகலெடுக்கப்பட்டது!',
+    page: 'பக்கம்',
+    pageOf: (curr, total) => `பக்கம் ${curr} / ${total}`,
+    zoomIn: 'பெரிதாக்கு',
+    zoomOut: 'சிறிதாக்கு',
+    fitWidth: 'அகலத்திற்கு ஏற்',
+    fitPage: 'பக்கத்திற்கு ஏற்',
+    searchPlaceholder: 'PDF இல் தேடவும்...',
+    aiSolver: 'AI தீர்வு',
+    aiSolverTitle: 'AI கற்றல் உதவியாளர்',
+    downloadPdf: 'PDF பதிவிறக்கவும்',
+    save: 'சேமி',
+    savedToMaterial: 'எனது சேமிப்பில் சேமிக்கப்பட்டது!',
+    close: 'மூடு',
+    closePdf: 'PDF மூடவும்',
+    rotate: 'சுழற்று',
+    loadingPdf: 'PDF ஏற்றப்படுகிறது...',
+    unableToLoad: 'PDF ஐ ஏற்ற முடியவில்லை',
+    showcaseFull: 'முழுத்திரை',
+    splitView: 'பிரிவுப் பார்வை',
+    askAiPlaceholder: 'இந்தப் பக்கத்திலிருந்து கேள்வியைக் கேட்கவும்...',
+    light: 'வெளிச்சம்',
+    sepia: 'செபியா',
+    dark: 'இருண்ட',
+    compact: 'சிறிய',
+    wide: 'அகலமான',
+    handTool: 'கை கருவி',
+    selectText: 'உரையைத் தேர்ந்தெடு',
+    firstPage: 'முதல் பக்கம்',
+    lastPage: 'கடைசி பக்கம்',
+    previousPage: 'முந்தைய பக்கம்',
+    nextPage: 'அடுத்த பக்கம்',
+    translate: 'மொழிபெயர்',
+  },
+  te: {
+    smartReader: 'స్మార్ట్ రీడర్',
+    pdfPages: 'PDF పుటలు',
+    copyFullText: 'వచనాన్ని కాపీ చేయి',
+    copied: 'కాపీ అయింది!',
+    page: 'పుట',
+    pageOf: (curr, total) => `పుట ${curr} / ${total}`,
+    zoomIn: 'జూమ్ ఇన్',
+    zoomOut: 'జూమ్ అవుట్',
+    fitWidth: 'వెడల్పుకు తగినట్లు',
+    fitPage: 'పుటకు తగినట్లు',
+    searchPlaceholder: 'PDF లో వెతకండి...',
+    aiSolver: 'AI సాధని',
+    aiSolverTitle: 'AI అభ్యసన సహాయకుడు',
+    downloadPdf: 'PDF డౌన్‌లోడ్ చేయండి',
+    save: 'సేవ్ చేయి',
+    savedToMaterial: 'నా మెటీరియల్‌లో సేవ్ చేయబడింది!',
+    close: 'మూసివేయి',
+    closePdf: 'PDF మూసివేయండి',
+    rotate: 'తిప్పండి',
+    loadingPdf: 'PDF లోడ్ అవుతోంది...',
+    unableToLoad: 'PDF ని లోడ్ చేయలేకపోయాము',
+    showcaseFull: 'పూర్తి స్క్రీన్',
+    splitView: 'స్ప్లిట్ వీక్షణ',
+    askAiPlaceholder: 'ఈ పుట నుండి ప్రశ్న అడగండి...',
+    light: 'లైట్',
+    sepia: 'సెపియా',
+    dark: 'డార్క్',
+    compact: 'చిన్నది',
+    wide: 'వెడల్పు',
+    handTool: 'హ్యాండ్ టూల్',
+    selectText: 'వచనాన్ని ఎంచుకోండి',
+    firstPage: 'మొదటి పుట',
+    lastPage: 'చివరి పుట',
+    previousPage: 'మునుపటి పుట',
+    nextPage: 'తరువాతి పుట',
+    translate: 'అనువదించు',
+  },
+};
 
 interface PdfCanvasViewerProps {
   fileId: string;
@@ -54,6 +476,11 @@ interface PdfCanvasViewerProps {
   fullContent?: string;
   isAiGenerated?: boolean;
   lang?: LanguageCode;
+  user?: User | null;
+  adminUser?: User | null;
+  onClose?: () => void;
+  onNavigateBack?: () => void;
+  onLanguageChange?: (lang: LanguageCode) => void;
   onGetFileLocal: (id: string) => Promise<string | null>;
   onDownload: () => void;
   onPagesTextExtracted?: (pages: { pageNum: number; text: string }[]) => void;
@@ -543,6 +970,298 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
   );
 };
 
+// Smart Reader View Component for Distraction-Free Reading, KaTeX Math & Precise Text Selection
+interface SmartReaderViewProps {
+  title: string;
+  subject?: string;
+  std?: string;
+  language?: string;
+  content: string;
+  fontSize: number;
+  theme: 'light' | 'sepia' | 'dark';
+  searchQuery: string;
+  onCopyAll: () => void;
+  onToast: (msg: string) => void;
+  onAskAi?: (prompt: string) => void;
+  onDownloadPdf?: () => void;
+}
+
+const SmartReaderView: React.FC<SmartReaderViewProps> = ({
+  title,
+  subject = 'General',
+  std = 'Class 10',
+  language = 'English',
+  content,
+  fontSize,
+  theme,
+  searchQuery,
+  onCopyAll,
+  onToast,
+  onAskAi,
+  onDownloadPdf
+}) => {
+  const [copiedSectionIdx, setCopiedSectionIdx] = useState<number | null>(null);
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null);
+
+  // Calculate quick stats
+  const wordCount = useMemo(() => {
+    return content ? content.split(/\s+/).filter(Boolean).length : 0;
+  }, [content]);
+
+  const readMinutes = useMemo(() => {
+    return Math.max(1, Math.ceil(wordCount / 180));
+  }, [wordCount]);
+
+  // Parse markdown content into logical structured sections
+  const sections = useMemo(() => {
+    if (!content) return [];
+    const normalized = normalizeMathText(content);
+    
+    // Split by Markdown level 1, 2, and 3 headers
+    const rawChunks = normalized.split(/\n(?=#{1,3}\s+)/g);
+    
+    const parsedSections: { title: string; body: string; level: number }[] = [];
+    let sectionCounter = 1;
+
+    for (let i = 0; i < rawChunks.length; i++) {
+      const chunk = rawChunks[i].trim();
+      if (!chunk) continue;
+
+      const headerMatch = chunk.match(/^(#{1,4})\s+(.+?)(\n|$)/);
+      if (headerMatch) {
+        const headerLevel = headerMatch[1].length;
+        let rawHeaderTitle = headerMatch[2].trim();
+        let bodyContent = chunk.substring(headerMatch[0].length).trim();
+
+        // Strip surrounding markdown bold / italic formatting
+        rawHeaderTitle = rawHeaderTitle.replace(/^[*_~`#]+|[*_~`#]+$/g, '').trim();
+
+        // If this is purely a document title header matching the document card with no body, skip it
+        if (headerLevel === 1 && (!bodyContent || bodyContent.length < 5) && (rawHeaderTitle.toLowerCase() === title?.toLowerCase() || i === 0)) {
+          continue;
+        }
+
+        // Test if title is empty, or only an emoji/symbol (e.g. "📖", "🔬", "🎯")
+        const isOnlyEmoji = !/[a-zA-Z0-9\u0900-\u097F\u0A80-\u0AFF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F]/.test(rawHeaderTitle);
+
+        let resolvedTitle = rawHeaderTitle;
+
+        if (!rawHeaderTitle || isOnlyEmoji) {
+          // Check if body begins with a title or bold heading line
+          const bodyLines = bodyContent.split('\n').map(l => l.trim()).filter(Boolean);
+          if (bodyLines.length > 0) {
+            const firstLine = bodyLines[0];
+            const cleanFirstLine = firstLine.replace(/^(#{1,4}|\*\*|\*|__)\s*|\s*(\*\*|\*|__)$/g, '').trim();
+            if (cleanFirstLine.length > 2 && cleanFirstLine.length < 90 && !cleanFirstLine.includes('.')) {
+              resolvedTitle = rawHeaderTitle ? `${rawHeaderTitle} ${cleanFirstLine}` : cleanFirstLine;
+              // Remove firstLine from bodyContent so it doesn't repeat
+              const firstLineIdx = bodyContent.indexOf(firstLine);
+              if (firstLineIdx !== -1) {
+                bodyContent = bodyContent.substring(firstLineIdx + firstLine.length).trim();
+              }
+            }
+          }
+        }
+
+        if (!resolvedTitle || isOnlyEmoji) {
+          const emojiPrefix = rawHeaderTitle ? `${rawHeaderTitle} ` : '';
+          const fallbackNames = ['Overview', 'Core Concepts', 'Detailed Study', 'Key Formulations', 'Practice & Summary'];
+          const fallback = fallbackNames[sectionCounter - 1] || `Section ${sectionCounter}`;
+          resolvedTitle = `${emojiPrefix}${fallback}`;
+        }
+
+        if (bodyContent || resolvedTitle) {
+          parsedSections.push({
+            title: resolvedTitle,
+            body: bodyContent || 'Refer to the detailed guide above.',
+            level: headerLevel
+          });
+          sectionCounter++;
+        }
+      } else {
+        if (chunk.length > 0) {
+          parsedSections.push({
+            title: sectionCounter === 1 ? (title || 'Introduction') : `Section ${sectionCounter}`,
+            body: chunk,
+            level: 2
+          });
+          sectionCounter++;
+        }
+      }
+    }
+
+    if (parsedSections.length === 0) {
+      return [{ title: title || 'Study Content', body: normalized, level: 1 }];
+    }
+
+    return parsedSections;
+  }, [content, title]);
+
+  const handleCopySection = (textToCopy: string, idx: number) => {
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedSectionIdx(idx);
+    onToast(`📋 Copied section to clipboard!`);
+    setTimeout(() => setCopiedSectionIdx(null), 2000);
+  };
+
+  const handleSpeakSection = (textToSpeak: string, idx: number) => {
+    if (speakingIdx === idx) {
+      stopSpeaking();
+      setSpeakingIdx(null);
+    } else {
+      stopSpeaking();
+      setSpeakingIdx(idx);
+      speakText(textToSpeak, language === 'Hindi' ? 'hi' : language === 'Gujarati' ? 'gu' : 'en');
+    }
+  };
+
+  const themeClasses = {
+    light: 'bg-slate-100/90 text-slate-900',
+    sepia: 'bg-[#f6f0e2] text-[#3e3223]',
+    dark: 'bg-slate-950 text-slate-100'
+  };
+
+  const cardClasses = {
+    light: 'bg-white border-slate-200/80 shadow-xs hover:border-slate-300',
+    sepia: 'bg-[#fdfaf3] border-[#e7dac1] shadow-xs hover:border-[#dfcead]',
+    dark: 'bg-slate-900 border-slate-800 shadow-xs hover:border-slate-700'
+  };
+
+  const headerCardClasses = {
+    light: 'bg-white border-slate-200 shadow-sm',
+    sepia: 'bg-[#fdfaf3] border-[#e7dac1] shadow-sm',
+    dark: 'bg-slate-900 border-slate-800 shadow-sm'
+  };
+
+  const titleColorClass = theme === 'dark' ? 'text-white' : theme === 'sepia' ? 'text-[#3e3223]' : 'text-slate-900';
+  const metaColorClass = theme === 'dark' ? 'text-slate-400' : theme === 'sepia' ? 'text-[#73634e]' : 'text-slate-500';
+  const metaBoldClass = theme === 'dark' ? 'text-slate-200' : theme === 'sepia' ? 'text-[#3e3223]' : 'text-slate-800';
+  const dividerBorderClass = theme === 'dark' ? 'border-slate-800' : theme === 'sepia' ? 'border-[#e7dac1]' : 'border-slate-200';
+  const actionButtonClass = theme === 'dark' 
+    ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60' 
+    : theme === 'sepia' 
+    ? 'bg-[#ebd9b2] hover:bg-[#dfcead] text-[#3e3223] border border-[#dfcead]' 
+    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200';
+
+  return (
+    <div className={`w-full min-h-full py-6 px-3 sm:px-6 md:px-8 overflow-y-auto ${themeClasses[theme]} transition-colors duration-200 select-text`}>
+      <div className="max-w-4xl mx-auto space-y-6">
+        
+        {/* Document Header Card */}
+        <div className={`rounded-2xl p-5 sm:p-7 border ${headerCardClasses[theme]} transition-all`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 font-bold text-xs rounded-lg uppercase tracking-wider flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Smart Reader</span>
+              </span>
+              <span className="px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-400 font-bold text-xs rounded-lg">
+                {language}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onCopyAll}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm transition-all active:scale-95"
+                title="Copy Full Document Text to Clipboard"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Full Text</span>
+              </button>
+            </div>
+          </div>
+
+          <h1 className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight leading-snug mb-3 ${titleColorClass}`}>
+            {title}
+          </h1>
+
+          <div className={`flex flex-wrap items-center gap-y-2 gap-x-4 text-xs font-semibold ${metaColorClass} border-t ${dividerBorderClass} pt-3`}>
+            <div>Subject: <strong className={`${metaBoldClass} font-bold`}>{subject}</strong></div>
+            <div>•</div>
+            <div>Standard: <strong className={`${metaBoldClass} font-bold`}>{std}</strong></div>
+            <div>•</div>
+            <div>{wordCount} words (~{readMinutes} min read)</div>
+          </div>
+        </div>
+
+        {/* Structured Content Sections */}
+        <div className="space-y-5">
+          {sections.map((sec, idx) => {
+            const isSpeakingThis = speakingIdx === idx;
+            const isCopiedThis = copiedSectionIdx === idx;
+            const fullSecText = `${sec.title}\n\n${sec.body}`;
+
+            return (
+              <div
+                key={`sec-${idx}`}
+                className={`rounded-2xl p-5 sm:p-7 border ${cardClasses[theme]} transition-all group relative`}
+              >
+                {/* Section Header with Quick Actions */}
+                <div className={`flex items-center justify-between pb-3.5 mb-4 border-b ${dividerBorderClass} gap-3`}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-6 h-6 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-500 dark:text-rose-400 font-black text-xs flex items-center justify-center shrink-0">
+                      {idx + 1}
+                    </span>
+                    <h2 className={`text-base sm:text-lg font-black tracking-tight ${titleColorClass} truncate`}>
+                      {sec.title}
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleSpeakSection(sec.body || sec.title, idx)}
+                      className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                        isSpeakingThis
+                          ? 'bg-rose-500 text-white animate-pulse'
+                          : actionButtonClass
+                      }`}
+                      title={isSpeakingThis ? "Stop Reading" : "Read Section Aloud"}
+                    >
+                      {isSpeakingThis ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                    </button>
+
+                    <button
+                      onClick={() => handleCopySection(fullSecText, idx)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                        isCopiedThis
+                          ? 'bg-emerald-600 text-white'
+                          : actionButtonClass
+                      }`}
+                      title="Copy Section"
+                    >
+                      {isCopiedThis ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span className="hidden sm:inline">{isCopiedThis ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section Content with Crisp KaTeX & Typography */}
+                <div
+                  style={{ fontSize: `${fontSize}px`, lineHeight: 1.75 }}
+                  className={`font-normal selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100 space-y-3 ${
+                    theme === 'dark' ? 'text-slate-100' : theme === 'sepia' ? 'text-[#3e3223]' : 'text-slate-800'
+                  }`}
+                >
+                  <MathRenderer
+                    content={sec.body || ''}
+                    isDark={theme === 'dark'}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Bottom Document Completion Bar */}
+        <div className="text-center py-8 text-xs font-medium text-slate-400">
+          ✨ Gramin Shiksha Smart Reader • You have reached the end of this study guide
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // High-performance in-memory cache for parsed PDF documents
 const pdfDocCache = new Map<string, { pdf: any; width: number; height: number; numPages: number }>();
 
@@ -552,7 +1271,12 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   fileName,
   fullContent,
   isAiGenerated,
-  lang,
+  lang = 'en',
+  user,
+  adminUser,
+  onClose,
+  onNavigateBack,
+  onLanguageChange,
   onGetFileLocal,
   onDownload,
   onPagesTextExtracted,
@@ -561,6 +1285,166 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   const [activePageNum, setActivePageNum] = useState<number>(1);
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState<number>(1.2);
+
+  // Language and Multilingual Translations for PDF Viewer
+  const currentLangCode: LanguageCode = (lang && PDF_VIEWER_I18N[lang]) ? lang : 'en';
+  const tPdf = PDF_VIEWER_I18N[currentLangCode] || PDF_VIEWER_I18N.en;
+
+  // View Mode: For AI generated files, strictly lock to 'reader' mode (Smart Reader).
+  // For Admin-uploaded PDFs, lock strictly to 'canvas' mode (Original PDF document as it is).
+  const isAiGen = Boolean(isAiGenerated);
+  const [viewMode, setViewMode] = useState<'canvas' | 'reader'>(() => {
+    return isAiGen ? 'reader' : 'canvas';
+  });
+  const effectiveViewMode = isAiGen ? 'reader' : 'canvas';
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState<boolean>(false);
+  const [readerFontSize, setReaderFontSize] = useState<number>(16);
+  const [readerTheme, setReaderTheme] = useState<'light' | 'sepia' | 'dark'>('light');
+
+  // Chatbot Resizing and Freely Showcase (Fullscreen) Modes
+  const [aiPanelWidth, setAiPanelWidth] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('gyaan_ai_panel_width');
+      if (saved) return Math.max(300, Math.min(900, parseInt(saved, 10)));
+    }
+    return 440;
+  });
+  const [aiPanelMode, setAiPanelMode] = useState<'split' | 'fullscreen'>('split');
+  const [isResizingActive, setIsResizingActive] = useState<boolean>(false);
+  const isResizingAiRef = useRef<boolean>(false);
+  const resizeStartXRef = useRef<number>(0);
+  const resizeStartWidthRef = useRef<number>(440);
+
+  // Mouse drag handler to resize AI chatbot panel width
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizingAiRef.current = true;
+    resizeStartXRef.current = e.clientX;
+    resizeStartWidthRef.current = aiPanelWidth;
+    setIsResizingActive(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isResizingAiRef.current) return;
+      // Dragging to the left increases width (since panel is on right)
+      const deltaX = resizeStartXRef.current - moveEvent.clientX;
+      const maxWidth = Math.max(340, window.innerWidth * 0.85);
+      const newWidth = Math.max(300, Math.min(maxWidth, resizeStartWidthRef.current + deltaX));
+      setAiPanelWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isResizingAiRef.current = false;
+      setIsResizingActive(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      try {
+        localStorage.setItem('gyaan_ai_panel_width', String(aiPanelWidth));
+      } catch (_) {}
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [aiPanelWidth]);
+
+  // Touch drag handler to resize AI chatbot panel on tablets
+  const handleResizeTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    isResizingAiRef.current = true;
+    resizeStartXRef.current = e.touches[0].clientX;
+    resizeStartWidthRef.current = aiPanelWidth;
+    setIsResizingActive(true);
+
+    const handleTouchMove = (moveEvent: TouchEvent) => {
+      if (!isResizingAiRef.current || moveEvent.touches.length !== 1) return;
+      const deltaX = resizeStartXRef.current - moveEvent.touches[0].clientX;
+      const maxWidth = Math.max(340, window.innerWidth * 0.85);
+      const newWidth = Math.max(300, Math.min(maxWidth, resizeStartWidthRef.current + deltaX));
+      setAiPanelWidth(newWidth);
+    };
+
+    const handleTouchEnd = () => {
+      isResizingAiRef.current = false;
+      setIsResizingActive(false);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+  }, [aiPanelWidth]);
+
+  // Handler for top language selector change
+  const handleTopLanguageSelect = (code: LanguageCode) => {
+    if (code === 'hi') setTargetLanguage('Hindi');
+    else if (code === 'gu') setTargetLanguage('Gujarati');
+    else if (code === 'mr') setTargetLanguage('Marathi');
+    else if (code === 'ta') setTargetLanguage('Tamil');
+    else if (code === 'te') setTargetLanguage('Telugu');
+    else setTargetLanguage('English');
+
+    if (onLanguageChange) {
+      onLanguageChange(code);
+    }
+  };
+
+  // Handle PDF download
+  const handleDownloadSmartReader = async () => {
+    if (isDownloadingPdf) return;
+    try {
+      setIsDownloadingPdf(true);
+
+      // For admin-uploaded PDFs (not AI generated), trigger direct original PDF file download!
+      if (!isAiGen) {
+        if (onDownload) {
+          await onDownload();
+          setToastMessage('Downloading original PDF file...');
+          setTimeout(() => setToastMessage(null), 3000);
+          return;
+        }
+
+        const targetUrl = fileDataUrl;
+        if (targetUrl) {
+          const a = document.createElement('a');
+          a.href = targetUrl;
+          a.download = fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setToastMessage('Downloading original PDF file...');
+          setTimeout(() => setToastMessage(null), 3000);
+          return;
+        }
+      }
+
+      // For AI generated documents only, export formatted Smart Reader PDF
+      setToastMessage('Generating Smart Reader PDF...');
+      const textToExport = fullContent || pagesText.map(p => `## Page ${p.pageNum}\n\n${p.text}`).join('\n\n') || fileName;
+      await downloadSmartReaderPdf(
+        fileName.replace(/\.pdf$/i, ''),
+        lang?.toUpperCase() || 'Study Material',
+        'Student Edition',
+        targetLanguage || (lang === 'hi' ? 'Hindi' : lang === 'gu' ? 'Gujarati' : 'English'),
+        textToExport,
+        'Smart Reader Study Guide'
+      );
+      setToastMessage('Downloaded Smart Reader PDF!');
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err) {
+      console.error("PDF download error:", err);
+      if (onDownload) {
+        onDownload();
+      } else {
+        setToastMessage('Failed to export PDF');
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   const getPageFallbackText = useCallback((pageNum: number, totalPages: number): string => {
     if (!fullContent) return '';
@@ -615,7 +1499,20 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     }
   }, [lang]);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
-  const [aiMessages, setAiMessages] = useState<{ id: string; sender: 'user' | 'assistant'; text: string; timestamp: string }[]>([
+  const [replyingTo, setReplyingTo] = useState<{ id: string; sender: 'user' | 'assistant'; text: string } | null>(null);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [isPlayingVoice, setIsPlayingVoice] = useState<string | null>(null);
+  const [pdfExportMessage, setPdfExportMessage] = useState<{ id: string; sender: 'user' | 'assistant'; text: string; timestamp: string } | null>(null);
+  const [pdfExportQuestion, setPdfExportQuestion] = useState<string>('');
+  const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
+
+  const [aiMessages, setAiMessages] = useState<{
+    id: string;
+    sender: 'user' | 'assistant';
+    text: string;
+    timestamp: string;
+    replyTo?: { id: string; sender: 'user' | 'assistant'; text: string };
+  }[]>([
     {
       id: 'ai-welcome',
       sender: 'assistant',
@@ -625,6 +1522,160 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   ]);
   const [aiPromptInput, setAiPromptInput] = useState<string>('');
   const aiChatScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const copyMessageToClipboard = useCallback((msg: { id: string; text: string }) => {
+    navigator.clipboard.writeText(msg.text).then(() => {
+      setCopiedMessageId(msg.id);
+      setToastMessage('Copied response to clipboard!');
+      setTimeout(() => {
+        setCopiedMessageId(null);
+        setToastMessage(null);
+      }, 2000);
+    }).catch(err => {
+      console.error("Failed to copy message:", err);
+    });
+  }, []);
+
+  const speakMessageAloud = useCallback((msg: { id: string; text: string }) => {
+    if (isPlayingVoice === msg.id) {
+      stopSpeaking();
+      setIsPlayingVoice(null);
+    } else {
+      stopSpeaking();
+      setIsPlayingVoice(msg.id);
+      const codeMap: Record<string, LanguageCode> = {
+        'English': 'en',
+        'Hindi': 'hi',
+        'Gujarati': 'gu',
+        'Marathi': 'mr',
+        'Tamil': 'ta',
+        'Telugu': 'te',
+      };
+      const speechLang = codeMap[targetLanguage] || 'en';
+      speakText(
+        msg.text,
+        speechLang,
+        'AI Solver',
+        '🤖 AI Solver Chatbot',
+        () => setIsPlayingVoice(null)
+      );
+    }
+  }, [isPlayingVoice, targetLanguage]);
+
+  const exportMessageToPDF = useCallback((msg: { id: string; sender: 'user' | 'assistant'; text: string; timestamp: string }) => {
+    let userQuestion = "";
+    const idx = aiMessages.findIndex(m => m.id === msg.id);
+    if (idx > 0) {
+      for (let i = idx - 1; i >= 0; i--) {
+        if (aiMessages[i].sender === 'user') {
+          userQuestion = aiMessages[i].text;
+          break;
+        }
+      }
+    }
+
+    const codeMap: Record<string, LanguageCode> = {
+      'English': 'en',
+      'Hindi': 'hi',
+      'Gujarati': 'gu',
+      'Marathi': 'mr',
+      'Tamil': 'ta',
+      'Telugu': 'te',
+    };
+    const speechLang = codeMap[targetLanguage] || 'en';
+
+    speakText(
+      targetLanguage === 'Hindi' 
+        ? "आपका अध्ययन समाधान PDF तैयार किया जा रहा है..." 
+        : "Preparing your study solution report PDF...",
+      speechLang
+    );
+
+    setPdfExportMessage(msg);
+    setPdfExportQuestion(userQuestion);
+    setIsExportingPDF(true);
+
+    setTimeout(() => {
+      const element = document.getElementById("pdf-canvas-viewer-render-template");
+      if (!element) {
+        setIsExportingPDF(false);
+        setPdfExportMessage(null);
+        return;
+      }
+
+      html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#0f172a',
+        logging: false,
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+        const printWidth = pageWidth - (margin * 2);
+
+        const canvasWidth = canvas.width;
+        const canvasHeight = canvas.height;
+        const printHeight = printWidth * (canvasHeight / canvasWidth);
+
+        if (printHeight <= pageHeight - (margin * 2)) {
+          pdf.addImage(imgData, 'PNG', margin, margin, printWidth, printHeight);
+        } else {
+          let heightLeft = printHeight;
+          let position = margin;
+
+          pdf.addImage(imgData, 'PNG', margin, position, printWidth, printHeight);
+          heightLeft -= (pageHeight - margin * 2);
+
+          while (heightLeft > 0) {
+            position = heightLeft - printHeight + margin;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', margin, position, printWidth, printHeight);
+            heightLeft -= pageHeight;
+          }
+        }
+
+        pdf.save(`GyaanBot_AI_Solver_Page_${activePageNum}.pdf`);
+        setToastMessage('Downloaded Solution PDF!');
+        setTimeout(() => setToastMessage(null), 3000);
+      }).catch(err => {
+        console.error("Failed to generate PDF:", err);
+        setToastMessage('Failed to download PDF');
+        setTimeout(() => setToastMessage(null), 3000);
+      }).finally(() => {
+        setIsExportingPDF(false);
+        setPdfExportMessage(null);
+      });
+    }, 250);
+  }, [aiMessages, activePageNum, targetLanguage]);
+
+  const handleClearChat = useCallback(() => {
+    setAiMessages([
+      {
+        id: 'ai-welcome-' + Date.now(),
+        sender: 'assistant',
+        text: `Chat cleared. Hello! I am your **AI Study Task Assistant** for **${fileName}**. How can I help you with Page ${activePageNum}?`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+    setReplyingTo(null);
+    setToastMessage('Chat history cleared');
+    setTimeout(() => setToastMessage(null), 2500);
+  }, [fileName, activePageNum]);
+
+  const handleRegenerateLast = useCallback(() => {
+    const lastUserMsg = [...aiMessages].reverse().find(m => m.sender === 'user');
+    if (lastUserMsg) {
+      handleRunAiTask('chat', lastUserMsg.text);
+    }
+  }, [aiMessages]);
 
   const [pageInputVal, setPageInputVal] = useState<string>('1');
   const [isEditingPageInput, setIsEditingPageInput] = useState<boolean>(false);
@@ -817,12 +1868,13 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       }
 
       const text = sel.toString().trim();
-      if (text.length > 2) {
+      if (text.length > 1) {
         try {
           const range = sel.getRangeAt(0);
           const rect = range?.getBoundingClientRect();
           if (rect && (rect.width > 0 || rect.height > 0)) {
-            setSelectedText(text);
+            const clean = cleanPdfExtractedText(text);
+            setSelectedText(clean);
             setSelectionPos({
               x: Math.max(10, Math.min(window.innerWidth - 240, rect.left + rect.width / 2 - 110)),
               y: Math.max(10, rect.top - 52)
@@ -913,6 +1965,12 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   // Load PDF Engine with high-performance caching
   useEffect(() => {
     let isMounted = true;
+
+    // For AI generated files, bypass PDF.js canvas engine since Smart Reader handles rendering directly
+    if (isAiGen) {
+      setLoading(false);
+      return;
+    }
 
     // Check memory cache first for 0ms instant loading
     const cacheKey = fileDataUrl ? `url_${fileDataUrl.slice(0, 100)}_${fileDataUrl.length}` : `id_${fileId}`;
@@ -1049,6 +2107,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           if (!text && fullContent) {
             text = getPageFallbackText(i, pdfDoc.numPages);
           }
+          text = cleanPdfExtractedText(text);
           extracted.push({ pageNum: i, text });
         }
         if (isMounted) {
@@ -1131,7 +2190,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
   const handleCopySelectedText = () => {
     if (selectedText) {
-      navigator.clipboard.writeText(selectedText);
+      const cleanText = convertKrutiDevToUnicode(selectedText);
+      navigator.clipboard.writeText(cleanText);
       triggerToast(`Copied selected text to clipboard!`);
       setSelectedText('');
       setSelectionPos(null);
@@ -1140,7 +2200,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
   // AI Task execution handler
   const handleRunAiTask = async (
-    taskType: 'translate_page' | 'translate_doc' | 'summarize_page' | 'summarize_doc' | 'solve_questions' | 'short_notes' | 'key_concepts' | 'quiz' | 'simplify' | 'explain_selection' | 'chat',
+    taskType: 'translate_page' | 'translate_doc' | 'summarize_page' | 'summarize_doc' | 'solve_questions' | 'short_notes' | 'key_concepts' | 'quiz' | 'simplify' | 'explain_selection' | 'translate_selection' | 'chat',
     customPrompt?: string,
     targetPageNum?: number
   ) => {
@@ -1154,61 +2214,93 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     let promptText = '';
     let userDisplayMsg = '';
 
+    // Convert KrutiDev/ASCII font characters if selectedText contains legacy Indian PDF encoding
+    const cleanSelection = selectedText ? convertKrutiDevToUnicode(selectedText) : '';
+
     switch (taskType) {
       case 'translate_page':
         userDisplayMsg = `Translate Page ${pageNumToUse} (${targetLanguage})`;
-        promptText = `Translate the entire text content of Page ${pageNumToUse} of the study material "${fileName}" into ${targetLanguage}. Maintain accurate educational terminology, clear headings, and structured bullet formatting.\n\nPage Content:\n${currentPageText || fullDocText}`;
+        promptText = `CRITICAL INSTRUCTION: You are a professional multilingual educational translator. Translate the entire text content of Page ${pageNumToUse} of the study material "${fileName}" into ${targetLanguage} ONLY. Do NOT output any introductory phrases in English. Do NOT mix English into the translated text except for standard scientific units or chemical formulas. Every single sentence and heading must be fully translated into ${targetLanguage}.\n\nPage Content to Translate:\n${currentPageText || fullDocText}`;
         break;
       case 'translate_doc':
         userDisplayMsg = `Translate PDF Document (${targetLanguage})`;
-        promptText = `Translate the key topics and content of the PDF document "${fileName}" into ${targetLanguage}. Maintain accurate educational terminology, clear headings, and structured bullet formatting.\n\nDocument Content:\n${fullDocText}`;
+        promptText = `CRITICAL INSTRUCTION: You are a professional multilingual educational translator. Translate the key topics and content of the PDF document "${fileName}" into ${targetLanguage} ONLY. Do NOT output any conversational filler or English introduction. Every sentence, heading, and conclusion must be fully translated into ${targetLanguage}.\n\nDocument Content to Translate:\n${fullDocText}`;
         break;
       case 'summarize_page':
         userDisplayMsg = `Summarize Page ${pageNumToUse}`;
-        promptText = `Please provide a clear, structured bulleted summary of Page ${pageNumToUse} of the study material "${fileName}".\n\nPage Text Content:\n${currentPageText}`;
+        promptText = `Please provide a clear, structured bulleted summary of Page ${pageNumToUse} of the study material "${fileName}" in ${targetLanguage === 'English' ? 'English' : `${targetLanguage} (Translate all summary points fully into ${targetLanguage})`}.\n\nPage Text Content:\n${currentPageText}`;
         break;
       case 'summarize_doc':
         userDisplayMsg = `Summarize entire PDF document`;
-        promptText = `Please provide an executive summary, key takeaways, and chapter breakdown for the PDF study material "${fileName}".\n\nDocument Content:\n${fullDocText}`;
+        promptText = `Please provide an executive summary, key takeaways, and chapter breakdown for the PDF study material "${fileName}" in ${targetLanguage === 'English' ? 'English' : `${targetLanguage} (Translate all points fully into ${targetLanguage})`}.\n\nDocument Content:\n${fullDocText}`;
         break;
       case 'solve_questions':
         userDisplayMsg = `Solve Questions on Page ${pageNumToUse}`;
-        promptText = `Identify and solve all practice questions, exercises, or numerical problems found in Page ${pageNumToUse} of "${fileName}". Provide step-by-step solutions, formulas used, and final answers clearly formatted in markdown.\n\nPage Content:\n${currentPageText || fullDocText}`;
+        promptText = `Identify and solve all practice questions, exercises, or numerical problems found in Page ${pageNumToUse} of "${fileName}". Provide step-by-step solutions, formulas used, and final answers fully translated into ${targetLanguage}.\n\nPage Content:\n${currentPageText || fullDocText}`;
         break;
       case 'short_notes':
         userDisplayMsg = `Create Revision Short Notes for Page ${pageNumToUse}`;
-        promptText = `Create concise, high-yield revision short notes, formula cheat sheet, and memory key points for Page ${pageNumToUse} of "${fileName}".\n\nPage Content:\n${currentPageText || fullDocText}`;
+        promptText = `Create concise, high-yield revision short notes, formula cheat sheet, and memory key points for Page ${pageNumToUse} of "${fileName}" fully written in ${targetLanguage}.\n\nPage Content:\n${currentPageText || fullDocText}`;
         break;
       case 'key_concepts':
         userDisplayMsg = `Extract key concepts & formulas (Page ${pageNumToUse})`;
-        promptText = `Extract all key definitions, formulas, rules, and core concepts from Page ${pageNumToUse} (and document overview) of "${fileName}". Present them clearly with bullet points and bold headers.\n\nContext:\n${currentPageText || fullDocText}`;
+        promptText = `Extract all key definitions, formulas, rules, and core concepts from Page ${pageNumToUse} of "${fileName}" fully presented in ${targetLanguage}.\n\nContext:\n${currentPageText || fullDocText}`;
         break;
       case 'quiz':
         userDisplayMsg = `Generate 5 Practice Questions (Page ${pageNumToUse})`;
-        promptText = `Create 5 multiple choice questions (with options A, B, C, D and detailed correct answer explanations) based on Page ${pageNumToUse} of "${fileName}".\n\nContent:\n${currentPageText || fullDocText}`;
+        promptText = `Create 5 multiple choice questions (with options A, B, C, D and detailed correct answer explanations) based on Page ${pageNumToUse} of "${fileName}". All questions, options, and explanations must be written in ${targetLanguage}.\n\nContent:\n${currentPageText || fullDocText}`;
         break;
       case 'simplify':
         userDisplayMsg = `Simplify language for students (Page ${pageNumToUse})`;
-        promptText = `Rewrite and explain the concepts in Page ${pageNumToUse} of "${fileName}" in simple, friendly, easy-to-understand language suitable for school students.\n\nContent:\n${currentPageText}`;
+        promptText = `Rewrite and explain the concepts in Page ${pageNumToUse} of "${fileName}" in simple, friendly, easy-to-understand language suitable for school students, fully written in ${targetLanguage}.\n\nContent:\n${currentPageText}`;
         break;
-      case 'explain_selection':
-        userDisplayMsg = `Explain selected text: "${selectedText.slice(0, 60)}..."`;
-        promptText = `Explain the following selected text excerpt from "${fileName}" (Page ${pageNumToUse}) in detail with simple analogies:\n\n"${selectedText}"`;
+      case 'explain_selection': {
+        const shortSnippet = cleanSelection.length > 55 ? `${cleanSelection.slice(0, 55)}...` : cleanSelection;
+        const labels: Record<string, string> = {
+          'Hindi': `चयनित पाठ स्पष्ट करें: "${shortSnippet}"`,
+          'Gujarati': `પસંદ કરેલ લખાણ સ્પષ્ટ કરો: "${shortSnippet}"`,
+          'Marathi': `निवडलेला मजकूर स्पष्ट करा: "${shortSnippet}"`,
+          'Tamil': `தேர்ந்தெடுக்கப்பட்ட உரையை விளக்கவும்: "${shortSnippet}"`,
+          'Telugu': `ఎంచుకున్న వచనాన్ని వివరించండి: "${shortSnippet}"`,
+        };
+        userDisplayMsg = labels[targetLanguage] || `Explain selected text: "${shortSnippet}"`;
+        promptText = `Explain the following selected text excerpt from "${fileName}" (Page ${pageNumToUse}) in detail with simple analogies, written in ${targetLanguage}:\n\n"${cleanSelection}"\n\nFull Active Page Context:\n${currentPageText}`;
         break;
+      }
+      case 'translate_selection': {
+        const shortSnippet = cleanSelection.length > 50 ? `${cleanSelection.slice(0, 50)}...` : cleanSelection;
+        const labels: Record<string, string> = {
+          'Hindi': `चयनित पाठ का अनुवाद करें: "${shortSnippet}"`,
+          'Gujarati': `પસંદ કરેલ લખાણનું અનુવાદ કરો: "${shortSnippet}"`,
+          'Marathi': `निवडलेल्या मजकुराचे भाषांतर करा: "${shortSnippet}"`,
+          'Tamil': `தேர்ந்தெடுக்கப்பட்ட உரையை மொழிபெயர்க்கவும்: "${shortSnippet}"`,
+          'Telugu': `ఎంచుకున్న వచనాన్ని అనువదించండి: "${shortSnippet}"`,
+        };
+        userDisplayMsg = labels[targetLanguage] || `Translate selected text into ${targetLanguage}: "${shortSnippet}"`;
+        promptText = `CRITICAL INSTRUCTION: You are a professional translator. Translate the following selected text excerpt from "${fileName}" into ${targetLanguage} strictly and completely. Do NOT include any English introductory text, quotation marks, or English explanations. Return ONLY the direct translation in ${targetLanguage}.\n\nText to Translate:\n"${cleanSelection}"\n\nFull Active Page Context:\n${currentPageText}`;
+        break;
+      }
       case 'chat':
         userDisplayMsg = customPrompt || `Question about Page ${pageNumToUse}`;
         promptText = `Study Material Document: "${fileName}"\nActive Page: ${pageNumToUse}\n\nContext Page Text:\n${currentPageText}\n\nStudent Question: ${customPrompt}`;
         break;
     }
 
+    if (replyingTo) {
+      promptText = `[User is Replying to Previous Message (${replyingTo.sender === 'assistant' ? 'AI Solver' : 'Student'}): "${replyingTo.text}"]\n\n${promptText}`;
+    }
+
+    const currentReply = replyingTo;
     const newUserMsg = {
       id: 'usr-' + Date.now(),
       sender: 'user' as const,
       text: userDisplayMsg,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      replyTo: currentReply ? { id: currentReply.id, sender: currentReply.sender, text: currentReply.text } : undefined
     };
 
     setAiMessages(prev => [...prev, newUserMsg]);
+    setReplyingTo(null);
 
     try {
       const data = await safeFetchJson('/api/gemini/chat', {
@@ -1321,7 +2413,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       
       {/* Toast Feedback Popup */}
       {toastMessage && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-bold text-xs px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 border border-emerald-400/30 animate-bounce">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white font-bold text-xs px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 border border-emerald-400/30 animate-bounce">
           <Check className="w-4 h-4 text-emerald-200" />
           <span>{toastMessage}</span>
         </div>
@@ -1334,19 +2426,17 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           style={{ left: `${selectionPos.x}px`, top: `${selectionPos.y}px` }}
           className="fixed z-50 bg-slate-950 border border-slate-700/80 shadow-2xl rounded-2xl p-1.5 flex items-center gap-1.5 text-white animate-fade-in select-none"
         >
-          {!isAiGenerated && (
-            <button
-              onClick={() => {
-                handleCopySelectedText();
-                window.getSelection()?.removeAllRanges();
-              }}
-              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md"
-              title="Copy Selected Text"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span>Copy Text</span>
-            </button>
-          )}
+          <button
+            onClick={() => {
+              handleCopySelectedText();
+              window.getSelection()?.removeAllRanges();
+            }}
+            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md"
+            title={tPdf.copyFullText}
+          >
+            <Copy className="w-3.5 h-3.5" />
+            <span>{tPdf.copyFullText}</span>
+          </button>
           <button
             onClick={() => {
               handleRunAiTask('explain_selection');
@@ -1360,9 +2450,32 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             <span>Explain</span>
           </button>
           <button
-            onClick={() => speakText(selectedText, 'en')}
+            onClick={() => {
+              handleRunAiTask('translate_selection');
+              setSelectedText('');
+              setSelectionPos(null);
+            }}
+            className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md"
+            title={`Translate Selected Text to ${targetLanguage}`}
+          >
+            <Languages className="w-3.5 h-3.5 text-purple-200" />
+            <span>{tPdf.translate}</span>
+          </button>
+          <button
+            onClick={() => {
+              const codeMap: Record<string, LanguageCode> = {
+                'English': 'en',
+                'Hindi': 'hi',
+                'Gujarati': 'gu',
+                'Marathi': 'mr',
+                'Tamil': 'ta',
+                'Telugu': 'te',
+              };
+              const speechLang = codeMap[targetLanguage] || 'hi';
+              speakText(cleanPdfExtractedText(selectedText), speechLang);
+            }}
             className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer"
-            title="Read Selection Aloud"
+            title={`Read Selection Aloud (${targetLanguage})`}
           >
             <Volume2 className="w-3.5 h-3.5" />
           </button>
@@ -1384,97 +2497,173 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       <div className="flex flex-col bg-slate-950 border-b border-slate-800 shrink-0 z-20">
         
         {/* Main Toolbar Row */}
-        <div className="flex items-center justify-between px-2.5 sm:px-4 py-2 text-xs text-slate-300 gap-2 shrink-0">
+        <div className="flex items-center justify-between px-2.5 sm:px-4 py-2 text-xs text-slate-300 gap-2 shrink-0 flex-wrap">
           
-          {/* Left: Interactive Page Number Navigation & Jump */}
-          <div className="flex items-center gap-1">
-            {/* First Page Shortcut (Desktop) */}
-            <button
-              onClick={() => jumpToPage(1)}
-              disabled={activePageNum <= 1}
-              className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white hidden sm:block"
-              title="First Page (Page 1)"
-            >
-              <ChevronsLeft className="h-4 w-4" />
-            </button>
+          {/* Left: View Mode / Document Title Badge + Font Controls */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            
+            {/* For AI Generated PDFs: Display exclusively the Smart Reader Badge */}
+            {isAiGen ? (
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs rounded-xl shadow-xs shrink-0">
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>{tPdf.smartReader}</span>
+              </div>
+            ) : (
+              /* For Standard Admin Uploaded PDFs: Show original PDF document badge (No Smart Reader option) */
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-800 text-slate-200 font-bold text-xs rounded-xl shadow-xs shrink-0 max-w-[280px] sm:max-w-[400px] truncate">
+                <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">{fileName}</span>
+              </div>
+            )}
 
-            {/* Previous Page */}
-            <button
-              onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
-              disabled={activePageNum <= 1}
-              className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
-              title="Previous Page"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
+            {/* Page Navigation Controls (Canvas Mode Only) */}
+            {!isAiGen && viewMode === 'canvas' && (
+              <div className="flex items-center gap-1">
+                {/* First Page Shortcut (Desktop) */}
+                <button
+                  onClick={() => jumpToPage(1)}
+                  disabled={activePageNum <= 1}
+                  className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white hidden sm:block"
+                  title={tPdf.firstPage}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </button>
 
-            {/* Page Number Indicator / Direct Input */}
-            <div className="flex items-center gap-1.5 bg-slate-900/90 px-2 py-1 rounded-xl border border-slate-800 shrink-0 whitespace-nowrap">
-              <span className="text-[11px] font-bold text-slate-400 hidden sm:inline select-none">Page</span>
-              
-              <form onSubmit={handlePageInputSubmit} className="flex items-center">
-                <input
-                  type="number"
-                  min={1}
-                  max={numPages || 1}
-                  value={pageInputVal}
-                  onFocus={() => setIsEditingPageInput(true)}
-                  onChange={(e) => setPageInputVal(e.target.value)}
-                  onBlur={() => handlePageInputSubmit()}
-                  className="w-10 sm:w-12 h-6 bg-slate-950 border border-slate-700/80 focus:border-emerald-500 rounded-lg text-center font-bold text-emerald-400 text-xs py-0 px-1 focus:outline-none transition-colors shadow-inner"
-                  title="Type page number and press Enter"
-                />
-              </form>
+                {/* Previous Page */}
+                <button
+                  onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
+                  disabled={activePageNum <= 1}
+                  className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
+                  title={tPdf.previousPage}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
 
-              <span className="text-slate-400 text-xs font-mono select-none flex items-center gap-1 whitespace-nowrap">
-                <span>/</span>
-                <strong className="text-slate-200 font-bold">{numPages || 1}</strong>
-              </span>
-            </div>
+                {/* Page Number Indicator / Direct Input */}
+                <div className="flex items-center gap-1.5 bg-slate-900/90 px-2 py-1 rounded-xl border border-slate-800 shrink-0 whitespace-nowrap">
+                  <span className="text-[11px] font-bold text-slate-400 hidden sm:inline select-none">{tPdf.page}</span>
+                  
+                  <form onSubmit={handlePageInputSubmit} className="flex items-center">
+                    <input
+                      type="number"
+                      min={1}
+                      max={numPages || 1}
+                      value={pageInputVal}
+                      onFocus={() => setIsEditingPageInput(true)}
+                      onChange={(e) => setPageInputVal(e.target.value)}
+                      onBlur={() => handlePageInputSubmit()}
+                      className="w-10 sm:w-12 h-6 bg-slate-950 border border-slate-700/80 focus:border-emerald-500 rounded-lg text-center font-bold text-emerald-400 text-xs py-0 px-1 focus:outline-none transition-colors shadow-inner"
+                      title="Type page number and press Enter"
+                    />
+                  </form>
 
-            {/* Next Page */}
-            <button
-              onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
-              disabled={activePageNum >= numPages}
-              className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
-              title="Next Page"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+                  <span className="text-slate-400 text-xs font-mono select-none flex items-center gap-1 whitespace-nowrap">
+                    <span>/</span>
+                    <strong className="text-slate-200 font-bold">{numPages || 1}</strong>
+                  </span>
+                </div>
 
-            {/* Last Page Shortcut (Desktop) */}
-            <button
-              onClick={() => numPages > 0 && jumpToPage(numPages)}
-              disabled={activePageNum >= numPages}
-              className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white hidden sm:block"
-              title={`Last Page (Page ${numPages})`}
-            >
-              <ChevronsRight className="h-4 w-4" />
-            </button>
+                {/* Next Page */}
+                <button
+                  onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
+                  disabled={activePageNum >= numPages}
+                  className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
+                  title={tPdf.nextPage}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
 
-            {/* Hand Tool / Text Select Tool Toggle */}
-            <button
-              onClick={() => setIsPanMode(!isPanMode)}
-              className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
-                isPanMode
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs'
-                  : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border-slate-800'
-              }`}
-              title={isPanMode ? "Hand / Pan Tool Active (Click to switch to Text Select)" : "Text Selection Mode (Click for Hand / Pan Tool)"}
-            >
-              {isPanMode ? <Hand className="w-3.5 h-3.5" /> : <MousePointer className="w-3.5 h-3.5" />}
-              <span className="hidden xl:inline">{isPanMode ? "Hand Tool" : "Select Text"}</span>
-            </button>
+                {/* Last Page Shortcut (Desktop) */}
+                <button
+                  onClick={() => numPages > 0 && jumpToPage(numPages)}
+                  disabled={activePageNum >= numPages}
+                  className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white hidden sm:block"
+                  title={`${tPdf.lastPage} (Page ${numPages})`}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </button>
+
+                {/* Hand Tool / Text Select Tool Toggle */}
+                <button
+                  onClick={() => setIsPanMode(!isPanMode)}
+                  className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
+                    isPanMode
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs'
+                      : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border-slate-800'
+                  }`}
+                  title={isPanMode ? `${tPdf.handTool}` : `${tPdf.selectText}`}
+                >
+                  {isPanMode ? <Hand className="w-3.5 h-3.5" /> : <MousePointer className="w-3.5 h-3.5" />}
+                  <span className="hidden xl:inline">{isPanMode ? tPdf.handTool : tPdf.selectText}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Smart Reader Specific Toolbar (Font Controls & Theme Switcher) */}
+            {(isAiGen || viewMode === 'reader') && (
+              <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 shrink-0">
+                {/* Font Size decrease */}
+                <button
+                  onClick={() => setReaderFontSize(prev => Math.max(13, prev - 1))}
+                  className="px-2 py-0.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white font-bold text-xs cursor-pointer transition-colors"
+                  title="Decrease Text Size (A-)"
+                >
+                  A-
+                </button>
+                <span className="text-[11px] font-mono text-slate-400 font-bold px-0.5">
+                  {readerFontSize}px
+                </span>
+                {/* Font Size increase */}
+                <button
+                  onClick={() => setReaderFontSize(prev => Math.min(22, prev + 1))}
+                  className="px-2 py-0.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white font-bold text-xs cursor-pointer transition-colors"
+                  title="Increase Text Size (A+)"
+                >
+                  A+
+                </button>
+
+                <div className="h-4 w-px bg-slate-800 mx-0.5" />
+
+                {/* Theme options */}
+                <button
+                  onClick={() => setReaderTheme('light')}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
+                    readerTheme === 'light' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Light Theme"
+                >
+                  {tPdf.light}
+                </button>
+                <button
+                  onClick={() => setReaderTheme('sepia')}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
+                    readerTheme === 'sepia' ? 'bg-[#ebd9b2] text-[#433422] shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Sepia Theme"
+                >
+                  {tPdf.sepia}
+                </button>
+                <button
+                  onClick={() => setReaderTheme('dark')}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
+                    readerTheme === 'dark' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Dark Theme"
+                >
+                  {tPdf.dark}
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Center: Desktop Word Search Field */}
-          {!isAiGenerated && (
+          {/* Center: Desktop Word Search Field (Standard PDFs only) */}
+          {!isAiGen && (
             <div className="hidden lg:flex items-center gap-2 flex-1 max-w-xs min-w-[160px] relative mx-2">
               <div className="relative w-full">
                 <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-slate-500" />
                 <input
                   type="text"
-                  placeholder="Search in PDF..."
+                  placeholder={tPdf.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-7 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
@@ -1494,11 +2683,11 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             </div>
           )}
 
-          {/* Right Side: Zoom Controls & Quick Actions */}
+          {/* Right Side: Quick Actions & Download */}
           <div className="flex items-center gap-1 sm:gap-1.5">
             
-            {/* Mobile Search Toggle Button */}
-            {!isAiGenerated && (
+            {/* Mobile Search Toggle Button (Standard PDFs) */}
+            {!isAiGen && (
               <button
                 onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
                 className={`p-1.5 rounded-xl cursor-pointer transition-colors lg:hidden ${
@@ -1512,75 +2701,79 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               </button>
             )}
 
-            {/* Zoom Controls Pill with Preset Menu */}
-            <div className="relative flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5">
-              <button
-                onClick={zoomOut}
-                className="p-1 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white cursor-pointer"
-                title="Zoom Out"
-              >
-                <ZoomOut className="h-3.5 w-3.5" />
-              </button>
-              
-              <button
-                onClick={() => setShowZoomMenu(!showZoomMenu)}
-                className="px-1.5 sm:px-2 py-0.5 font-mono text-[11px] text-slate-300 hover:text-white font-bold cursor-pointer rounded transition-colors"
-                title="Click for Zoom Presets"
-              >
-                {Math.round(scale * 100)}%
-              </button>
+            {/* Zoom Controls Pill (Standard PDFs in Canvas Mode) */}
+            {!isAiGen && viewMode === 'canvas' && (
+              <div className="relative flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5">
+                <button
+                  onClick={zoomOut}
+                  className="p-1 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white cursor-pointer"
+                  title={tPdf.zoomOut}
+                >
+                  <ZoomOut className="h-3.5 w-3.5" />
+                </button>
+                
+                <button
+                  onClick={() => setShowZoomMenu(!showZoomMenu)}
+                  className="px-1.5 sm:px-2 py-0.5 font-mono text-[11px] text-slate-300 hover:text-white font-bold cursor-pointer rounded transition-colors"
+                  title="Click for Zoom Presets"
+                >
+                  {Math.round(scale * 100)}%
+                </button>
 
-              <button
-                onClick={zoomIn}
-                className="p-1 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white cursor-pointer"
-                title="Zoom In"
-              >
-                <ZoomIn className="h-3.5 w-3.5" />
-              </button>
+                <button
+                  onClick={zoomIn}
+                  className="p-1 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white cursor-pointer"
+                  title={tPdf.zoomIn}
+                >
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </button>
 
-              {/* Zoom Presets Dropdown */}
-              {showZoomMenu && (
-                <div className="absolute top-full right-0 mt-1.5 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 min-w-[120px] animate-fade-in text-xs">
-                  <button
-                    onClick={fitWidth}
-                    className="px-2.5 py-1 text-left text-emerald-400 hover:bg-slate-900 rounded-lg font-bold flex items-center justify-between"
-                  >
-                    <span>Fit Width</span>
-                    <Maximize2 className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={fitPage}
-                    className="px-2.5 py-1 text-left text-slate-300 hover:bg-slate-900 rounded-lg"
-                  >
-                    Fit Page
-                  </button>
-                  <div className="h-px bg-slate-800 my-0.5" />
-                  {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((lvl) => (
+                {/* Zoom Presets Dropdown */}
+                {showZoomMenu && (
+                  <div className="absolute top-full right-0 mt-1.5 bg-slate-950 border border-slate-800 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 min-w-[120px] animate-fade-in text-xs">
                     <button
-                      key={`zoom-lvl-${lvl}`}
-                      onClick={() => setZoomLevel(lvl)}
-                      className={`px-2.5 py-1 text-left rounded-lg font-mono flex items-center justify-between ${
-                        Math.round(scale * 100) === Math.round(lvl * 100)
-                          ? 'bg-purple-950/60 text-purple-300 font-bold'
-                          : 'text-slate-300 hover:bg-slate-900'
-                      }`}
+                      onClick={fitWidth}
+                      className="px-2.5 py-1 text-left text-emerald-400 hover:bg-slate-900 rounded-lg font-bold flex items-center justify-between"
                     >
-                      <span>{Math.round(lvl * 100)}%</span>
-                      {Math.round(scale * 100) === Math.round(lvl * 100) && <Check className="w-3 h-3 text-purple-400" />}
+                      <span>{tPdf.fitWidth}</span>
+                      <Maximize2 className="w-3 h-3" />
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <button
+                      onClick={fitPage}
+                      className="px-2.5 py-1 text-left text-slate-300 hover:bg-slate-900 rounded-lg"
+                    >
+                      {tPdf.fitPage}
+                    </button>
+                    <div className="h-px bg-slate-800 my-0.5" />
+                    {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((lvl) => (
+                      <button
+                        key={`zoom-lvl-${lvl}`}
+                        onClick={() => setZoomLevel(lvl)}
+                        className={`px-2.5 py-1 text-left rounded-lg font-mono flex items-center justify-between ${
+                          Math.round(scale * 100) === Math.round(lvl * 100)
+                            ? 'bg-purple-950/60 text-purple-300 font-bold'
+                            : 'text-slate-300 hover:bg-slate-900'
+                        }`}
+                      >
+                        <span>{Math.round(lvl * 100)}%</span>
+                        {Math.round(scale * 100) === Math.round(lvl * 100) && <Check className="w-3 h-3 text-purple-400" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
-            {/* Fit Width Quick Button (Desktop) */}
-            <button
-              onClick={fitWidth}
-              className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 cursor-pointer hidden md:flex items-center gap-1"
-              title="Fit to Page Width"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </button>
+            {/* Fit Width Quick Button (Desktop Standard PDFs) */}
+            {!isAiGen && viewMode === 'canvas' && (
+              <button
+                onClick={fitWidth}
+                className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 cursor-pointer hidden md:flex items-center gap-1"
+                title={tPdf.fitWidth}
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
+            )}
 
             {/* AI Task Assistant Toggle Button */}
             <button
@@ -1590,26 +2783,56 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40 ring-1 ring-purple-400'
                   : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md'
               }`}
-              title="AI Study & Solver Assistant"
+              title={tPdf.aiSolverTitle}
             >
               <Bot className="h-3.5 w-3.5 text-amber-300 shrink-0" />
-              <span className="hidden sm:inline">AI Solver</span>
+              <span className="hidden sm:inline">{tPdf.aiSolver}</span>
               <span className="sm:hidden font-bold">AI</span>
+            </button>
+
+            {/* Download PDF Button */}
+            <button
+              onClick={handleDownloadSmartReader}
+              disabled={isDownloadingPdf}
+              className="px-2.5 sm:px-3 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md transition-all text-xs shrink-0 active:scale-95"
+              title={tPdf.downloadPdf}
+            >
+              {isDownloadingPdf ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">{tPdf.downloadPdf}</span>
+              <span className="sm:hidden font-bold">PDF</span>
             </button>
 
             {/* Save to Saved Material Button (Desktop) */}
             <button
               onClick={() => {
-                if (onDownload) onDownload();
-                setToastMessage('⭐ Saved to My Saved Material!');
+                setToastMessage(`⭐ ${tPdf.savedToMaterial}`);
                 setTimeout(() => setToastMessage(null), 3000);
               }}
               className="p-1.5 sm:px-2.5 sm:py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl hidden sm:flex items-center gap-1 cursor-pointer border border-amber-500/40 transition-colors text-xs shrink-0"
-              title="Save to My Material"
+              title={tPdf.save}
             >
               <Star className="h-3.5 w-3.5 text-amber-300 fill-amber-300" />
-              <span className="hidden md:inline">Save</span>
+              <span className="hidden md:inline">{tPdf.save}</span>
             </button>
+
+            {/* Close PDF Viewer Button */}
+            {(onClose || onNavigateBack) && (
+              <button
+                onClick={() => {
+                  if (onClose) onClose();
+                  else if (onNavigateBack) onNavigateBack();
+                }}
+                className="px-2.5 sm:px-3 py-1.5 bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 hover:text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer border border-rose-500/40 transition-colors text-xs shrink-0"
+                title={tPdf.closePdf}
+              >
+                <X className="h-3.5 w-3.5 text-rose-400" />
+                <span className="hidden xs:inline">{tPdf.close}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1715,223 +2938,341 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           </div>
         )}
 
-        {/* Central PDF Canvas Viewport with Virtualized Rendering & Smooth Pan Controls */}
-        <div
-          ref={scrollContainerRef}
-          onMouseDown={handleMouseDownOnViewport}
-          onMouseMove={handleMouseMoveOnViewport}
-          onMouseUp={handleMouseUpOnViewport}
-          onMouseLeave={handleMouseUpOnViewport}
-          className={`flex-1 overflow-auto bg-slate-950 flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-8 px-2 sm:px-4 scrollbar-thin select-text min-h-0 relative w-full ${
-            isPanMode
-              ? isMouseDownDragging
-                ? 'cursor-grabbing'
-                : 'cursor-grab'
-              : 'cursor-default'
-          }`}
-          style={{ height: '100%', touchAction: isPanMode ? 'none' : 'auto' }}
-        >
-          {/* Floating Left Page Arrow (Quick device accessible navigation) */}
-          {activePageNum > 1 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                jumpToPage(activePageNum - 1);
+        {/* Central PDF Canvas or Smart Reader Viewport */}
+        {isAiGen || viewMode === 'reader' ? (
+          <div className="flex-1 overflow-hidden min-h-0 relative w-full flex flex-col bg-slate-950">
+            <SmartReaderView
+              title={fileName.replace(/\.pdf$/i, '')}
+              subject={lang?.toUpperCase() || 'Study Material'}
+              std="Student Edition"
+              language={targetLanguage}
+              content={fullContent || pagesText.map(p => `## Page ${p.pageNum}\n\n${p.text}`).join('\n\n')}
+              fontSize={readerFontSize}
+              theme={readerTheme}
+              searchQuery={searchQuery}
+              onCopyAll={() => {
+                const allText = fullContent || pagesText.map(p => p.text).join('\n\n');
+                navigator.clipboard.writeText(allText);
+                triggerToast('📋 Copied full document text!');
               }}
-              className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-purple-600 text-slate-300 hover:text-white rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md transition-all cursor-pointer hidden sm:flex items-center justify-center group opacity-80 hover:opacity-100 hover:scale-110 active:scale-95"
-              title="Previous Page (Arrow Left)"
-            >
-              <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
-            </button>
-          )}
+              onToast={triggerToast}
+              onAskAi={(prompt) => handleRunAiTask('chat', prompt)}
+              onDownloadPdf={handleDownloadSmartReader}
+            />
+          </div>
+        ) : (
+          /* Central PDF Canvas Viewport with Virtualized Rendering & Smooth Pan Controls */
+          <div
+            ref={scrollContainerRef}
+            onMouseDown={handleMouseDownOnViewport}
+            onMouseMove={handleMouseMoveOnViewport}
+            onMouseUp={handleMouseUpOnViewport}
+            onMouseLeave={handleMouseUpOnViewport}
+            className={`flex-1 overflow-auto bg-slate-950 flex flex-col items-center gap-6 sm:gap-8 py-4 sm:py-8 px-2 sm:px-4 scrollbar-thin select-text min-h-0 relative w-full ${
+              isPanMode
+                ? isMouseDownDragging
+                  ? 'cursor-grabbing'
+                  : 'cursor-grab'
+                : 'cursor-default'
+            }`}
+            style={{ height: '100%', touchAction: isPanMode ? 'none' : 'auto' }}
+          >
+            {/* Floating Left Page Arrow (Quick device accessible navigation) */}
+            {activePageNum > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  jumpToPage(activePageNum - 1);
+                }}
+                className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-purple-600 text-slate-300 hover:text-white rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md transition-all cursor-pointer hidden sm:flex items-center justify-center group opacity-80 hover:opacity-100 hover:scale-110 active:scale-95"
+                title="Previous Page (Arrow Left)"
+              >
+                <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
+              </button>
+            )}
 
-          {/* Floating Right Page Arrow (Quick device accessible navigation) */}
-          {activePageNum < numPages && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                jumpToPage(activePageNum + 1);
-              }}
-              className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-purple-600 text-slate-300 hover:text-white rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md transition-all cursor-pointer hidden sm:flex items-center justify-center group opacity-80 hover:opacity-100 hover:scale-110 active:scale-95"
-              title="Next Page (Arrow Right)"
-            >
-              <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
-            </button>
-          )}
+            {/* Floating Right Page Arrow (Quick device accessible navigation) */}
+            {activePageNum < numPages && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  jumpToPage(activePageNum + 1);
+                }}
+                className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-purple-600 text-slate-300 hover:text-white rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md transition-all cursor-pointer hidden sm:flex items-center justify-center group opacity-80 hover:opacity-100 hover:scale-110 active:scale-95"
+                title="Next Page (Arrow Right)"
+              >
+                <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            )}
 
-          {loading ? (
-            <div className="my-auto flex flex-col items-center justify-center gap-3">
-              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
-              <span className="font-mono text-xs text-slate-400 font-bold">Rendering Document...</span>
-            </div>
-          ) : error ? (
-            <div className="my-auto max-w-md bg-rose-950/40 border border-rose-900/30 p-6 rounded-2xl text-center space-y-3">
-              <AlertCircle className="h-10 w-10 text-rose-500 mx-auto" />
-              <p className="text-xs text-slate-300">{error}</p>
-              <button onClick={onDownload} className="px-3 py-1.5 bg-slate-800 text-white rounded-xl text-xs font-bold">
-                Download PDF
+            {loading ? (
+              <div className="my-auto flex flex-col items-center justify-center gap-3">
+                <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+                <span className="font-mono text-xs text-slate-400 font-bold">Rendering Document...</span>
+              </div>
+            ) : error ? (
+              <div className="my-auto max-w-md bg-rose-950/40 border border-rose-900/30 p-6 rounded-2xl text-center space-y-3">
+                <AlertCircle className="h-10 w-10 text-rose-500 mx-auto" />
+                <p className="text-xs text-slate-300">{error}</p>
+                <button onClick={onDownload} className="px-3 py-1.5 bg-slate-800 text-white rounded-xl text-xs font-bold">
+                  Download PDF
+                </button>
+              </div>
+            ) : (
+              pagesArray.map((pageNum) => {
+                const activeMatch = searchResults[currentSearchResultIndex];
+                return (
+                  <PdfPageItem
+                    key={`${fileId}-p-${pageNum}`}
+                    pdfDoc={pdfDoc}
+                    pageNum={pageNum}
+                    scale={scale}
+                    rotation={rotation}
+                    pageSize={pageSize}
+                    searchQuery={searchQuery}
+                    currentActiveMatchPage={activeMatch?.pageNum}
+                    activeMatchSnippet={activeMatch?.snippet}
+                    fallbackText={getPageFallbackText(pageNum, numPages)}
+                    onPageVisible={handlePageVisible}
+                    setRef={setPageRef}
+                    onCopyPageText={handleCopyPageText}
+                    onTranslatePage={(pg) => handleRunAiTask('translate_page', undefined, pg)}
+                    onSummarizePage={(pg) => handleRunAiTask('summarize_page', undefined, pg)}
+                    onSolveQuestions={(pg) => handleRunAiTask('solve_questions', undefined, pg)}
+                    onShortNotes={(pg) => handleRunAiTask('short_notes', undefined, pg)}
+                    onAskAiPage={(pg) => handleRunAiTask('chat', `Can you explain the key concepts on Page ${pg}?`, pg)}
+                  />
+                );
+              })
+            )}
+
+            {/* Floating Quick Navigation & Zoom HUD (Designed for All Devices - Mobile, Tablet, Desktop) */}
+            <div className="sticky bottom-4 z-30 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 shadow-2xl rounded-2xl p-1 sm:p-1.5 flex items-center gap-1 sm:gap-1.5 text-white animate-fade-in">
+              {/* Prev Page Button */}
+              <button
+                onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
+                disabled={activePageNum <= 1}
+                className="p-1.5 hover:bg-slate-800 disabled:opacity-20 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {/* Page indicator */}
+              <span className="text-[11px] font-mono font-bold text-slate-300 px-1 select-none">
+                {activePageNum} / {numPages || 1}
+              </span>
+
+              {/* Next Page Button */}
+              <button
+                onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
+                disabled={activePageNum >= numPages}
+                className="p-1.5 hover:bg-slate-800 disabled:opacity-20 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              <div className="h-4 w-px bg-slate-700 mx-0.5" />
+
+              {/* Hand Pan Tool Toggle */}
+              <button
+                onClick={() => setIsPanMode(!isPanMode)}
+                className={`p-1.5 rounded-xl cursor-pointer active:scale-95 transition-all ${
+                  isPanMode
+                    ? 'bg-amber-500/30 text-amber-300 border border-amber-400/50'
+                    : 'hover:bg-slate-800 text-slate-300 hover:text-white'
+                }`}
+                title={isPanMode ? "Hand Pan Mode (Active)" : "Switch to Hand Pan Tool"}
+              >
+                <Hand className="w-4 h-4" />
+              </button>
+
+              <div className="h-4 w-px bg-slate-700 mx-0.5" />
+
+              {/* Zoom Out */}
+              <button
+                onClick={zoomOut}
+                className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+
+              {/* Fit Width */}
+              <button
+                onClick={fitWidth}
+                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-mono font-bold text-emerald-400 cursor-pointer flex items-center gap-1 transition-all"
+                title="Click to Fit to Width"
+              >
+                <span>{Math.round(scale * 100)}%</span>
+                <Maximize2 className="w-3 h-3 text-slate-400" />
+              </button>
+
+              {/* Zoom In */}
+              <button
+                onClick={zoomIn}
+                className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+
+              <div className="h-4 w-px bg-slate-700 mx-0.5" />
+
+              {/* Rotate */}
+              <button
+                onClick={rotate}
+                className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer"
+                title="Rotate 90°"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
               </button>
             </div>
-          ) : (
-            pagesArray.map((pageNum) => {
-              const activeMatch = searchResults[currentSearchResultIndex];
-              return (
-                <PdfPageItem
-                  key={`${fileId}-p-${pageNum}`}
-                  pdfDoc={pdfDoc}
-                  pageNum={pageNum}
-                  scale={scale}
-                  rotation={rotation}
-                  pageSize={pageSize}
-                  searchQuery={searchQuery}
-                  currentActiveMatchPage={activeMatch?.pageNum}
-                  activeMatchSnippet={activeMatch?.snippet}
-                  fallbackText={getPageFallbackText(pageNum, numPages)}
-                  onPageVisible={handlePageVisible}
-                  setRef={setPageRef}
-                  onCopyPageText={handleCopyPageText}
-                  onTranslatePage={(pg) => handleRunAiTask('translate_page', undefined, pg)}
-                  onSummarizePage={(pg) => handleRunAiTask('summarize_page', undefined, pg)}
-                  onSolveQuestions={(pg) => handleRunAiTask('solve_questions', undefined, pg)}
-                  onShortNotes={(pg) => handleRunAiTask('short_notes', undefined, pg)}
-                  onAskAiPage={(pg) => handleRunAiTask('chat', `Can you explain the key concepts on Page ${pg}?`, pg)}
-                />
-              );
-            })
-          )}
-
-          {/* Floating Quick Navigation & Zoom HUD (Designed for All Devices - Mobile, Tablet, Desktop) */}
-          <div className="sticky bottom-4 z-30 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 shadow-2xl rounded-2xl p-1 sm:p-1.5 flex items-center gap-1 sm:gap-1.5 text-white animate-fade-in">
-            {/* Prev Page Button */}
-            <button
-              onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
-              disabled={activePageNum <= 1}
-              className="p-1.5 hover:bg-slate-800 disabled:opacity-20 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
-              title="Previous Page"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            {/* Page indicator */}
-            <span className="text-[11px] font-mono font-bold text-slate-300 px-1 select-none">
-              {activePageNum} / {numPages || 1}
-            </span>
-
-            {/* Next Page Button */}
-            <button
-              onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
-              disabled={activePageNum >= numPages}
-              className="p-1.5 hover:bg-slate-800 disabled:opacity-20 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
-              title="Next Page"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-
-            <div className="h-4 w-px bg-slate-700 mx-0.5" />
-
-            {/* Hand Pan Tool Toggle */}
-            <button
-              onClick={() => setIsPanMode(!isPanMode)}
-              className={`p-1.5 rounded-xl cursor-pointer active:scale-95 transition-all ${
-                isPanMode
-                  ? 'bg-amber-500/30 text-amber-300 border border-amber-400/50'
-                  : 'hover:bg-slate-800 text-slate-300 hover:text-white'
-              }`}
-              title={isPanMode ? "Hand Pan Mode (Active)" : "Switch to Hand Pan Tool"}
-            >
-              <Hand className="w-4 h-4" />
-            </button>
-
-            <div className="h-4 w-px bg-slate-700 mx-0.5" />
-
-            {/* Zoom Out */}
-            <button
-              onClick={zoomOut}
-              className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
-              title="Zoom Out"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-
-            {/* Fit Width */}
-            <button
-              onClick={fitWidth}
-              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-mono font-bold text-emerald-400 cursor-pointer flex items-center gap-1 transition-all"
-              title="Click to Fit to Width"
-            >
-              <span>{Math.round(scale * 100)}%</span>
-              <Maximize2 className="w-3 h-3 text-slate-400" />
-            </button>
-
-            {/* Zoom In */}
-            <button
-              onClick={zoomIn}
-              className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer active:scale-95 transition-all"
-              title="Zoom In"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
-
-            <div className="h-4 w-px bg-slate-700 mx-0.5" />
-
-            {/* Rotate */}
-            <button
-              onClick={rotate}
-              className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer"
-              title="Rotate 90°"
-            >
-              <RotateCw className="w-3.5 h-3.5" />
-            </button>
           </div>
-        </div>
+        )}
 
-        {/* AI Task Assistant Panel (Desktop Sidebar or Mobile Overlay Drawer) */}
+        {/* AI Task Assistant Panel (Desktop Sidebar with Drag-Resize or Freely Showcase over Whole PDF Viewer) */}
         {showAiAssistant && (
-          <div className="fixed inset-0 md:static md:w-96 bg-slate-950 border-l border-slate-800 flex flex-col shrink-0 h-full overflow-hidden z-40 md:z-30 shadow-2xl animate-fade-in">
-            
-            {/* AI Assistant Header with Mobile Back Button */}
-            <div className="p-3 sm:p-3.5 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
+          <div
+            id="pdf-ai-solver-panel"
+            style={aiPanelMode === 'split' ? { width: `${aiPanelWidth}px` } : undefined}
+            className={`${
+              aiPanelMode === 'fullscreen'
+                ? 'absolute inset-0 z-40 bg-slate-950 flex flex-col w-full h-full animate-fade-in'
+                : 'fixed inset-0 md:static bg-slate-950 border-l border-slate-800 flex flex-col shrink-0 h-full overflow-hidden z-40 md:z-30 shadow-2xl animate-fade-in relative'
+            }`}
+          >
+            {/* Visual Drag Handle for Resizing when in Split View */}
+            {aiPanelMode === 'split' && (
+              <div
+                onMouseDown={handleResizeMouseDown}
+                onTouchStart={handleResizeTouchStart}
+                className={`hidden md:flex absolute top-0 bottom-0 -left-1.5 w-3 hover:w-4 items-center justify-center z-50 cursor-col-resize group transition-all select-none ${
+                  isResizingActive ? 'bg-purple-600 w-4' : 'bg-transparent hover:bg-purple-600/30'
+                }`}
+                title="Drag to resize AI Solver Chatbot"
+              >
+                <div className={`w-1 h-12 rounded-full transition-colors ${
+                  isResizingActive ? 'bg-white shadow-md' : 'bg-slate-600 group-hover:bg-purple-400'
+                }`} />
+              </div>
+            )}
+
+            {/* AI Assistant Header with Showcase/Restore Controls, Width Presets, and Close */}
+            <div className="p-2 sm:p-3 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0 gap-1.5 overflow-hidden select-none">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
                 <button
                   onClick={() => setShowAiAssistant(false)}
-                  className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white cursor-pointer md:hidden"
+                  className="p-1 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white cursor-pointer md:hidden shrink-0"
                   title="Back to PDF"
                 >
                   <ChevronLeft className="w-5 h-5 text-purple-300" />
                 </button>
-                <div className="p-1.5 sm:p-2 bg-purple-600/30 rounded-xl border border-purple-500/30 text-purple-300">
+                <div className="p-1.5 sm:p-2 bg-purple-600/30 rounded-xl border border-purple-500/30 text-purple-300 shrink-0">
                   <Bot className="w-4 h-4" />
                 </div>
-                <div>
-                  <h4 className="font-bold text-xs sm:text-sm text-slate-100 flex items-center gap-1.5">
-                    <span>AI Solver Chatbot</span>
-                    <Sparkles className="w-3 h-3 text-amber-300" />
+                <div className="min-w-0 shrink">
+                  <h4 className="font-bold text-xs sm:text-sm text-slate-100 flex items-center gap-1.5 whitespace-nowrap">
+                    <span>AI Solver</span>
+                    <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
                   </h4>
-                  <span className="text-[10px] text-slate-400 font-mono">{targetLanguage} • Page {activePageNum} of {numPages}</span>
+                  <span className="text-[10px] text-slate-400 font-mono truncate block">
+                    {targetLanguage} • {aiPanelMode === 'fullscreen' ? 'Showcase Full' : `Page ${activePageNum}`}
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <div className="w-28">
-                  <CustomSelect
-                    value={targetLanguage}
-                    onChange={(val) => setTargetLanguage(val)}
-                    options={[
-                      { value: 'English', label: 'English', badge: 'EN' },
-                      { value: 'Hindi', label: 'Hindi (हिंदी)', badge: 'HI' },
-                      { value: 'Gujarati', label: 'Gujarati (ગુજ)', badge: 'GU' },
-                      { value: 'Marathi', label: 'Marathi (मराठी)', badge: 'MR' },
-                      { value: 'Tamil', label: 'Tamil (தமிழ்)', badge: 'TA' },
-                      { value: 'Telugu', label: 'Telugu (తెలుగు)', badge: 'TE' },
-                    ]}
-                    theme="compact-dark"
-                    placeholder="Language"
-                  />
-                </div>
+              {/* Header Controls: Presets, Showcase Maximize/Minimize, Language, and Close */}
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                
+                {/* Width Preset Buttons (Desktop Split Mode) */}
+                {aiPanelMode === 'split' && (
+                  <div className="hidden xl:flex items-center bg-slate-950 border border-slate-800 rounded-xl p-0.5 text-[10px] font-mono">
+                    <button
+                      type="button"
+                      onClick={() => setAiPanelWidth(340)}
+                      className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
+                        aiPanelWidth <= 360 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Compact Width (340px)"
+                    >
+                      Compact
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAiPanelWidth(500)}
+                      className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
+                        aiPanelWidth > 360 && aiPanelWidth <= 560 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Medium Width (500px)"
+                    >
+                      50%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAiPanelWidth(720)}
+                      className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-colors ${
+                        aiPanelWidth > 560 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Wide Width (720px)"
+                    >
+                      Wide
+                    </button>
+                  </div>
+                )}
 
+                {/* Freely Showcase / Fullscreen on Whole PDF Viewer Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setAiPanelMode(prev => prev === 'fullscreen' ? 'split' : 'fullscreen')}
+                  className={`p-1.5 sm:px-2 sm:py-1 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all shrink-0 ${
+                    aiPanelMode === 'fullscreen'
+                      ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md'
+                      : 'bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-white border border-purple-500/20'
+                  }`}
+                  title={aiPanelMode === 'fullscreen' ? 'Restore Split View with PDF' : 'Freely showcase Chatbot on whole PDF Viewer'}
+                >
+                  {aiPanelMode === 'fullscreen' ? (
+                    <>
+                      <Minimize2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Split View</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Showcase Full</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Regenerate Last Answer Button */}
+                {aiMessages.some(m => m.sender === 'user') && (
+                  <button
+                    type="button"
+                    onClick={handleRegenerateLast}
+                    disabled={aiLoading}
+                    className="p-1.5 text-slate-400 hover:text-amber-300 hover:bg-slate-800 rounded-xl cursor-pointer shrink-0 transition-colors disabled:opacity-40"
+                    title="Regenerate Last Answer"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </button>
+                )}
+
+                {/* Clear Chat History Button */}
+                <button
+                  type="button"
+                  onClick={handleClearChat}
+                  className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl cursor-pointer shrink-0 transition-colors"
+                  title="Clear Chat History"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+
+                {/* Close Button */}
                 <button
                   onClick={() => setShowAiAssistant(false)}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl cursor-pointer shrink-0"
                   title="Close AI Assistant"
                 >
                   <X className="w-4 h-4" />
@@ -2028,6 +3369,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               {aiMessages.map((msg) => (
                 <div
                   key={msg.id}
+                  id={`ai-msg-${msg.id}`}
                   className={`flex flex-col text-xs sm:text-sm leading-relaxed ${
                     msg.sender === 'user' ? 'items-end' : 'items-start'
                   }`}
@@ -2039,6 +3381,29 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                         : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-2xs'
                     }`}
                   >
+                    {/* Quoted Replying Snippet */}
+                    {msg.replyTo && (
+                      <div
+                        onClick={() => {
+                          const targetEl = document.getElementById(`ai-msg-${msg.replyTo?.id}`);
+                          if (targetEl) {
+                            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            targetEl.classList.add('ring-2', 'ring-purple-400');
+                            setTimeout(() => targetEl.classList.remove('ring-2', 'ring-purple-400'), 1500);
+                          }
+                        }}
+                        className="mb-2 p-2 bg-purple-950/70 border-l-3 border-purple-400 rounded-r-xl text-xs text-purple-200 cursor-pointer hover:bg-purple-900/60 transition-colors"
+                      >
+                        <div className="flex items-center gap-1 font-bold text-[10px] text-purple-300">
+                          <CornerUpLeft className="w-3 h-3" />
+                          <span>Replying to {msg.replyTo.sender === 'assistant' ? 'AI Solver 🤖' : 'You'}</span>
+                        </div>
+                        <p className="line-clamp-2 text-[11px] text-slate-300 italic mt-0.5">
+                          "{cleanPdfExtractedText(msg.replyTo.text.slice(0, 90))}"
+                        </p>
+                      </div>
+                    )}
+
                     {msg.sender === 'assistant' ? (
                       <div className="w-full max-w-none">
                         <MathRenderer content={msg.text} isUser={false} isDark={true} className="text-slate-100" />
@@ -2047,36 +3412,82 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                       <p className="text-white font-medium">{msg.text}</p>
                     )}
 
-                    <div className="flex items-center justify-between text-[9px] text-slate-400 font-mono pt-1">
+                    {/* Footer Row: Timestamp & Message Action Toolbar */}
+                    <div className={`flex items-center justify-between text-[10px] font-mono pt-1.5 border-t ${
+                      msg.sender === 'user' 
+                        ? 'border-purple-500/30 text-purple-200/90' 
+                        : 'border-slate-800 text-slate-400'
+                    }`}>
                       <span>{msg.timestamp}</span>
-                      {msg.sender === 'assistant' && (
-                        <div className="flex items-center gap-1.5">
+
+                      {/* Message Action Buttons: Reply, Read Aloud, Download PDF, Copy */}
+                      <div className="flex items-center gap-1">
+                        {/* 1. Reply Button */}
+                        <button
+                          type="button"
+                          onClick={() => setReplyingTo({ id: msg.id, sender: msg.sender, text: msg.text })}
+                          className={`p-1 rounded cursor-pointer transition-colors ${
+                            msg.sender === 'user'
+                              ? 'hover:bg-purple-700 text-purple-100'
+                              : 'hover:bg-slate-800 text-slate-400 hover:text-purple-300'
+                          }`}
+                          title="Reply to this message"
+                        >
+                          <CornerUpLeft className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* 2. Read Aloud / Speak Button */}
+                        <button
+                          type="button"
+                          onClick={() => speakMessageAloud(msg)}
+                          className={`p-1 rounded cursor-pointer transition-colors ${
+                            isPlayingVoice === msg.id 
+                              ? 'bg-purple-500 text-white animate-pulse' 
+                              : msg.sender === 'user'
+                              ? 'hover:bg-purple-700 text-purple-100'
+                              : 'hover:bg-slate-800 text-slate-400 hover:text-purple-300'
+                          }`}
+                          title={isPlayingVoice === msg.id ? "Stop Speech" : `Read Aloud (${targetLanguage})`}
+                        >
+                          {isPlayingVoice === msg.id ? (
+                            <VolumeX className="w-3.5 h-3.5 text-rose-300" />
+                          ) : (
+                            <Volume2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+
+                        {/* 3. Download PDF Button (for Assistant Responses) */}
+                        {msg.sender === 'assistant' && (
                           <button
-                            onClick={() => {
-                              const codeMap: Record<string, LanguageCode> = {
-                                'English': 'en',
-                                'Hindi': 'hi',
-                                'Gujarati': 'gu',
-                                'Marathi': 'mr',
-                                'Tamil': 'ta',
-                                'Telugu': 'te',
-                                'Hinglish': 'hi',
-                                'Bengali': 'hi',
-                                'Kannada': 'en',
-                                'Malayalam': 'en',
-                                'Punjabi': 'hi',
-                                'Urdu': 'hi'
-                              };
-                              const speechLang = codeMap[targetLanguage] || 'en';
-                              speakText(msg.text, speechLang);
-                            }}
-                            className="hover:text-white cursor-pointer p-1 rounded hover:bg-slate-800"
-                            title={`Speak Response (${targetLanguage})`}
+                            type="button"
+                            onClick={() => exportMessageToPDF(msg)}
+                            className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-300 cursor-pointer transition-colors"
+                            title="Download Solution PDF Report"
                           >
-                            <Volume2 className="w-3.5 h-3.5 text-purple-300" />
+                            <FileDown className="w-3.5 h-3.5" />
                           </button>
-                        </div>
-                      )}
+                        )}
+
+                        {/* 4. Copy Response Button */}
+                        <button
+                          type="button"
+                          onClick={() => copyMessageToClipboard(msg)}
+                          className={`p-1 rounded cursor-pointer transition-colors ${
+                            copiedMessageId === msg.id
+                              ? 'text-emerald-400 font-bold'
+                              : msg.sender === 'user'
+                              ? 'hover:bg-purple-700 text-purple-100'
+                              : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+                          }`}
+                          title={copiedMessageId === msg.id ? "Copied!" : "Copy Response"}
+                        >
+                          {copiedMessageId === msg.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2089,6 +3500,29 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Replying Context Banner */}
+            {replyingTo && (
+              <div className="flex items-center justify-between px-3 py-1.5 bg-purple-950/90 border-t border-b border-purple-800/60 text-xs text-purple-200 animate-fade-in shrink-0">
+                <div className="flex items-center gap-1.5 truncate">
+                  <CornerUpLeft className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <span className="font-bold text-purple-300 shrink-0">
+                    Replying to {replyingTo.sender === 'assistant' ? 'AI Solver' : 'You'}:
+                  </span>
+                  <span className="truncate text-slate-300 italic">
+                    "{cleanPdfExtractedText(replyingTo.text.slice(0, 75))}"
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyingTo(null)}
+                  className="p-1 text-purple-400 hover:text-white rounded hover:bg-purple-900/60 cursor-pointer shrink-0 transition-colors"
+                  title="Cancel reply"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             {/* AI Prompt Input Bar with Speech-to-Text */}
             <div className="p-2.5 sm:p-3 bg-slate-900 border-t border-slate-800 shrink-0">
@@ -2134,6 +3568,69 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   <Send className="w-4 h-4" />
                 </button>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Offscreen PDF Render Template for PDF Export */}
+        {isExportingPDF && pdfExportMessage && (
+          <div className="fixed left-[-9999px] top-[-9999px] pointer-events-none opacity-0">
+            <div
+              id="pdf-canvas-viewer-render-template"
+              className="w-[800px] p-8 bg-slate-950 text-slate-100 font-sans leading-relaxed border border-purple-900/50"
+              style={{ backgroundColor: '#0f172a', color: '#f8fafc' }}
+            >
+              {/* Report Header */}
+              <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-purple-500/40">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white font-extrabold text-xl shadow-md">
+                    G
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-extrabold tracking-tight text-white">
+                      GyaanBot AI Solver Report
+                    </h1>
+                    <p className="text-xs text-purple-300 font-medium">
+                      {fileName} &bull; Page {activePageNum}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-slate-400">
+                  <p className="font-semibold text-purple-300">{targetLanguage} Edition</p>
+                  <p>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+              </div>
+
+              {/* Preceding User Question if exists */}
+              {pdfExportQuestion && (
+                <div className="mb-6 p-4 rounded-xl bg-purple-950/60 border border-purple-800/60">
+                  <span className="text-xs font-bold uppercase text-purple-400 tracking-wider block mb-1">
+                    Student Question / Prompt:
+                  </span>
+                  <p className="text-sm font-semibold text-purple-100">
+                    {pdfExportQuestion}
+                  </p>
+                </div>
+              )}
+
+              {/* AI Solution Body */}
+              <div className="mb-6 p-5 rounded-2xl bg-slate-900 border border-slate-800">
+                <span className="text-xs font-bold uppercase text-emerald-400 tracking-wider block mb-2">
+                  Verified AI Solution & Analysis:
+                </span>
+                <MathRenderer
+                  content={pdfExportMessage.text}
+                  isUser={false}
+                  isDark={true}
+                  className="text-slate-100 text-sm leading-relaxed"
+                />
+              </div>
+
+              {/* Footer Watermark */}
+              <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
+                <span>GyaanBot Smart Reader AI &bull; Interactive PDF Solver</span>
+                <span>Page {activePageNum} Solution</span>
+              </div>
             </div>
           </div>
         )}

@@ -799,16 +799,18 @@ export async function saveFirebaseCurriculumFile(file: FirestoreCurriculumFile):
 
     // If we have fileDataUrl, save it in chunks
     if (fileDataUrl) {
-      // Chunk size of 800,000 characters (approx 800KB)
-      const chunkSize = 800000;
+      // Chunk size of 200,000 characters (approx 200KB)
+      const chunkSize = 200000;
       const chunksCount = Math.ceil(fileDataUrl.length / chunkSize);
 
-      // Save chunks to the chunks subcollection
+      // Save chunks concurrently to the chunks subcollection
+      const chunkPromises: Promise<void>[] = [];
       for (let i = 0; i < chunksCount; i++) {
         const chunkData = fileDataUrl.slice(i * chunkSize, (i + 1) * chunkSize);
         const chunkDocRef = doc(db, "curriculum_files", file.id, "chunks", String(i));
-        await setDoc(chunkDocRef, { data: chunkData });
+        chunkPromises.push(setDoc(chunkDocRef, { data: chunkData }));
       }
+      await Promise.all(chunkPromises);
     }
 
     // If fileDataUrl is larger than 700KB, strip it for Firestore doc to respect 1MB doc size limit
@@ -824,6 +826,7 @@ export async function saveFirebaseCurriculumFile(file: FirestoreCurriculumFile):
       disableNetwork(db).catch(() => {});
     }
     console.warn("Failed to save curriculum file to Firestore:", error);
+    throw error;
   }
 }
 

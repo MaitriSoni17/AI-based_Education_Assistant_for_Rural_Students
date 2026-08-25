@@ -19,6 +19,7 @@ import {
 import { getSafeDateString } from '../../utils/dateUtils';
 import { saveFileLocal, getFileLocal, deleteFileLocal } from '../../lib/indexedDbStore';
 import { PdfCanvasViewer } from './PdfCanvasViewer';
+import { downloadSmartReaderPdf } from '../../utils/pdfExport';
 import {
   exportMasterAnalyticsExcel,
   exportCategoryExcel,
@@ -2702,6 +2703,21 @@ startxref
 
   // Download file
   const handleDownloadFile = async (file: CurriculumFile) => {
+    // Check if this is an AI-generated PDF or has full markdown text content
+    const isAi = (file as any).isAiGenerated || !!(file as any).fullContent || (file as any).generatedText || file.id?.startsWith('gen-pdf-');
+    if (isAi) {
+      const textToExport = (file as any).fullContent || (file as any).generatedText || file.description || file.name;
+      await downloadSmartReaderPdf(
+        file.name.replace(/\.pdf$/i, ''),
+        file.subject || 'Study Material',
+        'Student Edition',
+        adminLang?.toUpperCase() || 'English',
+        textToExport,
+        'Smart Reader Study Guide'
+      );
+      return;
+    }
+
     let fileDataUrl = file.fileDataUrl;
 
     // Check IndexedDB if the memory state does not have it (due to page reload or size quota)
@@ -2854,6 +2870,9 @@ startxref
       const deletedFileIds: string[] = (() => {
         try { return JSON.parse(localStorage.getItem('gramin_deleted_file_ids_v1') || '[]'); } catch { return []; }
       })();
+
+
+
       const deletedFolderIds: string[] = (() => {
         try { return JSON.parse(localStorage.getItem('gramin_deleted_folder_ids_v1') || '[]'); } catch { return []; }
       })();
@@ -6086,211 +6105,44 @@ startxref
 
       {/* PDF Reader & Read Aloud Modal (Immersive Full Screen Dashboard) */}
       {activePdfFile && (
-        <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col h-screen w-screen overflow-hidden animate-fade-in">
-          <div className="bg-white flex flex-col h-full w-full overflow-hidden p-4 md:p-6 gap-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-red-100 text-red-600 rounded-2xl">
-                  <FileText className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-800 font-mono text-[10px] font-bold uppercase rounded-md">
-                      {activePdfFile.category}
-                    </span>
-                    <span className="text-xs font-mono text-slate-400">{activePdfFile.size}</span>
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-base mt-0.5">{activePdfFile.name}</h3>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    if (isPdfSpeaking) {
-                      stopSpeaking();
-                      setIsPdfSpeaking(false);
-                    } else {
-                      setIsPdfSpeaking(true);
-                      const speechTextContent = `Document title: ${activePdfFile.name}. Subject: ${activePdfFile.subject}. Standard: ${activePdfFile.standard || 'All Standards'}. Description: ${activePdfFile.description || 'Curriculum learning material for Indian students.'}`;
-                      speakText(speechTextContent, 'en');
-                    }
-                  }}
-                  className={`px-3.5 py-2 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all ${
-                    isPdfSpeaking ? 'bg-rose-500 text-white animate-pulse' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                  }`}
-                >
-                  {isPdfSpeaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                  <span>{isPdfSpeaking ? 'Stop Reading' : 'Read Aloud'}</span>
-                </button>
-
-                <button
-                  onClick={() => handleDownloadFile(activePdfFile)}
-                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer animate-fade-in"
-                >
-                  <Download className="h-4 w-4 text-amber-400" />
-                  <span>Download PDF</span>
-                </button>
-
-                <button
-                  onClick={() => {
+        <div className="fixed inset-x-0 bottom-0 top-16 z-40 bg-slate-950 flex flex-col h-[calc(100vh-4rem)] w-screen overflow-hidden animate-fade-in">
+          <div className="bg-slate-900 w-full h-full flex flex-col overflow-hidden">
+            <div className="flex-1 bg-slate-900 overflow-hidden flex flex-col p-0">
+              <div className="flex-1 h-full min-h-[500px]">
+                <PdfCanvasViewer
+                  lang={adminLang}
+                  user={adminUser}
+                  adminUser={adminUser}
+                  onClose={() => {
                     stopSpeaking();
                     setIsPdfSpeaking(false);
                     setActivePdfFile(null);
                   }}
-                  className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                  onNavigateBack={() => {
+                    stopSpeaking();
+                    setIsPdfSpeaking(false);
+                    setActivePdfFile(null);
+                  }}
+                  onLanguageChange={(newLang) => setAdminLang(newLang)}
+                  fileId={activePdfFile.id}
+                  fileDataUrl={activePdfFile.fileDataUrl}
+                  fileName={activePdfFile.name}
+                  fullContent={(activePdfFile as any).fullContent || (activePdfFile as any).generatedText}
+                  isAiGenerated={(activePdfFile as any).isAiGenerated || activePdfFile.id?.startsWith('gen-pdf-') || !!(activePdfFile as any).fullContent}
+                  onGetFileLocal={async (id) => {
+                    const localUrl = await getFileLocal(id);
+                    if (localUrl) return localUrl;
+                    const remoteUrl = await getFirebaseCurriculumFileDataUrl(id);
+                    if (remoteUrl) {
+                      await saveFileLocal(id, remoteUrl);
+                      return remoteUrl;
+                    }
+                    return null;
+                  }}
+                  onDownload={() => handleDownloadFile(activePdfFile)}
+                />
               </div>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs shrink-0">
-              <div>
-                <span className="text-slate-400 font-semibold block text-[10px] uppercase">Subject</span>
-                <span className="font-bold text-slate-800">{activePdfFile.subject}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 font-semibold block text-[10px] uppercase">Grade / Standard</span>
-                <span className="font-bold text-slate-800">{activePdfFile.standard || 'All Standards'}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 font-semibold block text-[10px] uppercase">Board</span>
-                <span className="font-bold text-slate-800">{activePdfFile.board || 'State Board'}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 font-semibold block text-[10px] uppercase">Student Visibility</span>
-                <span className={`font-bold inline-flex items-center gap-1 ${activePdfFile.isVisible !== false ? 'text-emerald-600' : 'text-amber-600'}`}>
-                  {activePdfFile.isVisible !== false ? '✓ Visible to Students' : '🔒 Hidden from Students'}
-                </span>
-              </div>
-            </div>
-
-            {/* View Tabs */}
-            <div className="flex bg-slate-100 p-1 rounded-xl shrink-0 gap-1">
-              <button
-                type="button"
-                onClick={() => setPdfModalTab('pdf')}
-                className={`flex-1 py-2 font-bold text-xs rounded-lg transition-all cursor-pointer ${
-                  pdfModalTab === 'pdf'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                📄 Interactive PDF Document
-              </button>
-              <button
-                type="button"
-                onClick={() => setPdfModalTab('text')}
-                className={`flex-1 py-2 font-bold text-xs rounded-lg transition-all cursor-pointer ${
-                  pdfModalTab === 'text'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                📖 Smart Study Note View
-              </button>
-            </div>
-
-            {pdfModalTab === 'pdf' ? (
-              activePdfFile.externalUrl ? (
-                <div className="flex-1 bg-slate-950 rounded-2xl p-6 text-white flex flex-col justify-center items-center relative overflow-hidden shadow-inner border border-slate-800">
-                  <div className="text-center py-16 space-y-4 my-auto">
-                    <FileText className="h-16 w-16 text-amber-400 mx-auto animate-bounce" />
-                    <div className="space-y-1">
-                      <h4 className="font-bold text-base">External PDF Resource</h4>
-                      <p className="text-xs text-slate-400">This curriculum material is hosted on an external education portal.</p>
-                    </div>
-                    <a
-                      href={activePdfFile.externalUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-colors shadow-md cursor-pointer"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      <span>Open External PDF in New Tab</span>
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <PdfCanvasViewer
-                    lang={adminLang}
-                    fileId={activePdfFile.id}
-                    fileDataUrl={activePdfFile.fileDataUrl}
-                    fileName={activePdfFile.name}
-                    onGetFileLocal={async (id) => {
-                      const localUrl = await getFileLocal(id);
-                      if (localUrl) return localUrl;
-                      const remoteUrl = await getFirebaseCurriculumFileDataUrl(id);
-                      if (remoteUrl) {
-                        await saveFileLocal(id, remoteUrl);
-                        return remoteUrl;
-                      }
-                      return null;
-                    }}
-                    onDownload={() => handleDownloadFile(activePdfFile)}
-                  />
-                </div>
-              )
-            ) : (
-              <div className="flex-1 min-h-0 bg-slate-950 rounded-2xl p-6 text-white flex flex-col justify-between relative overflow-y-auto shadow-inner border border-slate-800 scrollbar-thin">
-                {activePdfFile.externalUrl ? (
-                  <div className="text-center py-16 space-y-4 my-auto">
-                    <FileText className="h-16 w-16 text-amber-400 mx-auto animate-bounce" />
-                    <div className="space-y-1">
-                      <h4 className="font-bold text-base">External Curriculum Resource</h4>
-                      <p className="text-xs text-slate-400">This file links to an external web document or PDF source.</p>
-                    </div>
-                    <a
-                      href={activePdfFile.externalUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs transition-colors shadow-md"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      <span>Open External PDF URL in New Tab</span>
-                    </a>
-                  </div>
-                ) : (
-                  <div className="space-y-6 text-left my-auto p-4 sm:p-8">
-                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                      <span className="font-mono text-xs text-amber-400 tracking-wider uppercase font-bold">
-                        📄 GyaanBot Formatted PDF Reader View
-                      </span>
-                      <span className="font-mono text-[10px] text-slate-500">Standard Educational Curriculum Draft</span>
-                    </div>
-
-                    <div className="space-y-3 font-serif text-sm text-slate-200 leading-relaxed">
-                      <h2 className="text-xl font-bold font-sans text-amber-300">{activePdfFile.name}</h2>
-                      <p className="font-sans text-xs text-slate-400">
-                        <strong className="text-white">Subject:</strong> {activePdfFile.subject} | <strong className="text-white">Standard:</strong> {activePdfFile.standard || 'All Standards'} | <strong className="text-white">Board:</strong> {activePdfFile.board || 'State Board'}
-                      </p>
-                      <div className="pt-2 text-sm text-slate-300 font-sans bg-slate-900 p-4 rounded-xl border border-slate-800">
-                        <p className="font-bold text-amber-200 mb-1">Curriculum Summary & Description:</p>
-                        <p>{activePdfFile.description || 'This is an official curriculum document prepared for rural school students under standard guidelines. Click "Read Aloud" above to hear the content read aloud by the AI voice assistant.'}</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 text-xs font-sans">
-                        <div className="p-3.5 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
-                          <div className="font-bold text-amber-400">🎯 Learning Objective</div>
-                          <p className="text-slate-400">Master core conceptual understanding and practical problem-solving aligned with {activePdfFile.subject} curriculum.</p>
-                        </div>
-                        <div className="p-3.5 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
-                          <div className="font-bold text-emerald-400">💡 Interactive Study Note</div>
-                          <p className="text-slate-400">Students can access this PDF offline once downloaded or synced to their local study repository.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pt-4 border-t border-slate-800 shrink-0 font-mono mt-6">
-                  <span>ID: {activePdfFile.id}</span>
-                  <span>Uploaded: {activePdfFile.uploadedAt}</span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
