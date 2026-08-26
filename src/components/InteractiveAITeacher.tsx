@@ -25,24 +25,24 @@ export default function InteractiveAITeacher({
   const [earTwitch, setEarTwitch] = useState(false);
 
   // Parse teacher type
-  let teacherType: 'dadi' | 'swami' | 'chanda' | 'rocket' | 'scholar' | 'legend' | 'poet' | 'eagle' | 'nature' | 'generic' = 'generic';
+  let teacherType: 'dadi' | 'swami' | 'chanda' | 'scholar' | 'eagle' | 'panther' | 'rocket' | 'legend' | 'poet' | 'nature' | 'generic' = 'generic';
   const charLower = (avatarChar + " " + avatarName).toLowerCase();
   if (avatarChar.includes('👵') || charLower.includes('dadi')) {
     teacherType = 'dadi';
-  } else if (avatarChar.includes('🤖') || charLower.includes('swami') || charLower.includes('turing') || charLower.includes('kisan')) {
+  } else if (avatarChar.includes('🤖') || (charLower.includes('swami') && !charLower.includes('panther')) || (charLower.includes('robot'))) {
     teacherType = 'swami';
   } else if (avatarChar.includes('🦊') || charLower.includes('chanda')) {
     teacherType = 'chanda';
-  } else if (avatarChar.includes('🚀') || charLower.includes('rocket') || charLower.includes('cosmic')) {
-    teacherType = 'rocket';
-  } else if (avatarChar.includes('📜') || avatarChar.includes('📖') || avatarChar.includes('✍️') || charLower.includes('narmad') || charLower.includes('premchand') || charLower.includes('tulsi') || charLower.includes('kavi')) {
+  } else if (charLower.includes('panther') || charLower.includes('turing')) {
+    teacherType = 'panther';
+  } else if (avatarChar.includes('🦅') || charLower.includes('william') || charLower.includes('eagle')) {
+    teacherType = 'eagle';
+  } else if (avatarChar.includes('📜') || avatarChar.includes('📖') || avatarChar.includes('✍️') || charLower.includes('narmad') || charLower.includes('premchand') || charLower.includes('tulsi') || charLower.includes('kavi') || charLower.includes('scholar')) {
     teacherType = 'scholar';
   } else if (avatarChar.includes('🛡️') || charLower.includes('laxmi') || charLower.includes('shivaji') || charLower.includes('ashoka')) {
     teacherType = 'legend';
   } else if (avatarChar.includes('🦚') || charLower.includes('shakespeare') || charLower.includes('poet') || charLower.includes('wordsworth')) {
     teacherType = 'poet';
-  } else if (avatarChar.includes('🦅') || charLower.includes('william') || charLower.includes('eagle')) {
-    teacherType = 'eagle';
   } else if (avatarChar.includes('🌿') || avatarChar.includes('🦌') || charLower.includes('prakriti') || charLower.includes('flora')) {
     teacherType = 'nature';
   }
@@ -428,7 +428,7 @@ export default function InteractiveAITeacher({
     );
   };
 
-  // 3. Render Chanda AI Smart Fox 🦊 - Organic fur structures & organic twitch wiggles
+  // 3. Render Chanda AI Smart Fox 🦊 with Smart Glasses - Organic fur structures & organic twitch wiggles
   const renderChandaFace = () => {
     return (
       <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
@@ -452,58 +452,41 @@ export default function InteractiveAITeacher({
           </div>
 
           {/* Expressive Arching Fox Eyebrows */}
-          <div className="flex justify-between w-15 absolute top-11 z-10">
+          <div className="flex justify-between w-15 absolute top-10.5 z-10">
             <div className={`h-1.5 w-4.5 bg-amber-950 rounded-full transition-transform duration-300 ${action === 'think' ? 'rotate-12 translate-y-0.5' : '-rotate-6'}`} />
             <div className={`h-1.5 w-4.5 bg-amber-950 rounded-full transition-transform duration-300 ${action === 'think' ? '-rotate-12 translate-y-0.5' : 'rotate-6'}`} />
           </div>
 
-          {/* High quality expressive Fox Eyes with beautiful forest-green irises */}
-          <div className="flex justify-between w-18 absolute top-12.5 z-10">
-            <div className="w-7 h-7 flex items-center justify-center relative">
+          {/* Smart Glasses for Chanda AI Fox 👓 */}
+          <div className="absolute top-11.5 flex justify-between w-21 z-20">
+            <div className="w-8 h-8 rounded-full border-2 border-amber-300 bg-white/20 flex items-center justify-center relative">
               {blink ? (
-                <div className="h-0.5 w-5 bg-[#3B2314] rounded-full" />
+                <div className="h-0.5 w-4 bg-[#3B2314] rounded-full" />
               ) : (
-                <div className={`w-5.5 h-5.5 rounded-full bg-gradient-to-br from-[#065F46] via-[#10B981] to-[#34D399] p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  {/* Iris & pupil highlighting */}
-                  <div className="w-3.5 h-3.5 rounded-full bg-[#111827] flex items-center justify-center relative">
-                    {/* Tiny glowing reflections resembling animal eye depth */}
-                    <div className="w-1.5 h-1.5 bg-white rounded-full absolute top-0.5 left-0.5" />
-                    <div className="w-0.5 h-0.5 bg-white rounded-full absolute bottom-0.5 right-0.5" />
+                <div className={`w-5 h-5 rounded-full bg-gradient-to-br from-[#065F46] via-[#10B981] to-[#34D399] p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
+                  <div className="w-3 h-3 rounded-full bg-[#111827] flex items-center justify-center relative">
+                    <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
                   </div>
                 </div>
               )}
             </div>
-            
-            <div className="w-7 h-7 flex items-center justify-center relative">
+            <div className="w-2 bg-amber-300 h-1 mt-3.5" />
+            <div className="w-8 h-8 rounded-full border-2 border-amber-300 bg-white/20 flex items-center justify-center relative">
               {blink ? (
-                <div className="h-0.5 w-5 bg-[#3B2314] rounded-full" />
+                <div className="h-0.5 w-4 bg-[#3B2314] rounded-full" />
               ) : (
-                <div className={`w-5.5 h-5.5 rounded-full bg-gradient-to-br from-[#065F46] via-[#10B981] to-[#34D399] p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  <div className="w-3.5 h-3.5 rounded-full bg-[#111827] flex items-center justify-center relative">
-                    <div className="w-1.5 h-1.5 bg-white rounded-full absolute top-0.5 left-0.5" />
-                    <div className="w-0.5 h-0.5 bg-white rounded-full absolute bottom-0.5 right-0.5" />
+                <div className={`w-5 h-5 rounded-full bg-gradient-to-br from-[#065F46] via-[#10B981] to-[#34D399] p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
+                  <div className="w-3 h-3 rounded-full bg-[#111827] flex items-center justify-center relative">
+                    <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Realistic Fox whiskers representing sensory realism */}
-          <div className="absolute inset-y-17 inset-x-1 flex justify-between z-15 w-26">
-            <div className="space-y-1">
-              <div className="w-5 h-0.5 bg-amber-950/25 -rotate-6 rounded-full" />
-              <div className="w-6 h-0.5 bg-amber-950/20 rounded-full" />
-            </div>
-            <div className="space-y-1">
-              <div className="w-5 h-0.5 bg-amber-950/25 rotate-6 rounded-full" />
-              <div className="w-6 h-0.5 bg-amber-950/20 rounded-full" />
             </div>
           </div>
 
           {/* Cute wet snout and black shiny button nose */}
           <div className="absolute bottom-9 w-6 h-5 flex flex-col items-center justify-center z-20">
             <div className="w-4 h-3 bg-gradient-to-b from-slate-800 to-black rounded-full shadow-md relative">
-              {/* shiny spot on nose */}
               <div className="w-1 h-0.5 bg-white rounded-full absolute top-0.5 left-1" />
             </div>
           </div>
@@ -514,11 +497,205 @@ export default function InteractiveAITeacher({
 
         {/* High-quality furry neck collar shoulders overlay for Chanda */}
         <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-[#EA580C] via-orange-500 to-[#EA580C] rounded-t-3xl border-t-2 border-white/40 shadow-sm flex items-start justify-center overflow-visible z-5 select-none">
-          {/* Fluffy white throat fur ruff */}
           <div className="w-18 h-7 bg-white rounded-b-2xl border-x border-b border-orange-200 shadow-md shadow-orange-950/10 flex flex-col justify-end p-1 select-none">
             <div className="w-full flex justify-around text-orange-200 font-black text-[6px]">
               <span>▼</span><span>▼</span><span>▼</span><span>▼</span>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 4. Render Kavi Narmad AI (Sahitya Scholar) 📜 - Classic portrait-style scholar with traditional white pheta/cap and stole
+  const renderScholarFace = () => {
+    return (
+      <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
+        {/* Traditional Gujarati Scholar Cap / White Pheta / Turban */}
+        <div className="absolute top-1 w-26 h-10 bg-gradient-to-b from-slate-100 via-white to-amber-50 rounded-t-3xl border-2 border-amber-200 shadow-md z-20 flex items-center justify-center">
+          <div className="w-16 h-1.5 bg-amber-400 rounded-full shadow-xs" />
+        </div>
+
+        {/* Head Canvas with wise scholar aesthetic */}
+        <div className="relative w-28 h-28 bg-[#FDF0D5] rounded-full border-3 border-white shadow-xl flex flex-col items-center overflow-visible z-10 transition-transform duration-300 mt-3">
+          
+          {/* Traditional red Kumkum Chandlo on forehead */}
+          <div className="absolute top-6 w-2.5 h-3 bg-red-600 rounded-full shadow-xs border border-amber-300 z-20" />
+
+          {/* Wise scholarly eyebrows */}
+          <div className="flex justify-between w-15 absolute top-10.5 z-10">
+            <div className="h-1.5 w-4.5 bg-[#4A3B32] rounded-full" />
+            <div className="h-1.5 w-4.5 bg-[#4A3B32] rounded-full" />
+          </div>
+
+          {/* Expressive wise eyes */}
+          <div className="flex justify-between w-18 absolute top-12.5 z-10">
+            <div className="w-6.5 h-6.5 flex items-center justify-center relative">
+              {blink ? (
+                <div className="h-0.5 w-5 bg-slate-800 rounded-full" />
+              ) : (
+                <div className={`w-5 h-5 rounded-full bg-gradient-to-br from-amber-800 to-amber-950 p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
+                  <div className="w-3 h-3 rounded-full bg-slate-900 flex items-center justify-center relative">
+                    <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="w-6.5 h-6.5 flex items-center justify-center relative">
+              {blink ? (
+                <div className="h-0.5 w-5 bg-slate-800 rounded-full" />
+              ) : (
+                <div className={`w-5 h-5 rounded-full bg-gradient-to-br from-amber-800 to-amber-950 p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
+                  <div className="w-3 h-3 rounded-full bg-slate-900 flex items-center justify-center relative">
+                    <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Classic thin mustache and gentle smile */}
+          <div className="absolute top-19 w-6 h-1 bg-amber-900 rounded-full z-20" />
+
+          {/* Talking Mouth */}
+          {renderInteractiveMouth()}
+        </div>
+
+        {/* Traditional Gujarati Kediyu / Scholar Stole (Uparna) shoulders */}
+        <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-amber-700 via-amber-600 to-amber-800 rounded-t-3xl border-t-2 border-amber-300 shadow-md flex items-start justify-center z-5 overflow-hidden">
+          {/* Traditional white Khadi stole drape */}
+          <div className="w-14 h-full bg-gradient-to-b from-white to-amber-100 border-x border-amber-200 flex flex-col items-center justify-around py-1">
+            <div className="w-8 h-1 bg-amber-600 rounded-full" />
+            <div className="w-8 h-1 bg-amber-600 rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 5. Render William AI (Grammar Eagle) 🦅 - Flat vector majestic eagle face icon
+  const renderEagleFace = () => {
+    return (
+      <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
+        {/* Majestic Eagle white crown feathers */}
+        <div className="absolute -top-1 w-24 h-12 bg-gradient-to-b from-white via-slate-100 to-amber-50 rounded-t-full border-2 border-amber-200 shadow-md z-10 flex justify-around pt-1">
+          <span className="text-amber-400 text-[10px]">▼</span>
+          <span className="text-amber-400 text-[12px]">▼</span>
+          <span className="text-amber-400 text-[10px]">▼</span>
+        </div>
+
+        {/* Golden-brown head base with feathered contour */}
+        <div className="relative w-28 h-28 bg-gradient-to-br from-amber-700 via-amber-800 to-amber-900 rounded-full border-3 border-amber-300 shadow-xl flex flex-col items-center overflow-visible z-10 transition-transform duration-300">
+          
+          {/* Sharp, piercing predatory golden-amber eagle eyes */}
+          <div className="flex justify-between w-20 absolute top-12 z-10">
+            <div className="w-7 h-7 bg-amber-400 rounded-full border-2 border-amber-600 flex items-center justify-center relative shadow-inner">
+              {blink ? (
+                <div className="h-0.5 w-5 bg-amber-950 rounded-full" />
+              ) : (
+                <div className="w-3.5 h-3.5 bg-amber-950 rounded-full flex items-center justify-center relative">
+                  <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
+                </div>
+              )}
+            </div>
+
+            <div className="w-7 h-7 bg-amber-400 rounded-full border-2 border-amber-600 flex items-center justify-center relative shadow-inner">
+              {blink ? (
+                <div className="h-0.5 w-5 bg-amber-950 rounded-full" />
+              ) : (
+                <div className="w-3.5 h-3.5 bg-amber-950 rounded-full flex items-center justify-center relative">
+                  <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Majestic Curved Golden Beak */}
+          <div className="absolute top-18 w-10 h-7 bg-gradient-to-b from-amber-400 via-yellow-400 to-amber-500 rounded-b-2xl border-2 border-amber-600 shadow-md z-20 flex flex-col items-center justify-center">
+            <div className="w-3 h-2 bg-amber-700 rounded-full" />
+          </div>
+
+          {/* Talking Mouth below beak */}
+          <div className="absolute bottom-5 z-25">
+            {renderInteractiveMouth()}
+          </div>
+        </div>
+
+        {/* Majestic feathered eagle shoulders */}
+        <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-amber-900 via-amber-800 to-amber-900 rounded-t-3xl border-t-2 border-amber-400 shadow-md flex items-center justify-center z-5">
+          <div className="w-20 h-4 bg-white/90 rounded-t-2xl border-t border-amber-200 flex justify-around text-amber-600 text-[8px] font-bold">
+            <span>W</span><span>I</span><span>L</span><span>L</span><span>I</span><span>A</span><span>M</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 6. Render Turing AI (Cyber Panther) 🤖🐈 - Futuristic dark cyber-panther head with glowing metallic details
+  const renderPantherFace = () => {
+    return (
+      <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
+        {/* Cybernetic pointed panther ears with glowing neon edges */}
+        <div className="absolute -top-2 left-4 w-9 h-14 bg-gradient-to-b from-violet-900 via-slate-900 to-black rounded-t-2xl border-2 border-cyan-400/80 -rotate-12 flex items-center justify-center shadow-[0_0_8px_rgba(34,211,238,0.5)] z-0">
+          <div className="w-3 h-8 bg-cyan-400/40 rounded-t-xl" />
+        </div>
+        <div className="absolute -top-2 right-4 w-9 h-14 bg-gradient-to-b from-violet-900 via-slate-900 to-black rounded-t-2xl border-2 border-cyan-400/80 rotate-12 flex items-center justify-center shadow-[0_0_8px_rgba(34,211,238,0.5)] z-0">
+          <div className="w-3 h-8 bg-cyan-400/40 rounded-t-xl" />
+        </div>
+
+        {/* Obsidian matte black cyber-panther head canvas */}
+        <div className="relative w-28 h-28 bg-gradient-to-br from-slate-900 via-indigo-950 to-black rounded-3xl border-3 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)] flex flex-col items-center overflow-visible z-10 transition-transform duration-300">
+          
+          {/* Glowing neon visor line across forehead */}
+          <div className="absolute top-3 w-20 h-1 bg-cyan-400 rounded-full shadow-[0_0_10px_rgba(34,211,238,1)] animate-pulse" />
+
+          {/* Glowing Neon Cyan Feline Eyes */}
+          <div className="flex justify-between w-20 absolute top-12 z-10">
+            <div className="w-7 h-5 bg-cyan-950 rounded-md border border-cyan-400 flex items-center justify-center relative shadow-[0_0_8px_rgba(34,211,238,0.8)]">
+              {blink ? (
+                <div className="h-0.5 w-5 bg-cyan-400 rounded-full" />
+              ) : (
+                <div className="w-3.5 h-1.5 bg-cyan-300 rounded-full shadow-[0_0_6px_rgba(34,211,238,1)]" />
+              )}
+            </div>
+
+            <div className="w-7 h-5 bg-cyan-950 rounded-md border border-cyan-400 flex items-center justify-center relative shadow-[0_0_8px_rgba(34,211,238,0.8)]">
+              {blink ? (
+                <div className="h-0.5 w-5 bg-cyan-400 rounded-full" />
+              ) : (
+                <div className="w-3.5 h-1.5 bg-cyan-300 rounded-full shadow-[0_0_6px_rgba(34,211,238,1)]" />
+              )}
+            </div>
+          </div>
+
+          {/* Cyber whiskers matrix */}
+          <div className="absolute inset-y-18 inset-x-2 flex justify-between z-15 w-24 opacity-60">
+            <div className="space-y-1">
+              <div className="w-4 h-0.5 bg-cyan-400 -rotate-12 rounded-full shadow-[0_0_4px_rgba(34,211,238,0.8)]" />
+              <div className="w-5 h-0.5 bg-cyan-400 rounded-full shadow-[0_0_4px_rgba(34,211,238,0.8)]" />
+            </div>
+            <div className="space-y-1">
+              <div className="w-4 h-0.5 bg-cyan-400 rotate-12 rounded-full shadow-[0_0_4px_rgba(34,211,238,0.8)]" />
+              <div className="w-5 h-0.5 bg-cyan-400 rounded-full shadow-[0_0_4px_rgba(34,211,238,0.8)]" />
+            </div>
+          </div>
+
+          {/* Metallic cyber nose */}
+          <div className="absolute top-20 w-4 h-2.5 bg-slate-700 rounded-full border border-cyan-400 flex items-center justify-center">
+            <div className="w-1.5 h-1 bg-cyan-300 rounded-full" />
+          </div>
+
+          {/* Talking Mouth */}
+          <div className="absolute bottom-5">
+            {renderInteractiveMouth()}
+          </div>
+        </div>
+
+        {/* Futuristic glowing cyber-armor shoulders */}
+        <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 rounded-t-3xl border-t-2 border-cyan-500 shadow-md flex items-center justify-center z-5">
+          <div className="w-20 h-3 bg-cyan-950 rounded-t-lg border-x border-t border-cyan-400 flex items-center justify-center">
+            <div className="w-8 h-1.5 bg-cyan-400 rounded-xs shadow-[0_0_6px_rgba(34,211,238,1)] animate-pulse" />
           </div>
         </div>
       </div>
@@ -619,6 +796,12 @@ export default function InteractiveAITeacher({
           return renderSwamiFace();
         case 'chanda':
           return renderChandaFace();
+        case 'scholar':
+          return renderScholarFace();
+        case 'eagle':
+          return renderEagleFace();
+        case 'panther':
+          return renderPantherFace();
         default:
           return renderGenericFace();
       }
@@ -639,7 +822,7 @@ export default function InteractiveAITeacher({
         
         {/* Minimal rounded container with scaled face centered cleanly */}
         <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-transparent">
-          <div className="absolute inset-0 flex items-center justify-center scale-[0.34] pointer-events-none ai-breath-cycle">
+          <div className="absolute inset-0 flex items-center justify-center scale-[0.25] pointer-events-none ai-breath-cycle">
             {renderFaceForType()}
           </div>
         </div>
@@ -675,6 +858,9 @@ export default function InteractiveAITeacher({
         {teacherType === 'dadi' && renderDadiFace()}
         {teacherType === 'swami' && renderSwamiFace()}
         {teacherType === 'chanda' && renderChandaFace()}
+        {teacherType === 'scholar' && renderScholarFace()}
+        {teacherType === 'eagle' && renderEagleFace()}
+        {teacherType === 'panther' && renderPantherFace()}
         {teacherType === 'generic' && renderGenericFace()}
 
         {/* Floating Hands & Gestures sleeve overlay */}

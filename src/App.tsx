@@ -25,7 +25,78 @@ function safeSetLocalStorage(key: string, value: string): void {
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<CurrentView>('home');
+  const [currentView, setCurrentView] = useState<CurrentView>(() => {
+    if (typeof window !== 'undefined') {
+      const validViews: CurrentView[] = [
+        'home', 'about', 'features', 'login', 'signup', 'dashboard', 'admin-login', 'admin-dashboard'
+      ];
+
+      // 1. Check URL hash first
+      const hash = window.location.hash.replace('#', '').trim() as CurrentView;
+      if (hash && validViews.includes(hash)) {
+        const studentSession = localStorage.getItem('gramin_student_session');
+        const adminSession = localStorage.getItem('gramin_admin_session');
+        if (hash === 'dashboard' && !studentSession) return 'login';
+        if (hash === 'admin-dashboard' && !adminSession) return 'admin-login';
+        return hash;
+      }
+
+      // 2. Check saved view in localStorage
+      const savedView = localStorage.getItem('gramin_current_view') as CurrentView | null;
+      if (savedView && validViews.includes(savedView)) {
+        const studentSession = localStorage.getItem('gramin_student_session');
+        const adminSession = localStorage.getItem('gramin_admin_session');
+        if (savedView === 'dashboard' && !studentSession) return 'login';
+        if (savedView === 'admin-dashboard' && !adminSession) return 'admin-login';
+        return savedView;
+      }
+
+      // 3. Fallback based on active logged-in sessions
+      const adminSession = localStorage.getItem('gramin_admin_session');
+      if (adminSession) return 'admin-dashboard';
+
+      const studentSession = localStorage.getItem('gramin_student_session');
+      if (studentSession) return 'dashboard';
+    }
+    return 'home';
+  });
+
+  // Persist currentView to localStorage and sync with URL Hash
+  useEffect(() => {
+    safeSetLocalStorage('gramin_current_view', currentView);
+    if (typeof window !== 'undefined') {
+      const currentHash = window.location.hash.replace('#', '').trim();
+      if (currentHash !== currentView) {
+        window.history.replaceState(null, '', `#${currentView}`);
+      }
+    }
+  }, [currentView]);
+
+  // Handle browser Back/Forward navigation (hashchange)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const validViews: CurrentView[] = [
+        'home', 'about', 'features', 'login', 'signup', 'dashboard', 'admin-login', 'admin-dashboard'
+      ];
+      const hash = window.location.hash.replace('#', '').trim() as CurrentView;
+      if (hash && validViews.includes(hash)) {
+        const studentSession = localStorage.getItem('gramin_student_session');
+        const adminSession = localStorage.getItem('gramin_admin_session');
+        if (hash === 'dashboard' && !studentSession) {
+          setCurrentView('login');
+          return;
+        }
+        if (hash === 'admin-dashboard' && !adminSession) {
+          setCurrentView('admin-login');
+          return;
+        }
+        setCurrentView(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
   const [user, setUser] = useState<User | null>(() => {
     // Attempt local storage cache retrieval for offline reliability
     if (typeof window !== 'undefined') {
@@ -69,8 +140,14 @@ export default function App() {
   const handleLogoutAdmin = () => {
     setAdminUser(null);
     localStorage.removeItem('gramin_admin_session');
+    localStorage.removeItem('gramin_admin_active_tab');
     setUser(null);
     localStorage.removeItem('gramin_student_session');
+    localStorage.removeItem('gramin_student_active_tab');
+    safeSetLocalStorage('gramin_current_view', 'home');
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '#home');
+    }
     setCurrentView('home');
   };
 
@@ -369,6 +446,11 @@ export default function App() {
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('gramin_student_session');
+    localStorage.removeItem('gramin_student_active_tab');
+    safeSetLocalStorage('gramin_current_view', 'home');
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '#home');
+    }
     setCurrentView('home');
   };
 

@@ -35,15 +35,32 @@ interface DashboardViewProps {
   onUpdateUser: (fields: Partial<User>) => void;
 }
 
+type DashboardTab = 'profile' | 'admin-pdfs' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations' | 'puzzles';
+
 export default function DashboardView({ user, lang, onUpdateUser }: DashboardViewProps) {
-  // Navigation active tab controller: default to 'profile' as requested for the overview
-  const [activeTab, setActiveTab] = useState<'profile' | 'admin-pdfs' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations' | 'puzzles'>('profile');
+  // Navigation active tab controller: initialized from localStorage if available
+  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('gramin_student_active_tab') as DashboardTab | null;
+      const validTabs: DashboardTab[] = [
+        'profile', 'admin-pdfs', 'ai-assistant', 'tutor', 'quiz', 'exam', 'career', 'settings', 'certificates', 'equations', 'puzzles'
+      ];
+      if (saved && validTabs.includes(saved)) {
+        return saved;
+      }
+    }
+    return 'profile';
+  });
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobilePageDrawerOpen, setIsMobilePageDrawerOpen] = useState(false);
 
-  // Scroll to top of page whenever activeTab changes
+  // Scroll to top of page and persist activeTab whenever it changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
+    try {
+      localStorage.setItem('gramin_student_active_tab', activeTab);
+    } catch (e) {}
   }, [activeTab]);
 
   // Sync Manager state tracking

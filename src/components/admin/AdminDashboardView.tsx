@@ -27,6 +27,8 @@ import {
   exportCategoryPDF,
   ExportDataPayload
 } from '../../lib/exportUtils';
+import { detectDocumentLanguage } from '../dashboard/AdminPdfsTab';
+import { getSystemSettings, updateSystemSettings } from '../../utils/systemSettings';
 
 interface AdminDashboardViewProps {
   adminUser: User;
@@ -57,6 +59,7 @@ export interface CurriculumFile {
   description?: string;
   standard?: string;
   board?: string;
+  language?: string;
   isVisible?: boolean;
 }
 
@@ -70,6 +73,7 @@ export interface BatchFileItem {
   standard: string;
   board: string;
   size: string;
+  language?: string;
   description: string;
   externalUrl: string;
   dataUrl?: string;
@@ -1292,8 +1296,26 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
   }
 };
 
+type AdminTab = 'analytics' | 'content' | 'certificates' | 'users' | 'settings';
+
 export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: AdminDashboardViewProps) {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'content' | 'certificates' | 'users' | 'settings'>('analytics');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('gramin_admin_active_tab') as AdminTab | null;
+      const validTabs: AdminTab[] = ['analytics', 'content', 'certificates', 'users', 'settings'];
+      if (saved && validTabs.includes(saved)) {
+        return saved;
+      }
+    }
+    return 'analytics';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gramin_admin_active_tab', activeTab);
+    } catch (e) {}
+  }, [activeTab]);
+
   const [adminLang, setAdminLang] = useState<LanguageCode>(lang || 'en');
 
   useEffect(() => {
@@ -1323,7 +1345,13 @@ export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: A
   const [curriculumFiles, setCurriculumFiles] = useState<CurriculumFile[]>(() => {
     try {
       const saved = localStorage.getItem('gramin_curriculum_files_v2');
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed: CurriculumFile[] = JSON.parse(saved);
+      // Auto-normalize any PDF files that were mistakenly marked as 'document' or 'other'
+      return parsed.map((f) => {
+        const isPdf = f.name.toLowerCase().endsWith('.pdf') || (f.fileDataUrl && f.fileDataUrl.startsWith('data:application/pdf')) || f.category === 'pdf';
+        return isPdf ? { ...f, category: 'pdf' as const } : f;
+      });
     } catch (e) {
       return [];
     }
@@ -1512,14 +1540,32 @@ startxref
   const [showIssueCertModal, setShowIssueCertModal] = useState(false);
 
   // System settings state
-  const [bandwidthCompression, setBandwidthCompression] = useState(true);
-  const [aiRateLimit, setAiRateLimit] = useState('High (100 req/min)');
+  const [bandwidthCompression, setBandwidthCompression] = useState(() => getSystemSettings().bandwidthCompression);
+  const [aiRateLimit, setAiRateLimit] = useState(() => getSystemSettings().aiRateLimit);
   const [showExportModal, setShowExportModal] = useState(false);
   const [auditLogs, setAuditLogs] = useState<string[]>([
     `[${new Date().toLocaleTimeString()}] Admin session started by ${adminUser.name} (${adminUser.mobile})`,
     `[System] Firestore database connected successfully`,
     `[Network] 2G Bandwidth Optimization active`
   ]);
+
+  const handleToggleBandwidthMode = (enabled: boolean) => {
+    setBandwidthCompression(enabled);
+    updateSystemSettings({ bandwidthCompression: enabled });
+    setAuditLogs(prev => [
+      `[${new Date().toLocaleTimeString()}] 2G / Low-Bandwidth Mode updated to ${enabled ? 'ENABLED' : 'DISABLED'}`,
+      ...prev
+    ]);
+  };
+
+  const handleChangeAiRateLimit = (newLimit: string) => {
+    setAiRateLimit(newLimit as any);
+    updateSystemSettings({ aiRateLimit: newLimit as any });
+    setAuditLogs(prev => [
+      `[${new Date().toLocaleTimeString()}] AI Tutor Rate Limit updated to ${newLimit}`,
+      ...prev
+    ]);
+  };
 
   // Analytics Date & Time Filter State
   const [analyticsFilterMode, setAnalyticsFilterMode] = useState<'all' | 'year' | 'month' | 'custom'>('all');
@@ -2080,7 +2126,23 @@ startxref
 
         const data = await res.json();
         if (res.ok && data.success && data.data) {
-          const { title, subject, category, materialType, standard, board, description } = data.data;
+          const { title, subject, category, materialType, standard, board, description, language } = data.data;
+
+          const isPdfFile = item.rawName.toLowerCase().endsWith('.pdf') || (item.dataUrl && item.dataUrl.startsWith('data:application/pdf'));
+          const isVideoFile = /\.(mp4|mkv|avi|mov|webm)$/i.test(item.rawName);
+          const isAudioFile = /\.(mp3|wav|aac|ogg|m4a)$/i.test(item.rawName);
+          const isDocFile = /\.(doc|docx|txt|rtf)$/i.test(item.rawName);
+
+          let resolvedCategory: 'pdf' | 'video' | 'audio' | 'quiz' | 'document' | 'other' = item.category;
+          if (isPdfFile) resolvedCategory = 'pdf';
+          else if (isVideoFile) resolvedCategory = 'video';
+          else if (isAudioFile) resolvedCategory = 'audio';
+          else if (isDocFile) resolvedCategory = 'document';
+          else if (['pdf', 'video', 'audio', 'quiz', 'document', 'other'].includes(category)) {
+            resolvedCategory = category as any;
+          }
+
+          const resolvedLang = language || detectDocumentLanguage({ name: title || item.fileName, subject: subject || item.subject, description }).label;
 
           setBatchFilesList((prev) =>
             prev.map((it) =>
@@ -2089,14 +2151,13 @@ startxref
                     ...it,
                     fileName: title?.trim() || it.fileName,
                     subject: subject?.trim() || it.subject,
-                    category: ['pdf', 'video', 'audio', 'quiz', 'document', 'other'].includes(category)
-                      ? (category as any)
-                      : it.category,
+                    category: resolvedCategory,
                     materialType: ['notes', 'ebook', 'pyq', 'practice_questions', 'other'].includes(materialType)
                       ? (materialType as any)
                       : it.materialType || 'notes',
                     standard: STANDARD_OPTIONS.includes(standard) ? standard : it.standard,
                     board: INDIAN_BOARD_OPTIONS.includes(board) ? board : it.board,
+                    language: resolvedLang,
                     description: description?.trim() || it.description,
                     aiStatus: 'done'
                   }
@@ -2220,15 +2281,20 @@ startxref
       const createdFiles: CurriculumFile[] = [];
 
       for (const item of batchFilesList) {
+        const isPdfFile = item.rawName.toLowerCase().endsWith('.pdf') || (item.dataUrl && item.dataUrl.startsWith('data:application/pdf')) || item.category === 'pdf';
+        const finalCategory = isPdfFile ? 'pdf' : item.category;
+        const resolvedLanguage = item.language || detectDocumentLanguage({ name: item.fileName, subject: item.subject, description: item.description }).label;
+
         const fileObj: CurriculumFile = {
           id: `file-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
           name: item.fileName.trim() || item.rawName,
           folderId: newFileFolderId !== null ? newFileFolderId : currentFolderId,
           subject: item.subject.trim() || 'General',
-          category: item.category,
+          category: finalCategory,
           materialType: item.materialType || 'notes',
           standard: item.standard,
           board: item.board,
+          language: resolvedLanguage,
           size: item.size,
           uploadedAt: new Date().toISOString().split('T')[0],
           fileDataUrl: item.dataUrl,
@@ -2309,9 +2375,22 @@ startxref
       if (res.ok && data.success && data.data) {
         const { title, subject, category, standard, board, description } = data.data;
 
+        const isPdfFile = fileNameToAnalyze.toLowerCase().endsWith('.pdf') || (fileDataToAnalyze && fileDataToAnalyze.startsWith('data:application/pdf'));
+        const isVideoFile = /\.(mp4|mkv|avi|mov|webm)$/i.test(fileNameToAnalyze);
+        const isAudioFile = /\.(mp3|wav|aac|ogg|m4a)$/i.test(fileNameToAnalyze);
+        const isDocFile = /\.(doc|docx|txt|rtf)$/i.test(fileNameToAnalyze);
+
         if (title && title.trim()) setNewFileName(title.trim());
         if (subject && subject.trim()) setNewFileSubject(subject.trim());
-        if (category && ['pdf', 'video', 'audio', 'quiz', 'document', 'other'].includes(category)) {
+        if (isPdfFile) {
+          setNewFileCategory('pdf');
+        } else if (isVideoFile) {
+          setNewFileCategory('video');
+        } else if (isAudioFile) {
+          setNewFileCategory('audio');
+        } else if (isDocFile) {
+          setNewFileCategory('document');
+        } else if (category && ['pdf', 'video', 'audio', 'quiz', 'document', 'other'].includes(category)) {
           setNewFileCategory(category as any);
         }
         if (standard && STANDARD_OPTIONS.includes(standard)) {
@@ -2399,14 +2478,19 @@ startxref
     setFileUploadError(null);
 
     try {
+      const isPdfFile = newFileName.toLowerCase().endsWith('.pdf') || (newFileDataUrl && newFileDataUrl.startsWith('data:application/pdf')) || newFileCategory === 'pdf';
+      const finalCategory = isPdfFile ? 'pdf' : newFileCategory;
+      const detectedLang = detectDocumentLanguage({ name: newFileName, subject: newFileSubject, description: newFileDesc }).label;
+
       const newFile: CurriculumFile = {
         id: `file-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         name: newFileName.trim(),
         folderId: newFileFolderId !== null ? newFileFolderId : currentFolderId,
         subject: newFileSubject.trim() || 'General',
-        category: newFileCategory,
+        category: finalCategory,
         standard: newFileStandard,
         board: newFileBoard,
+        language: detectedLang,
         size: newFileSize || '1.0 MB',
         uploadedAt: new Date().toISOString().split('T')[0],
         fileDataUrl: newFileDataUrl,
@@ -2900,11 +2984,15 @@ startxref
               return;
             }
             const existing = map.get(rf.id);
+            const isPdf = (rf.name && rf.name.toLowerCase().endsWith('.pdf')) || (rf.fileDataUrl && rf.fileDataUrl.startsWith('data:application/pdf')) || rf.category === 'pdf';
+            const normalizedCategory = isPdf ? 'pdf' : rf.category;
+            const normalizedLang = rf.language ? detectDocumentLanguage(rf).label : (existing?.language || detectDocumentLanguage(rf).label);
+
             // Preserve local fileDataUrl if remote is missing base64 payload
             if (existing && existing.fileDataUrl && !rf.fileDataUrl) {
-              map.set(rf.id, { ...(rf as CurriculumFile), fileDataUrl: existing.fileDataUrl });
+              map.set(rf.id, { ...(rf as CurriculumFile), category: normalizedCategory, language: normalizedLang, fileDataUrl: existing.fileDataUrl });
             } else {
-              map.set(rf.id, rf as CurriculumFile);
+              map.set(rf.id, { ...(rf as CurriculumFile), category: normalizedCategory, language: normalizedLang });
             }
           });
           return Array.from(map.values()).filter((f) => !deletedFileIds.includes(f.id) && (f as any).isDeleted !== true);
@@ -3848,10 +3936,12 @@ startxref
                     {/* Responsive Mobile Cards View */}
                     <div className="block md:hidden space-y-3">
                       {visibleFiles.map((file) => {
-                        const isPdf = file.category === 'pdf';
+                        const isPdf = file.category === 'pdf' || file.name.toLowerCase().endsWith('.pdf');
                         const isVideo = file.category === 'video';
                         const isQuiz = file.category === 'quiz';
                         const isAudio = file.category === 'audio';
+                        const isDocument = file.category === 'document' || file.category === 'other' || (!isVideo && !isQuiz && !isAudio);
+                        const isViewable = isPdf || isDocument || !!file.fileDataUrl || !!(file as any).fullContent || !!(file as any).generatedText;
 
                         return (
                           <div
@@ -3879,12 +3969,14 @@ startxref
                                     isVideo ? 'bg-blue-50 text-blue-700 border border-blue-100' :
                                     isQuiz ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                                     isAudio ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                    isDocument ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
                                     'bg-slate-100 text-slate-700 border border-slate-200'
                                   }`}>
                                     {isPdf && <FileText className="h-3 w-3 text-red-500 shrink-0" />}
                                     {isVideo && <Video className="h-3 w-3 text-blue-500 shrink-0" />}
                                     {isQuiz && <HelpCircle className="h-3 w-3 text-amber-500 shrink-0" />}
                                     {isAudio && <Radio className="h-3 w-3 text-emerald-500 shrink-0" />}
+                                    {isDocument && !isPdf && <FileText className="h-3 w-3 text-indigo-500 shrink-0" />}
                                     <span>{file.category}</span>
                                   </span>
                                   <span className="text-[11px] font-bold text-slate-700 truncate">
@@ -3910,7 +4002,7 @@ startxref
 
                             {/* Main Title & Description */}
                             <div className="space-y-1">
-                              {isPdf ? (
+                              {isViewable ? (
                                 <button
                                   onClick={() => setActivePdfFile(file)}
                                   className="font-bold text-slate-900 text-left text-sm hover:text-emerald-600 transition-colors line-clamp-2 block leading-snug cursor-pointer"
@@ -3936,7 +4028,7 @@ startxref
                               </div>
 
                               <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-                                {isPdf && (
+                                {isViewable && (
                                   <button
                                     onClick={() => setActivePdfFile(file)}
                                     className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg cursor-pointer transition-all flex items-center gap-1 border border-emerald-200/60"
@@ -3999,10 +4091,12 @@ startxref
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-sans text-xs">
                           {visibleFiles.map((file) => {
-                            const isPdf = file.category === 'pdf';
+                            const isPdf = file.category === 'pdf' || file.name.toLowerCase().endsWith('.pdf');
                             const isVideo = file.category === 'video';
                             const isQuiz = file.category === 'quiz';
                             const isAudio = file.category === 'audio';
+                            const isDocument = file.category === 'document' || file.category === 'other' || (!isVideo && !isQuiz && !isAudio);
+                            const isViewable = isPdf || isDocument || !!file.fileDataUrl || !!(file as any).fullContent || !!(file as any).generatedText;
                             
                             return (
                               <tr key={file.id} className="hover:bg-slate-50/40 transition-colors group">
@@ -4029,6 +4123,11 @@ startxref
                                         <FileText className="h-5 w-5" />
                                       </div>
                                     )}
+                                    {isDocument && !isPdf && (
+                                      <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100/60 flex items-center justify-center shrink-0 shadow-3xs group-hover:scale-105 transition-transform">
+                                        <FileText className="h-5 w-5" />
+                                      </div>
+                                    )}
                                     {isVideo && (
                                       <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100/60 flex items-center justify-center shrink-0 shadow-3xs group-hover:scale-105 transition-transform">
                                         <Video className="h-5 w-5" />
@@ -4044,18 +4143,18 @@ startxref
                                         <Radio className="h-5 w-5" />
                                       </div>
                                     )}
-                                    {!isPdf && !isVideo && !isQuiz && !isAudio && (
+                                    {!isPdf && !isDocument && !isVideo && !isQuiz && !isAudio && (
                                       <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-600 border border-slate-200/60 flex items-center justify-center shrink-0 shadow-3xs group-hover:scale-105 transition-transform">
                                         <File className="h-5 w-5" />
                                       </div>
                                     )}
 
                                     <div className="min-w-0 flex-1">
-                                      {isPdf ? (
+                                      {isViewable ? (
                                         <button
                                           onClick={() => setActivePdfFile(file)}
                                           className="font-bold text-slate-900 cursor-pointer hover:text-emerald-600 transition-colors flex items-center gap-1 text-left text-xs bg-transparent border-none p-0 focus:outline-none"
-                                          title="Click to Open Immersive PDF Reader"
+                                          title="Click to Open Immersive Reader / Viewer"
                                         >
                                           <span className="line-clamp-1 group-hover:underline">{file.name}</span>
                                           <ExternalLink className="h-3 w-3 text-slate-400 shrink-0 inline group-hover:text-emerald-500" />
@@ -4111,11 +4210,11 @@ startxref
                                 {/* Cleaner, grouped actions */}
                                 <td className="p-4 text-right">
                                   <div className="flex items-center justify-end gap-1.5">
-                                    {isPdf && (
+                                    {isViewable && (
                                       <button
                                         onClick={() => setActivePdfFile(file)}
                                         className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] rounded-lg cursor-pointer transition-all inline-flex items-center gap-1 shadow-3xs"
-                                        title="Open PDF in Interactive Reader"
+                                        title="Open in Interactive Reader"
                                       >
                                         <FileText className="h-3 w-3 text-emerald-600" />
                                         <span>View</span>
@@ -4789,7 +4888,12 @@ startxref
             if (!activeFileMenuId) return null;
             const file = curriculumFiles.find((f) => f.id === activeFileMenuId);
             if (!file) return null;
-            const isPdf = file.category === 'pdf';
+            const isPdf = file.category === 'pdf' || file.name.toLowerCase().endsWith('.pdf');
+            const isVideo = file.category === 'video';
+            const isQuiz = file.category === 'quiz';
+            const isAudio = file.category === 'audio';
+            const isDocument = file.category === 'document' || file.category === 'other' || (!isVideo && !isQuiz && !isAudio);
+            const isViewable = isPdf || isDocument || !!file.fileDataUrl || !!(file as any).fullContent || !!(file as any).generatedText;
 
             return (
               <div 
@@ -4848,8 +4952,8 @@ startxref
                       <span className="text-[10px] font-mono text-slate-400">Toggle</span>
                     </button>
 
-                    {/* Open in PDF Reader */}
-                    {isPdf && (
+                    {/* Open in PDF / Document Reader */}
+                    {isViewable && (
                       <button
                         onClick={() => {
                           setActiveFileMenuId(null);
@@ -4859,7 +4963,7 @@ startxref
                       >
                         <div className="flex items-center gap-2.5">
                           <FileText className="h-4 w-4 text-emerald-600 shrink-0" />
-                          <span>Open PDF in Interactive Reader</span>
+                          <span>Open in Interactive Reader</span>
                         </div>
                         <ExternalLink className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                       </button>
@@ -5637,7 +5741,7 @@ startxref
                 <input
                   type="checkbox"
                   checked={bandwidthCompression}
-                  onChange={(e) => setBandwidthCompression(e.target.value ? e.target.checked : false)}
+                  onChange={(e) => handleToggleBandwidthMode(e.target.checked)}
                   className="h-4 w-4 accent-amber-500 cursor-pointer"
                 />
               </div>
@@ -5646,7 +5750,7 @@ startxref
                 <div className="font-bold text-slate-900">{t.aiRateLimitTitle}</div>
                 <AdminCustomSelect
                   value={aiRateLimit}
-                  onChange={setAiRateLimit}
+                  onChange={(val) => handleChangeAiRateLimit(val)}
                   options={[
                     'High (100 req/min)',
                     'Standard (60 req/min)',
@@ -5654,6 +5758,11 @@ startxref
                   ]}
                 />
               </div>
+
+              {/*<div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl flex items-center gap-2 text-[11px] text-emerald-800 font-medium">
+                <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>Both settings are actively enforced & saved across student and admin sessions.</span>
+              </div>*/}
             </div>
           </div>
 
@@ -6127,8 +6236,8 @@ startxref
                   fileId={activePdfFile.id}
                   fileDataUrl={activePdfFile.fileDataUrl}
                   fileName={activePdfFile.name}
-                  fullContent={(activePdfFile as any).fullContent || (activePdfFile as any).generatedText}
-                  isAiGenerated={(activePdfFile as any).isAiGenerated || activePdfFile.id?.startsWith('gen-pdf-') || !!(activePdfFile as any).fullContent}
+                  fullContent={(activePdfFile as any).fullContent || (activePdfFile as any).generatedText || (activePdfFile as any).description}
+                  isAiGenerated={(activePdfFile as any).isAiGenerated || activePdfFile.id?.startsWith('gen-pdf-') || !!(activePdfFile as any).fullContent || activePdfFile.category === 'document'}
                   onGetFileLocal={async (id) => {
                     const localUrl = await getFileLocal(id);
                     if (localUrl) return localUrl;

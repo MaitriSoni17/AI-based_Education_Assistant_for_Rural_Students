@@ -1333,7 +1333,12 @@ You are an expert Math and Science Problem-Solving Assistant.
 - Keep all mathematical equations and scientific variables cleanly formatted in standard $...$ notation within those explanations.
 `;
 
-      adjustedSystemInstruction = `${adjustedSystemInstruction}\n${syllabusGuideline}\n${mathAndScienceLatexRules}`;
+      const isLowBandwidthMode = req.headers['x-low-bandwidth'] === 'true' || req.body?.lowBandwidth === true;
+      const lowBandwidthDirective = isLowBandwidthMode
+        ? `\n[2G LOW-BANDWIDTH PAYLOAD COMPRESSION ACTIVE]: Keep explanations concise, direct, high-density, and structured to minimize network payload usage on rural 2G/3G cellular networks.\n`
+        : '';
+
+      adjustedSystemInstruction = `${adjustedSystemInstruction}\n${syllabusGuideline}\n${lowBandwidthDirective}\n${mathAndScienceLatexRules}`;
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
@@ -1648,6 +1653,13 @@ Education Board options MUST be matched to one of these EXACT strings:
 - "NIOS (Open School)"
 
 Category options MUST be one of: ["pdf", "video", "audio", "quiz", "document", "other"]
+CRITICAL CATEGORY RULES:
+- If the file is a PDF (fileName ends with .pdf or mimeType is application/pdf), you MUST return category as "pdf".
+- If the file is a video, return category as "video".
+- If the file is audio, return category as "audio".
+- If the file is a quiz/exam test paper with interactive questions, return category as "quiz".
+- If the file is a Microsoft Word or text file (.doc, .docx, .txt, .rtf), return category as "document".
+- Do NOT return "document" for PDF files; all PDF files must strictly have category "pdf".
 
 Material Type options MUST be one of:
 - "notes" (Chapter notes, revision summaries, mind maps, formula cheatsheets)
@@ -1656,6 +1668,7 @@ Material Type options MUST be one of:
 - "practice_questions" (Practice question sets, DPPs, question banks, MCQs, problem worksheets)
 
 Infer the subject precisely (e.g., "Science", "Mathematics", "English", "Social Science", "Physics", "Chemistry", "Biology", "Gujarati", "Hindi", "History", "Geography", "Computer Science", "General Knowledge", etc.).
+Identify the primary language of the document (strictly one of: "English", "Hindi", "Gujarati", "Marathi", "Tamil", "Telugu", "Bengali", "Kannada", "Malayalam", "Punjabi"). CRITICAL: If the document is written in English (even if the topic or story is Indian like 'Village Palampur' or 'Beehive'), the language MUST be "English". Only return "Hindi" if the document is actually written in Hindi / Devanagari script or is a Hindi subject reader.
 Provide a clean, elegant title for the file and a concise 1-2 sentence description summarizing what the document contains.`;
 
       let response: any = null;
@@ -1690,6 +1703,7 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
                     subject: { type: Type.STRING, description: "Academic subject name" },
                     category: { type: Type.STRING, description: "Category string" },
                     materialType: { type: Type.STRING, description: "One of: 'notes', 'ebook', 'pyq', 'practice_questions'" },
+                    language: { type: Type.STRING, description: "Primary document language" },
                     standard: { type: Type.STRING, description: "Exact Standard string match" },
                     board: { type: Type.STRING, description: "Exact Education Board string match" },
                     description: { type: Type.STRING, description: "Short description summary" }
@@ -1726,6 +1740,7 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
                     subject: { type: Type.STRING, description: "Academic subject name" },
                     category: { type: Type.STRING, description: "Category string" },
                     materialType: { type: Type.STRING, description: "One of: 'notes', 'ebook', 'pyq', 'practice_questions'" },
+                    language: { type: Type.STRING, description: "Primary document language" },
                     standard: { type: Type.STRING, description: "Exact Standard string match" },
                     board: { type: Type.STRING, description: "Exact Education Board string match" },
                     description: { type: Type.STRING, description: "Short description summary" }
@@ -1748,6 +1763,43 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
       }
 
       const json = JSON.parse(response?.text || '{}');
+
+      // Guarantee accurate category based on physical file format/extension
+      const lowerName = (fileName || '').toLowerCase();
+      if (lowerName.endsWith('.pdf') || mimeType === 'application/pdf' || (fileDataUrl && fileDataUrl.startsWith('data:application/pdf'))) {
+        json.category = 'pdf';
+      } else if (/\.(mp4|mkv|avi|mov|webm)$/i.test(lowerName) || (mimeType && mimeType.startsWith('video/'))) {
+        json.category = 'video';
+      } else if (/\.(mp3|wav|aac|ogg|m4a)$/i.test(lowerName) || (mimeType && mimeType.startsWith('audio/'))) {
+        json.category = 'audio';
+      } else if (/\.(doc|docx|txt|rtf|odt)$/i.test(lowerName) || (mimeType && (mimeType.includes('word') || mimeType === 'text/plain'))) {
+        json.category = 'document';
+      }
+
+      // Guarantee accurate language classification
+      let detectedLang = json.language || 'English';
+      const fullAnalysisText = `${json.title || ''} ${json.description || ''} ${json.subject || ''} ${fileName || ''}`;
+      if (json.subject?.toLowerCase() === 'hindi' || /[\u0900-\u097F]/.test(fullAnalysisText)) {
+        if (!/\b(marathi|मराठी)\b/i.test(fullAnalysisText)) {
+          detectedLang = 'Hindi';
+        } else {
+          detectedLang = 'Marathi';
+        }
+      } else if (/[\u0A80-\u0AFF]/.test(fullAnalysisText) || json.subject?.toLowerCase() === 'gujarati') {
+        detectedLang = 'Gujarati';
+      } else if (/[\u0B80-\u0BFF]/.test(fullAnalysisText) || json.subject?.toLowerCase() === 'tamil') {
+        detectedLang = 'Tamil';
+      } else if (/[\u0C00-\u0C7F]/.test(fullAnalysisText) || json.subject?.toLowerCase() === 'telugu') {
+        detectedLang = 'Telugu';
+      } else if (/[\u0A00-\u0A7F]/.test(fullAnalysisText) || json.subject?.toLowerCase() === 'punjabi') {
+        detectedLang = 'Punjabi';
+      } else if (!/[\u0900-\u0D7F]/.test(fullAnalysisText)) {
+        if (!['Hindi', 'Gujarati', 'Marathi', 'Tamil', 'Telugu', 'Bengali', 'Kannada', 'Malayalam', 'Punjabi'].includes(json.subject)) {
+          detectedLang = 'English';
+        }
+      }
+      json.language = detectedLang;
+
       return res.json({
         success: true,
         data: json

@@ -3,13 +3,46 @@
  * without throwing unhandled SyntaxError: Unexpected token 'R', "Rate exceeded." is not valid JSON.
  */
 
+import { checkAndRecordAiRateLimit, getSystemSettings } from './systemSettings';
+
 export async function safeFetchJson<T = any>(
   url: string,
   options?: RequestInit,
   fallbackData?: Partial<T>
 ): Promise<T> {
+  // Check if target endpoint is an AI service endpoint
+  const isAiRoute = url.includes('/api/gemini');
+
+  if (isAiRoute) {
+    const rateCheck = checkAndRecordAiRateLimit();
+    if (!rateCheck.allowed) {
+      const msg = rateCheck.errorMsg || `AI rate limit of ${rateCheck.limit} req/min reached. Please wait a moment.`;
+      console.warn(`[safeFetchJson] Rate limit blocked request to ${url}:`, msg);
+      return {
+        success: false,
+        text: msg,
+        message: msg,
+        error: msg,
+        rateLimited: true,
+        ...(fallbackData || {})
+      } as unknown as T;
+    }
+  }
+
+  // Inject Low-Bandwidth headers & compression settings
+  const settings = getSystemSettings();
+  const reqHeaders = new Headers(options?.headers || {});
+  if (settings.bandwidthCompression) {
+    reqHeaders.set('X-Low-Bandwidth', 'true');
+  }
+
+  const modifiedOptions: RequestInit = {
+    ...options,
+    headers: reqHeaders,
+  };
+
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(url, modifiedOptions);
     const rawText = await response.text();
     const trimmed = rawText.trim();
 

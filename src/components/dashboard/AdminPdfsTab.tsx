@@ -35,34 +35,86 @@ interface AdminPdfsTabProps {
 const DEFAULT_CURRICULUM_FOLDERS: CurriculumFolder[] = [];
 const DEFAULT_CURRICULUM_FILES: CurriculumFile[] = [];
 
+// Robust Language Detection & Labeling Engine
+export const detectDocumentLanguage = (fileOrLang?: string | Partial<CurriculumFile>): { label: string; code: LanguageCode } => {
+  if (!fileOrLang) return { label: 'English', code: 'en' };
+
+  let explicitLang = '';
+  let subj = '';
+  let fullText = '';
+
+  if (typeof fileOrLang === 'string') {
+    explicitLang = fileOrLang.trim();
+  } else {
+    explicitLang = (fileOrLang.language || '').trim();
+    subj = (fileOrLang.subject || '').trim();
+    fullText = `${fileOrLang.name || ''} ${fileOrLang.description || ''}`;
+  }
+
+  // 1. Check explicit language field if provided
+  if (explicitLang) {
+    const l = explicitLang.toLowerCase();
+    if (/\b(hi|hindi)\b/i.test(l) || l.includes('हिंदी') || /[\u0900-\u097F]/.test(l)) return { label: 'हिंदी', code: 'hi' };
+    if (/\b(gu|gujarati)\b/i.test(l) || l.includes('ગુજરાતી') || /[\u0A80-\u0AFF]/.test(l)) return { label: 'ગુજરાતી', code: 'gu' };
+    if (/\b(mr|marathi)\b/i.test(l) || l.includes('मराठी')) return { label: 'मराठी', code: 'mr' };
+    if (/\b(ta|tamil)\b/i.test(l) || l.includes('தமிழ்') || /[\u0B80-\u0BFF]/.test(l)) return { label: 'தமிழ்', code: 'ta' };
+    if (/\b(te|telugu)\b/i.test(l) || l.includes('తెలుగు') || /[\u0C00-\u0C7F]/.test(l)) return { label: 'తెలుగు', code: 'te' };
+    if (/\b(bn|bengali)\b/i.test(l) || l.includes('বাংলা') || /[\u0980-\u09FF]/.test(l)) return { label: 'বাংলা', code: 'bn' as any };
+    if (/\b(kn|kannada)\b/i.test(l) || l.includes('ಕನ್ನಡ') || /[\u0C80-\u0CFF]/.test(l)) return { label: 'ಕನ್ನಡ', code: 'kn' as any };
+    if (/\b(ml|malayalam)\b/i.test(l) || l.includes('മലയാളം') || /[\u0D00-\u0D7F]/.test(l)) return { label: 'മലയാളം', code: 'ml' as any };
+    if (/\b(pa|punjabi)\b/i.test(l) || l.includes('ਪੰਜਾਬੀ') || /[\u0A00-\u0A7F]/.test(l)) return { label: 'ਪੰਜਾਬੀ', code: 'pa' as any };
+    if (/\b(en|english|eng)\b/i.test(l)) return { label: 'English', code: 'en' };
+  }
+
+  // 2. Check academic subject
+  if (subj) {
+    if (/\bhindi\b/i.test(subj) || subj === 'हिंदी') return { label: 'हिंदी', code: 'hi' };
+    if (/\benglish\b/i.test(subj)) return { label: 'English', code: 'en' };
+    if (/\bgujarati\b/i.test(subj) || subj === 'ગુજરાતી') return { label: 'ગુજરાતી', code: 'gu' };
+    if (/\bmarathi\b/i.test(subj) || subj === 'मराठी') return { label: 'मराठी', code: 'mr' };
+    if (/\btamil\b/i.test(subj) || subj === 'தமிழ்') return { label: 'தமிழ்', code: 'ta' };
+    if (/\btelugu\b/i.test(subj) || subj === 'తెలుగు') return { label: 'తెలుగు', code: 'te' };
+    if (/\bbengali\b/i.test(subj) || subj === 'বাংলা') return { label: 'বাংলা', code: 'bn' as any };
+    if (/\bkannada\b/i.test(subj) || subj === 'ಕನ್ನಡ') return { label: 'ಕನ್ನಡ', code: 'kn' as any };
+    if (/\bmalayalam\b/i.test(subj) || subj === 'മലയാളം') return { label: 'മലയാളം', code: 'ml' as any };
+    if (/\bpunjabi\b/i.test(subj) || subj === 'ਪੰਜਾਬੀ') return { label: 'ਪੰਜਾਬੀ', code: 'pa' as any };
+  }
+
+  // 3. Check native script character blocks in text (name + description)
+  if (/[\u0A80-\u0AFF]/.test(fullText)) return { label: 'ગુજરાતી', code: 'gu' };
+  if (/[\u0B80-\u0BFF]/.test(fullText)) return { label: 'தமிழ்', code: 'ta' };
+  if (/[\u0C00-\u0C7F]/.test(fullText)) return { label: 'తెలుగు', code: 'te' };
+  if (/[\u0980-\u09FF]/.test(fullText)) return { label: 'বাংলা', code: 'bn' as any };
+  if (/[\u0C80-\u0CFF]/.test(fullText)) return { label: 'ಕನ್ನಡ', code: 'kn' as any };
+  if (/[\u0D00-\u0D7F]/.test(fullText)) return { label: 'മലയാളം', code: 'ml' as any };
+  if (/[\u0A00-\u0A7F]/.test(fullText)) return { label: 'ਪੰਜਾਬੀ', code: 'pa' as any };
+  if (/[\u0900-\u097F]/.test(fullText)) {
+    return /\b(marathi|मराठी)\b/i.test(fullText) ? { label: 'मराठी', code: 'mr' } : { label: 'हिंदी', code: 'hi' };
+  }
+
+  // 4. Check explicit whole phrases in title
+  if (/\b(hindi medium|hindi version|in hindi)\b/i.test(fullText)) return { label: 'हिंदी', code: 'hi' };
+  if (/\b(gujarati medium|gujarati version|in gujarati)\b/i.test(fullText)) return { label: 'ગુજરાતી', code: 'gu' };
+  if (/\b(marathi medium|marathi version|in marathi)\b/i.test(fullText)) return { label: 'मराठी', code: 'mr' };
+  if (/\b(tamil medium|tamil version|in tamil)\b/i.test(fullText)) return { label: 'தமிழ்', code: 'ta' };
+  if (/\b(telugu medium|telugu version|in telugu)\b/i.test(fullText)) return { label: 'తెలుగు', code: 'te' };
+  if (/\b(bengali medium|bengali version|in bengali)\b/i.test(fullText)) return { label: 'বাংলা', code: 'bn' as any };
+  if (/\b(kannada medium|kannada version|in kannada)\b/i.test(fullText)) return { label: 'ಕನ್ನಡ', code: 'kn' as any };
+  if (/\b(malayalam medium|malayalam version|in malayalam)\b/i.test(fullText)) return { label: 'മലയാളം', code: 'ml' as any };
+  if (/\b(punjabi medium|punjabi version|in punjabi)\b/i.test(fullText)) return { label: 'ਪੰਜਾਬੀ', code: 'pa' as any };
+
+  // 5. Default strictly to English for standard Latin-alphabet documents
+  return { label: 'English', code: 'en' };
+};
+
 // Language Code Detection Helper
 const getLanguageCodeFromName = (langName?: string): LanguageCode => {
-  if (!langName) return 'en';
-  const l = langName.toLowerCase();
-  if (l.includes('hindi') || l.includes('hi') || /[\u0900-\u097F]/.test(l)) return 'hi';
-  if (l.includes('gujarati') || l.includes('gu') || /[\u0A80-\u0AFF]/.test(l)) return 'gu';
-  if (l.includes('marathi') || l.includes('mr')) return 'mr';
-  if (l.includes('tamil') || l.includes('ta') || /[\u0B80-\u0BFF]/.test(l)) return 'ta';
-  if (l.includes('telugu') || l.includes('te') || /[\u0C00-\u0C7F]/.test(l)) return 'te';
-  return 'en';
+  return detectDocumentLanguage(langName).code;
 };
 
 // Clean Language Name Helper
-const getCleanLanguageLabel = (langStr?: string) => {
-  if (!langStr) return 'English';
-  const l = langStr.toLowerCase();
-  if (l.includes('hindi') || l.includes('hi') || /[\u0900-\u097F]/.test(l)) return 'हिंदी';
-  if (l.includes('gujarati') || l.includes('gu') || /[\u0A80-\u0AFF]/.test(l)) return 'ગુજરાતી';
-  if (l.includes('marathi') || l.includes('mr')) return 'मराठी';
-  if (l.includes('tamil') || l.includes('ta') || /[\u0B80-\u0BFF]/.test(l)) return 'தமிழ்';
-  if (l.includes('telugu') || l.includes('te') || /[\u0C00-\u0C7F]/.test(l)) return 'తెలుగు';
-  if (l.includes('bengali') || l.includes('bn')) return 'বাংলা';
-  if (l.includes('kannada') || l.includes('kn')) return 'ಕನ್ನಡ';
-  if (l.includes('malayalam') || l.includes('ml')) return 'മലയാളം';
-  if (l.includes('punjabi') || l.includes('pa')) return 'ਪੰਜਾਬੀ';
-  if (l.includes('hinglish')) return 'Hinglish';
-  if (l.includes('english') || l.includes('en')) return 'English';
-  return langStr.replace(/^[^\w\s\u0900-\u0D7F]+/, '').trim();
+const getCleanLanguageLabel = (fileOrLang?: string | Partial<CurriculumFile>) => {
+  return detectDocumentLanguage(fileOrLang).label;
 };
 
 // High-performance in-memory cache and promise deduplication for PDF Data URLs
@@ -1564,20 +1616,34 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
       // Language filter
       if (selectedLanguage !== 'all') {
         const reqLang = selectedLanguage.toLowerCase();
+        const detected = detectDocumentLanguage(f);
         const itemLang = (f.language || '').toLowerCase();
-        const textToSearch = `${f.name} ${f.description || ''} ${f.subject || ''}`.toLowerCase();
 
         if (itemLang) {
-          if (!itemLang.includes(reqLang) && !reqLang.includes(itemLang)) return false;
-        } else {
-          if (!textToSearch.includes(reqLang)) {
-            if (reqLang === 'hindi' && !/[\u0900-\u097F]/.test(textToSearch)) return false;
-            if (reqLang === 'gujarati' && !/[\u0A80-\u0AFF]/.test(textToSearch)) return false;
-            if (reqLang === 'marathi' && !/[\u0900-\u097F]/.test(textToSearch)) return false;
-            if (reqLang === 'tamil' && !/[\u0B80-\u0BFF]/.test(textToSearch)) return false;
-            if (reqLang === 'telugu' && !/[\u0C00-\u0C7F]/.test(textToSearch)) return false;
-            if (reqLang === 'english' && /[\u0900-\u0C7F]/.test(textToSearch) && !textToSearch.includes('english')) return false;
+          if (!itemLang.includes(reqLang) && !reqLang.includes(itemLang) && detected.label.toLowerCase() !== reqLang && detected.code !== reqLang) {
+            return false;
           }
+        } else {
+          // Check detected language match
+          const filterLangMap: Record<string, string[]> = {
+            english: ['english', 'en'],
+            hindi: ['हिंदी', 'hindi', 'hi'],
+            gujarati: ['ગુજરાતી', 'gujarati', 'gu'],
+            marathi: ['मराठी', 'marathi', 'mr'],
+            tamil: ['தமிழ்', 'tamil', 'ta'],
+            telugu: ['తెలుగు', 'telugu', 'te'],
+            bengali: ['বাংলা', 'bengali', 'bn'],
+            kannada: ['ಕನ್ನಡ', 'kannada', 'kn'],
+            malayalam: ['മലയാളം', 'malayalam', 'ml'],
+            punjabi: ['ਪੰਜਾਬੀ', 'punjabi', 'pa'],
+          };
+          const matches = filterLangMap[reqLang] || [reqLang];
+          const isMatch = matches.some(m => 
+            detected.label.toLowerCase().includes(m) || 
+            detected.code.toLowerCase() === m || 
+            m.includes(detected.label.toLowerCase())
+          );
+          if (!isMatch) return false;
         }
       }
 
@@ -3065,7 +3131,7 @@ This comprehensive study resource provides essential conceptual foundation and p
               const isAiGenerated = checkIsAiGenerated(file);
               const isAdmin = user?.role === 'admin';
               const canDelete = checkCanDeleteFile(file, user);
-              const langLabel = getCleanLanguageLabel(file.language || file.name);
+              const langLabel = getCleanLanguageLabel(file);
 
               return (
                 <div
@@ -3184,7 +3250,7 @@ This comprehensive study resource provides essential conceptual foundation and p
               const isAiGenerated = checkIsAiGenerated(file);
               const isAdmin = user?.role === 'admin';
               const canDelete = checkCanDeleteFile(file, user);
-              const langLabel = getCleanLanguageLabel(file.language || file.name);
+              const langLabel = getCleanLanguageLabel(file);
 
               return (
                 <div key={file.id} className="p-4 hover:bg-slate-50/80 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
