@@ -4,13 +4,31 @@ import 'katex/dist/katex.min.css';
 
 const renderKaTeX = (math: string) => {
   try {
-    const html = katex.renderToString(math, {
+    // Pre-clean math string
+    let cleanMath = math;
+    // Fix \xrightarrow without proper braces
+    cleanMath = cleanMath.replace(/\\xrightarrow\s*(\\text\{[^{}]+\})/g, '\\xrightarrow{$1}');
+    cleanMath = cleanMath.replace(/\\xrightarrow\s*\\text\s+([a-zA-Z0-9_\/]+)/g, '\\xrightarrow{\\text{$1}}');
+    cleanMath = cleanMath.replace(/\\xrightarrow\s+([a-zA-Z0-9_]+)/g, '\\xrightarrow{\\text{$1}}');
+    cleanMath = cleanMath.replace(/\\xrightarrow(?!\s*[\{\[\s])/g, '\\xrightarrow{}');
+
+    const html = katex.renderToString(cleanMath, {
       displayMode: false,
-      throwOnError: false,
+      throwOnError: true,
     });
     return <span dangerouslySetInnerHTML={{ __html: html }} />;
   } catch {
-    return <span className="font-serif italic text-base px-0.5">{math}</span>;
+    // Graceful fallback without red KaTeX error text
+    const fallbackText = math
+      .replace(/\\text\{([^}]+)\}/g, '$1')
+      .replace(/\\xrightarrow/g, ' → ')
+      .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1/$2)')
+      .replace(/[\{\}\\]/g, ' ');
+    return (
+      <span className="font-sans font-medium text-xs sm:text-sm px-1.5 py-0.5 rounded bg-purple-950/40 border border-purple-800/40 text-purple-200">
+        {fallbackText}
+      </span>
+    );
   }
 };
 

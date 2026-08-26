@@ -545,14 +545,14 @@ const STUDY_MATERIALS_TRANSLATIONS: Record<LanguageCode, {
     generatingMsg: "Generating Study Material...",
     searchPlaceholder: "Search PDF notes, titles, or subjects...",
     syncBtn: "Sync",
-    filterAllMaterials: "🌟 All Materials",
-    filterMySaved: "⭐ My Saved Material",
-    filterAiGenerated: "✨ AI Generated Material",
-    filterNotes: "📝 Notes & Summaries",
-    filterEbooks: "📚 E-Books & Textbooks",
-    filterPyq: "📜 Previous Year Papers (PYQ)",
-    filterQuestions: "✍️ Practice Questions",
-    filterOther: "📁 Other Resources",
+    filterAllMaterials: "All Materials",
+    filterMySaved: "My Saved Material",
+    filterAiGenerated: "AI Generated Material",
+    filterNotes: "Notes & Summaries",
+    filterEbooks: "E-Books & Textbooks",
+    filterPyq: "Previous Year Papers (PYQ)",
+    filterQuestions: "Practice Questions",
+    filterOther: "Other Resources",
     materialTypeLabel: "Material Type",
     allMaterialTypes: "All Material Types",
     subjectFilterLabel: "Subject Filter",
@@ -561,9 +561,9 @@ const STUDY_MATERIALS_TRANSLATIONS: Record<LanguageCode, {
     allStandards: "All Standards (Class 1-12)",
     fileFormatLabel: "File Format",
     allFormats: "All File Formats",
-    pdfDocuments: "📄 PDF Documents",
-    textDocuments: "📝 Text Documents",
-    worksheetsQuizzes: "🎯 Worksheets & Quizzes",
+    pdfDocuments: "PDF Documents",
+    textDocuments: "Text Documents",
+    worksheetsQuizzes: "Worksheets & Quizzes",
     languageFilterLabel: "Language Filter",
     allLanguages: "All Languages",
     studyCategoriesTitle: "Study Categories & Folders",
@@ -1869,22 +1869,22 @@ REQUIREMENTS & CHAPTER STRUCTURE:
 CHAPTER STRUCTURE:
 # ${genTopic.toUpperCase()} - E-BOOK CHAPTER
 
-## 📖 1. Chapter Introduction & Core Context
+## Chapter Introduction & Core Context
 - Engaging background and 4 clear learning objectives.
 
-## 💡 2. Theoretical Foundations & Fundamental Principles
+## Theoretical Foundations & Fundamental Principles
 - In-depth theoretical concepts, laws, and core definitions with bold terms.
 
-## 📊 3. Detailed Breakdown & Concept Explanations
+## Detailed Breakdown & Concept Explanations
 - Step-by-step conceptual walkthroughs. Use callout blocks starting with "> 💡 Key Principle:".
 
-## 🔬 4. Solved Examples & Step-by-Step Derivations
+## Solved Examples & Step-by-Step Derivations
 - 3 comprehensive solved examples with detailed step-by-step logic.
 
-## 📌 5. Chapter Summary & Core Concepts Map
+## Chapter Summary & Core Concepts Map
 - Structured summary of all major ideas.
 
-## 📚 6. Glossary of Essential Terms & Key Formulas
+## Glossary of Essential Terms & Key Formulas
 - Important terms and formulas defined clearly.`;
     } else if (genMaterialFormat === 'notes') {
       formatTitleSuffix = 'Revision Notes & Summary';
@@ -1898,22 +1898,22 @@ REQUIREMENTS & STRUCTURE:
 STRUCTURE:
 # ${genTopic.toUpperCase()} - REVISION NOTES
 
-## ⚡ 1. High-Yield Exam Summary
+## High-Yield Exam Summary
 - Quick bullet points highlighting core exam points.
 
-## 💡 2. Key Terms & Fundamental Definitions
+## Key Terms & Fundamental Definitions
 - Concise definitions with bold key terms.
 
-## 📐 3. Essential Formulas, Laws & Rules
+## Essential Formulas, Laws & Rules
 - Formula sheet breakdown with all variables explained.
 
-## 🧠 4. Memory Tricks & Mnemonics
+## Memory Tricks & Mnemonics
 - Clever memory hooks and acronyms.
 
-## ⚠️ 5. Common Exam Pitfalls & Misconceptions
+## Common Exam Pitfalls & Misconceptions
 - Mistakes students make in exams and how to avoid them.
 
-## 🎯 6. 5-Minute Exam Refresher
+## 6. 5-Minute Exam Refresher
 - 5 high-yield bullet points for instant review.`;
     } else if (genMaterialFormat === 'pyq') {
       formatTitleSuffix = 'Model Exam Paper & Marking Scheme';
@@ -1928,22 +1928,22 @@ STRUCTURE:
 # MODEL EXAMINATION PAPER: ${genTopic.toUpperCase()}
 **Subject:** ${genSubject} | **Class:** ${genStandard} | **Time:** 2 Hours | **Max Marks:** 80 Marks
 
-## 📌 General Instructions
+## General Instructions
 - All questions are compulsory.
 
-## 🔘 SECTION A: Multiple Choice Questions (10 Marks)
+## SECTION A: Multiple Choice Questions (10 Marks)
 - 10 MCQs with options (A, B, C, D) testing core concepts.
 
-## ✍️ SECTION B: Short Answer Questions (20 Marks)
+## SECTION B: Short Answer Questions (20 Marks)
 - 5 Short Answer Questions (2-4 marks each).
 
-## 🔬 SECTION C: Long Answer & Analytical Questions (30 Marks)
+## SECTION C: Long Answer & Analytical Questions (30 Marks)
 - 3 Long Answer Questions (8-10 marks each) requiring detailed derivations/explanations.
 
-## 🎯 SECTION D: Case Study / Application Problem (20 Marks)
+## SECTION D: Case Study / Application Problem (20 Marks)
 - A scenario-based problem with sub-questions.
 
-## 🔑 COMPLETE ANSWER KEY & MARKING SCHEME
+## COMPLETE ANSWER KEY & MARKING SCHEME
 - Provide exhaustive, step-by-step solutions for EVERY question above.`;
     } else if (genMaterialFormat === 'practice_questions') {
       formatTitleSuffix = 'Practice Question Bank & Solutions';
@@ -1957,19 +1957,19 @@ REQUIREMENTS & STRUCTURE:
 STRUCTURE:
 # PRACTICE QUESTION BANK & WORKSHEET: ${genTopic.toUpperCase()}
 
-## 🎯 Worksheet Objectives
+## Worksheet Objectives
 - Overview of problem-solving skills trained.
 
-## 🟢 LEVEL 1: Warm-up & Foundational Questions (5 Questions)
+## LEVEL 1: Warm-up & Foundational Questions (5 Questions)
 - Direct definition and formula application problems.
 
-## 🟡 LEVEL 2: Intermediate & Conceptual Questions (5 Questions)
+## LEVEL 2: Intermediate & Conceptual Questions (5 Questions)
 - Analytical and multi-step reasoning problems.
 
-## 🔴 LEVEL 3: Higher Order Thinking Skills (HOTS) & Challenge Problems (5 Questions)
+## LEVEL 3: Higher Order Thinking Skills (HOTS) & Challenge Problems (5 Questions)
 - High-level challenge problems.
 
-## 💡 STEP-BY-STEP SOLUTIONS & HINTS
+## STEP-BY-STEP SOLUTIONS & HINTS
 - Exhaustive step-by-step solutions and explanations for all questions.`;
     }
 
@@ -1990,15 +1990,15 @@ STRUCTURE:
         // High quality fallback structure for the topic if API rate limit or error occurs
         generatedText = `# ${genTopic.trim().toUpperCase()} (${genSubject} - ${genStandard})
 
-## 📚 Overview & Core Learning Objectives
+## Overview & Core Learning Objectives
 This comprehensive study resource provides essential conceptual foundation and practice guidelines for **${genTopic.trim()}** in **${genSubject}** (${genStandard}).
 
-## 🔑 Key Definitions & Fundamental Principles
+## Key Definitions & Fundamental Principles
 - **Core Principle**: Key concepts and foundational rules governing ${genTopic.trim()}.
 - **Formula & Equations**: Essential mathematical formulas, physical laws, or chemical equations applicable to this topic.
 - **Key Takeaway**: Primary takeaways for board exam readiness and competitive tests.
 
-## ✍️ Practice Questions & Step-by-Step Solutions
+## Practice Questions & Step-by-Step Solutions
 1. **Question 1**: Explain the primary mechanism and core principles behind ${genTopic.trim()}.
    - **Solution**: Identify the fundamental definitions, state the governing rules, and highlight real-world applications step-by-step.
 
@@ -2935,16 +2935,16 @@ This comprehensive study resource provides essential conceptual foundation and p
 
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5 flex items-center gap-1">
-              <Clock className="w-3 h-3 text-rose-500" />
+              {/*<Clock className="w-3 h-3 text-rose-500" />*/}
               <span>Sort By Date</span>
             </label>
             <CustomSelect
               value={sortByDate}
               onChange={(val) => setSortByDate(val as 'newest' | 'oldest' | 'name')}
               options={[
-                { value: 'newest', label: '📅 Date: Newest First' },
-                { value: 'oldest', label: '📅 Date: Oldest First' },
-                { value: 'name', label: '🔤 Name: A to Z' }
+                { value: 'newest', label: 'Date: Newest First' },
+                { value: 'oldest', label: 'Date: Oldest First' },
+                { value: 'name', label: 'Name: A to Z' }
               ]}
               theme="light"
               placeholder="Sort Order"
@@ -3304,6 +3304,8 @@ This comprehensive study resource provides essential conceptual foundation and p
                   fileName={activePdfFile.name}
                   fullContent={(activePdfFile as any).fullContent || (activePdfFile as any).generatedText}
                   isAiGenerated={checkIsAiGenerated(activePdfFile)}
+                  isSaved={downloadedPdfIds.includes(activePdfFile.id)}
+                  onToggleSave={() => handleToggleSaveFileToMyMaterial(activePdfFile)}
                   onGetFileLocal={async (id) => {
                     if (activePdfFile.fileDataUrl) return activePdfFile.fileDataUrl;
                     const localUrl = await getFileLocal(id);

@@ -711,13 +711,12 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                           🎓 {cert.quizTitle}
                         </h4>
                         
-                        <div className="flex items-center gap-2 text-[11px] text-gray-500 font-mono">
+                        <div className="items-center gap-2 text-[11px] text-gray-500 font-mono">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 text-gray-400" />
                             <span>{cert.date}</span>
                           </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1 font-bold text-gray-700">
+                          <span className="flex items-center gap-1 font-bold text-gray-700 mt-1">
                             <Check className="h-3 w-3 text-emerald-600" />
                             <span>{cert.score}/{cert.totalQuestions} {lang === 'hi' ? "सही" : "Score"}</span>
                           </span>

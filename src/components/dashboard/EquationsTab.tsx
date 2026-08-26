@@ -5620,11 +5620,11 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         <span>📝</span> Formatting Helper:
                         {showFormattingHelper ? <ChevronDown className="h-3 w-3 inline ml-0.5 group-hover:translate-y-0.5 transition-transform" /> : <ChevronUp className="h-3 w-3 inline ml-0.5 group-hover:-translate-y-0.5 transition-transform" />}
                       </span>
-                      {showFormattingHelper && (
+                      {/*{showFormattingHelper && (
                         <span className="text-[8px] text-gray-400 font-normal italic lowercase hidden sm:inline">
                           scroll vertically to see all symbols
                         </span>
-                      )}
+                      )}*/}
                       <span className="bg-gray-100 px-1.5 py-0.5 rounded text-[7px] text-gray-400 group-hover:bg-gray-200 transition-colors">
                         {showFormattingHelper ? (lang === 'hi' ? 'छिपाएं' : 'Hide') : (lang === 'hi' ? 'दिखाएं' : 'Show')}
                       </span>

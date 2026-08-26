@@ -5,6 +5,7 @@ import 'katex/dist/katex.min.css';
 import { safeFetchJson } from '../../utils/safeFetch';
 import MathRenderer, { normalizeMathText } from '../common/MathRenderer';
 import { downloadSmartReaderPdf, generateSmartReaderPdfDataUrl } from '../../utils/pdfExport';
+import { saveFileLocal } from '../../lib/indexedDbStore';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -220,7 +221,9 @@ export const PDF_VIEWER_I18N: Record<LanguageCode, {
   aiSolverTitle: string;
   downloadPdf: string;
   save: string;
+  saved: string;
   savedToMaterial: string;
+  unsavedFromMaterial: string;
   close: string;
   closePdf: string;
   rotate: string;
@@ -258,7 +261,9 @@ export const PDF_VIEWER_I18N: Record<LanguageCode, {
     aiSolverTitle: 'AI Solver Chatbot',
     downloadPdf: 'Download PDF',
     save: 'Save',
+    saved: 'Saved',
     savedToMaterial: 'Saved to My Material!',
+    unsavedFromMaterial: 'Removed from My Material',
     close: 'Close',
     closePdf: 'Close PDF',
     rotate: 'Rotate',
@@ -296,7 +301,9 @@ export const PDF_VIEWER_I18N: Record<LanguageCode, {
     aiSolverTitle: 'एआई अध्ययन सहायक',
     downloadPdf: 'पीडीएफ डाउनलोड करें',
     save: 'सहेजें',
+    saved: 'सहेजा गया',
     savedToMaterial: 'मेरी सामग्री में सहेजा गया!',
+    unsavedFromMaterial: 'मेरी सामग्री से हटाया गया',
     close: 'बंद करें',
     closePdf: 'पीडीएफ बंद करें',
     rotate: 'घुमाएं',
@@ -334,7 +341,9 @@ export const PDF_VIEWER_I18N: Record<LanguageCode, {
     aiSolverTitle: 'AI અભ્યાસ મદદગાર',
     downloadPdf: 'પીડીએફ ડાઉનલોડ કરો',
     save: 'સાચવો',
+    saved: 'સાચવેલ',
     savedToMaterial: 'મારી સામગ્રીમાં સાચવવામાં આવ્યું!',
+    unsavedFromMaterial: 'મારી સામગ્રીમાંથી દૂર કર્યું',
     close: 'બંધ કરો',
     closePdf: 'પીડીએફ બંધ કરો',
     rotate: 'ફેરવો',
@@ -372,7 +381,9 @@ export const PDF_VIEWER_I18N: Record<LanguageCode, {
     aiSolverTitle: 'AI अभ्यास सहाय्यक',
     downloadPdf: 'पीडीएफ डाउनलोड करा',
     save: 'साठवा',
+    saved: 'जतन केले',
     savedToMaterial: 'माझ्या सामग्रीत जतन केले!',
+    unsavedFromMaterial: 'माझ्या सामग्रीतून काढले',
     close: 'बंद करा',
     closePdf: 'पीडीएफ बंद करा',
     rotate: 'फिरवा',
@@ -410,7 +421,9 @@ export const PDF_VIEWER_I18N: Record<LanguageCode, {
     aiSolverTitle: 'AI கற்றல் உதவியாளர்',
     downloadPdf: 'PDF பதிவிறக்கவும்',
     save: 'சேமி',
+    saved: 'சேமிக்கப்பட்டது',
     savedToMaterial: 'எனது சேமிப்பில் சேமிக்கப்பட்டது!',
+    unsavedFromMaterial: 'எனது சேமிப்பிலிருந்து நீக்கப்பட்டது',
     close: 'மூடு',
     closePdf: 'PDF மூடவும்',
     rotate: 'சுழற்று',
@@ -448,7 +461,9 @@ export const PDF_VIEWER_I18N: Record<LanguageCode, {
     aiSolverTitle: 'AI అభ్యసన సహాయకుడు',
     downloadPdf: 'PDF డౌన్‌లోడ్ చేయండి',
     save: 'సేవ్ చేయి',
+    saved: 'సేవ్ చేయబడింది',
     savedToMaterial: 'నా మెటీరియల్‌లో సేవ్ చేయబడింది!',
+    unsavedFromMaterial: 'నా మెటీరియల్ నుండి తీసివేయబడింది',
     close: 'మూసివేయి',
     closePdf: 'PDF మూసివేయండి',
     rotate: 'తిప్పండి',
@@ -486,6 +501,8 @@ interface PdfCanvasViewerProps {
   onLanguageChange?: (lang: LanguageCode) => void;
   onGetFileLocal: (id: string) => Promise<string | null>;
   onDownload: () => void;
+  isSaved?: boolean;
+  onToggleSave?: () => void | Promise<void>;
   onPagesTextExtracted?: (pages: { pageNum: number; text: string }[]) => void;
 }
 
@@ -1282,6 +1299,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   onLanguageChange,
   onGetFileLocal,
   onDownload,
+  isSaved,
+  onToggleSave,
   onPagesTextExtracted,
 }) => {
   const [pdfDoc, setPdfDoc] = useState<any>(null);
@@ -1292,6 +1311,26 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   // Language and Multilingual Translations for PDF Viewer
   const currentLangCode: LanguageCode = (lang && PDF_VIEWER_I18N[lang]) ? lang : 'en';
   const tPdf = PDF_VIEWER_I18N[currentLangCode] || PDF_VIEWER_I18N.en;
+
+  // Saved to Material State Management (Syncs with parent or local storage)
+  const [internalSaved, setInternalSaved] = useState<boolean>(() => {
+    if (typeof isSaved === 'boolean') return isSaved;
+    try {
+      const userKey = (user?.mobile || adminUser?.mobile || (user as any)?.id || 'student') + '_downloaded_admin_pdfs';
+      const savedList = JSON.parse(localStorage.getItem(userKey) || '[]');
+      return Array.isArray(savedList) && savedList.includes(fileId);
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (typeof isSaved === 'boolean') {
+      setInternalSaved(isSaved);
+    }
+  }, [isSaved]);
+
+  const isMaterialSaved = typeof isSaved === 'boolean' ? isSaved : internalSaved;
 
   // View Mode: For AI generated files, strictly lock to 'reader' mode (Smart Reader).
   // For Admin-uploaded PDFs, lock strictly to 'canvas' mode (Original PDF document as it is).
@@ -2158,9 +2197,22 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           if (rect && (rect.width > 0 || rect.height > 0)) {
             const clean = cleanPdfExtractedText(text);
             setSelectedText(clean);
+
+            const estimatedPopupWidth = 295;
+            const estimatedPopupHeight = 44;
+            const rawX = rect.left + rect.width / 2 - estimatedPopupWidth / 2;
+            const clampedX = Math.max(12, Math.min(window.innerWidth - estimatedPopupWidth - 12, rawX));
+
+            // If selection is near top of screen (or navbar), show popup below selection
+            let posY = rect.top - estimatedPopupHeight - 10;
+            if (posY < 64) {
+              posY = rect.bottom + 10;
+            }
+            const clampedY = Math.max(10, Math.min(window.innerHeight - estimatedPopupHeight - 12, posY));
+
             setSelectionPos({
-              x: Math.max(10, Math.min(window.innerWidth - 240, rect.left + rect.width / 2 - 110)),
-              y: Math.max(10, rect.top - 52)
+              x: clampedX,
+              y: clampedY,
             });
           } else {
             setSelectedText('');
@@ -2691,6 +2743,46 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     );
   };
 
+  // Toggle Save / Download to "My Material"
+  const handleToggleSave = async () => {
+    const nextSavedState = !isMaterialSaved;
+
+    if (onToggleSave) {
+      try {
+        await onToggleSave();
+      } catch (err) {
+        console.warn("onToggleSave callback error:", err);
+      }
+      if (typeof isSaved !== 'boolean') {
+        setInternalSaved(nextSavedState);
+      }
+    } else {
+      // Local fallback persistence in browser localStorage and local DB cache
+      try {
+        const userMobile = user?.mobile || adminUser?.mobile || (user as any)?.id || 'student';
+        const storageKey = `${userMobile}_downloaded_admin_pdfs`;
+        const savedList: string[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        let updatedList: string[];
+        if (savedList.includes(fileId)) {
+          updatedList = savedList.filter((id) => id !== fileId);
+          setInternalSaved(false);
+        } else {
+          updatedList = Array.from(new Set([...savedList, fileId]));
+          setInternalSaved(true);
+          if (fileDataUrl) {
+            saveFileLocal(fileId, fileDataUrl).catch(() => {});
+          }
+        }
+        localStorage.setItem(storageKey, JSON.stringify(updatedList));
+      } catch (err) {
+        console.warn("Failed to toggle save locally:", err);
+      }
+    }
+
+    setToastMessage(nextSavedState ? tPdf.savedToMaterial : tPdf.unsavedFromMaterial);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   return (
     <div className="flex flex-col h-full flex-1 min-h-0 bg-slate-900 border border-slate-800 rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl relative w-full select-none">
       
@@ -2706,45 +2798,53 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       {selectedText && selectionPos && (
         <div
           data-selection-popup="true"
-          style={{ left: `${selectionPos.x}px`, top: `${selectionPos.y}px` }}
-          className="fixed z-50 bg-slate-950 border border-slate-700/80 shadow-2xl rounded-2xl p-1.5 flex items-center gap-1.5 text-white animate-fade-in select-none"
+          style={{
+            left: `${selectionPos.x}px`,
+            top: `${selectionPos.y}px`,
+            maxWidth: 'calc(100vw - 24px)',
+          }}
+          className="fixed z-50 bg-slate-950/95 backdrop-blur-md border border-slate-700/80 shadow-2xl rounded-2xl p-1 sm:p-1.5 flex items-center gap-1 sm:gap-1.5 text-white animate-fade-in select-none whitespace-nowrap overflow-x-auto no-scrollbar"
         >
           <button
+            type="button"
             onClick={() => {
               handleCopySelectedText();
               window.getSelection()?.removeAllRanges();
             }}
-            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md"
-            title={tPdf.copyFullText}
+            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md whitespace-nowrap shrink-0"
+            title="Copy Selected Text"
           >
-            <Copy className="w-3.5 h-3.5" />
-            <span>{tPdf.copyFullText}</span>
+            <Copy className="w-3.5 h-3.5 shrink-0" />
+            <span className="whitespace-nowrap">{targetLanguage === 'Hindi' ? 'कॉपी' : 'Copy'}</span>
           </button>
           <button
+            type="button"
             onClick={() => {
               handleRunAiTask('explain_selection');
               setSelectedText('');
               setSelectionPos(null);
             }}
-            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md"
+            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md whitespace-nowrap shrink-0"
             title="Explain Selected Text with AI"
           >
-            <Wand2 className="w-3.5 h-3.5 text-amber-300" />
-            <span>Explain</span>
+            <Wand2 className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+            <span className="whitespace-nowrap">{targetLanguage === 'Hindi' ? 'स्पष्ट करें' : 'Explain'}</span>
           </button>
           <button
+            type="button"
             onClick={() => {
               handleRunAiTask('translate_selection');
               setSelectedText('');
               setSelectionPos(null);
             }}
-            className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md"
+            className="px-2.5 py-1 bg-purple-600 hover:bg-purple-500 rounded-xl text-xs font-bold text-white flex items-center gap-1 cursor-pointer transition-colors shadow-md whitespace-nowrap shrink-0"
             title={`Translate Selected Text to ${targetLanguage}`}
           >
-            <Languages className="w-3.5 h-3.5 text-purple-200" />
-            <span>{tPdf.translate}</span>
+            <Languages className="w-3.5 h-3.5 text-purple-200 shrink-0" />
+            <span className="whitespace-nowrap">{targetLanguage === 'Hindi' ? 'अनुवाद' : (tPdf.translate || 'Translate')}</span>
           </button>
           <button
+            type="button"
             onClick={() => {
               const codeMap: Record<string, LanguageCode> = {
                 'English': 'en',
@@ -2757,18 +2857,19 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               const speechLang = codeMap[targetLanguage] || 'hi';
               speakText(cleanPdfExtractedText(selectedText), speechLang);
             }}
-            className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-300 hover:text-white cursor-pointer"
+            className="p-1.5 hover:bg-slate-800 rounded-xl text-cyan-300 hover:text-white cursor-pointer transition-colors shrink-0"
             title={`Read Selection Aloud (${targetLanguage})`}
           >
             <Volume2 className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             onClick={() => {
               setSelectedText('');
               setSelectionPos(null);
               window.getSelection()?.removeAllRanges();
             }}
-            className="p-1 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white cursor-pointer"
+            className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-colors shrink-0"
             title="Dismiss"
           >
             <X className="w-3.5 h-3.5" />
@@ -2776,55 +2877,99 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
         </div>
       )}
 
-      {/* Top Reader Control Panel - Highly Responsive for Mobile & Desktop */}
+      {/* Top Reader Control Panel - Highly Responsive & Elegant for Mobile & Desktop */}
       <div className="flex flex-col bg-slate-950 border-b border-slate-800 shrink-0 z-20">
         
-        {/* Main Toolbar Row */}
-        <div className="flex items-center justify-between px-2.5 sm:px-4 py-2 text-xs text-slate-300 gap-2 shrink-0 flex-wrap">
+        {/* ================= DESKTOP TOOLBAR (md and above) ================= */}
+        <div className="hidden md:flex items-center justify-between px-2.5 lg:px-4 py-1.5 lg:py-2 text-xs text-slate-300 gap-1.5 lg:gap-2 shrink-0 overflow-x-auto no-scrollbar">
           
-          {/* Left: View Mode / Document Title Badge + Font Controls */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-            
-            {/* For AI Generated PDFs: Display exclusively the Smart Reader Badge */}
-            {isAiGen ? (
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs rounded-xl shadow-xs shrink-0">
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>{tPdf.smartReader}</span>
-              </div>
-            ) : (
-              /* For Standard Admin Uploaded PDFs: Show original PDF document badge (No Smart Reader option) */
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-800 text-slate-200 font-bold text-xs rounded-xl shadow-xs shrink-0 max-w-[280px] sm:max-w-[400px] truncate">
-                <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="truncate">{fileName}</span>
+          {/* Left: Badge + Document Title + Reading/Page Navigation */}
+          <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 min-w-0">
+            {/* Mode Badge & Document Title */}
+            <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800/90 rounded-xl px-2 py-1 shadow-xs shrink-0 max-w-[130px] lg:max-w-[200px] xl:max-w-[320px]">
+              {isAiGen ? (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-[10px] lg:text-[11px] rounded-lg shadow-xs shrink-0">
+                  <BookOpen className="w-3 h-3 lg:w-3.5 lg:h-3.5 shrink-0" />
+                  <span className="hidden xl:inline">{tPdf.smartReader}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 font-bold text-[10px] lg:text-[11px] rounded-lg shrink-0 border border-emerald-500/30">
+                  <FileText className="w-3 h-3 lg:w-3.5 lg:h-3.5 text-emerald-400 shrink-0" />
+                  <span>PDF</span>
+                </div>
+              )}
+              
+              {/* Prominent PDF Document Title */}
+              <span 
+                className="font-semibold text-slate-100 text-xs truncate select-text"
+                title={fileName || (isAiGen ? 'Smart Study Notes' : 'PDF Document')}
+              >
+                {fileName || (isAiGen ? 'Smart Study Notes' : 'PDF Document')}
+              </span>
+            </div>
+
+            {/* Smart Reader Theme Switcher (Desktop) */}
+            {(isAiGen || viewMode === 'reader') && (
+              <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-800 rounded-xl p-0.5 shrink-0">
+                <button
+                  onClick={() => setReaderTheme('light')}
+                  className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all flex items-center gap-1 ${
+                    readerTheme === 'light' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Light Theme"
+                >
+                  <Sun className="w-3 h-3" />
+                  <span className="hidden xl:inline">{tPdf.light}</span>
+                </button>
+                <button
+                  onClick={() => setReaderTheme('sepia')}
+                  className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all flex items-center gap-1 ${
+                    readerTheme === 'sepia' ? 'bg-[#ebd9b2] text-[#433422] shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Sepia Theme"
+                >
+                  <BookText className="w-3 h-3" />
+                  <span className="hidden xl:inline">{tPdf.sepia}</span>
+                </button>
+                <button
+                  onClick={() => setReaderTheme('dark')}
+                  className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all flex items-center gap-1 ${
+                    readerTheme === 'dark' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Dark Theme"
+                >
+                  <Moon className="w-3 h-3" />
+                  <span className="hidden xl:inline">{tPdf.dark}</span>
+                </button>
               </div>
             )}
 
             {/* Page Navigation Controls (Canvas Mode Only) */}
             {!isAiGen && viewMode === 'canvas' && (
-              <div className="flex items-center gap-1">
-                {/* First Page Shortcut (Desktop) */}
+              <div className="flex items-center gap-0.5 lg:gap-1 shrink-0">
+                {/* First Page Shortcut */}
                 <button
                   onClick={() => jumpToPage(1)}
                   disabled={activePageNum <= 1}
-                  className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white hidden sm:block"
+                  className="p-1 lg:p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white hidden xl:block"
                   title={tPdf.firstPage}
                 >
-                  <ChevronsLeft className="h-4 w-4" />
+                  <ChevronsLeft className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                 </button>
 
                 {/* Previous Page */}
                 <button
                   onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
                   disabled={activePageNum <= 1}
-                  className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
+                  className="p-1 lg:p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
                   title={tPdf.previousPage}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                 </button>
 
                 {/* Page Number Indicator / Direct Input */}
-                <div className="flex items-center gap-1.5 bg-slate-900/90 px-2 py-1 rounded-xl border border-slate-800 shrink-0 whitespace-nowrap">
-                  <span className="text-[11px] font-bold text-slate-400 hidden sm:inline select-none">{tPdf.page}</span>
+                <div className="flex items-center gap-1 bg-slate-900/90 px-1.5 lg:px-2 py-0.5 rounded-xl border border-slate-800 shrink-0 whitespace-nowrap">
+                  <span className="text-[10px] lg:text-[11px] font-bold text-slate-400 select-none hidden lg:inline">{tPdf.page}</span>
                   
                   <form onSubmit={handlePageInputSubmit} className="flex items-center">
                     <input
@@ -2835,12 +2980,12 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                       onFocus={() => setIsEditingPageInput(true)}
                       onChange={(e) => setPageInputVal(e.target.value)}
                       onBlur={() => handlePageInputSubmit()}
-                      className="w-10 sm:w-12 h-6 bg-slate-950 border border-slate-700/80 focus:border-emerald-500 rounded-lg text-center font-bold text-emerald-400 text-xs py-0 px-1 focus:outline-none transition-colors shadow-inner"
+                      className="w-9 lg:w-10 h-5 lg:h-6 bg-slate-950 border border-slate-700/80 focus:border-emerald-500 rounded-lg text-center font-bold text-emerald-400 text-xs py-0 px-0.5 focus:outline-none transition-colors shadow-inner"
                       title="Type page number and press Enter"
                     />
                   </form>
 
-                  <span className="text-slate-400 text-xs font-mono select-none flex items-center gap-1 whitespace-nowrap">
+                  <span className="text-slate-400 text-xs font-mono select-none flex items-center gap-0.5 whitespace-nowrap">
                     <span>/</span>
                     <strong className="text-slate-200 font-bold">{numPages || 1}</strong>
                   </span>
@@ -2850,26 +2995,26 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 <button
                   onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
                   disabled={activePageNum >= numPages}
-                  className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
+                  className="p-1 lg:p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white"
                   title={tPdf.nextPage}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                 </button>
 
-                {/* Last Page Shortcut (Desktop) */}
+                {/* Last Page Shortcut */}
                 <button
                   onClick={() => numPages > 0 && jumpToPage(numPages)}
                   disabled={activePageNum >= numPages}
-                  className="p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white hidden sm:block"
+                  className="p-1 lg:p-1.5 hover:bg-slate-800 rounded-xl disabled:opacity-20 transition-colors cursor-pointer text-slate-400 hover:text-white hidden xl:block"
                   title={`${tPdf.lastPage} (Page ${numPages})`}
                 >
-                  <ChevronsRight className="h-4 w-4" />
+                  <ChevronsRight className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                 </button>
 
                 {/* Hand Tool / Text Select Tool Toggle */}
                 <button
                   onClick={() => setIsPanMode(!isPanMode)}
-                  className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
+                  className={`p-1 lg:p-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1 text-xs font-bold ${
                     isPanMode
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs'
                       : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border-slate-800'
@@ -2877,86 +3022,30 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   title={isPanMode ? `${tPdf.handTool}` : `${tPdf.selectText}`}
                 >
                   {isPanMode ? <Hand className="w-3.5 h-3.5" /> : <MousePointer className="w-3.5 h-3.5" />}
-                  <span className="hidden xl:inline">{isPanMode ? tPdf.handTool : tPdf.selectText}</span>
-                </button>
-              </div>
-            )}
-
-            {/* Smart Reader Specific Toolbar (Font Controls & Theme Switcher) */}
-            {(isAiGen || viewMode === 'reader') && (
-              <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1 shrink-0">
-                {/* Font Size decrease */}
-                <button
-                  onClick={() => setReaderFontSize(prev => Math.max(13, prev - 1))}
-                  className="px-2 py-0.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white font-bold text-xs cursor-pointer transition-colors"
-                  title="Decrease Text Size (A-)"
-                >
-                  A-
-                </button>
-                <span className="text-[11px] font-mono text-slate-400 font-bold px-0.5">
-                  {readerFontSize}px
-                </span>
-                {/* Font Size increase */}
-                <button
-                  onClick={() => setReaderFontSize(prev => Math.min(22, prev + 1))}
-                  className="px-2 py-0.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white font-bold text-xs cursor-pointer transition-colors"
-                  title="Increase Text Size (A+)"
-                >
-                  A+
-                </button>
-
-                <div className="h-4 w-px bg-slate-800 mx-0.5" />
-
-                {/* Theme options */}
-                <button
-                  onClick={() => setReaderTheme('light')}
-                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
-                    readerTheme === 'light' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="Light Theme"
-                >
-                  {tPdf.light}
-                </button>
-                <button
-                  onClick={() => setReaderTheme('sepia')}
-                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
-                    readerTheme === 'sepia' ? 'bg-[#ebd9b2] text-[#433422] shadow-xs' : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="Sepia Theme"
-                >
-                  {tPdf.sepia}
-                </button>
-                <button
-                  onClick={() => setReaderTheme('dark')}
-                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
-                    readerTheme === 'dark' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="Dark Theme"
-                >
-                  {tPdf.dark}
+                  <span className="hidden 2xl:inline">{isPanMode ? tPdf.handTool : tPdf.selectText}</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* Center: Desktop Word Search Field (Standard PDFs only) */}
+          {/* Center: Search Field (Standard PDFs only) */}
           {!isAiGen && (
-            <div className="hidden lg:flex items-center gap-2 flex-1 max-w-xs min-w-[160px] relative mx-2">
+            <div className="hidden xl:flex items-center gap-1.5 flex-1 max-w-[200px] 2xl:max-w-xs min-w-[120px] relative mx-1">
               <div className="relative w-full">
-                <Search className="absolute left-3 top-2 h-3.5 w-3.5 text-slate-500" />
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-500" />
                 <input
                   type="text"
                   placeholder={tPdf.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-7 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-7 pr-6 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => handleSearch('')}
                     className="absolute right-2 top-2 text-slate-500 hover:text-white cursor-pointer"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-3 w-3" />
                   </button>
                 )}
               </div>
@@ -2966,24 +3055,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             </div>
           )}
 
-          {/* Right Side: Quick Actions & Download */}
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            
-            {/* Mobile Search Toggle Button (Standard PDFs) */}
-            {!isAiGen && (
-              <button
-                onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-                className={`p-1.5 rounded-xl cursor-pointer transition-colors lg:hidden ${
-                  isMobileSearchOpen || searchQuery
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-900 hover:bg-slate-800 text-slate-300'
-                }`}
-                title="Search text in document"
-              >
-                <Search className="h-3.5 w-3.5" />
-              </button>
-            )}
-
+          {/* Right Side: Zoom Controls + Action Buttons */}
+          <div className="flex items-center gap-1 lg:gap-1.5 shrink-0">
             {/* Zoom Controls Pill (Standard PDFs in Canvas Mode) */}
             {!isAiGen && viewMode === 'canvas' && (
               <div className="relative flex items-center bg-slate-900 border border-slate-800 rounded-xl p-0.5">
@@ -2997,7 +3070,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 
                 <button
                   onClick={() => setShowZoomMenu(!showZoomMenu)}
-                  className="px-1.5 sm:px-2 py-0.5 font-mono text-[11px] text-slate-300 hover:text-white font-bold cursor-pointer rounded transition-colors"
+                  className="px-1.5 lg:px-2 py-0.5 font-mono text-[11px] text-slate-300 hover:text-white font-bold cursor-pointer rounded transition-colors"
                   title="Click for Zoom Presets"
                 >
                   {Math.round(scale * 100)}%
@@ -3009,6 +3082,15 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   title={tPdf.zoomIn}
                 >
                   <ZoomIn className="h-3.5 w-3.5" />
+                </button>
+
+                {/* Fit Width Quick Button */}
+                <button
+                  onClick={fitWidth}
+                  className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-emerald-300 cursor-pointer"
+                  title={tPdf.fitWidth}
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
                 </button>
 
                 {/* Zoom Presets Dropdown */}
@@ -3047,37 +3129,26 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               </div>
             )}
 
-            {/* Fit Width Quick Button (Desktop Standard PDFs) */}
-            {!isAiGen && viewMode === 'canvas' && (
-              <button
-                onClick={fitWidth}
-                className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl border border-slate-800 cursor-pointer hidden md:flex items-center gap-1"
-                title={tPdf.fitWidth}
-              >
-                <Maximize2 className="h-3.5 w-3.5" />
-              </button>
-            )}
-
             {/* AI Task Assistant Toggle Button */}
             <button
               onClick={() => setShowAiAssistant(!showAiAssistant)}
-              className={`px-2.5 sm:px-3 py-1.5 font-bold rounded-xl flex items-center gap-1.5 transition-all text-xs cursor-pointer ${
+              className={`px-2.5 lg:px-3 py-1.5 font-bold rounded-xl flex items-center gap-1.5 transition-all text-xs cursor-pointer shrink-0 ${
                 showAiAssistant
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40 ring-1 ring-purple-400'
-                  : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md'
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40 ring-2 ring-purple-400'
+                  : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md hover:shadow-purple-900/30'
               }`}
               title={tPdf.aiSolverTitle}
             >
               <Bot className="h-3.5 w-3.5 text-amber-300 shrink-0" />
-              <span className="hidden sm:inline">{tPdf.aiSolver}</span>
-              <span className="sm:hidden font-bold">AI</span>
+              <span className="hidden lg:inline">{tPdf.aiSolver}</span>
+              <span className="lg:hidden">AI</span>
             </button>
 
             {/* Download PDF Button */}
             <button
               onClick={handleDownloadSmartReader}
               disabled={isDownloadingPdf}
-              className="px-2.5 sm:px-3 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md transition-all text-xs shrink-0 active:scale-95"
+              className="px-2.5 lg:px-3 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md transition-all text-xs shrink-0 active:scale-95 hover:shadow-rose-900/30"
               title={tPdf.downloadPdf}
             >
               {isDownloadingPdf ? (
@@ -3085,21 +3156,28 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               ) : (
                 <Download className="h-3.5 w-3.5" />
               )}
-              <span className="hidden sm:inline">{tPdf.downloadPdf}</span>
-              <span className="sm:hidden font-bold">PDF</span>
+              <span className="hidden lg:inline">{tPdf.downloadPdf}</span>
+              <span className="lg:hidden">PDF</span>
             </button>
 
-            {/* Save to Saved Material Button (Desktop) */}
+            {/* Save to Saved Material Button */}
             <button
-              onClick={() => {
-                setToastMessage(`⭐ ${tPdf.savedToMaterial}`);
-                setTimeout(() => setToastMessage(null), 3000);
-              }}
-              className="p-1.5 sm:px-2.5 sm:py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold rounded-xl hidden sm:flex items-center gap-1 cursor-pointer border border-amber-500/40 transition-colors text-xs shrink-0"
-              title={tPdf.save}
+              onClick={handleToggleSave}
+              className={`px-2.5 lg:px-3 py-1.5 font-bold rounded-xl flex items-center gap-1.5 cursor-pointer border transition-all text-xs shrink-0 active:scale-95 ${
+                isMaterialSaved
+                  ? 'bg-amber-500/25 hover:bg-amber-500/35 text-amber-300 border-amber-500/60 shadow-xs'
+                  : 'bg-slate-800/90 hover:bg-slate-700 text-slate-300 border-slate-700 hover:text-white'
+              }`}
+              title={isMaterialSaved ? tPdf.saved : tPdf.save}
             >
-              <Star className="h-3.5 w-3.5 text-amber-300 fill-amber-300" />
-              <span className="hidden md:inline">{tPdf.save}</span>
+              <Star
+                className={`h-3.5 w-3.5 transition-transform ${
+                  isMaterialSaved
+                    ? 'text-amber-400 fill-amber-400 scale-110'
+                    : 'text-slate-400 group-hover:text-slate-200'
+                }`}
+              />
+              <span className="hidden xl:inline">{isMaterialSaved ? tPdf.saved : tPdf.save}</span>
             </button>
 
             {/* Close PDF Viewer Button */}
@@ -3109,15 +3187,194 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   if (onClose) onClose();
                   else if (onNavigateBack) onNavigateBack();
                 }}
-                className="px-2.5 sm:px-3 py-1.5 bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 hover:text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer border border-rose-500/40 transition-colors text-xs shrink-0"
+                className="me-5 px-2.5 lg:px-3 py-1.5 bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 hover:text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer border border-rose-500/50 transition-colors text-xs shrink-0"
                 title={tPdf.closePdf}
               >
                 <X className="h-3.5 w-3.5 text-rose-400" />
-                <span className="hidden xs:inline">{tPdf.close}</span>
+                <span>{tPdf.close}</span>
               </button>
             )}
           </div>
         </div>
+
+        {/* ================= MOBILE TOOLBAR (below md) ================= */}
+        <div className="flex md:hidden flex-col">
+          {/* Top Row: Title + Essential Action Buttons */}
+          <div className="flex items-center justify-between px-2.5 py-1.5 gap-1.5 border-b border-slate-800/80">
+            {/* Title with Mode Icon */}
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-1">
+              {isAiGen ? (
+                <BookOpen className="w-4 h-4 text-purple-400 shrink-0" />
+              ) : (
+                <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+              )}
+              <span 
+                className="font-bold text-slate-100 text-xs truncate"
+                title={fileName || (isAiGen ? 'Smart Study Notes' : 'PDF Document')}
+              >
+                {fileName || (isAiGen ? 'Smart Study Notes' : 'PDF Document')}
+              </span>
+            </div>
+
+            {/* Mobile Actions Group */}
+            <div className="flex items-center gap-1 shrink-0">
+              {/* AI Assistant */}
+              <button
+                onClick={() => setShowAiAssistant(!showAiAssistant)}
+                className={`p-1.5 sm:px-2.5 sm:py-1 font-bold rounded-lg flex items-center gap-1 text-xs cursor-pointer transition-all shrink-0 ${
+                  showAiAssistant
+                    ? 'bg-purple-600 text-white shadow-md ring-1 ring-purple-400'
+                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
+                }`}
+                title={tPdf.aiSolverTitle}
+              >
+                <Bot className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+                <span className="text-[11px]">AI</span>
+              </button>
+
+              {/* Download PDF */}
+              <button
+                onClick={handleDownloadSmartReader}
+                disabled={isDownloadingPdf}
+                className="p-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-lg cursor-pointer shadow-xs transition-colors shrink-0"
+                title={tPdf.downloadPdf}
+              >
+                {isDownloadingPdf ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+              </button>
+
+              {/* Save */}
+              <button
+                onClick={handleToggleSave}
+                className={`p-1.5 rounded-lg border transition-all cursor-pointer shrink-0 ${
+                  isMaterialSaved
+                    ? 'bg-amber-500/25 text-amber-300 border-amber-500/50'
+                    : 'bg-slate-800 text-slate-300 border-slate-700'
+                }`}
+                title={isMaterialSaved ? tPdf.saved : tPdf.save}
+              >
+                <Star
+                  className={`h-3.5 w-3.5 ${
+                    isMaterialSaved ? 'text-amber-400 fill-amber-400' : 'text-slate-400'
+                  }`}
+                />
+              </button>
+
+              {/* Close */}
+              {(onClose || onNavigateBack) && (
+                <button
+                  onClick={() => {
+                    if (onClose) onClose();
+                    else if (onNavigateBack) onNavigateBack();
+                  }}
+                  className="me-5 p-1.5 bg-rose-600/25 hover:bg-rose-600/40 text-rose-300 hover:text-white rounded-lg border border-rose-500/40 cursor-pointer transition-colors shrink-0"
+                  title={tPdf.closePdf}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Row: Controls for Smart Reader / Canvas Mode */}
+          <div className="me-5 flex items-center justify-between px-2.5 py-1 text-xs text-slate-300 gap-1.5 bg-slate-900/60">
+            {/* Smart Reader Theme Switches on Mobile */}
+            {(isAiGen || viewMode === 'reader') && (
+              <div className="flex items-center justify-between w-full">
+                <span className="text-[11px] text-slate-400 font-semibold">{tPdf.smartReader}:</span>
+                <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setReaderTheme('light')}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-all ${
+                      readerTheme === 'light' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-400'
+                    }`}
+                  >
+                    {tPdf.light}
+                  </button>
+                  <button
+                    onClick={() => setReaderTheme('sepia')}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-all ${
+                      readerTheme === 'sepia' ? 'bg-[#ebd9b2] text-[#433422] shadow-xs' : 'text-slate-400'
+                    }`}
+                  >
+                    {tPdf.sepia}
+                  </button>
+                  <button
+                    onClick={() => setReaderTheme('dark')}
+                    className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-all ${
+                      readerTheme === 'dark' ? 'bg-slate-800 text-white shadow-xs' : 'text-slate-400'
+                    }`}
+                  >
+                    {tPdf.dark}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Standard PDF Navigation & Zoom on Mobile */}
+            {!isAiGen && viewMode === 'canvas' && (
+              <div className="flex items-center justify-between w-full">
+                {/* Compact Page Navigator */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => activePageNum > 1 && jumpToPage(activePageNum - 1)}
+                    disabled={activePageNum <= 1}
+                    className="p-1 hover:bg-slate-800 rounded-lg disabled:opacity-20 text-slate-400 cursor-pointer"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="text-[11px] font-mono font-bold text-slate-200 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+                    {activePageNum}/{numPages || 1}
+                  </span>
+                  <button
+                    onClick={() => activePageNum < numPages && jumpToPage(activePageNum + 1)}
+                    disabled={activePageNum >= numPages}
+                    className="p-1 hover:bg-slate-800 rounded-lg disabled:opacity-20 text-slate-400 cursor-pointer"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Zoom & Search Controls on Mobile */}
+                <div className="flex items-center gap-1">
+                  <div className="flex items-center bg-slate-950 border border-slate-800 rounded-lg p-0.5">
+                    <button
+                      onClick={zoomOut}
+                      className="p-1 hover:bg-slate-800 rounded text-slate-400 cursor-pointer"
+                    >
+                      <ZoomOut className="h-3 w-3" />
+                    </button>
+                    <span className="px-1 text-[10px] font-mono font-bold text-slate-300">
+                      {Math.round(scale * 100)}%
+                    </span>
+                    <button
+                      onClick={zoomIn}
+                      className="p-1 hover:bg-slate-800 rounded text-slate-400 cursor-pointer"
+                    >
+                      <ZoomIn className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                    className={`p-1.5 rounded-lg cursor-pointer transition-colors ${
+                      isMobileSearchOpen || searchQuery
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-950 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                    }`}
+                    title="Search word"
+                  >
+                    <Search className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
 
         {/* Expandable Mobile Search Bar */}
         {!isAiGenerated && isMobileSearchOpen && (
@@ -3267,7 +3524,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   e.stopPropagation();
                   jumpToPage(activePageNum - 1);
                 }}
-                className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-purple-600 text-slate-300 hover:text-white rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md transition-all cursor-pointer hidden sm:flex items-center justify-center group opacity-80 hover:opacity-100 hover:scale-110 active:scale-95"
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-purple-600 text-slate-300 hover:text-white rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md transition-all cursor-pointer hidden sm:flex items-center justify-center group opacity-80 hover:opacity-100 hover:scale-110 active:scale-95"
                 title="Previous Page (Arrow Left)"
               >
                 <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
@@ -3281,7 +3538,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   e.stopPropagation();
                   jumpToPage(activePageNum + 1);
                 }}
-                className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-purple-600 text-slate-300 hover:text-white rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md transition-all cursor-pointer hidden sm:flex items-center justify-center group opacity-80 hover:opacity-100 hover:scale-110 active:scale-95"
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 p-2 sm:p-2.5 bg-slate-900/90 hover:bg-purple-600 text-slate-300 hover:text-white rounded-full border border-slate-700/80 shadow-2xl backdrop-blur-md transition-all cursor-pointer hidden sm:flex items-center justify-center group opacity-80 hover:opacity-100 hover:scale-110 active:scale-95"
                 title="Next Page (Arrow Right)"
               >
                 <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
@@ -3415,15 +3672,22 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           </div>
         )}
 
-        {/* AI Task Assistant Panel (Desktop Sidebar with Drag-Resize or Freely Showcase over Whole PDF Viewer) */}
+        {/* AI Task Assistant Panel (Desktop Sidebar with Drag-Resize or Fullscreen Mobile Showcase) */}
         {showAiAssistant && (
           <div
             id="pdf-ai-solver-panel"
-            style={aiPanelMode === 'split' ? { width: `${aiPanelWidth}px` } : undefined}
+            style={
+              aiPanelMode === 'split'
+                ? {
+                    width: typeof window !== 'undefined' && window.innerWidth >= 768 ? `${aiPanelWidth}px` : '100%',
+                    maxWidth: '100%',
+                  }
+                : { width: '100%', maxWidth: '100%' }
+            }
             className={`${
               aiPanelMode === 'fullscreen'
-                ? 'absolute inset-0 z-40 bg-slate-950 flex flex-col w-full h-full animate-fade-in'
-                : 'fixed inset-0 md:static bg-slate-950 border-l border-slate-800 flex flex-col shrink-0 h-full overflow-hidden z-40 md:z-30 shadow-2xl animate-fade-in relative'
+                ? 'absolute inset-0 z-40 bg-slate-950 flex flex-col w-full h-full max-w-full overflow-hidden animate-fade-in'
+                : 'absolute inset-0 md:static md:relative bg-slate-950 border-l md:border-slate-800 flex flex-col w-full md:w-auto shrink-0 h-full overflow-hidden z-40 md:z-30 shadow-2xl animate-fade-in max-w-full'
             }`}
           >
             {/* Visual Drag Handle for Resizing when in Split View */}
@@ -3443,42 +3707,44 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             )}
 
             {/* AI Assistant Header with Showcase/Restore Controls, Width Presets, and Close */}
-            <div className="p-2.5 sm:p-3 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0 gap-2 overflow-hidden select-none">
+            <div className="p-2 sm:p-2.5 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0 gap-1.5 sm:gap-2 select-none w-full min-w-0">
               {/* Left Title & Mobile Back */}
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink min-w-0">
                 <button
+                  type="button"
                   onClick={() => setShowAiAssistant(false)}
-                  className="p-1 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white cursor-pointer md:hidden shrink-0"
+                  className="px-2 py-1 bg-purple-950/70 hover:bg-purple-900 border border-purple-500/40 rounded-xl text-purple-200 hover:text-white cursor-pointer md:hidden flex items-center gap-0.5 shrink-0 transition-colors shadow-xs"
                   title="Back to PDF"
                 >
-                  <ChevronLeft className="w-5 h-5 text-purple-300" />
+                  <ChevronLeft className="w-4 h-4 text-purple-300" />
+                  <span className="text-xs font-bold font-sans">PDF</span>
                 </button>
-                <div className="p-1.5 sm:p-2 bg-purple-600/30 rounded-xl border border-purple-500/30 text-purple-300 shrink-0">
+                <div className="p-1 sm:p-1.5 bg-purple-600/30 rounded-xl border border-purple-500/30 text-purple-300 shrink-0">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 shrink">
-                  <h4 className="font-bold text-xs sm:text-sm text-slate-100 flex items-center gap-1.5 whitespace-nowrap">
+                  <h4 className="font-bold text-xs sm:text-sm text-slate-100 flex items-center gap-1 truncate">
                     <span>AI Solver</span>
                     <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
                   </h4>
                   <span className="text-[10px] text-slate-400 font-mono truncate block">
-                    {targetLanguage} • {aiPanelMode === 'fullscreen' ? 'Full Showcase' : `Page ${activePageNum}`}
+                    {targetLanguage} • {aiPanelMode === 'fullscreen' ? 'Full' : `Page ${activePageNum}`}
                   </span>
                 </div>
               </div>
 
-              {/* Header Controls: Clean Actions & Utilities */}
+              {/* Header Controls: Clean Responsive Actions & Utilities */}
               <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 {/* Download Full Chat PDF Button */}
                 {aiMessages.some(m => m.sender === 'user') && !showHistory && (
                   <button
                     type="button"
                     onClick={() => handleExportFullChatPDF()}
-                    className="px-2.5 py-1 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shadow-xs shrink-0"
+                    className="px-2 py-1 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shadow-xs shrink-0"
                     title={targetLanguage === 'Hindi' ? "सम्पूर्ण चैट PDF डाउनलोड करें" : "Download Full Chat PDF"}
                   >
                     <FileDown className="w-3.5 h-3.5" />
-                    <span className="hidden xl:inline">
+                    <span className="hidden 2xl:inline">
                       {targetLanguage === 'Hindi' ? 'सम्पूर्ण चैट PDF' : 'Full PDF'}
                     </span>
                   </button>
@@ -3488,7 +3754,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowHistory(!showHistory)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shadow-xs shrink-0 ${
+                  className={`p-1.5 sm:px-2 sm:py-1 rounded-xl text-xs font-bold flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shadow-xs shrink-0 ${
                     showHistory
                       ? 'bg-purple-600 text-white shadow-md'
                       : 'bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-white border border-purple-500/20'
@@ -3496,7 +3762,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   title={showHistory ? 'Back to Active Chat' : 'Search & Session History'}
                 >
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">
+                  <span className="hidden md:inline">
                     {showHistory ? (targetLanguage === 'Hindi' ? 'संवाद' : 'Chat') : (targetLanguage === 'Hindi' ? 'इतिहास' : 'History')}
                   </span>
                 </button>
@@ -3505,15 +3771,15 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 <button
                   type="button"
                   onClick={handleStartNewChat}
-                  className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shadow-xs shrink-0"
+                  className="p-1.5 sm:px-2 sm:py-1 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shadow-xs shrink-0"
                   title="Start New Chat Session"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span className="hidden lg:inline">New Chat</span>
+                  <span className="hidden xl:inline">New Chat</span>
                 </button>
 
                 {/* Utilities Toolbar Group */}
-                <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl p-0.5 shrink-0 gap-0.5">
+                <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl p-0.5 shrink-0 gap-0.5 me-5">
                   {/* Width Presets (Desktop Split Mode) */}
                   {aiPanelMode === 'split' && (
                     <div className="hidden 2xl:flex items-center border-r border-slate-800 pr-1 mr-0.5 text-[10px] font-mono gap-0.5">
@@ -3550,11 +3816,11 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                     </div>
                   )}
 
-                  {/* Showcase Fullscreen Toggle */}
+                  {/* Showcase Fullscreen Toggle (Hidden on mobile) */}
                   <button
                     type="button"
                     onClick={() => setAiPanelMode(prev => prev === 'fullscreen' ? 'split' : 'fullscreen')}
-                    className={`p-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                    className={`p-1 rounded-lg text-xs font-bold hidden md:flex items-center gap-1 cursor-pointer transition-all ${
                       aiPanelMode === 'fullscreen'
                         ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
                         : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -3593,6 +3859,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
                   {/* Close Button */}
                   <button
+                    type="button"
                     onClick={() => setShowAiAssistant(false)}
                     className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer"
                     title="Close AI Assistant"
@@ -3604,8 +3871,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             </div>
 
             {/* Quick AI Task Actions Section with Show/Hide Toggle */}
-            <div className="bg-slate-900/95 border-b border-slate-800 shrink-0">
-              <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-800/60 bg-slate-950/40">
+            <div className="bg-slate-900/95 border-b border-slate-800 shrink-0 w-full min-w-0">
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-800/60 bg-slate-950/40 w-full">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300 select-none">
                   <Sparkles className="w-3.5 h-3.5 text-purple-400" />
                   <span>Quick AI Tasks</span>
@@ -3613,7 +3880,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowQuickAiTools((prev) => !prev)}
-                  className="px-2 py-0.5 rounded-lg text-[11px] font-bold text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-1 cursor-pointer transition-all border border-slate-800 select-none"
+                  className="me-5 px-2 py-0.5 rounded-lg text-[11px] font-bold text-slate-400 hover:text-white hover:bg-slate-800 flex items-center gap-1 cursor-pointer transition-all border border-slate-800 select-none shrink-0"
                   title={showQuickAiTools ? 'Hide Quick Actions' : 'Show Quick Actions'}
                 >
                   <span>{showQuickAiTools ? 'Hide' : 'Show'}</span>
@@ -3691,24 +3958,24 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             {showHistory ? (
               <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 scrollbar-thin bg-slate-950/60">
                 {/* History Header Banner */}
-                <div className="bg-slate-900 border border-purple-900/40 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-3 shadow-md">
-                  <div>
+                <div className="bg-slate-900 border border-purple-900/40 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row justify-between sm:items-center gap-2.5 sm:gap-3 shadow-md w-full min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h3 className="font-bold text-sm text-purple-200 flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-purple-400" />
-                      <span>{targetLanguage === 'Hindi' ? 'मेरा सम्पूर्ण अध्ययन इतिहास' : 'My Entire PDF Study History'}</span>
+                      <BookOpen className="w-4 h-4 text-purple-400 shrink-0" />
+                      <span className="truncate">{targetLanguage === 'Hindi' ? 'मेरा सम्पूर्ण अध्ययन इतिहास' : 'My Entire PDF Study History'}</span>
                     </h3>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
+                    <p className="text-[11px] text-slate-400 mt-0.5 break-words">
                       {targetLanguage === 'Hindi'
                         ? 'आपके द्वारा इस PDF के लिए पहले पूछे गए सभी प्रश्न और सत्र यहाँ सहेजे गए हैं।'
                         : 'All your previously recorded study sessions and questions for this PDF are saved below.'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                  <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
                     {chatSessions.length > 0 && (
                       <button
                         type="button"
                         onClick={handleClearAllHistory}
-                        className="text-xs bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                        className="text-xs bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 whitespace-nowrap"
                       >
                         <Trash className="w-3.5 h-3.5" />
                         <span>{targetLanguage === 'Hindi' ? 'इतिहास साफ़ करें' : 'Clear All'}</span>
@@ -3717,7 +3984,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowHistory(false)}
-                      className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all active:scale-95"
+                      className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all active:scale-95 whitespace-nowrap"
                     >
                       {targetLanguage === 'Hindi' ? 'चैट पर वापस जाएं' : 'Back to Chat'}
                     </button>
@@ -3810,109 +4077,133 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                           key={session.id}
                           className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 transition-all hover:border-purple-800/60 shadow-sm"
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            {/* Title & Star */}
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <button
-                                type="button"
-                                onClick={(e) => handleToggleStarSession(session.id, e)}
-                                className="p-1 text-amber-400 hover:text-amber-300 cursor-pointer"
-                                title={session.starred ? "Unstar session" : "Star session"}
-                              >
-                                <Star className={`w-4 h-4 ${session.starred ? 'fill-current text-amber-400' : 'text-slate-600'}`} />
-                              </button>
+                          {editingSessionId === session.id ? (
+                            <div className="bg-slate-950 border border-purple-500/70 rounded-xl p-3 space-y-2.5 shadow-md animate-fade-in">
+                              <div className="flex items-center justify-between text-xs font-bold text-purple-200">
+                                <span className="flex items-center gap-1.5">
+                                  <Pencil className="w-3.5 h-3.5 text-purple-400" />
+                                  <span>{targetLanguage === 'Hindi' ? 'सत्र का नाम बदलें' : 'Rename Study Session'}</span>
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">
+                                  Press Enter to save, Esc to cancel
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={editingSessionTitle}
+                                  onChange={(e) => setEditingSessionTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveRenameSession(session.id);
+                                    if (e.key === 'Escape') setEditingSessionId(null);
+                                  }}
+                                  placeholder={targetLanguage === 'Hindi' ? 'सत्र शीर्षक दर्ज करें...' : 'Enter session title...'}
+                                  className="flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg border border-purple-500/50 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                  autoFocus
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveRenameSession(session.id)}
+                                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-lg cursor-pointer transition-all active:scale-95 flex items-center gap-1 shrink-0 shadow-sm"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>{targetLanguage === 'Hindi' ? 'सहेजें' : 'Save'}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingSessionId(null)}
+                                  className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg cursor-pointer transition-all active:scale-95 flex items-center gap-1 shrink-0"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                  <span>{targetLanguage === 'Hindi' ? 'रद्द करें' : 'Cancel'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2">
+                              {/* Title & Star */}
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleToggleStarSession(session.id, e)}
+                                  className="p-1 text-amber-400 hover:text-amber-300 cursor-pointer shrink-0"
+                                  title={session.starred ? "Unstar session" : "Star session"}
+                                >
+                                  <Star className={`w-4 h-4 ${session.starred ? 'fill-current text-amber-400' : 'text-slate-600'}`} />
+                                </button>
 
-                              {editingSessionId === session.id ? (
-                                <div className="flex items-center gap-1.5 flex-1">
-                                  <input
-                                    type="text"
-                                    value={editingSessionTitle}
-                                    onChange={(e) => setEditingSessionTitle(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSaveRenameSession(session.id)}
-                                    className="px-2 py-1 text-xs rounded-lg border border-purple-500 bg-slate-950 text-white w-full"
-                                    autoFocus
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSaveRenameSession(session.id)}
-                                    className="px-2 py-1 bg-purple-600 text-white text-xs font-bold rounded-lg cursor-pointer"
-                                  >
-                                    Save
-                                  </button>
-                                </div>
-                              ) : (
                                 <h4 className="font-bold text-xs sm:text-sm text-slate-100 truncate">
                                   {session.title}
                                 </h4>
-                              )}
+                              </div>
+
+                              {/* Session Actions Toolbar */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                {/* Rename */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingSessionId(session.id);
+                                    setEditingSessionTitle(session.title);
+                                  }}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-purple-300 hover:bg-slate-800 cursor-pointer transition-colors"
+                                  title="Rename session"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Delete */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteSession(session.id, e)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 cursor-pointer transition-colors"
+                                  title="Delete session"
+                                >
+                                  <Trash className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Download Session Full Chat PDF */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleExportFullChatPDF(session.messages, session.title);
+                                  }}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 cursor-pointer transition-colors"
+                                  title="Download full session PDF"
+                                >
+                                  <FileDown className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Toggle Messages View */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setExpandedSessions(prev => ({
+                                      ...prev,
+                                      [session.id]: !prev[session.id]
+                                    }));
+                                  }}
+                                  className="px-2 py-1 rounded-lg text-xs font-bold bg-slate-800 text-purple-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
+                                  title={expandedSessions[session.id] ? "Hide messages" : "View messages"}
+                                >
+                                  {expandedSessions[session.id] ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                  <span>{expandedSessions[session.id] ? 'Hide' : 'View'}</span>
+                                </button>
+
+                                {/* Restore Chat Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRestoreSession(session)}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
+                                  title="Restore session to active chat"
+                                >
+                                  <ArrowRight className="w-3.5 h-3.5" />
+                                  <span>Open</span>
+                                </button>
+                              </div>
                             </div>
-
-                            {/* Session Actions Toolbar */}
-                            <div className="flex items-center gap-1 shrink-0">
-                              {/* Rename */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingSessionId(session.id);
-                                  setEditingSessionTitle(session.title);
-                                }}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-purple-300 hover:bg-slate-800 cursor-pointer transition-colors"
-                                title="Rename session"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-
-                              {/* Delete */}
-                              <button
-                                type="button"
-                                onClick={(e) => handleDeleteSession(session.id, e)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 cursor-pointer transition-colors"
-                                title="Delete session"
-                              >
-                                <Trash className="w-3.5 h-3.5" />
-                              </button>
-
-                              {/* Download Session Full Chat PDF */}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleExportFullChatPDF(session.messages, session.title);
-                                }}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 cursor-pointer transition-colors"
-                                title="Download full session PDF"
-                              >
-                                <FileDown className="w-3.5 h-3.5" />
-                              </button>
-
-                              {/* Toggle Messages View */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setExpandedSessions(prev => ({
-                                    ...prev,
-                                    [session.id]: !prev[session.id]
-                                  }));
-                                }}
-                                className="px-2 py-1 rounded-lg text-xs font-bold bg-slate-800 text-purple-300 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
-                                title={expandedSessions[session.id] ? "Hide messages" : "View messages"}
-                              >
-                                {expandedSessions[session.id] ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                <span>{expandedSessions[session.id] ? 'Hide' : 'View'}</span>
-                              </button>
-
-                              {/* Restore Chat Button */}
-                              <button
-                                type="button"
-                                onClick={() => handleRestoreSession(session)}
-                                className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-1 cursor-pointer transition-colors shadow-sm"
-                                title="Restore session to active chat"
-                              >
-                                <ArrowRight className="w-3.5 h-3.5" />
-                                <span>Open</span>
-                              </button>
-                            </div>
-                          </div>
+                          )}
 
                           {/* Sub-info details */}
                           <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
@@ -3958,20 +4249,20 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               </div>
             ) : (
               /* REGULAR ACTIVE CHAT MESSAGES */
-              <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin">
+              <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-3 scrollbar-thin max-w-full min-w-0">
               {aiMessages.map((msg) => (
                 <div
                   key={msg.id}
                   id={`ai-msg-${msg.id}`}
-                  className={`flex flex-col text-xs sm:text-sm leading-relaxed ${
+                  className={`flex flex-col text-xs sm:text-sm leading-relaxed w-full min-w-0 ${
                     msg.sender === 'user' ? 'items-end' : 'items-start'
                   }`}
                 >
                   <div
-                    className={`p-3 sm:p-3.5 rounded-2xl max-w-[92%] space-y-1.5 shadow-sm ${
+                    className={`p-3 sm:p-3.5 rounded-2xl max-w-[88%] sm:max-w-[85%] min-w-0 space-y-1.5 shadow-sm break-words [overflow-wrap:anywhere] ${
                       msg.sender === 'user'
-                        ? 'bg-purple-600 text-white rounded-br-2xs'
-                        : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-2xs'
+                        ? 'bg-purple-600 text-white rounded-br-2xs ml-auto'
+                        : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-bl-2xs mr-auto'
                     }`}
                   >
                     {/* Quoted Replying Snippet */}
@@ -3985,24 +4276,24 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                             setTimeout(() => targetEl.classList.remove('ring-2', 'ring-purple-400'), 1500);
                           }
                         }}
-                        className="mb-2 p-2 bg-purple-950/70 border-l-3 border-purple-400 rounded-r-xl text-xs text-purple-200 cursor-pointer hover:bg-purple-900/60 transition-colors"
+                        className="mb-2 p-2 bg-purple-950/70 border-l-3 border-purple-400 rounded-r-xl text-xs text-purple-200 cursor-pointer hover:bg-purple-900/60 transition-colors break-words overflow-hidden"
                       >
                         <div className="flex items-center gap-1 font-bold text-[10px] text-purple-300">
-                          <CornerUpLeft className="w-3 h-3" />
-                          <span>Replying to {msg.replyTo.sender === 'assistant' ? 'AI Solver 🤖' : 'You'}</span>
+                          <CornerUpLeft className="w-3 h-3 shrink-0" />
+                          <span className="truncate">Replying to {msg.replyTo.sender === 'assistant' ? 'AI Solver 🤖' : 'You'}</span>
                         </div>
-                        <p className="line-clamp-2 text-[11px] text-slate-300 italic mt-0.5">
+                        <p className="line-clamp-2 text-[11px] text-slate-300 italic mt-0.5 break-words">
                           "{cleanPdfExtractedText(msg.replyTo.text.slice(0, 90))}"
                         </p>
                       </div>
                     )}
 
                     {msg.sender === 'assistant' ? (
-                      <div className="w-full max-w-none">
+                      <div className="w-full max-w-none min-w-0 break-words">
                         <MathRenderer content={msg.text} isUser={false} isDark={true} className="text-slate-100" />
                       </div>
                     ) : (
-                      <p className="text-white font-medium">{msg.text}</p>
+                      <p className="text-white font-medium break-words [overflow-wrap:anywhere] whitespace-pre-wrap">{msg.text}</p>
                     )}
 
                     {/* Footer Row: Timestamp & Message Action Toolbar */}
@@ -4119,7 +4410,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             )}
 
             {/* AI Prompt Input Bar with Speech-to-Text */}
-            <div className="p-2.5 sm:p-3 bg-slate-900 border-t border-slate-800 shrink-0">
+            <div className="p-2.5 sm:p-3 bg-slate-900 border-t border-slate-800 shrink-0 w-full min-w-0">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -4128,14 +4419,14 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                     setAiPromptInput('');
                   }
                 }}
-                className="flex items-center gap-1.5 sm:gap-2"
+                className="flex items-center gap-1.5 sm:gap-2 w-full min-w-0"
               >
                 <input
                   type="text"
                   placeholder={`Ask AI Solver in ${targetLanguage}...`}
                   value={aiPromptInput}
                   onChange={(e) => setAiPromptInput(e.target.value)}
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                  className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500"
                 />
 
                 {/* Speech Input Voice Mic Button */}
@@ -4156,7 +4447,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 <button
                   type="submit"
                   disabled={!aiPromptInput.trim() || aiLoading}
-                  className="p-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white rounded-xl cursor-pointer shadow-md transition-all shrink-0"
+                  className="me-5 p-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-30 text-white rounded-xl cursor-pointer shadow-md transition-all shrink-0"
                   title="Send Message"
                 >
                   <Send className="w-4 h-4" />
