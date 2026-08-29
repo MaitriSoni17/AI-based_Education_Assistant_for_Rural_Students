@@ -799,8 +799,9 @@ export async function saveFirebaseCurriculumFile(file: FirestoreCurriculumFile):
 
     // If we have fileDataUrl, save it in chunks
     if (fileDataUrl) {
-      // Chunk size of 200,000 characters (approx 200KB)
-      const chunkSize = 200000;
+      // Optimized chunk size of 750,000 characters (~750KB, well within Firestore's 1MB limit)
+      // This reduces network roundtrips by 75% for fast multi-file uploads
+      const chunkSize = 750000;
       const chunksCount = Math.ceil(fileDataUrl.length / chunkSize);
 
       // Save chunks concurrently to the chunks subcollection
@@ -813,10 +814,13 @@ export async function saveFirebaseCurriculumFile(file: FirestoreCurriculumFile):
       await Promise.all(chunkPromises);
     }
 
-    // If fileDataUrl is larger than 700KB, strip it for Firestore doc to respect 1MB doc size limit
-    if (payload.fileDataUrl && payload.fileDataUrl.length > 700000) {
-      delete payload.fileDataUrl;
-    }
+    // Always strip fileDataUrl from the root Firestore document to keep the document lightweight (<5KB)
+    // and guarantee getAllFirebaseCurriculumFiles() is fast, reliable, and never hits document/payload size limits
+    delete payload.fileDataUrl;
+    (payload as any).hasChunks = !!fileDataUrl;
+    (payload as any).isDeleted = false;
+    (payload as any).updatedAt = new Date().toISOString();
+
     const cleanPayload = sanitizeFirestorePayload(payload);
     const docRef = doc(db, "curriculum_files", file.id);
     await setDoc(docRef, cleanPayload, { merge: true });

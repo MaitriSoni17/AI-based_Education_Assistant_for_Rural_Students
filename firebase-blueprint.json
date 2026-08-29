@@ -149,12 +149,84 @@
         }
       },
       "required": ["mobile", "name"]
+    },
+    "Certificate": {
+      "title": "Certificate",
+      "description": "Issued certificate record for students.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "studentName": { "type": "string" },
+        "studentMobile": { "type": "string" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "score": { "type": "number" },
+        "signature": { "type": "string" }
+      },
+      "required": ["id", "studentName"]
+    },
+    "CurriculumFolder": {
+      "title": "CurriculumFolder",
+      "description": "Hierarchy structure folder for organized curriculum content.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "parentId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "CurriculumFile": {
+      "title": "CurriculumFile",
+      "description": "Uploaded curriculum textbook, note, paper, or interactive resource.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "folderId": { "type": "string" },
+        "subject": { "type": "string" },
+        "category": { "type": "string" },
+        "materialType": { "type": "string" },
+        "standard": { "type": "string" },
+        "board": { "type": "string" },
+        "language": { "type": "string" },
+        "size": { "type": "string" },
+        "uploadedAt": { "type": "string" },
+        "description": { "type": "string" },
+        "externalUrl": { "type": "string" },
+        "isAdminUploaded": { "type": "boolean" },
+        "uploadedByRole": { "type": "string" },
+        "isVisible": { "type": "boolean" },
+        "createdBy": { "type": "string" },
+        "hasChunks": { "type": "boolean" },
+        "isDeleted": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
     }
   },
   "firestore": {
     "/users/{mobile}": {
       "schema": "User",
       "description": "User profile document containing progress metrics and config."
+    },
+    "/certificates/{certId}": {
+      "schema": "Certificate",
+      "description": "Issued certificate records."
+    },
+    "/curriculum_folders/{folderId}": {
+      "schema": "CurriculumFolder",
+      "description": "Curriculum hierarchy folders."
+    },
+    "/curriculum_files/{fileId}": {
+      "schema": "CurriculumFile",
+      "description": "Curriculum files and learning resources metadata."
+    },
+    "/curriculum_files/{fileId}/chunks/{chunkId}": {
+      "description": "Base64 data chunks for large curriculum files."
     }
   }
 }

@@ -544,6 +544,7 @@ export default function App() {
                   adminUser={adminUser}
                   lang={currentLanguage}
                   onLogoutAdmin={handleLogoutAdmin}
+                  onLanguageChange={setCurrentLanguage}
                 />
               </ErrorBoundary>
             ) : (
@@ -554,6 +555,7 @@ export default function App() {
                   lang={currentLanguage}
                   adminUser={adminUser}
                   onGoToDashboard={() => setCurrentView('admin-dashboard')}
+                  onLanguageChange={setCurrentLanguage}
                 />
               </ErrorBoundary>
             )

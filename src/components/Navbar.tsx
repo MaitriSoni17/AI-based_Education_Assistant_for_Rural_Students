@@ -79,7 +79,7 @@ export default function Navbar({
                   }`}
                 >
                   <Shield className="h-3.5 w-3.5" />
-                  <span>Admin</span>
+                  <span>{t.footerAdminLogin ? t.footerAdminLogin.split(' ')[0] : 'Admin'}</span>
                 </button>
 
                 <span className="text-xs font-mono bg-amber-500/10 text-amber-900 px-3 py-1.5 rounded-full font-bold border border-amber-300 flex items-center gap-1.5">
@@ -94,7 +94,7 @@ export default function Navbar({
                     className="px-3 py-2 rounded-xl font-sans font-semibold text-xs text-red-600 hover:bg-red-50 cursor-pointer flex items-center space-x-1"
                   >
                     <LogOut className="h-3.5 w-3.5" />
-                    <span>Logout</span>
+                    <span>{t.navLogout}</span>
                   </button>
                 )}
               </>
@@ -115,7 +115,7 @@ export default function Navbar({
                   className="px-3.5 py-2 rounded-xl font-sans font-bold text-xs bg-amber-500 text-slate-950 shadow-xs cursor-pointer flex items-center gap-1.5"
                 >
                   <Shield className="h-3.5 w-3.5" />
-                  <span>Admin</span>
+                  <span>{t.footerAdminLogin ? t.footerAdminLogin.split(' ')[0] : 'Admin'}</span>
                 </button>
 
                 <button
@@ -124,7 +124,7 @@ export default function Navbar({
                   className="px-3.5 py-2 rounded-xl font-sans font-semibold text-sm text-[#3D405B]/85 hover:text-[#E07A5F] hover:bg-white/60 transition-all cursor-pointer flex items-center gap-1"
                 >
                   <LogIn className="h-4 w-4 text-[#E07A5F]" />
-                  <span>Student Login</span>
+                  <span>{t.navLogin}</span>
                 </button>
               </>
             ) : user ? (
@@ -386,7 +386,7 @@ export default function Navbar({
                 className="block w-full text-left px-3.5 py-2.5 bg-amber-500 text-slate-950 font-bold rounded-xl text-sm shadow-xs flex items-center gap-2"
               >
                 <Shield className="h-4 w-4" />
-                <span>Admin</span>
+                <span>{t.footerAdminLogin ? t.footerAdminLogin.split(' ')[0] : 'Admin'}</span>
               </button>
               {onLogoutAdmin && (
                 <button
@@ -398,7 +398,7 @@ export default function Navbar({
                   className="block w-full text-left px-3.5 py-2.5 rounded-xl font-sans font-bold text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span>Logout Administrator</span>
+                  <span>{t.navLogout}</span>
                 </button>
               )}
             </div>

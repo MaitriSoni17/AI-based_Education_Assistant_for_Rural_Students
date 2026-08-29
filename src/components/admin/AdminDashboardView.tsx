@@ -17,7 +17,7 @@ import {
   deleteFirebaseCurriculumFolder, deleteFirebaseCurriculumFile, getFirebaseCurriculumFileDataUrl, FirestoreCurriculumFolder, FirestoreCurriculumFile
 } from '../../lib/firebase';
 import { getSafeDateString } from '../../utils/dateUtils';
-import { saveFileLocal, getFileLocal, deleteFileLocal } from '../../lib/indexedDbStore';
+import { saveFileLocal, getFileLocal, deleteFileLocal, saveFileMetaLocal, getAllFilesMetaLocal } from '../../lib/indexedDbStore';
 import { PdfCanvasViewer } from './PdfCanvasViewer';
 import { downloadSmartReaderPdf } from '../../utils/pdfExport';
 import {
@@ -34,6 +34,7 @@ interface AdminDashboardViewProps {
   adminUser: User;
   lang: LanguageCode;
   onLogoutAdmin: () => void;
+  onLanguageChange?: (lang: LanguageCode) => void;
 }
 
 export interface CurriculumFolder {
@@ -309,8 +310,8 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     stateOps: "State Curriculum Operations",
     downloadAnalytics: "Download Analytics",
     syncLiveData: "Sync Live Data",
-    exitAdmin: "Exit Admin Console",
-    currentModule: "Current:",
+    //exitAdmin: "Exit Admin Console",
+    //currentModule: "Current:",
     adminModulesCount: "Admin Modules",
     navAnalytics: "Student Analytics",
     navContent: "Curriculum & Content",
@@ -467,7 +468,12 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     newPinPlaceholder: "Enter new 6-digit PIN or password",
     confirmPinPlaceholder: "Confirm new 6-digit PIN or password",
     savePasswordBtn: "Save New Password",
-    updatingPinBtn: "Updating Security PIN..."
+    updatingPinBtn: "Updating Security PIN...",
+
+    filesSelected: "file(s) selected",
+    recategorizeSelected: "Re-categorize",
+    deleteSelected: "Delete Selected",
+    clearSelection: "Clear"
   },
   hi: {
     dashboardTitle: "ग्रामीण शिक्षा एडमिन डैशबोर्ड",
@@ -476,8 +482,8 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     stateOps: "राज्य पाठ्यक्रम संचालन",
     downloadAnalytics: "विश्लेषण डाउनलोड करें",
     syncLiveData: "लाइव डेटा सिंक करें",
-    exitAdmin: "एडमिन कंसोल से बाहर निकलें",
-    currentModule: "वर्तमान:",
+    //exitAdmin: "एडमिन कंसोल से बाहर निकलें",
+    //currentModule: "वर्तमान:",
     adminModulesCount: "एडमिन मॉड्यूल",
     navAnalytics: "छात्र विश्लेषण",
     navContent: "पाठ्यक्रम एवं सामग्री",
@@ -632,7 +638,14 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     currentPinPlaceholder: "वर्तमान 6-अंकीय पिन या पासवर्ड दर्ज करें",
     newPinPlaceholder: "नया 6-अंकीय पिन या पासवर्ड दर्ज करें",
     confirmPinPlaceholder: "नए 6-अंकीय पिन या पासवर्ड की पुष्टि करें",
-    savePasswordBtn: "नया पासवर्ड सहेजें"
+    savePasswordBtn: "नया पासवर्ड सहेजें",
+    updatingPinBtn: "पिन अपडेट हो रहा है...",
+    lowBandwidthDesc: "ग्रामीण सेलुलर नेटवर्क के लिए पेलोड आकार को संपीड़ित करता है",
+
+    filesSelected: "फ़ाइलें चुनी गईं",
+    recategorizeSelected: "पुनः श्रेणीबद्ध करें",
+    deleteSelected: "चयनित हटाएं",
+    clearSelection: "साफ़ करें"
   },
   gu: {
     dashboardTitle: "ગ્રામીણ શિક્ષણ એડમિન ડેશબોર્ડ",
@@ -641,8 +654,8 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     stateOps: "રાજ્ય અભ્યાસક્રમ સંચાલન",
     downloadAnalytics: "વિશ્લેષણ ડાઉનલોડ કરો",
     syncLiveData: "લાઈવ ડેટા સિંક કરો",
-    exitAdmin: "એડમિન કન્સોલમાંથી બહાર નીકળો",
-    currentModule: "વર્તમાન:",
+    //exitAdmin: "એડમિન કન્સોલમાંથી બહાર નીકળો",
+    //currentModule: "વર્તમાન:",
     adminModulesCount: "એડમિન મોડ્યુલ્સ",
     navAnalytics: "વિદ્યાર્થી વિશ્લેષણ",
     navContent: "અભ્યાસક્રમ અને સામગ્રી",
@@ -797,7 +810,14 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     currentPinPlaceholder: "વર્તમાન 6-અંકનો PIN દાખલ કરો",
     newPinPlaceholder: "નવો 6-અંકનો PIN દાખલ કરો",
     confirmPinPlaceholder: "નવા PIN ની પુષ્ટિ કરો",
-    savePasswordBtn: "નવો પાસવર્ડ સાચવો"
+    savePasswordBtn: "નવો પાસવર્ડ સાચવો",
+    updatingPinBtn: "પિન અપડેટ થઈ રહ્યું છે...",
+    lowBandwidthDesc: "ગ્રામીણ સેલ્યુલર નેટવર્ક્સ માટે પેલોડ સાઇઝ સંકુચિત કરે છે",
+
+    filesSelected: "ફાઈલો પસંદ કરી",
+    recategorizeSelected: "ફરીથી વર્ગીકૃત કરો",
+    deleteSelected: "પસંદ કરેલ કાઢી નાખો",
+    clearSelection: "સ્પષ્ટ કરો"
   },
   mr: {
     dashboardTitle: "ग्रामीण शिक्षण ॲडमिन डॅशबोर्ड",
@@ -806,8 +826,8 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     stateOps: "राज्य अभ्यासक्रम कार्यप्रणाली",
     downloadAnalytics: "विश्लेषण डाउनलोड करा",
     syncLiveData: "थेट डेटा सिंक करा",
-    exitAdmin: "ॲडमिन कन्सोलमधून बाहेर पडा",
-    currentModule: "सध्याचे:",
+    //exitAdmin: "ॲडमिन कन्सोलमधून बाहेर पडा",
+    //currentModule: "सध्याचे:",
     adminModulesCount: "ॲडमिन मॉड्यूल्स",
     navAnalytics: "विद्यार्थी विश्लेषण",
     navContent: "अभ्यासक्रम आणि साहित्य",
@@ -962,7 +982,14 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     currentPinPlaceholder: "सध्याचा 6-अंकी PIN टाका",
     newPinPlaceholder: "नवीन 6-अंकी PIN टाका",
     confirmPinPlaceholder: "नवीन PIN ची खात्री करा",
-    savePasswordBtn: "नवीन पासवर्ड जतन करा"
+    savePasswordBtn: "नवीन पासवर्ड जतन करा",
+    updatingPinBtn: "पिन अद्यतनित करत आहे...",
+    lowBandwidthDesc: "ग्रामीण सेल्युलर नेटवर्कसाठी पेलोड आकार संकुचित करतो",
+
+    filesSelected: "फाइली निवडल्या",
+    recategorizeSelected: "पुन्हा वर्गवारी करा",
+    deleteSelected: "निवडलेले हटवा",
+    clearSelection: "रद्द करा"
   },
   ta: {
     dashboardTitle: "கிராமப்புற கல்வி நிர்வாகி கட்டுப்பாட்டு பலகை",
@@ -971,8 +998,8 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     stateOps: "மாநில பாடத்திட்ட செயல்பாடுகள்",
     downloadAnalytics: "பகுப்பாய்வைப் பதிவிறக்குக",
     syncLiveData: "நேரலைத் தரவை ஒத்திசைக்க",
-    exitAdmin: "நிர்வாகி கன்சோலிலிருந்து வெளியேறு",
-    currentModule: "தற்போதைய:",
+    //exitAdmin: "நிர்வாகி கன்சோலிலிருந்து வெளியேறு",
+    //currentModule: "தற்போதைய:",
     adminModulesCount: "நிர்வாகக் கூறுகள்",
     navAnalytics: "மாணவர் பகுப்பாய்வு",
     navContent: "பாடத்திட்டம் & பாடப்பொருள்",
@@ -1127,7 +1154,14 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     currentPinPlaceholder: "தற்போதைய 6-இலக்க PIN ஐ உள்ளிடுக",
     newPinPlaceholder: "புதிய 6-இலக்க PIN ஐ உள்ளிடுக",
     confirmPinPlaceholder: "புதிய PIN ஐ உறுதிப்படுத்துக",
-    savePasswordBtn: "கடவுச்சொல்லை சேமி"
+    savePasswordBtn: "கடவுச்சொல்லை சேமி",
+    updatingPinBtn: "PIN புதுப்பிக்கப்படுகிறது...",
+    lowBandwidthDesc: "கிராமப்புற செல்லுலார் நெட்வொர்க்குகளுக்கான பேலோட் அளவை அமுக்குகிறது",
+
+    filesSelected: "கோப்புகள் தேர்ந்தெடுக்கப்பட்டன",
+    recategorizeSelected: "மீண்டும் வகைப்படுத்து",
+    deleteSelected: "தேர்ந்தெடுக்கப்பட்டதை நீக்கு",
+    clearSelection: "தெளிவுபடுத்து"
   },
   te: {
     dashboardTitle: "గ్రామీణ విద్యా పోర్టల్ అడ్మిన్ డాష్‌బోర్డ్",
@@ -1136,8 +1170,8 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     stateOps: "రాష్ట్ర పాఠ్య ప్రణాళిక నిర్వహణ",
     downloadAnalytics: "విశ్లేషణలను డౌన్‌లోడ్ చేయండి",
     syncLiveData: "లైవ్ డేటాను సింక్ చేయండి",
-    exitAdmin: "అడ్మిన్ కన్సోల్ నుండి నిష్క్రమించండి",
-    currentModule: "ప్రస్తుత:",
+    //exitAdmin: "అడ్మిన్ కన్సోల్ నుండి నిష్క్రమించండి",
+    //currentModule: "ప్రస్తుత:",
     adminModulesCount: "అడ్మిన్ మోడ్యూల్స్",
     navAnalytics: "విద్యార్థి విశ్లేషణలు",
     navContent: "పాఠ్య ప్రణాళిక మరియు కంటెంట్",
@@ -1292,13 +1326,20 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
     currentPinPlaceholder: "ప్రస్తుత 6-అంకెల PIN ఎంటర్ చేయండి",
     newPinPlaceholder: "కొత్త 6-అంకెల PIN ఎంటర్ చేయండి",
     confirmPinPlaceholder: "కొత్త PIN నిర్ధారించండి",
-    savePasswordBtn: "పాస్‌వర్డ్ సేవ్ చేయండి"
+    savePasswordBtn: "పాస్‌వర్డ్ సేవ్ చేయండి",
+    updatingPinBtn: "పిన్ నవీకరించబడుతోంది...",
+    lowBandwidthDesc: "గ్రామీణ సెల్యులార్ నెట్‌వర్క్‌ల కోసం పేలోడ్ పరిమాణాన్ని సంపీడనం చేస్తుంది",
+
+    filesSelected: "ఫైళ్లు ఎంచుకోబడ్డాయి",
+    recategorizeSelected: "మళ్లీ వర్గీకరించు",
+    deleteSelected: "ఎంచుకున్నవి తొలగించు",
+    clearSelection: "క్లియర్"
   }
 };
 
 type AdminTab = 'analytics' | 'content' | 'certificates' | 'users' | 'settings';
 
-export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: AdminDashboardViewProps) {
+export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin, onLanguageChange }: AdminDashboardViewProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gramin_admin_active_tab') as AdminTab | null;
@@ -1323,6 +1364,15 @@ export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: A
       setAdminLang(lang);
     }
   }, [lang]);
+
+  const handleSelectAdminLanguage = (newLang: LanguageCode) => {
+    setAdminLang(newLang);
+    try {
+      localStorage.setItem('gramin_admin_lang', newLang);
+      localStorage.setItem('gramin_preferred_language', newLang);
+    } catch (e) {}
+    onLanguageChange?.(newLang);
+  };
 
   const t = (ADMIN_DASHBOARD_TRANSLATIONS[adminLang] || ADMIN_DASHBOARD_TRANSLATIONS.en) as typeof ADMIN_DASHBOARD_TRANSLATIONS.en;
 
@@ -1385,6 +1435,7 @@ export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: A
   const [aiAutoAnalyzed, setAiAutoAnalyzed] = useState(false);
   const [batchFilesList, setBatchFilesList] = useState<BatchFileItem[]>([]);
   const [isProcessingBatchAI, setIsProcessingBatchAI] = useState(false);
+  const [batchUploadProgress, setBatchUploadProgress] = useState<{ current: number; total: number; percent: number; currentFileName?: string } | null>(null);
 
   // Move Modal State
   const [selectedMoveFile, setSelectedMoveFile] = useState<CurriculumFile | null>(null);
@@ -1412,6 +1463,20 @@ export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: A
   const [bulkMaterialType, setBulkMaterialType] = useState<'notes' | 'ebook' | 'pyq' | 'practice_questions' | 'other'>('notes');
   const [bulkSubject, setBulkSubject] = useState('Science');
 
+  // Dedicated Delete Confirmation State
+  interface DeleteTarget {
+    type: 'file' | 'folder' | 'certificate' | 'user';
+    id: string;
+    name: string;
+    subtitle?: string;
+    badge?: string;
+    detail?: string;
+    extraWarning?: string;
+  }
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [isDeletingTarget, setIsDeletingTarget] = useState(false);
+  const [actionToast, setActionToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
   // PDF Viewer & Read Aloud State
   const [activePdfFile, setActivePdfFile] = useState<CurriculumFile | null>(null);
   const [isPdfSpeaking, setIsPdfSpeaking] = useState(false);
@@ -1431,6 +1496,20 @@ export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin }: A
       let fileDataUrl = activePdfFile.fileDataUrl;
       if (!fileDataUrl) {
         fileDataUrl = await getFileLocal(activePdfFile.id) || undefined;
+      }
+
+      // If not in local cache, load chunks from Firestore
+      if (!fileDataUrl) {
+        try {
+          const remoteUrl = await getFirebaseCurriculumFileDataUrl(activePdfFile.id);
+          if (remoteUrl) {
+            fileDataUrl = remoteUrl;
+            // Cache locally in IndexedDB for immediate future opening
+            saveFileLocal(activePdfFile.id, remoteUrl).catch(() => {});
+          }
+        } catch (e) {
+          console.warn("Could not retrieve remote file URL from Firestore chunks:", e);
+        }
       }
 
       if (!isSubscribed) return;
@@ -2096,7 +2175,11 @@ startxref
     };
 
     setCurriculumFolders((prev) => [...prev, newFolder]);
-    saveFirebaseCurriculumFolder(newFolder).catch((err) => console.warn("Firestore folder save warning:", err));
+    try {
+      await saveFirebaseCurriculumFolder(newFolder);
+    } catch (err) {
+      console.warn("Firestore folder save warning:", err);
+    }
     setNewFolderName('');
     setNewFolderDesc('');
     setShowCreateFolderModal(false);
@@ -2274,19 +2357,28 @@ startxref
       return;
     }
 
+    const isStillAnalyzing = isProcessingBatchAI || batchFilesList.some((it) => it.aiStatus === 'pending' || it.aiStatus === 'analyzing');
+    if (isStillAnalyzing) {
+      setFileUploadError("Please wait for AI to finish analyzing all files before saving & uploading.");
+      return;
+    }
+
     setIsUploadingFile(true);
     setFileUploadError(null);
+    setBatchUploadProgress({ current: 0, total: batchFilesList.length, percent: 0 });
 
     try {
       const createdFiles: CurriculumFile[] = [];
+      let completedCount = 0;
 
-      for (const item of batchFilesList) {
+      // Prepare file objects for all queued batch items
+      const preparedItems = batchFilesList.map((item) => {
         const isPdfFile = item.rawName.toLowerCase().endsWith('.pdf') || (item.dataUrl && item.dataUrl.startsWith('data:application/pdf')) || item.category === 'pdf';
         const finalCategory = isPdfFile ? 'pdf' : item.category;
         const resolvedLanguage = item.language || detectDocumentLanguage({ name: item.fileName, subject: item.subject, description: item.description }).label;
 
         const fileObj: CurriculumFile = {
-          id: `file-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          id: `file-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
           name: item.fileName.trim() || item.rawName,
           folderId: newFileFolderId !== null ? newFileFolderId : currentFolderId,
           subject: item.subject.trim() || 'General',
@@ -2306,34 +2398,54 @@ startxref
           createdBy: adminUser?.mobile || 'admin'
         } as any;
 
-        createdFiles.push(fileObj);
+        return { item, fileObj };
+      });
 
-        // Save file payload to IndexedDB for offline persistence & localStorage cache
-        if (item.dataUrl) {
-          await saveFileLocal(fileObj.id, item.dataUrl);
-          try {
-            if (item.dataUrl.length < 2000000) {
-              localStorage.setItem(`gramin_pdf_cache_${fileObj.id}`, item.dataUrl);
+      // Upload and persist files concurrently in parallel for 4x-8x faster performance
+      await Promise.all(
+        preparedItems.map(async ({ item, fileObj }) => {
+          // 1. Fast local IndexedDB & memory cache persistence
+          if (item.dataUrl) {
+            await saveFileLocal(fileObj.id, item.dataUrl);
+            try {
+              if (item.dataUrl.length < 2000000) {
+                localStorage.setItem(`gramin_pdf_cache_${fileObj.id}`, item.dataUrl);
+              }
+            } catch (e) {
+              console.warn("Failed to store PDF in localStorage cache:", e);
             }
-          } catch (e) {
-            console.warn("Failed to store PDF in localStorage cache:", e);
           }
-        }
+          await saveFileMetaLocal(fileObj);
 
-        // Save to Firestore asynchronously
-        saveFirebaseCurriculumFile(fileObj).catch((err) => {
-          console.warn("Firestore batch file save warning:", err);
-        });
-      }
+          // 2. Save to Firestore (chunks stored concurrently with optimized 750KB chunks)
+          try {
+            await saveFirebaseCurriculumFile(fileObj);
+          } catch (err) {
+            console.warn("Firestore batch file save warning:", err);
+          }
+
+          createdFiles.push(fileObj);
+          completedCount++;
+          setBatchUploadProgress({
+            current: completedCount,
+            total: preparedItems.length,
+            percent: Math.round((completedCount / preparedItems.length) * 100),
+            currentFileName: fileObj.name
+          });
+        })
+      );
 
       setCurriculumFiles((prev) => [...createdFiles, ...prev]);
       setAuditLogs((prev) => [
         `[${new Date().toLocaleTimeString()}] Batch uploaded ${createdFiles.length} file(s) with AI auto-metadata.`,
         ...prev
       ]);
+      setActionToast({ message: `Successfully uploaded ${createdFiles.length} file(s) to curriculum library!`, type: 'success' });
+      setTimeout(() => setActionToast(null), 4000);
 
       // Reset modal state
       setBatchFilesList([]);
+      setBatchUploadProgress(null);
       setNewFileName('');
       setNewFileExternalUrl('');
       setNewFileDesc('');
@@ -2341,9 +2453,10 @@ startxref
       setShowUploadFileModal(false);
     } catch (err: any) {
       console.error("Error submitting batch upload:", err);
-      setFileUploadError("Failed to upload batch files.");
+      setFileUploadError("Failed to upload batch files. Please check connection.");
     } finally {
       setIsUploadingFile(false);
+      setBatchUploadProgress(null);
     }
   };
 
@@ -2502,7 +2615,7 @@ startxref
         createdBy: adminUser?.mobile || 'admin'
       } as any;
 
-      // Save file payload to IndexedDB for offline persistence & localStorage cache
+      // Save file payload and metadata to IndexedDB for offline persistence & instant cache
       if (newFileDataUrl) {
         await saveFileLocal(newFile.id, newFileDataUrl);
         try {
@@ -2513,13 +2626,16 @@ startxref
           console.warn("Failed to store PDF in localStorage cache:", e);
         }
       }
+      await saveFileMetaLocal(newFile);
 
       setCurriculumFiles((prev) => [newFile, ...prev]);
 
-      // Save to Firestore asynchronously
-      saveFirebaseCurriculumFile(newFile).catch((err) => {
+      // Save to Firestore with durable persistence
+      try {
+        await saveFirebaseCurriculumFile(newFile);
+      } catch (err) {
         console.warn("Firestore file save warning:", err);
-      });
+      }
 
       setNewFileName('');
       setNewFileExternalUrl('');
@@ -2684,9 +2800,105 @@ startxref
         deleteFirebaseCurriculumFile(id).catch((err) => console.warn("Firestore bulk delete file error:", err));
         deleteFileLocal(id).catch((err) => console.warn("IndexedDB delete file error:", err));
       }
+      setActionToast({ message: `Successfully deleted ${idsToDelete.length} files.`, type: 'success' });
+      setTimeout(() => setActionToast(null), 4000);
     } catch (err: any) {
       console.error("Error bulk deleting files:", err);
       setShowBulkDeleteModal(false);
+      setActionToast({ message: "Failed to complete bulk file deletion.", type: 'error' });
+      setTimeout(() => setActionToast(null), 4000);
+    }
+  };
+
+  // Helper to prompt folder deletion with confirmation
+  const promptDeleteFolder = (folder: CurriculumFolder) => {
+    const getDescendantFolderIds = (id: string): string[] => {
+      const children = curriculumFolders.filter((f) => f.parentId === id).map((f) => f.id);
+      return [id, ...children.flatMap(getDescendantFolderIds)];
+    };
+    const idsToDelete = getDescendantFolderIds(folder.id);
+    const filesToDelete = curriculumFiles.filter((f) => f.folderId && idsToDelete.includes(f.folderId));
+    const subfolderCount = idsToDelete.length - 1;
+
+    setDeleteTarget({
+      type: 'folder',
+      id: folder.id,
+      name: folder.name,
+      subtitle: subfolderCount > 0 
+        ? `${subfolderCount} subfolder(s) • ${filesToDelete.length} nested file(s)` 
+        : `${filesToDelete.length} nested file(s)`,
+      badge: 'FOLDER',
+      detail: `Are you sure you want to delete folder "${folder.name}"? This action will permanently remove the folder, all subfolders, and all contained curriculum files from the system.`,
+      extraWarning: filesToDelete.length > 0 
+        ? `⚠️ Warning: ${filesToDelete.length} curriculum file(s) inside this directory will also be deleted permanently.` 
+        : undefined
+    });
+  };
+
+  // Helper to prompt single file deletion with confirmation
+  const promptDeleteFile = (file: CurriculumFile) => {
+    setActiveFileMenuId(null);
+    setDeleteTarget({
+      type: 'file',
+      id: file.id,
+      name: file.name,
+      subtitle: `Subject: ${file.subject || 'General'} • Standard: ${file.standard || 'All Standards'} • Size: ${file.size || '1.5 MB'}`,
+      badge: (file.category || 'file').toUpperCase(),
+      detail: `Are you sure you want to permanently delete "${file.name}"? This will remove it from the curriculum repository, Firestore cloud database, and local cache.`,
+    });
+  };
+
+  // Helper to prompt certificate deletion with confirmation
+  const promptDeleteCertificate = (cert: FirestoreCertificate) => {
+    setDeleteTarget({
+      type: 'certificate',
+      id: cert.id,
+      name: cert.title || 'Official Certificate',
+      subtitle: `Student: ${cert.studentName} (${cert.studentMobile}) • Date: ${cert.date}`,
+      badge: cert.id,
+      detail: `Are you sure you want to delete certificate record #${cert.id}? The recipient student will no longer be able to verify or display this credential.`,
+    });
+  };
+
+  // Helper to prompt user account deletion with confirmation
+  const promptDeleteUser = (targetUser: User) => {
+    const role = targetUser.role || 'student';
+    setDeleteTarget({
+      type: 'user',
+      id: targetUser.mobile,
+      name: targetUser.name || 'Student / User',
+      subtitle: `Mobile: ${targetUser.mobile} • Role: ${role.toUpperCase()} • ${targetUser.village || 'Primary Hub'}`,
+      badge: role.toUpperCase(),
+      detail: `Are you sure you want to permanently delete user account "${targetUser.name}" (${targetUser.mobile})? All user progress, learning stats, points, and credentials will be removed.`,
+      extraWarning: role === 'admin' ? '⚠️ Caution: You are deleting an Administrator account.' : undefined
+    });
+  };
+
+  // Execute Confirmed Deletion
+  const handleConfirmDeleteTarget = async () => {
+    if (!deleteTarget) return;
+    setIsDeletingTarget(true);
+    try {
+      if (deleteTarget.type === 'folder') {
+        await handleDeleteFolder(deleteTarget.id);
+        setActionToast({ message: `Folder "${deleteTarget.name}" deleted successfully.`, type: 'success' });
+      } else if (deleteTarget.type === 'file') {
+        await handleDeleteFile(deleteTarget.id);
+        setActionToast({ message: `File "${deleteTarget.name}" deleted successfully.`, type: 'success' });
+      } else if (deleteTarget.type === 'certificate') {
+        await handleDeleteCertificate(deleteTarget.id);
+        setActionToast({ message: `Certificate #${deleteTarget.id} deleted successfully.`, type: 'success' });
+      } else if (deleteTarget.type === 'user') {
+        await handleDeleteUser(deleteTarget.id);
+        setActionToast({ message: `User account "${deleteTarget.name}" deleted successfully.`, type: 'success' });
+      }
+    } catch (err: any) {
+      console.error("Deletion execution error:", err);
+      setActionToast({ message: `Failed to delete: ${err?.message || 'Please check connection.'}`, type: 'error' });
+    } finally {
+      setIsDeletingTarget(false);
+      setDeleteTarget(null);
+      setTimeout(() => setActionToast(null), 4000);
     }
   };
 
@@ -2781,6 +2993,7 @@ startxref
     );
 
     saveFirebaseCurriculumFile(updatedFile).catch((err) => console.warn("Firestore edit file error:", err));
+    saveFileMetaLocal(updatedFile).catch((err) => console.warn("IndexedDB edit file error:", err));
     setEditingFile(null);
     setAuditLogs((prev) => [`[${new Date().toLocaleTimeString()}] Updated details for file "${updatedFile.name}"`, ...prev]);
   };
@@ -2943,19 +3156,18 @@ startxref
     }
   };
 
-  // Load curriculum folders and files from Firestore
+  // Load curriculum folders and files from Firestore & local IndexedDB
   const fetchCurriculum = async () => {
     try {
-      const [remoteFolders, remoteFiles] = await Promise.all([
-        getAllFirebaseCurriculumFolders(),
-        getAllFirebaseCurriculumFiles()
+      const [remoteFolders, remoteFiles, localIndexedDbMeta] = await Promise.all([
+        getAllFirebaseCurriculumFolders().catch(() => []),
+        getAllFirebaseCurriculumFiles().catch(() => []),
+        getAllFilesMetaLocal().catch(() => [])
       ]);
 
       const deletedFileIds: string[] = (() => {
         try { return JSON.parse(localStorage.getItem('gramin_deleted_file_ids_v1') || '[]'); } catch { return []; }
       })();
-
-
 
       const deletedFolderIds: string[] = (() => {
         try { return JSON.parse(localStorage.getItem('gramin_deleted_folder_ids_v1') || '[]'); } catch { return []; }
@@ -2969,15 +3181,30 @@ startxref
           return Array.from(map.values()).filter((f) => !deletedFolderIds.includes(f.id));
         });
       }
-      if (remoteFiles && remoteFiles.length > 0) {
-        (remoteFiles as any[]).forEach((rf) => {
-          if (rf.isDeleted === true && !deletedFileIds.includes(rf.id)) {
-            deletedFileIds.push(rf.id);
-          }
-        });
-        const filteredFiles = (remoteFiles as any[]).filter((f) => !deletedFileIds.includes(f.id) && f.isDeleted !== true);
-        setCurriculumFiles((prev) => {
-          const map = new Map<string, CurriculumFile>(prev.map((f) => [f.id, f]));
+
+      setCurriculumFiles((prev) => {
+        const map = new Map<string, CurriculumFile>(prev.map((f) => [f.id, f]));
+
+        // 1. Merge locally stored IndexedDB file metadata
+        if (Array.isArray(localIndexedDbMeta)) {
+          localIndexedDbMeta.forEach((lf: any) => {
+            if (lf && lf.id && !deletedFileIds.includes(lf.id) && lf.isDeleted !== true) {
+              if (!map.has(lf.id)) {
+                map.set(lf.id, lf as CurriculumFile);
+              }
+            }
+          });
+        }
+
+        // 2. Merge remote Firestore files
+        if (remoteFiles && remoteFiles.length > 0) {
+          (remoteFiles as any[]).forEach((rf) => {
+            if (rf.isDeleted === true && !deletedFileIds.includes(rf.id)) {
+              deletedFileIds.push(rf.id);
+            }
+          });
+          const filteredFiles = (remoteFiles as any[]).filter((f) => !deletedFileIds.includes(f.id) && f.isDeleted !== true);
+
           filteredFiles.forEach((rf: any) => {
             if (deletedFileIds.includes(rf.id) || rf.isDeleted === true) {
               map.delete(rf.id);
@@ -2995,9 +3222,10 @@ startxref
               map.set(rf.id, { ...(rf as CurriculumFile), category: normalizedCategory, language: normalizedLang });
             }
           });
-          return Array.from(map.values()).filter((f) => !deletedFileIds.includes(f.id) && (f as any).isDeleted !== true);
-        });
-      }
+        }
+
+        return Array.from(map.values()).filter((f) => !deletedFileIds.includes(f.id) && (f as any).isDeleted !== true);
+      });
     } catch (e) {
       console.warn("Failed to load curriculum from Firestore:", e);
     }
@@ -3226,9 +3454,9 @@ startxref
           {/*<div className="relative inline-block text-left">
             <select
               value={adminLang}
-              onChange={(e) => setAdminLang(e.target.value as LanguageCode)}
-              className="w-full pl-3 pr-8 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-extrabold text-xs rounded-xl border border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400/40 appearance-none transition-all shadow-xs"
-              title="Select Admin Language"
+              onChange={(e) => handleSelectAdminLanguage(e.target.value as LanguageCode)}
+              className="w-full pl-3 pr-8 py-2 bg-slate-800 hover:bg-slate-750 text-amber-300 font-extrabold text-xs rounded-xl border border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400/40 appearance-none transition-all shadow-xs"
+              title="Select Admin Interface Language"
             >
               <option value="en">English (EN)</option>
               <option value="hi">हिन्दी (Hindi)</option>
@@ -3256,19 +3484,19 @@ startxref
             <span>{t.syncLiveData}</span>
           </button>
 
-          <button
+          {/*<button
             onClick={onLogoutAdmin}
             className="px-3.5 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-bold rounded-xl border border-red-500/30 cursor-pointer transition-all flex items-center justify-center whitespace-nowrap"
           >
             {t.exitAdmin}
-          </button>
+          </button>*/}
         </div>
       </div>
 
       {/* TOP TAB CONTROLS & MOBILE HORIZONTAL QUICK SCROLL DOCK */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs space-y-2.5">
         {/* Header Row: Current active tab display */}
-        <div className="flex items-center justify-between gap-2 px-1">
+        {/*<div className="flex items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">{t.currentModule}</span>
             <span className="text-xs sm:text-sm font-extrabold text-slate-800 truncate flex items-center gap-1.5">
@@ -3280,7 +3508,7 @@ startxref
           <div className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200/60 shrink-0">
             {adminNavItems.length} {t.adminModulesCount}
           </div>
-        </div>
+        </div>*/}
 
         {/* Clean Horizontal Quick Pills on Mobile & Tablet / Symmetrical 5-Col Grid on Desktop */}
         <div className="flex overflow-x-auto gap-2 pb-1 pt-0.5 select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-5 md:gap-2">
@@ -3861,7 +4089,7 @@ startxref
                                   <Edit3 className="h-3.5 w-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteFolder(folder.id)}
+                                  onClick={() => promptDeleteFolder(folder)}
                                   className="p-1 hover:bg-red-100 text-red-600 rounded-md transition-colors"
                                   title="Delete Folder"
                                 >
@@ -3903,29 +4131,40 @@ startxref
 
                     {/* Bulk Action Toolbar */}
                     {selectedFileIds.length > 0 && (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between animate-fade-in shadow-xs">
-                        <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
-                          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
-                          <span>{selectedFileIds.length} file(s) selected</span>
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 animate-fade-in shadow-xs w-full overflow-hidden">
+                        {/* Selected counter and mobile clear button */}
+                        <div className="flex items-center justify-between text-emerald-900 font-bold text-xs shrink-0">
+                          <div className="flex items-center gap-2 whitespace-nowrap">
+                            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping shrink-0" />
+                            <span>{selectedFileIds.length} file(s) selected</span>
+                          </div>
+                          <button
+                            onClick={() => setSelectedFileIds([])}
+                            className="sm:hidden text-slate-500 hover:text-slate-700 text-xs font-bold cursor-pointer whitespace-nowrap px-1"
+                          >
+                            Clear
+                          </button>
                         </div>
-                        <div className="flex items-center gap-2">
+
+                        {/* Action buttons */}
+                        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                           <button
                             onClick={() => setShowBulkCategorizeModal(true)}
-                            className="px-3 py-1.5 bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
+                            className="px-2.5 sm:px-3 py-1.5 bg-white hover:bg-emerald-100 border border-emerald-300 text-emerald-800 rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center min-w-0"
                           >
-                            <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Re-categorize Selected</span>
+                            <Edit3 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span className="truncate">Re-categorize</span>
                           </button>
                           <button
                             onClick={() => setShowBulkDeleteModal(true)}
-                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
+                            className="px-2.5 sm:px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center min-w-0"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Delete Selected</span>
+                            <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">Delete Selected</span>
                           </button>
                           <button
                             onClick={() => setSelectedFileIds([])}
-                            className="px-2 py-1.5 text-slate-500 hover:text-slate-700 text-xs font-bold cursor-pointer"
+                            className="hidden sm:inline-block px-2.5 py-1.5 text-slate-500 hover:text-slate-700 text-xs font-bold cursor-pointer whitespace-nowrap shrink-0"
                           >
                             Clear
                           </button>
@@ -4081,12 +4320,12 @@ startxref
                                 className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
                               />
                             </th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">{t.colFileName}</th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden sm:table-cell">{t.colSubject}</th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden md:table-cell">{t.colSize}</th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans hidden lg:table-cell">{t.colUploaded}</th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans">{t.colStatus}</th>
-                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans text-right">{t.colActions}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans whitespace-nowrap">{t.colFileName}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans whitespace-nowrap hidden sm:table-cell">{t.colSubject}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans whitespace-nowrap hidden md:table-cell">{t.colSize}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans whitespace-nowrap hidden lg:table-cell">{t.colUploaded}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans whitespace-nowrap">{t.colStatus}</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider font-sans whitespace-nowrap text-right">{t.colActions}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-sans text-xs">
@@ -4180,27 +4419,27 @@ startxref
                                 </td>
 
                                 {/* Subject Column (visible on screens larger than mobile) */}
-                                <td className="p-4 hidden sm:table-cell">
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-800 text-[10px] font-bold uppercase tracking-wider">
+                                <td className="p-4 hidden sm:table-cell whitespace-nowrap">
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
                                     {file.subject}
                                   </span>
                                 </td>
 
                                 {/* Size Column (visible on screens larger than tablet-ish) */}
-                                <td className="p-4 font-mono text-slate-500 hidden md:table-cell">{file.size}</td>
+                                <td className="p-4 font-mono text-slate-500 whitespace-nowrap hidden md:table-cell">{file.size}</td>
 
                                 {/* Uploaded Date Column */}
-                                <td className="p-4 font-mono text-slate-400 text-[11px] hidden lg:table-cell">{file.uploadedAt}</td>
+                                <td className="p-4 font-mono text-slate-400 text-[11px] whitespace-nowrap hidden lg:table-cell">{file.uploadedAt}</td>
 
                                 {/* Visibility Status badge */}
-                                <td className="p-4">
+                                <td className="p-4 whitespace-nowrap">
                                   {file.isVisible !== false ? (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100/50 text-[10px] font-bold">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100/50 text-[10px] font-bold whitespace-nowrap">
                                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                       <span>Visible</span>
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-100/50 text-[10px] font-bold">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-100/50 text-[10px] font-bold whitespace-nowrap">
                                       <Lock className="h-3 w-3 text-amber-500" />
                                       <span>Hidden</span>
                                     </span>
@@ -4208,7 +4447,7 @@ startxref
                                 </td>
 
                                 {/* Cleaner, grouped actions */}
-                                <td className="p-4 text-right">
+                                <td className="p-4 text-right whitespace-nowrap">
                                   <div className="flex items-center justify-end gap-1.5">
                                     {isViewable && (
                                       <button
@@ -4325,320 +4564,415 @@ startxref
           )}
 
           {/* Modal: Upload / Add Files (Batch & Multi-File AI Analysis) */}
-          {showUploadFileModal && (
-            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-              <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] flex flex-col">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-                      <Upload className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 text-base uppercase">
-                        Multi-File AI Upload Studio
-                      </h3>
-                      <p className="text-[11px] text-slate-500 font-medium">Select multiple documents/files — AI will auto-analyze & categorize each one</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowUploadFileModal(false);
-                      setBatchFilesList([]);
-                    }}
-                    className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 cursor-pointer"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
+          {showUploadFileModal && (() => {
+            const isBatchAnalyzing = isProcessingBatchAI || batchFilesList.some((it) => it.aiStatus === 'pending' || it.aiStatus === 'analyzing');
+            const batchAnalyzedCount = batchFilesList.filter((it) => it.aiStatus === 'done').length;
+            const isBatchReady = batchFilesList.length > 0 && !isBatchAnalyzing && !isUploadingFile;
 
-                <div className="overflow-y-auto space-y-4 pr-1 text-xs text-left flex-1">
-                  {/* AI Banner & Global Controls */}
-                  <div className="p-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-amber-500/20 text-amber-700 rounded-xl shrink-0">
-                        <Sparkles className="h-4 w-4" />
+            return (
+              <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-4 my-auto max-h-[90vh] flex flex-col">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <Upload className="h-5 w-5" />
                       </div>
                       <div>
-                        <div className="font-bold text-amber-950 text-xs">Batch AI Analyzer Engine</div>
-                        <div className="text-[11px] text-amber-800 font-medium font-sans">Reads file text/content to auto-fill Standard, Board, Subject & Category</div>
+                        <h3 className="font-bold text-slate-900 text-base uppercase">
+                          Multi-File AI Upload Studio
+                        </h3>
+                        <p className="text-[11px] text-slate-500 font-medium">Select multiple documents/files — AI will auto-analyze & categorize each one</p>
                       </div>
                     </div>
-                    {batchFilesList.length > 0 && (
-                      <button
-                        type="button"
-                        disabled={isProcessingBatchAI}
-                        onClick={reAnalyzeAllBatchItems}
-                        className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold rounded-xl flex items-center gap-1.5 shrink-0 cursor-pointer transition-all disabled:opacity-50"
-                      >
-                        {isProcessingBatchAI ? (
-                          <>
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-400" />
-                            <span>Analyzing Batch...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                            <span>Re-Analyze All with AI</span>
-                          </>
-                        )}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUploadFileModal(false);
+                        setBatchFilesList([]);
+                      }}
+                      className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 cursor-pointer"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
                   </div>
 
-                  {fileUploadError && (
-                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl font-medium text-xs flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
-                      <span>{fileUploadError}</span>
-                    </div>
-                  )}
-
-                  {/* Target Folder Selector */}
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Target Folder Location</label>
-                    <AdminCustomSelect
-                      value={newFileFolderId !== null ? newFileFolderId : (currentFolderId || '')}
-                      onChange={(val) => setNewFileFolderId(val ? val : null)}
-                      options={[
-                        { value: '', label: 'Root Library /' },
-                        ...curriculumFolders
-                          .map((f) => ({ folder: f, path: getFolderPath(f.id) }))
-                          .sort((a, b) => a.path.localeCompare(b.path))
-                          .map(({ folder, path }) => ({
-                            value: folder.id,
-                            label: `📁 ${path}`,
-                          })),
-                      ]}
-                      searchable
-                    />
-                  </div>
-
-                  {/* Multi-File Upload Dropzone / Picker */}
-                  <div className="p-4 border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50/80 rounded-2xl transition-all text-center space-y-2">
-                    <div className="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
-                      <FilePlus className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-800 text-xs">Select or Drag Multiple Files from Device</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">Supports PDF, Word Documents, Audio, Video, Worksheets & Quizzes</div>
-                    </div>
-                    <div>
-                      <label className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl cursor-pointer shadow-sm transition-all">
-                        <Upload className="h-3.5 w-3.5" />
-                        <span>Select Files (Hold Ctrl / Shift for Multiple)</span>
-                        <input
-                          type="file"
-                          multiple
-                          onChange={handleBatchFileSelect}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Batch Files Queue */}
-                  {batchFilesList.length > 0 ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                        <span className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                          <span>Queued Material ({batchFilesList.length})</span>
-                          {isProcessingBatchAI && (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-semibold animate-pulse">
-                              <Sparkles className="h-3 w-3 animate-spin" /> AI Analyzing...
-                            </span>
-                          )}
-                        </span>
+                  <div className="overflow-y-auto space-y-4 pr-1 text-xs text-left flex-1">
+                    {/* AI Banner & Global Controls */}
+                    <div className="p-3 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-amber-500/20 text-amber-700 rounded-xl shrink-0">
+                          <Sparkles className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="font-bold text-amber-950 text-xs">Batch AI Analyzer Engine</div>
+                          <div className="text-[11px] text-amber-800 font-medium font-sans">Reads file text/content to auto-fill Standard, Board, Subject & Category</div>
+                        </div>
+                      </div>
+                      {batchFilesList.length > 0 && (
                         <button
                           type="button"
-                          onClick={() => setBatchFilesList([])}
-                          className="text-slate-400 hover:text-rose-600 text-[11px] font-bold underline"
+                          disabled={isProcessingBatchAI}
+                          onClick={reAnalyzeAllBatchItems}
+                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold rounded-xl flex items-center gap-1.5 shrink-0 cursor-pointer transition-all disabled:opacity-50"
                         >
-                          Clear All
+                          {isProcessingBatchAI ? (
+                            <>
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-400" />
+                              <span>Analyzing Batch...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                              <span>Re-Analyze All with AI</span>
+                            </>
+                          )}
                         </button>
+                      )}
+                    </div>
+
+                    {fileUploadError && (
+                      <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl font-medium text-xs flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+                        <span>{fileUploadError}</span>
                       </div>
+                    )}
 
-                      <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
-                        {batchFilesList.map((item, index) => (
-                          <div
-                            key={item.id}
-                            className="p-3 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl space-y-2 transition-all shadow-xs"
+                    {/* Target Folder Selector */}
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Target Folder Location</label>
+                      <AdminCustomSelect
+                        value={newFileFolderId !== null ? newFileFolderId : (currentFolderId || '')}
+                        onChange={(val) => setNewFileFolderId(val ? val : null)}
+                        options={[
+                          { value: '', label: 'Root Library /' },
+                          ...curriculumFolders
+                            .map((f) => ({ folder: f, path: getFolderPath(f.id) }))
+                            .sort((a, b) => a.path.localeCompare(b.path))
+                            .map(({ folder, path }) => ({
+                              value: folder.id,
+                              label: `📁 ${path}`,
+                            })),
+                        ]}
+                        searchable
+                      />
+                    </div>
+
+                    {/* Multi-File Upload Dropzone / Picker */}
+                    <div className="p-4 border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50/80 rounded-2xl transition-all text-center space-y-2">
+                      <div className="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto">
+                        <FilePlus className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-800 text-xs">Select or Drag Multiple Files from Device</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">Supports PDF, Word Documents, Audio, Video, Worksheets & Quizzes</div>
+                      </div>
+                      <div>
+                        <label className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl cursor-pointer shadow-sm transition-all">
+                          <Upload className="h-3.5 w-3.5" />
+                          <span>Select Files (Hold Ctrl / Shift for Multiple)</span>
+                          <input
+                            type="file"
+                            multiple
+                            onChange={handleBatchFileSelect}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Batch Files Queue */}
+                    {batchFilesList.length > 0 ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                          <span className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                            <span>Queued Material ({batchFilesList.length})</span>
+                            {isBatchAnalyzing && (
+                              <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-semibold animate-pulse">
+                                <Sparkles className="h-3 w-3 animate-spin" /> AI Analyzing ({batchAnalyzedCount}/{batchFilesList.length})...
+                              </span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setBatchFilesList([])}
+                            className="text-slate-400 hover:text-rose-600 text-[11px] font-bold underline"
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 overflow-hidden">
-                                <span className="font-mono text-[10px] text-slate-400 font-bold">#{index + 1}</span>
-                                <div className="p-1.5 bg-white border border-slate-200 rounded-lg shrink-0 text-slate-700">
-                                  <FileText className="h-4 w-4 text-emerald-600" />
-                                </div>
-                                <div className="truncate">
-                                  <div className="font-bold text-slate-900 text-xs truncate">{item.fileName || item.rawName}</div>
-                                  <div className="text-[10px] text-slate-500 font-medium">Original: {item.rawName} ({item.size})</div>
-                                </div>
-                              </div>
+                            Clear All
+                          </button>
+                        </div>
 
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {/* AI Status Badge */}
-                                {item.aiStatus === 'analyzing' && (
-                                  <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold text-[10px] rounded-full flex items-center gap-1 animate-pulse">
-                                    <Sparkles className="h-3 w-3 animate-spin text-amber-600" /> AI Reading...
-                                  </span>
-                                )}
-                                {item.aiStatus === 'done' && (
-                                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-full flex items-center gap-1">
-                                    <CheckCircle className="h-3 w-3 text-emerald-600" /> AI Auto-Filled
-                                  </span>
-                                )}
-                                {item.aiStatus === 'error' && (
+                        <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                          {batchFilesList.map((item, index) => (
+                            <div
+                              key={item.id}
+                              className="p-3 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-2xl space-y-2 transition-all shadow-xs"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                  <span className="font-mono text-[10px] text-slate-400 font-bold">#{index + 1}</span>
+                                  <div className="p-1.5 bg-white border border-slate-200 rounded-lg shrink-0 text-slate-700">
+                                    <FileText className="h-4 w-4 text-emerald-600" />
+                                  </div>
+                                  <div className="truncate">
+                                    <div className="font-bold text-slate-900 text-xs truncate">{item.fileName || item.rawName}</div>
+                                    <div className="text-[10px] text-slate-500 font-medium">Original: {item.rawName} ({item.size})</div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {/* AI Status Badge */}
+                                  {(item.aiStatus === 'analyzing' || item.aiStatus === 'pending') && (
+                                    <span className="px-2 py-0.5 bg-amber-100 text-amber-800 font-bold text-[10px] rounded-full flex items-center gap-1 animate-pulse">
+                                      <Sparkles className="h-3 w-3 animate-spin text-amber-600" /> AI Reading...
+                                    </span>
+                                  )}
+                                  {item.aiStatus === 'done' && (
+                                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-full flex items-center gap-1">
+                                      <CheckCircle className="h-3 w-3 text-emerald-600" /> AI Auto-Filled
+                                    </span>
+                                  )}
+                                  {item.aiStatus === 'error' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => reAnalyzeSingleItem(item)}
+                                      className="px-2 py-0.5 bg-rose-100 text-rose-800 hover:bg-rose-200 font-bold text-[10px] rounded-full flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <RefreshCw className="h-3 w-3 text-rose-600" /> Retry AI
+                                    </button>
+                                  )}
+
                                   <button
                                     type="button"
-                                    onClick={() => reAnalyzeSingleItem(item)}
-                                    className="px-2 py-0.5 bg-rose-100 text-rose-800 hover:bg-rose-200 font-bold text-[10px] rounded-full flex items-center gap-1 cursor-pointer"
+                                    onClick={() => updateBatchItem(item.id, { expanded: !item.expanded })}
+                                    className="p-1 hover:bg-slate-200 rounded-lg text-slate-500 cursor-pointer"
+                                    title="Toggle file details"
                                   >
-                                    <RefreshCw className="h-3 w-3 text-rose-600" /> Retry AI
+                                    {item.expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                   </button>
-                                )}
 
-                                <button
-                                  type="button"
-                                  onClick={() => updateBatchItem(item.id, { expanded: !item.expanded })}
-                                  className="p-1 hover:bg-slate-200 rounded-lg text-slate-500 cursor-pointer"
-                                  title="Toggle file details"
-                                >
-                                  {item.expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => removeBatchItem(item.id)}
-                                  className="p-1 hover:bg-rose-100 rounded-lg text-slate-400 hover:text-rose-600 cursor-pointer"
-                                  title="Remove from batch"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Item Form Controls (Expandable) */}
-                            {item.expanded && (
-                              <div className="pt-2 border-t border-slate-200/60 space-y-2.5 animate-fade-in text-xs">
-                                <div>
-                                  <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Title / Name *</label>
-                                  <input
-                                    type="text"
-                                    value={item.fileName}
-                                    onChange={(e) => updateBatchItem(item.id, { fileName: e.target.value })}
-                                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeBatchItem(item.id)}
+                                    className="p-1 hover:bg-rose-100 rounded-lg text-slate-400 hover:text-rose-600 cursor-pointer"
+                                    title="Remove from batch"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
                                 </div>
+                              </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {/* Item Form Controls (Expandable) */}
+                              {item.expanded && (
+                                <div className="pt-2 border-t border-slate-200/60 space-y-2.5 animate-fade-in text-xs">
                                   <div>
-                                    <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Subject</label>
+                                    <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Title / Name *</label>
                                     <input
                                       type="text"
-                                      value={item.subject}
-                                      onChange={(e) => updateBatchItem(item.id, { subject: e.target.value })}
-                                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-medium text-slate-900"
+                                      value={item.fileName}
+                                      onChange={(e) => updateBatchItem(item.id, { fileName: e.target.value })}
+                                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-semibold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                     />
                                   </div>
 
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Subject</label>
+                                      <input
+                                        type="text"
+                                        value={item.subject}
+                                        onChange={(e) => updateBatchItem(item.id, { subject: e.target.value })}
+                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-medium text-slate-900"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Category</label>
+                                      <AdminCustomSelect
+                                        value={item.category}
+                                        onChange={(val: any) => updateBatchItem(item.id, { category: val })}
+                                        options={[
+                                          { value: 'pdf', label: 'PDF Document' },
+                                          { value: 'video', label: 'Video Tutorial' },
+                                          { value: 'audio', label: 'Audio Guide' },
+                                          { value: 'quiz', label: 'Worksheet / Quiz' },
+                                          { value: 'document', label: 'Text / Word Doc' },
+                                          { value: 'other', label: 'Other File' },
+                                        ]}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Grade / Standard</label>
+                                      <AdminCustomSelect
+                                        value={item.standard}
+                                        onChange={(val) => updateBatchItem(item.id, { standard: val })}
+                                        options={STANDARD_OPTIONS}
+                                        searchable
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Education Board</label>
+                                      <AdminCustomSelect
+                                        value={item.board}
+                                        onChange={(val) => updateBatchItem(item.id, { board: val })}
+                                        options={INDIAN_BOARD_OPTIONS}
+                                        searchable
+                                      />
+                                    </div>
+                                  </div>
+
                                   <div>
-                                    <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Category</label>
-                                    <AdminCustomSelect
-                                      value={item.category}
-                                      onChange={(val: any) => updateBatchItem(item.id, { category: val })}
-                                      options={[
-                                        { value: 'pdf', label: 'PDF Document' },
-                                        { value: 'video', label: 'Video Tutorial' },
-                                        { value: 'audio', label: 'Audio Guide' },
-                                        { value: 'quiz', label: 'Worksheet / Quiz' },
-                                        { value: 'document', label: 'Text / Word Doc' },
-                                        { value: 'other', label: 'Other File' },
-                                      ]}
+                                    <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Description / Summary</label>
+                                    <input
+                                      type="text"
+                                      value={item.description}
+                                      onChange={(e) => updateBatchItem(item.id, { description: e.target.value })}
+                                      placeholder="Optional description..."
+                                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-sans"
                                     />
                                   </div>
                                 </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-center text-slate-400 font-medium">
+                        No files added to batch queue yet. Select files above to start batch AI auto-analysis!
+                      </div>
+                    )}
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                  <div>
-                                    <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Grade / Standard</label>
-                                    <AdminCustomSelect
-                                      value={item.standard}
-                                      onChange={(val) => updateBatchItem(item.id, { standard: val })}
-                                      options={STANDARD_OPTIONS}
-                                      searchable
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Education Board</label>
-                                    <AdminCustomSelect
-                                      value={item.board}
-                                      onChange={(val) => updateBatchItem(item.id, { board: val })}
-                                      options={INDIAN_BOARD_OPTIONS}
-                                      searchable
-                                    />
-                                  </div>
+                    {/* AI Analysis & Upload Real-Time Status Notification Banner */}
+                    {batchFilesList.length > 0 && (
+                      <div className="pt-1">
+                        {isUploadingFile && batchUploadProgress ? (
+                          <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-2xl flex flex-col gap-2 text-xs text-emerald-950 animate-fade-in shadow-xs">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="p-1.5 bg-emerald-100 text-emerald-700 rounded-xl shrink-0">
+                                  <RefreshCw className="h-4 w-4 animate-spin text-emerald-700" />
                                 </div>
-
-                                <div>
-                                  <label className="block font-bold text-slate-700 mb-0.5 text-[11px]">Description / Summary</label>
-                                  <input
-                                    type="text"
-                                    value={item.description}
-                                    onChange={(e) => updateBatchItem(item.id, { description: e.target.value })}
-                                    placeholder="Optional description..."
-                                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl font-sans"
-                                  />
+                                <div className="truncate">
+                                  <p className="font-bold text-xs truncate">
+                                    Fast Uploading to Cloud ({batchUploadProgress.current} of {batchUploadProgress.total} Files Completed)
+                                  </p>
+                                  {/*<p className="text-[11px] text-emerald-800 font-medium truncate">
+                                    {batchUploadProgress.currentFileName ? `Processing: ${batchUploadProgress.currentFileName}` : 'Writing cloud chunks & local IndexedDB...'}
+                                  </p>*/}
                                 </div>
                               </div>
-                            )}
+                              <span className="text-[10px] font-bold font-mono uppercase bg-emerald-200 text-emerald-950 px-2.5 py-1 rounded-full shrink-0">
+                                {batchUploadProgress.percent}%
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-emerald-200/70 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-emerald-600 rounded-full transition-all duration-300"
+                                style={{ width: `${batchUploadProgress.percent}%` }}
+                              />
+                            </div>
                           </div>
-                        ))}
+                        ) : isBatchAnalyzing ? (
+                          <div className="p-3 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-center justify-between gap-3 text-xs text-amber-950 animate-fade-in shadow-xs">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="p-1.5 bg-amber-100 text-amber-700 rounded-xl shrink-0">
+                                <Sparkles className="h-4 w-4 animate-spin text-amber-600" />
+                              </div>
+                              <div className="truncate">
+                                <p className="font-bold text-xs truncate">
+                                  AI Analysis in Progress ({batchAnalyzedCount} of {batchFilesList.length} analyzed)
+                                </p>
+                                <p className="text-[11px] text-amber-800 font-medium">
+                                  Save & Upload button is disabled until AI completes document analysis.
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold font-mono uppercase bg-amber-200/90 text-amber-950 px-2.5 py-1 rounded-full shrink-0">
+                              {Math.round((batchAnalyzedCount / (batchFilesList.length || 1)) * 100)}%
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="p-2.5 bg-emerald-50 border border-emerald-200/90 rounded-2xl flex items-center justify-between gap-2 text-xs text-emerald-950 animate-fade-in shadow-xs">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="p-1 bg-emerald-100 text-emerald-700 rounded-lg shrink-0">
+                                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                              </div>
+                              <p className="font-bold text-xs truncate">
+                                All {batchFilesList.length} file{batchFilesList.length > 1 ? 's' : ''} analyzed by AI & ready to save
+                              </p>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase bg-emerald-200/90 text-emerald-950 px-2 py-0.5 rounded-full shrink-0">
+                              AI Ready
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-center text-slate-400 font-medium">
-                      No files added to batch queue yet. Select files above to start batch AI auto-analysis!
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer Actions */}
-                <div className="flex gap-3 pt-3 border-t border-slate-100 shrink-0">
-                  <button
-                    type="button"
-                    disabled={isUploadingFile}
-                    onClick={() => {
-                      setShowUploadFileModal(false);
-                      setBatchFilesList([]);
-                    }}
-                    className="w-1/3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer disabled:opacity-50 text-xs"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isUploadingFile || batchFilesList.length === 0}
-                    onClick={handleBatchSubmit}
-                    className="w-2/3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 text-xs shadow-md shadow-emerald-600/20"
-                  >
-                    {isUploadingFile ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        <span>Uploading Batch...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4" />
-                        <span>Save & Upload All ({batchFilesList.length} Files)</span>
-                      </>
                     )}
-                  </button>
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="flex gap-3 pt-3 border-t border-slate-100 shrink-0">
+                    <button
+                      type="button"
+                      disabled={isUploadingFile}
+                      onClick={() => {
+                        setShowUploadFileModal(false);
+                        setBatchFilesList([]);
+                      }}
+                      className="w-1/3 py-2.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold rounded-xl cursor-pointer disabled:opacity-50 text-xs transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!isBatchReady || isUploadingFile}
+                      onClick={handleBatchSubmit}
+                      className={`w-2/3 py-2.5 font-bold rounded-xl flex items-center justify-center gap-2 text-xs transition-all ${
+                        !isBatchReady || isUploadingFile
+                          ? 'bg-slate-100 text-slate-400 border border-slate-300/80 cursor-not-allowed shadow-none opacity-85'
+                          : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white cursor-pointer shadow-md shadow-emerald-600/20'
+                      }`}
+                      title={
+                        isUploadingFile
+                          ? 'Uploading files...'
+                          : isBatchAnalyzing
+                          ? 'AI is analyzing file contents. Please wait...'
+                          : batchFilesList.length === 0
+                          ? 'Please select files to upload'
+                          : 'Save & Upload All Files'
+                      }
+                    >
+                      {isUploadingFile ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin text-emerald-600" />
+                          <span>
+                            {batchUploadProgress 
+                              ? `Uploading (${batchUploadProgress.current}/${batchUploadProgress.total} • ${batchUploadProgress.percent}%)...` 
+                              : 'Uploading Batch...'}
+                          </span>
+                        </>
+                      ) : isBatchAnalyzing ? (
+                        <>
+                          <Sparkles className="h-4 w-4 animate-spin text-amber-500" />
+                          <span>Analyzing with AI ({batchAnalyzedCount}/{batchFilesList.length} Ready)...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          <span>Save & Upload All ({batchFilesList.length} Files)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Modal: Rename Folder */}
           {renamingFolder && (
@@ -5017,10 +5351,7 @@ startxref
 
                     {/* Delete File */}
                     <button
-                      onClick={() => {
-                        setActiveFileMenuId(null);
-                        handleDeleteFile(file.id);
-                      }}
+                      onClick={() => promptDeleteFile(file)}
                       className="w-full px-3.5 py-3 hover:bg-rose-50 border border-rose-100 rounded-xl font-bold text-xs text-red-600 transition-colors flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
@@ -5271,7 +5602,7 @@ startxref
                       {cert.status === 'valid' ? 'Revoke Cert' : 'Reactivate'}
                     </button>
                     <button
-                      onClick={() => handleDeleteCertificate(cert.id)}
+                      onClick={() => promptDeleteCertificate(cert)}
                       className="px-3 py-1.5 bg-rose-50 text-red-600 hover:bg-rose-100 border border-rose-200 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center gap-1"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -5342,7 +5673,7 @@ startxref
                         </button>
 
                         <button
-                          onClick={() => handleDeleteCertificate(cert.id)}
+                          onClick={() => promptDeleteCertificate(cert)}
                           className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
                           title="Delete certificate from Firestore"
                         >
@@ -5535,7 +5866,7 @@ startxref
                         </button>
                       )}
                       <button
-                        onClick={() => handleDeleteUser(u.mobile)}
+                        onClick={() => promptDeleteUser(u)}
                         className="p-1.5 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg cursor-pointer transition-colors"
                         title="Delete User"
                       >
@@ -5609,7 +5940,7 @@ startxref
                           </button>
                         )}
                         <button
-                          onClick={() => handleDeleteUser(u.mobile)}
+                          onClick={() => promptDeleteUser(u)}
                           className="p-1 text-red-600 hover:bg-red-50 rounded-md cursor-pointer ml-1"
                           title="Delete User"
                         >
@@ -6252,6 +6583,136 @@ startxref
                 />
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* GLOBAL DELETE CONFIRMATION MODAL */}
+      {deleteTarget && (
+        <div 
+          className="fixed inset-0 z-60 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => !isDeletingTarget && setDeleteTarget(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-5 text-left animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header with Danger Accent */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-red-600 shrink-0 shadow-3xs">
+                  <Trash2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    {deleteTarget.type === 'file' && 'Delete Curriculum File'}
+                    {deleteTarget.type === 'folder' && 'Delete Curriculum Folder'}
+                    {deleteTarget.type === 'certificate' && 'Delete Certificate Record'}
+                    {deleteTarget.type === 'user' && 'Delete User Account'}
+                  </h3>
+                  <p className="text-xs text-rose-600 font-semibold mt-0.5 flex items-center gap-1">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Permanent & irreversible action
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isDeletingTarget}
+                onClick={() => setDeleteTarget(null)}
+                className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 transition-colors disabled:opacity-50 cursor-pointer"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Target Item Summary Box */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-slate-900 text-sm break-words line-clamp-2">
+                  {deleteTarget.name}
+                </span>
+                {deleteTarget.badge && (
+                  <span className="px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-700 font-mono text-[10px] font-bold uppercase shrink-0">
+                    {deleteTarget.badge}
+                  </span>
+                )}
+              </div>
+              {deleteTarget.subtitle && (
+                <p className="text-xs text-slate-500 font-medium">
+                  {deleteTarget.subtitle}
+                </p>
+              )}
+            </div>
+
+            {/* Explanatory detail & Extra warning */}
+            <div className="space-y-2">
+              {deleteTarget.detail && (
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {deleteTarget.detail}
+                </p>
+              )}
+              {deleteTarget.extraWarning && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold leading-relaxed">
+                  {deleteTarget.extraWarning}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={isDeletingTarget}
+                onClick={() => setDeleteTarget(null)}
+                className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold rounded-xl cursor-pointer text-xs transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingTarget}
+                onClick={handleConfirmDeleteTarget}
+                className="w-1/2 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold rounded-xl cursor-pointer shadow-xs text-xs flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+              >
+                {isDeletingTarget ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Delete Permanently</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ACTION FEEDBACK TOAST BANNER */}
+      {actionToast && (
+        <div className="fixed top-5 right-5 z-60 animate-fade-in max-w-sm">
+          <div className={`p-4 rounded-2xl shadow-xl border flex items-center gap-3 ${
+            actionToast.type === 'success'
+              ? 'bg-emerald-950 text-emerald-100 border-emerald-800'
+              : actionToast.type === 'error'
+              ? 'bg-rose-950 text-rose-100 border-rose-800'
+              : 'bg-slate-900 text-white border-slate-800'
+          }`}>
+            {actionToast.type === 'success' && <CheckCircle className="h-5 w-5 text-emerald-400 shrink-0" />}
+            {actionToast.type === 'error' && <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0" />}
+            {actionToast.type === 'info' && <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />}
+            <span className="text-xs font-semibold flex-1">{actionToast.message}</span>
+            <button
+              onClick={() => setActionToast(null)}
+              className="p-1 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       )}

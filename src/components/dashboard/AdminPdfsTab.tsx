@@ -2474,9 +2474,9 @@ This comprehensive study resource provides essential conceptual foundation and p
         </div>
 
         <div className="relative z-10 max-w-4xl space-y-3">
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-amber-200">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-            <span>{t.officialHubBadge}</span>
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-200 max-w-full">
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />
+            <span className="whitespace-nowrap">{t.officialHubBadge}</span>
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-white">
@@ -2487,19 +2487,15 @@ This comprehensive study resource provides essential conceptual foundation and p
             {t.pageSubtitle}
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2">
-              <FileText className="w-4 h-4 text-amber-300" />
+          <div className="flex items-center gap-2 sm:gap-3 pt-1 text-[11px] sm:text-xs overflow-x-auto no-scrollbar whitespace-nowrap">
+            <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-1.5 shrink-0">
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300 shrink-0" />
               <span className="font-bold">{files.length} {t.badgeOfficialDocs}</span>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-emerald-300" />
+            <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-1.5 shrink-0">
+              <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-300 shrink-0" />
               <span className="font-bold">{folders.length} {t.badgeFolders}</span>
             </div>
-            {/*<div className="bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-xl flex items-center gap-2">
-              <Download className="w-4 h-4 text-sky-300" />
-              <span className="font-bold">{downloadedPdfIds.length} {t.badgeSavedOffline}</span>
-            </div>*/}
           </div>
         </div>
       </div>

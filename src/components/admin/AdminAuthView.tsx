@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Smartphone, KeyRound, ArrowLeft, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Shield, Lock, Smartphone, KeyRound, ArrowLeft, CheckCircle2, AlertCircle, RefreshCw, Globe, ChevronDown } from 'lucide-react';
 import { User, LanguageCode } from '../../types';
 import { getFirebaseUser, setFirebaseUser } from '../../lib/firebase';
 import { getSafeDateString } from '../../utils/dateUtils';
@@ -10,6 +10,7 @@ interface AdminAuthViewProps {
   lang: LanguageCode;
   adminUser?: User | null;
   onGoToDashboard?: () => void;
+  onLanguageChange?: (lang: LanguageCode) => void;
 }
 
 const ADMIN_AUTH_TRANSLATIONS = {
@@ -26,7 +27,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     pinPlaceholder: "Enter 6-digit Security PIN (999999)",
     verifying: "Verifying Credentials...",
     authenticateBtn: "Authenticate Admin Console",
-    encryptedSession: "256-Bit Encrypted Admin Session"
+    encryptedSession: "256-Bit Encrypted Admin Session",
+    invalidMobile: "Please enter a valid 10-digit mobile number.",
+    invalidPin: "Security PIN / OTP must be at least 6 digits.",
+    authFailed: "Invalid security PIN / password for this Admin account.",
+    masterPinError: "Invalid security passcode or PIN. Default admin PIN is 999999",
+    serverTimeout: "Authentication server timeout. Please try again."
   },
   hi: {
     backToApp: "छात्र ऐप पर लौटें",
@@ -41,7 +47,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     pinPlaceholder: "6-अंकों का सुरक्षा पिन दर्ज करें (999999)",
     verifying: "प्रमाण-पत्रों का सत्यापन हो रहा है...",
     authenticateBtn: "एडमिन कंसोल को प्रमाणित करें",
-    encryptedSession: "256-बिट एन्क्रिप्टेड एडमिन सत्र"
+    encryptedSession: "256-बिट एन्क्रिप्टेड एडमिन सत्र",
+    invalidMobile: "कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें।",
+    invalidPin: "सुरक्षा पिन कम से कम 6 अंकों का होना चाहिए।",
+    authFailed: "इस एडमिन खाते के लिए अमान्य सुरक्षा पिन / पासवर्ड।",
+    masterPinError: "अमान्य सुरक्षा पासकोड। डिफ़ॉल्ट एडमिन पिन 999999 है",
+    serverTimeout: "सर्वर टाइमआउट। कृपया पुनः प्रयास करें।"
   },
   gu: {
     backToApp: "વિદ્યાર્થી એપ પર પાછા ફરો",
@@ -56,7 +67,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     pinPlaceholder: "6-અંકનો સુરક્ષા પિન દાખલ કરો (999999)",
     verifying: "પ્રમાણપત્રો ચકાસી રહ્યા છીએ...",
     authenticateBtn: "એડમિન કન્સોલ પ્રમાણિત કરો",
-    encryptedSession: "256-બિટ એનક્રિપ્ટેડ એડમિન સત્ર"
+    encryptedSession: "256-બિટ એનક્રિપ્ટેડ એડમિન સત્ર",
+    invalidMobile: "કૃપા કરીને માન્ય 10-અંકનો મોબાઇલ નંબર દાખલ કરો.",
+    invalidPin: "સુરક્ષા પિન ઓછામાં ઓછો 6 અંકનો હોવો જોઈએ.",
+    authFailed: "આ એડમિન એકાઉન્ટ માટે અમાન્ય સુરક્ષા પિન / પાસવર્ડ.",
+    masterPinError: "અમાન્ય સુરક્ષા પાસકોડ. ડિફૉલ્ટ એડમિન પિન 999999 છે",
+    serverTimeout: "સર્વર સમયસમાપ્તિ. કૃપા કરીને ફરી પ્રયાસ કરો."
   },
   mr: {
     backToApp: "विद्यार्थी ॲपवर परत जा",
@@ -71,7 +87,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     pinPlaceholder: "6-अंकी सुरक्षा पिन प्रविष्ट करा (999999)",
     verifying: "प्रमाणपत्रे तपासली जात आहेत...",
     authenticateBtn: "ॲडमिन कन्सोल प्रमाणित करा",
-    encryptedSession: "256-बिट एनक्रिप्टेड ॲडमिन सत्र"
+    encryptedSession: "256-बिट एनक्रिप्टेड ॲडमिन सत्र",
+    invalidMobile: "कृपया वैध 10-अंकी मोबाईल नंबर प्रविष्ट करा.",
+    invalidPin: "सुरक्षा पिन किमान 6 अंकी असणे आवश्यक आहे.",
+    authFailed: "या ॲडमिन खात्यासाठी अवैध सुरक्षा पिन / पासवर्ड.",
+    masterPinError: "अवैध सुरक्षा पासकोड. डीफॉल्ट ॲडमिन पिन 999999 आहे",
+    serverTimeout: "सर्व्हर कालबाह्य. कृपया पुन्हा प्रयत्न करा."
   },
   ta: {
     backToApp: "மாணவர் செயலிகளுக்குத் திரும்புக",
@@ -86,7 +107,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     pinPlaceholder: "6-இலக்க பாதுகாப்பு PIN ஐ உள்ளிடவும் (999999)",
     verifying: "சான்றுகள் சரிபார்க்கப்படுகின்றன...",
     authenticateBtn: "நிர்வாகக் கன்சோலை அங்கீகரிக்கவும்",
-    encryptedSession: "256-பிட் எண்க்ரிப்ட் செய்யப்பட்ட அமர்வு"
+    encryptedSession: "256-பிட் எண்க்ரிப்ட் செய்யப்பட்ட அமர்வு",
+    invalidMobile: "தயவுசெய்து சரியான 10 இலக்க கைபேசி எண்ணை உள்ளிடவும்.",
+    invalidPin: "பாதுகாப்பு பின் குறைந்தபட்சம் 6 இலக்கங்களாக இருக்க வேண்டும்.",
+    authFailed: "இந்த நிர்வாகி கணக்கிற்கு தவறான பாதுகாப்பு பின் / கடவுச்சொல்.",
+    masterPinError: "தவறான பாதுகாப்பு பின். இயல்புநிலை நிர்வாகி பின் 999999 ஆகும்",
+    serverTimeout: "சர்வர் நேரம் முடிந்தது. மீண்டும் முயற்சிக்கவும்."
   },
   te: {
     backToApp: "విద్యార్థి యాప్‌కి తిరిగి వెళ్ళండి",
@@ -101,28 +127,43 @@ const ADMIN_AUTH_TRANSLATIONS = {
     pinPlaceholder: "6-అంకెల సెక్యూరిటీ పిన్ నమోదు చేయండి (999999)",
     verifying: "రుజువులను పరిశీలిస్తోంది...",
     authenticateBtn: "అడ్మిన్ కన్సోల్‌ను ప్రమాణీకరించండి",
-    encryptedSession: "256-బిట్ ఎన్‌క్రిప్టెడ్ అడ్మిన్ సెషన్"
+    encryptedSession: "256-బిట్ ఎన్‌క్రిప్టెడ్ అడ్మిన్ సెషన్",
+    invalidMobile: "దయచేసి సరైన 10 అంకెల మొబైల్ నంబర్‌ను నమోదు చేయండి.",
+    invalidPin: "భద్రతా పిన్ కనీసం 6 అంకెలు ఉండాలి.",
+    authFailed: "ఈ అడ్మిన్ ఖాతా కోసం చెల్లని భద్రతా పిన్ / పాస్‌వర్డ్.",
+    masterPinError: "చెల్లని భద్రతా పిన్. డిఫాల్ట్ అడ్మిన్ పిన్ 999999",
+    serverTimeout: "సర్వర్ సమయం ముగిసింది. దయచేసి మళ్ళీ ప్రయత్నించండి."
   }
 };
 
-export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser, onGoToDashboard }: AdminAuthViewProps) {
-  const t = ADMIN_AUTH_TRANSLATIONS[lang] || ADMIN_AUTH_TRANSLATIONS.en;
+export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser, onGoToDashboard, onLanguageChange }: AdminAuthViewProps) {
+  const [currentLang, setCurrentLang] = useState<LanguageCode>(lang || 'en');
+  const t = ADMIN_AUTH_TRANSLATIONS[currentLang] || ADMIN_AUTH_TRANSLATIONS.en;
   const [mobile, setMobile] = useState('9999999999');
   const [pin, setPin] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const handleLangSelect = (newLang: LanguageCode) => {
+    setCurrentLang(newLang);
+    try {
+      localStorage.setItem('gramin_preferred_language', newLang);
+      localStorage.setItem('gramin_admin_lang', newLang);
+    } catch (e) {}
+    onLanguageChange?.(newLang);
+  };
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
     if (mobile.length !== 10) {
-      setErrorMessage('Please enter a valid 10-digit mobile number.');
+      setErrorMessage(t.invalidMobile);
       return;
     }
 
     if (pin.length < 6) {
-      setErrorMessage('Security PIN / OTP must be at least 6 digits.');
+      setErrorMessage(t.invalidPin);
       return;
     }
 
@@ -137,7 +178,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
       if (savedPin) {
         // Strict custom PIN check if configured by admin
         if (pin !== savedPin) {
-          setErrorMessage('Invalid security PIN / password for this Admin account.');
+          setErrorMessage(t.authFailed);
           setIsAuthenticating(false);
           return;
         }
@@ -152,7 +193,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
           });
           const data = await res.json();
           if (!res.ok || !data.success) {
-            setErrorMessage('Invalid security passcode or PIN. Default admin PIN is 999999');
+            setErrorMessage(t.masterPinError);
             setIsAuthenticating(false);
             return;
           }
@@ -163,7 +204,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
         // Automatically provision administrator profile
         await setFirebaseUser(mobile, {
           name: 'System Administrator',
-          defaultLanguage: lang,
+          defaultLanguage: currentLang,
           role: 'admin',
           adminPin: pin,
           signupDate: getSafeDateString(),
@@ -184,7 +225,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
       const adminUser: User = {
         mobile: dbUser?.mobile || mobile,
         name: dbUser?.name || 'System Administrator',
-        defaultLanguage: dbUser?.defaultLanguage || lang,
+        defaultLanguage: dbUser?.defaultLanguage || currentLang,
         role: 'admin',
         signupDate: dbUser?.signupDate || getSafeDateString(),
         village: dbUser?.village || 'HQ Control Center',
@@ -206,7 +247,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
       onSuccess(adminUser);
     } catch (err) {
       console.error("Admin Auth error:", err);
-      setErrorMessage('Authentication server timeout. Please try again.');
+      setErrorMessage(t.serverTimeout);
     } finally {
       setIsAuthenticating(false);
     }
@@ -214,14 +255,33 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
 
   return (
     <div className="max-w-md mx-auto my-8">
-      {/* Back button */}
-      <button
-        onClick={onBackToMain}
-        className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs hover:bg-slate-50 transition-all"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        <span>{t.backToApp}</span>
-      </button>
+      {/* Top bar with Back button and Language selector */}
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <button
+          onClick={onBackToMain}
+          className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer bg-white px-3 py-2 rounded-xl border border-slate-200 shadow-2xs hover:bg-slate-50 transition-all"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>{t.backToApp}</span>
+        </button>
+
+        <div className="relative inline-flex items-center">
+          <Globe className="absolute left-2.5 w-3.5 h-3.5 text-amber-500 pointer-events-none" />
+          <select
+            value={currentLang}
+            onChange={(e) => handleLangSelect(e.target.value as LanguageCode)}
+            className="pl-7 pr-7 py-1.5 bg-white text-slate-800 font-bold text-xs rounded-xl border border-slate-200 shadow-2xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none transition-all"
+          >
+            <option value="en">English (EN)</option>
+            <option value="hi">हिन्दी (Hindi)</option>
+            <option value="gu">ગુજરાતી (Gujarati)</option>
+            <option value="mr">मराठी (Marathi)</option>
+            <option value="ta">தமிழ் (Tamil)</option>
+            <option value="te">తెలుగు (Telugu)</option>
+          </select>
+          <ChevronDown className="absolute right-2 w-3 h-3 text-slate-400 pointer-events-none" />
+        </div>
+      </div>
 
       {/* Main Admin Portal Card */}
       <div className="bg-slate-900 text-white rounded-[32px] border-2 border-slate-700 shadow-2xl overflow-hidden animate-fade-in">
