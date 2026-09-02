@@ -269,10 +269,10 @@ export async function syncFirebaseUserWithLWW(
 
     // Last-Write-Wins comparison
     if (remoteUpdatedAt > localUpdatedAt) {
-      console.log(`[LWW Conflict Resolution] Remote version is newer (${remoteUpdatedAt} > ${localUpdatedAt}). Remote wins.`);
+      // console.log(`[LWW Conflict Resolution] Remote version is newer (${remoteUpdatedAt} > ${localUpdatedAt}). Remote wins.`);
       return { resolvedUser: remoteUser, conflictResolved: true, source: 'remote' };
     } else {
-      console.log(`[LWW Conflict Resolution] Local version is newer (${localUpdatedAt} >= ${remoteUpdatedAt}). Local wins. Updating remote.`);
+      // console.log(`[LWW Conflict Resolution] Local version is newer (${localUpdatedAt} >= ${remoteUpdatedAt}). Local wins. Updating remote.`);
       const updatedUser: FirestoreUser = {
         ...remoteUser,
         ...localUser,

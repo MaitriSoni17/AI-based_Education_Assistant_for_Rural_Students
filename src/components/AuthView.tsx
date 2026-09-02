@@ -112,7 +112,7 @@ export default function AuthView({
           setIsSimulated(false);
         }
         if (data.gatewayError) {
-          console.log("Twilio Gateway Error Details:", data.gatewayError);
+          // console.log("Twilio Gateway Error Details:", data.gatewayError);
         }
         setIsOtpSent(true);
       } else {

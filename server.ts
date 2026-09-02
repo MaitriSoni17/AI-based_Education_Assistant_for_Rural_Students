@@ -138,14 +138,14 @@ async function sendSMSViaTwilio(to: string, otp: string): Promise<{ success: boo
     const data = await response.json() as any;
 
     if (response.ok) {
-      console.log(`[SMS SUCCESS] Verification OTP sent successfully via Twilio to ${formattedTo}. Message SID: ${data.sid}`);
+      // console.log(`[SMS SUCCESS] Verification OTP sent successfully via Twilio to ${formattedTo}. Message SID: ${data.sid}`);
       return { success: true };
     } else {
-      console.log(`[Twilio Service Alert] Twilio details matching: ${data.message || response.statusText}`);
+      // console.log(`[Twilio Service Alert] Twilio details matching: ${data.message || response.statusText}`);
       return { success: false, error: data.message || "Twilio channel returned non-200" };
     }
   } catch (err: any) {
-    console.log("[Twilio Gateway Alert] Connection path details:", err.message || err);
+    // console.log("[Twilio Gateway Alert] Connection path details:", err.message || err);
     return { success: false, error: err.message || "Network request failure" };
   }
 }
@@ -219,11 +219,11 @@ async function startServer() {
       } else {
         // Fallback or Simulated Mode if credentials are not configured or failed
         if (twilioResult.error === "CREDENTIALS_MISSING") {
-          console.log(`\n=============================================================`);
-          console.log(`[SIMULATED SMS SENDER] DISPATCHED TO: +91 ${mobile}`);
-          console.log(`[OTP CODE] >>> ${otp} <<< (Expires in 5 minutes)`);
-          console.log(`[INFO] Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER to send real SMS.`);
-          console.log(`=============================================================\n`);
+          // console.log(`\n=============================================================`);
+          // console.log(`[SIMULATED SMS SENDER] DISPATCHED TO: +91 ${mobile}`);
+          // console.log(`[OTP CODE] >>> ${otp} <<< (Expires in 5 minutes)`);
+          // console.log(`[INFO] Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER to send real SMS.`);
+          // console.log(`=============================================================\n`);
 
           return res.json({
             success: true,
@@ -233,7 +233,7 @@ async function startServer() {
           });
         } else {
           // If Twilio returned a real error, fall back to simulation to keep classroom demo usable, but report status in logs.
-          console.log(`[Twilio Fallback Info]: Notice - Fallback triggered: "${twilioResult.error}". Active simulated visual helper.`);
+          // console.log(`[Twilio Fallback Info]: Notice - Fallback triggered: "${twilioResult.error}". Active simulated visual helper.`);
           return res.json({
             success: true,
             message: `SMS gateway offline. Developer simulated code fallback activated.`,
@@ -513,7 +513,7 @@ Note: Respond in the requested language (e.g., English, Hindi, Tamil, Telugu, Ma
         const maxRetries = 2;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
-             console.log(`[EXAM EVALUATION] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
+            //  console.log(`[EXAM EVALUATION] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
              response = await ai.models.generateContent({
                model: modelName,
                contents: { parts: parts },
@@ -522,12 +522,12 @@ Note: Respond in the requested language (e.g., English, Hindi, Tamil, Telugu, Ma
                }
              });
              success = true;
-             console.log(`[EXAM EVALUATION] Successfully generated evaluation using model: ${modelName}`);
+            //  console.log(`[EXAM EVALUATION] Successfully generated evaluation using model: ${modelName}`);
              break;
           } catch (err: any) {
              lastError = err;
              const { message: errText, status: errStatus, code: errCode } = getErrorInfo(err);
-             console.log(`[EXAM EVALUATION] Attempt ${attempt} for model ${modelName} failed:`, { message: errText, status: errStatus, code: errCode });
+            //  console.log(`[EXAM EVALUATION] Attempt ${attempt} for model ${modelName} failed:`, { message: errText, status: errStatus, code: errCode });
              
              const errMsg = errText.toLowerCase();
              const isQuotaExhausted = 
@@ -539,7 +539,7 @@ Note: Respond in the requested language (e.g., English, Hindi, Tamil, Telugu, Ma
                errCode === 429;
 
              if (isQuotaExhausted) {
-               console.log(`[EXAM EVALUATION] Quota exceeded on ${modelName}, immediately switching to next available model...`);
+              //  console.log(`[EXAM EVALUATION] Quota exceeded on ${modelName}, immediately switching to next available model...`);
                break; // Immediately move to next model without wasting retries
              }
              
@@ -556,7 +556,7 @@ Note: Respond in the requested language (e.g., English, Hindi, Tamil, Telugu, Ma
 
              if (attempt < maxRetries && isRetryable) {
                const delay = 300;
-               console.log(`Retrying model ${modelName} in ${delay}ms...`);
+              //  console.log(`Retrying model ${modelName} in ${delay}ms...`);
                await new Promise(resolve => setTimeout(resolve, delay));
              } else {
                break; // Move to next model immediately
@@ -659,7 +659,7 @@ Format your entire response strictly using the exact markers below to allow the 
         const maxRetries = 2;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
-             console.log(`[EXAM GENERATOR] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
+            //  console.log(`[EXAM GENERATOR] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
              response = await ai.models.generateContent({
                model: modelName,
                contents: systemInstruction,
@@ -669,12 +669,12 @@ Format your entire response strictly using the exact markers below to allow the 
                }
              });
              success = true;
-             console.log(`[EXAM GENERATOR] Successfully generated exam using model: ${modelName}`);
+            //  console.log(`[EXAM GENERATOR] Successfully generated exam using model: ${modelName}`);
              break;
           } catch (err: any) {
              lastError = err;
              const { message: errText, status: errStatus, code: errCode } = getErrorInfo(err);
-             console.log(`[EXAM GENERATOR] Attempt ${attempt} for model ${modelName} failed:`, { message: errText, status: errStatus, code: errCode });
+            //  console.log(`[EXAM GENERATOR] Attempt ${attempt} for model ${modelName} failed:`, { message: errText, status: errStatus, code: errCode });
              
              const errMsg = errText.toLowerCase();
              const isZeroQuota = errMsg.includes("limit: 0") || errMsg.includes("limit:0");
@@ -700,7 +700,7 @@ Format your entire response strictly using the exact markers below to allow the 
 
              if (attempt < maxRetries && isRetryable) {
                const delay = 400;
-               console.log(`Retrying exam generator under ${modelName} in ${delay}ms...`);
+              //  console.log(`Retrying exam generator under ${modelName} in ${delay}ms...`);
                await new Promise(resolve => setTimeout(resolve, delay));
              } else {
                break; 
@@ -841,7 +841,7 @@ Instructions:
 
       for (const modelName of modelsToTry) {
         try {
-          console.log(`[CAREER RECOMMENDATIONS] Querying model ${modelName}...`);
+          // console.log(`[CAREER RECOMMENDATIONS] Querying model ${modelName}...`);
           response = await ai.models.generateContent({
             model: modelName,
             contents: prompt,
@@ -1011,11 +1011,11 @@ Instructions:
             }
           });
           success = true;
-          console.log(`[CAREER RECOMMENDATIONS] Successfully generated career courses using model: ${modelName}`);
+          // console.log(`[CAREER RECOMMENDATIONS] Successfully generated career courses using model: ${modelName}`);
           break;
         } catch (err: any) {
           lastError = err;
-          console.log(`[CAREER RECOMMENDATIONS] Model ${modelName} failed:`, err.message || err);
+          // console.log(`[CAREER RECOMMENDATIONS] Model ${modelName} failed:`, err.message || err);
         }
       }
 
@@ -1483,7 +1483,7 @@ You are an expert Math and Science Problem-Solving Assistant.
         const maxRetries = 2; // Retry 2 times per model before trying fallback
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
-             console.log(`[GEMINI CHAT] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
+            //  console.log(`[GEMINI CHAT] Querying model ${modelName} (attempt ${attempt}/${maxRetries})...`);
              response = await ai.models.generateContent({
                model: modelName,
                contents: contents,
@@ -1493,12 +1493,12 @@ You are an expert Math and Science Problem-Solving Assistant.
                }
              });
              success = true;
-             console.log(`[GEMINI CHAT] Successfully generated content using model: ${modelName}`);
+            //  console.log(`[GEMINI CHAT] Successfully generated content using model: ${modelName}`);
              break; // Success! Exit the retry loop for this model
           } catch (err: any) {
              lastError = err;
              const { message: errText, status: errStatus, code: errCode } = getErrorInfo(err);
-             console.log(`[GEMINI CHAT] Attempt ${attempt} for model ${modelName} returned status:`, { message: errText, status: errStatus, code: errCode });
+            //  console.log(`[GEMINI CHAT] Attempt ${attempt} for model ${modelName} returned status:`, { message: errText, status: errStatus, code: errCode });
              
              const errMsg = errText.toLowerCase();
              const isQuotaExhausted = 
@@ -1512,7 +1512,7 @@ You are an expert Math and Science Problem-Solving Assistant.
                errCode === 429;
 
              if (isQuotaExhausted) {
-               console.log(`[GEMINI CHAT] Quota exceeded on ${modelName}, immediately switching to next model...`);
+              //  console.log(`[GEMINI CHAT] Quota exceeded on ${modelName}, immediately switching to next model...`);
                break; // Switch to next model immediately without wasting retries
              }
 
@@ -1529,7 +1529,7 @@ You are an expert Math and Science Problem-Solving Assistant.
 
              if (attempt < maxRetries && isRetryable) {
                const delay = 300;
-               console.log(`Retrying model ${modelName} (attempt ${attempt + 1}/${maxRetries}) in ${delay}ms...`);
+              //  console.log(`Retrying model ${modelName} (attempt ${attempt + 1}/${maxRetries}) in ${delay}ms...`);
                await new Promise(resolve => setTimeout(resolve, delay));
              } else {
                break; // Try fallback model immediately
@@ -1684,7 +1684,7 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
       if (filePart) {
         for (const modelName of modelsToTry) {
           try {
-            console.log(`[FILE ANALYZER] Querying model ${modelName} with FULL FILE CONTENT for "${fileName}"...`);
+            // console.log(`[FILE ANALYZER] Querying model ${modelName} with FULL FILE CONTENT for "${fileName}"...`);
             response = await ai.models.generateContent({
               model: modelName,
               contents: {
@@ -1723,10 +1723,10 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
 
       // Fallback: If not successful yet or no filePart, try with filename only
       if (!success) {
-        console.log(`[FILE ANALYZER FALLBACK] Running filename-only analysis for "${fileName}"...`);
+        // console.log(`[FILE ANALYZER FALLBACK] Running filename-only analysis for "${fileName}"...`);
         for (const modelName of modelsToTry) {
           try {
-            console.log(`[FILE ANALYZER FAST] Querying model ${modelName} for file "${fileName}"...`);
+            // console.log(`[FILE ANALYZER FAST] Querying model ${modelName} for file "${fileName}"...`);
             response = await ai.models.generateContent({
               model: modelName,
               contents: systemPrompt,
@@ -1753,7 +1753,7 @@ Provide a clean, elegant title for the file and a concise 1-2 sentence descripti
             break;
           } catch (err: any) {
             lastError = err;
-            console.log(`[FILE ANALYZER FAST] Model ${modelName} failed:`, err?.message || err);
+            // console.log(`[FILE ANALYZER FAST] Model ${modelName} failed:`, err?.message || err);
           }
         }
       }
@@ -1926,7 +1926,7 @@ Guidelines for formatting the JSON fields:
 
       for (const modelName of modelsToTry) {
         try {
-          console.log(`[PDF WORKSPACE] Querying model ${modelName} for action "${action}"...`);
+          // console.log(`[PDF WORKSPACE] Querying model ${modelName} for action "${action}"...`);
           response = await ai.models.generateContent({
             model: modelName,
             contents: promptMsg,
@@ -2827,7 +2827,7 @@ Strict Requirements:
 
       for (const modelName of modelsToTry) {
         try {
-          console.log(`[PUZZLE GENERATOR] Requesting puzzle with model ${modelName} for '${puzzleType}'...`);
+          // console.log(`[PUZZLE GENERATOR] Requesting puzzle with model ${modelName} for '${puzzleType}'...`);
           response = await ai.models.generateContent({
             model: modelName,
             contents: `Generate a new, unique ${difficulty} ${puzzleType} puzzle for ${studentClass} about ${subject}: ${topic || 'Core Concept'}. Seed: ${entropy}`,
@@ -3040,7 +3040,7 @@ Generate a concise JSON feedback object with this exact structure:
 
       for (const modelName of modelsToTry) {
         try {
-          console.log(`[PUZZLE ANALYZER] Querying model ${modelName}...`);
+          // console.log(`[PUZZLE ANALYZER] Querying model ${modelName}...`);
           response = await ai.models.generateContent({
             model: modelName,
             contents: prompt,
@@ -3090,7 +3090,7 @@ Generate a concise JSON feedback object with this exact structure:
       appType: "spa",
     });
     app.use(vite.middlewares);
-    console.log("[VITE] Mounted Vite Asset Dev server middleware for local hot-module replacement.");
+    // console.log("[VITE] Mounted Vite Asset Dev server middleware for local hot-module replacement.");
   } else {
     const distPath = fs.existsSync(path.join(process.cwd(), "dist"))
       ? path.join(process.cwd(), "dist")
@@ -3099,14 +3099,14 @@ Generate a concise JSON feedback object with this exact structure:
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
-    console.log("[DIST] Serving statically built files from production asset folders.");
+    // console.log("[DIST] Serving statically built files from production asset folders.");
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`=============================================================`);
-    console.log(`[EXPRESS SERVER ACTIVE] Running on http://localhost:${PORT}`);
-    console.log(`[API ENDPOINTS] 💻 POST /api/otp/generate  |  💻 POST /api/otp/verify`);
-    console.log(`=============================================================`);
+    // console.log(`=============================================================`);
+    // console.log(`[EXPRESS SERVER ACTIVE] Running on http://localhost:${PORT}`);
+    // console.log(`[API ENDPOINTS] 💻 POST /api/otp/generate  |  💻 POST /api/otp/verify`);
+    // console.log(`=============================================================`);
   });
 }
 

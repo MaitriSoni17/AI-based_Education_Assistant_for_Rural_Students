@@ -418,10 +418,10 @@ export default function App() {
           // A newer remote update was found (e.g. from another shared device). Remote wins.
           setUser(resolvedUser as User);
           safeSetLocalStorage('gramin_student_session', JSON.stringify(resolvedUser));
-          console.log("[LWW Sync] Resolved conflict: remote data was newer and has overwritten local changes.");
+          // console.log("[LWW Sync] Resolved conflict: remote data was newer and has overwritten local changes.");
         }
       } else {
-        console.log("[LWW Sync] Saved update locally while offline. Sync will reconcile via LWW once online.");
+        // console.log("[LWW Sync] Saved update locally while offline. Sync will reconcile via LWW once online.");
       }
     } catch (e) {
       console.error("Failed to sync user updates to Firestore", e);

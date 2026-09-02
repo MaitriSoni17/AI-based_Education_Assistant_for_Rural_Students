@@ -273,7 +273,7 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
         const localTs = latestLocalUserRef.current?.updatedAt || 0;
         const remoteTs = data.updatedAt || 0;
         if (remoteTs < localTs) {
-          console.log("[onSnapshot Sync] Skipped older remote update (LWW check). Local timestamp is newer.");
+          // console.log("[onSnapshot Sync] Skipped older remote update (LWW check). Local timestamp is newer.");
           return;
         }
 

@@ -24,7 +24,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((reg) => {
-        console.log('[Service Worker] Registered successfully with scope:', reg.scope);
+        // console.log('[Service Worker] Registered successfully with scope:', reg.scope);
       })
       .catch((err) => {
         console.warn('[Service Worker] Registration bypassed or limited inside environment sandbox:', err);

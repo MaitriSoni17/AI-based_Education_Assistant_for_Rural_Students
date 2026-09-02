@@ -86,7 +86,7 @@ class OfflineSyncManager {
     if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
       try {
         const result = await navigator.storage.persist();
-        console.log(`[Storage Persistence] Enabled: ${result}`);
+        // console.log(`[Storage Persistence] Enabled: ${result}`);
         this.isPersistedState = result;
         this.notifyUpdate();
         return result;
@@ -264,7 +264,7 @@ class OfflineSyncManager {
             const { resolvedUser, conflictResolved, source } = await syncFirebaseUserWithLWW(userMobile, localUser);
             if (conflictResolved && source === 'remote') {
               localStorage.setItem('gramin_student_session', JSON.stringify(resolvedUser));
-              console.log(`[LWW Reconciler] Conflict resolved. Remote user profile is newer than local. Applied remote changes locally.`);
+              // console.log(`[LWW Reconciler] Conflict resolved. Remote user profile is newer than local. Applied remote changes locally.`);
             }
           }
         } catch (sessionErr) {
