@@ -1,23 +1,37 @@
 {
-  "name": "Swami AI - Academic Companion",
-  "short_name": "Swami AI",
-  "description": "An AI study companion for rural students with offline sync capability.",
+  "name": "GyaanBot - AI Rural Education Companion",
+  "short_name": "GyaanBot",
+  "description": "An offline-first, multilingual AI education assistant designed for rural students with text-to-speech support and interactive learning.",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
-  "background_color": "#FDFCFB",
-  "theme_color": "#3D405B",
+  "orientation": "portrait-primary",
+  "background_color": "#FAF8F4",
+  "theme_color": "#E07A5F",
   "icons": [
     {
-      "src": "/swami_ai_icon.jpg",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/swami_ai_icon.jpg",
+      "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

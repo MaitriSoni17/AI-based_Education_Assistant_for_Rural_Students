@@ -1,12 +1,18 @@
 // GyaanBot - Offline-First Service Worker
-const CACHE_NAME = 'gyaanbot-static-v1';
+const CACHE_NAME = 'gyaanbot-static-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
+  '/manifest.json',
+  '/favicon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
   '/src/main.tsx',
   '/src/index.css',
   '/src/App.tsx',
-  '/favicon.ico',
 ];
 
 // Installation event: cache shell assets
