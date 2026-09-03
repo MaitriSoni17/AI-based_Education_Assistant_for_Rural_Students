@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Menu, X, Globe, LogIn, UserPlus, LogOut, BookOpen, GraduationCap, Wifi, ChevronDown, Shield } from 'lucide-react';
 import { CurrentView, LanguageCode, User } from '../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../data/translations';
 import { getDeterministicAvatar } from '../utils/avatar';
+import { registerBackHandler } from '../utils/backNavigation';
 import { AnimatePresence, motion } from 'motion/react';
 
 interface NavbarProps {
@@ -31,6 +32,28 @@ export default function Navbar({
   const [isMobileLangOpen, setIsMobileLangOpen] = useState(false);
   const t = TRANSLATIONS[currentLanguage];
   const activeLanguage = SUPPORTED_LANGUAGES.find((lang) => lang.code === currentLanguage) || SUPPORTED_LANGUAGES[0];
+
+  // Intercept mobile hardware back button when nav drawer or lang menu is open
+  useEffect(() => {
+    if (isOpen || isMobileLangOpen || isLangOpen) {
+      const unregister = registerBackHandler(() => {
+        if (isMobileLangOpen) {
+          setIsMobileLangOpen(false);
+          return true;
+        }
+        if (isLangOpen) {
+          setIsLangOpen(false);
+          return true;
+        }
+        if (isOpen) {
+          setIsOpen(false);
+          return true;
+        }
+        return false;
+      });
+      return unregister;
+    }
+  }, [isOpen, isMobileLangOpen, isLangOpen]);
 
   const handleNavClick = (view: CurrentView) => {
     onNavigate(view);

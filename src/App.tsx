@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
 import HomeView from './components/HomeView';
 import AboutView from './components/AboutView';
@@ -6,15 +6,17 @@ import FeaturesView from './components/FeaturesView';
 import AuthView from './components/AuthView';
 import DashboardView from './components/DashboardView';
 import ErrorBoundary from './components/ErrorBoundary';
-import { CurrentView, LanguageCode, User } from './types';
+import { CurrentView, LanguageCode, User, DashboardTab } from './types';
 import { TRANSLATIONS } from './data/translations';
-import { GraduationCap, Shield } from 'lucide-react';
+import { GraduationCap, Shield, LogOut } from 'lucide-react';
 import AdminAuthView from './components/admin/AdminAuthView';
 import AdminDashboardView from './components/admin/AdminDashboardView';
 import { updateFirebaseUserFields, syncFirebaseUserWithLWW, getFirebaseUser } from './lib/firebase';
 import { offlineSyncManager } from './utils/offlineSync';
 import { fireContinuousFireworks } from './utils/confetti';
 import { getSafeDateString, getDaysDifference } from './utils/dateUtils';
+import { executeBackHandlers, EXIT_TOAST_MESSAGES } from './utils/backNavigation';
+import { AnimatePresence, motion } from 'motion/react';
 
 function safeSetLocalStorage(key: string, value: string): void {
   try {
@@ -24,79 +26,78 @@ function safeSetLocalStorage(key: string, value: string): void {
   }
 }
 
+const VALID_VIEWS: CurrentView[] = [
+  'home', 'about', 'features', 'login', 'signup', 'dashboard', 'admin-login', 'admin-dashboard'
+];
+
+const VALID_TABS: DashboardTab[] = [
+  'profile', 'admin-pdfs', 'ai-assistant', 'tutor', 'quiz', 'exam', 'career', 'settings', 'certificates', 'equations', 'puzzles'
+];
+
+function parseHash(): { view: CurrentView; tab?: DashboardTab } {
+  if (typeof window === 'undefined') return { view: 'home' };
+  const raw = window.location.hash.replace(/^#\/?/, '').trim();
+  if (!raw) return { view: 'home' };
+
+  const [viewPart, queryPart] = raw.split('?');
+  const view = viewPart as CurrentView;
+
+  let tab: DashboardTab | undefined = undefined;
+  if (queryPart) {
+    const params = new URLSearchParams(queryPart);
+    const t = params.get('tab') as DashboardTab;
+    if (t && VALID_TABS.includes(t)) tab = t;
+  }
+
+  return {
+    view: VALID_VIEWS.includes(view) ? view : 'home',
+    tab
+  };
+}
+
+function constructHash(view: CurrentView, tab?: DashboardTab): string {
+  if (view === 'dashboard' && tab && tab !== 'profile') {
+    return `#dashboard?tab=${tab}`;
+  }
+  return `#${view}`;
+}
+
 export default function App() {
+  const [studentActiveTab, setStudentActiveTab] = useState<DashboardTab>(() => {
+    if (typeof window !== 'undefined') {
+      const parsed = parseHash();
+      if (parsed.tab) return parsed.tab;
+      const savedTab = localStorage.getItem('gramin_student_active_tab') as DashboardTab | null;
+      if (savedTab && VALID_TABS.includes(savedTab)) return savedTab;
+    }
+    return 'profile';
+  });
+
   const [currentView, setCurrentView] = useState<CurrentView>(() => {
     if (typeof window !== 'undefined') {
-      const validViews: CurrentView[] = [
-        'home', 'about', 'features', 'login', 'signup', 'dashboard', 'admin-login', 'admin-dashboard'
-      ];
+      const parsed = parseHash();
+      const studentSession = localStorage.getItem('gramin_student_session');
+      const adminSession = localStorage.getItem('gramin_admin_session');
 
-      // 1. Check URL hash first
-      const hash = window.location.hash.replace('#', '').trim() as CurrentView;
-      if (hash && validViews.includes(hash)) {
-        const studentSession = localStorage.getItem('gramin_student_session');
-        const adminSession = localStorage.getItem('gramin_admin_session');
-        if (hash === 'dashboard' && !studentSession) return 'login';
-        if (hash === 'admin-dashboard' && !adminSession) return 'admin-login';
-        return hash;
+      if (parsed.view) {
+        if (parsed.view === 'dashboard' && !studentSession) return 'login';
+        if (parsed.view === 'admin-dashboard' && !adminSession) return 'admin-login';
+        return parsed.view;
       }
 
-      // 2. Check saved view in localStorage
       const savedView = localStorage.getItem('gramin_current_view') as CurrentView | null;
-      if (savedView && validViews.includes(savedView)) {
-        const studentSession = localStorage.getItem('gramin_student_session');
-        const adminSession = localStorage.getItem('gramin_admin_session');
+      if (savedView && VALID_VIEWS.includes(savedView)) {
         if (savedView === 'dashboard' && !studentSession) return 'login';
         if (savedView === 'admin-dashboard' && !adminSession) return 'admin-login';
         return savedView;
       }
 
-      // 3. Fallback based on active logged-in sessions
-      const adminSession = localStorage.getItem('gramin_admin_session');
       if (adminSession) return 'admin-dashboard';
-
-      const studentSession = localStorage.getItem('gramin_student_session');
       if (studentSession) return 'dashboard';
     }
     return 'home';
   });
 
-  // Persist currentView to localStorage and sync with URL Hash
-  useEffect(() => {
-    safeSetLocalStorage('gramin_current_view', currentView);
-    if (typeof window !== 'undefined') {
-      const currentHash = window.location.hash.replace('#', '').trim();
-      if (currentHash !== currentView) {
-        window.history.replaceState(null, '', `#${currentView}`);
-      }
-    }
-  }, [currentView]);
-
-  // Handle browser Back/Forward navigation (hashchange)
-  useEffect(() => {
-    const handleHashChange = () => {
-      const validViews: CurrentView[] = [
-        'home', 'about', 'features', 'login', 'signup', 'dashboard', 'admin-login', 'admin-dashboard'
-      ];
-      const hash = window.location.hash.replace('#', '').trim() as CurrentView;
-      if (hash && validViews.includes(hash)) {
-        const studentSession = localStorage.getItem('gramin_student_session');
-        const adminSession = localStorage.getItem('gramin_admin_session');
-        if (hash === 'dashboard' && !studentSession) {
-          setCurrentView('login');
-          return;
-        }
-        if (hash === 'admin-dashboard' && !adminSession) {
-          setCurrentView('admin-login');
-          return;
-        }
-        setCurrentView(hash);
-      }
-    };
-
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
   const [user, setUser] = useState<User | null>(() => {
     // Attempt local storage cache retrieval for offline reliability
     if (typeof window !== 'undefined') {
@@ -129,12 +130,127 @@ export default function App() {
     return null;
   });
 
+  // Mobile Back Button Navigation, Exit Guard & Modal/Drawer Dismissal
+  const lastBackPressRef = useRef<number>(0);
+  const [showExitToast, setShowExitToast] = useState(false);
+  const exitToastTimerRef = useRef<any>(null);
+
+  // Prime browser history on app load so mobile back button can be trapped even on first screen
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const initialHash = constructHash(currentView, studentActiveTab);
+      try {
+        window.history.replaceState({ view: currentView, tab: studentActiveTab, isRoot: true }, '', initialHash);
+        window.history.pushState({ view: currentView, tab: studentActiveTab, isGuard: true }, '', initialHash);
+      } catch (e) {
+        console.warn('[history] Prime failed:', e);
+      }
+    }
+  }, []);
+
+  const handleNavigate = (newView: CurrentView, newTab?: DashboardTab) => {
+    const targetTab = newTab || (newView === 'dashboard' ? (studentActiveTab || 'profile') : undefined);
+    const newHash = constructHash(newView, targetTab);
+    
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ view: newView, tab: targetTab }, '', newHash);
+    }
+    
+    setCurrentView(newView);
+    safeSetLocalStorage('gramin_current_view', newView);
+    
+    if (targetTab) {
+      setStudentActiveTab(targetTab);
+      safeSetLocalStorage('gramin_student_active_tab', targetTab);
+    }
+  };
+
+  const handleTabChange = (newTab: DashboardTab) => {
+    setStudentActiveTab(newTab);
+    safeSetLocalStorage('gramin_student_active_tab', newTab);
+    if (typeof window !== 'undefined') {
+      const newHash = constructHash('dashboard', newTab);
+      window.history.pushState({ view: 'dashboard', tab: newTab }, '', newHash);
+    }
+  };
+
+  // Listen to popstate (mobile hardware back button / gesture)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      // 1. Check if any modal or mobile drawer registered a back handler
+      if (executeBackHandlers()) {
+        const currentHash = constructHash(currentView, studentActiveTab);
+        window.history.pushState({ view: currentView, tab: studentActiveTab, isGuard: true }, '', currentHash);
+        return;
+      }
+
+      // 2. Are we at the root screen?
+      const isAtRoot = 
+        (!user && !adminUser && currentView === 'home') ||
+        (user && currentView === 'dashboard' && studentActiveTab === 'profile') ||
+        (adminUser && currentView === 'admin-dashboard');
+
+      if (isAtRoot) {
+        const now = Date.now();
+        if (now - lastBackPressRef.current < 2000) {
+          // Double-tap back confirmed: allow app exit
+          setShowExitToast(false);
+          window.history.back();
+          return;
+        } else {
+          // First tap at root: prevent accidental exit, show helpful exit toast
+          lastBackPressRef.current = now;
+          const currentHash = constructHash(currentView, studentActiveTab);
+          window.history.pushState({ view: currentView, tab: studentActiveTab, isGuard: true }, '', currentHash);
+
+          setShowExitToast(true);
+          if (exitToastTimerRef.current) clearTimeout(exitToastTimerRef.current);
+          exitToastTimerRef.current = setTimeout(() => {
+            setShowExitToast(false);
+          }, 2200);
+          return;
+        }
+      }
+
+      // 3. If in Dashboard on a sub-tab (e.g. equations, puzzles, tutor, etc.), navigate back to Profile tab
+      if (user && currentView === 'dashboard' && studentActiveTab !== 'profile') {
+        setStudentActiveTab('profile');
+        safeSetLocalStorage('gramin_student_active_tab', 'profile');
+        const currentHash = constructHash('dashboard', 'profile');
+        window.history.pushState({ view: 'dashboard', tab: 'profile', isGuard: true }, '', currentHash);
+        return;
+      }
+
+      // 4. If on secondary views (about, features, login, signup, admin-login), return to root
+      const parsed = parseHash();
+      const fallbackView: CurrentView = user ? 'dashboard' : 'home';
+      const targetView = (parsed.view && parsed.view !== currentView) ? parsed.view : fallbackView;
+
+      setCurrentView(targetView);
+      safeSetLocalStorage('gramin_current_view', targetView);
+      if (targetView === 'dashboard') {
+        const targetTab = parsed.tab || 'profile';
+        setStudentActiveTab(targetTab);
+        safeSetLocalStorage('gramin_student_active_tab', targetTab);
+      }
+
+      const currentHash = constructHash(targetView, parsed.tab);
+      window.history.pushState({ view: targetView, tab: parsed.tab, isGuard: true }, '', currentHash);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      if (exitToastTimerRef.current) clearTimeout(exitToastTimerRef.current);
+    };
+  }, [currentView, studentActiveTab, user, adminUser]);
+
   const handleAdminAuthSuccess = (authenticatedAdmin: User) => {
     setAdminUser(authenticatedAdmin);
     safeSetLocalStorage('gramin_admin_session', JSON.stringify(authenticatedAdmin));
     setUser(authenticatedAdmin);
     safeSetLocalStorage('gramin_student_session', JSON.stringify(authenticatedAdmin));
-    setCurrentView('admin-dashboard');
+    handleNavigate('admin-dashboard');
   };
 
   const handleLogoutAdmin = () => {
@@ -145,8 +261,10 @@ export default function App() {
     localStorage.removeItem('gramin_student_session');
     localStorage.removeItem('gramin_student_active_tab');
     safeSetLocalStorage('gramin_current_view', 'home');
+    setStudentActiveTab('profile');
     if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', '#home');
+      window.history.replaceState({ view: 'home', isRoot: true }, '', '#home');
+      window.history.pushState({ view: 'home', isGuard: true }, '', '#home');
     }
     setCurrentView('home');
   };
@@ -440,7 +558,9 @@ export default function App() {
     const userWithUpdatedLanguage = { ...authenticatedUser, defaultLanguage: currentLanguage };
     setUser(userWithUpdatedLanguage);
     safeSetLocalStorage('gramin_student_session', JSON.stringify(userWithUpdatedLanguage));
-    setCurrentView('dashboard');
+    setStudentActiveTab('profile');
+    safeSetLocalStorage('gramin_student_active_tab', 'profile');
+    handleNavigate('dashboard', 'profile');
   };
 
   const handleLogout = () => {
@@ -448,8 +568,10 @@ export default function App() {
     localStorage.removeItem('gramin_student_session');
     localStorage.removeItem('gramin_student_active_tab');
     safeSetLocalStorage('gramin_current_view', 'home');
+    setStudentActiveTab('profile');
     if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', '#home');
+      window.history.replaceState({ view: 'home', isRoot: true }, '', '#home');
+      window.history.pushState({ view: 'home', isGuard: true }, '', '#home');
     }
     setCurrentView('home');
   };
@@ -466,7 +588,7 @@ export default function App() {
       {/* Dynamic Header Navbar */}
       <Navbar
         currentView={currentView}
-        onNavigate={setCurrentView}
+        onNavigate={handleNavigate}
         currentLanguage={currentLanguage}
         onLanguageChange={handleLanguageChange}
         user={user}
@@ -483,7 +605,7 @@ export default function App() {
           {currentView === 'home' && (
             <ErrorBoundary fallbackTitle="Home View Notice">
               <HomeView
-                onNavigate={setCurrentView}
+                onNavigate={handleNavigate}
                 lang={currentLanguage}
                 onSimulateOffline={handleSimulateOfflineToggle}
                 isOfflineSimulated={isOfflineSimulated}
@@ -508,7 +630,7 @@ export default function App() {
               <AuthView
                 mode={currentView}
                 onSuccess={handleAuthSuccess}
-                onSwitchMode={setCurrentView}
+                onSwitchMode={handleNavigate}
                 lang={currentLanguage}
                 onLanguageChange={handleLanguageChange}
               />
@@ -521,6 +643,8 @@ export default function App() {
                 user={user}
                 lang={currentLanguage}
                 onUpdateUser={handleUpdateUser}
+                activeTab={studentActiveTab}
+                onTabChange={handleTabChange}
               />
             </ErrorBoundary>
           )}
@@ -529,10 +653,10 @@ export default function App() {
             <ErrorBoundary fallbackTitle="Admin Authentication Notice">
               <AdminAuthView
                 onSuccess={handleAdminAuthSuccess}
-                onBackToMain={() => setCurrentView('home')}
+                onBackToMain={() => handleNavigate('home')}
                 lang={currentLanguage}
                 adminUser={adminUser}
-                onGoToDashboard={() => setCurrentView('admin-dashboard')}
+                onGoToDashboard={() => handleNavigate('admin-dashboard')}
               />
             </ErrorBoundary>
           )}
@@ -551,10 +675,10 @@ export default function App() {
               <ErrorBoundary fallbackTitle="Admin Authentication Notice">
                 <AdminAuthView
                   onSuccess={handleAdminAuthSuccess}
-                  onBackToMain={() => setCurrentView('home')}
+                  onBackToMain={() => handleNavigate('home')}
                   lang={currentLanguage}
                   adminUser={adminUser}
-                  onGoToDashboard={() => setCurrentView('admin-dashboard')}
+                  onGoToDashboard={() => handleNavigate('admin-dashboard')}
                   onLanguageChange={setCurrentLanguage}
                 />
               </ErrorBoundary>
@@ -581,7 +705,7 @@ export default function App() {
             <span>•</span>
             <button
               id="footer-admin-portal-link"
-              onClick={() => setCurrentView('admin-login')}
+              onClick={() => handleNavigate('admin-login')}
               title={currentTranslation.footerAdminLogin}
               aria-label={currentTranslation.footerAdminLogin}
               className="text-[#3D405B]/60 hover:text-[#E07A5F] transition-colors p-1 rounded-md hover:bg-[#F2CC8F]/20 cursor-pointer flex items-center justify-center"
@@ -621,6 +745,29 @@ export default function App() {
           </button>
         </div>
       )}
+
+      {/* Mobile Double-Back Exit Confirmation Floating Pill */}
+      <AnimatePresence>
+        {showExitToast && (
+          <motion.div
+            id="mobile-exit-toast"
+            initial={{ opacity: 0, y: 24, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.94 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="fixed bottom-16 sm:bottom-8 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none"
+          >
+            <div className="bg-[#2D2F44]/95 text-white backdrop-blur-md px-5 py-3 rounded-full shadow-2xl border border-white/15 flex items-center gap-3 text-xs sm:text-sm font-semibold tracking-wide">
+              <div className="p-1.5 bg-[#E07A5F] rounded-full flex items-center justify-center shrink-0">
+                <LogOut className="h-3.5 w-3.5 text-white" />
+              </div>
+              <span>
+                {EXIT_TOAST_MESSAGES[currentLanguage] || EXIT_TOAST_MESSAGES.en}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

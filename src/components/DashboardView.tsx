@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { LanguageCode, User, OfflineResource } from '../types';
+import { LanguageCode, User, OfflineResource, DashboardTab } from '../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS, DASHBOARD_TABS_I18N, UI_COMMON_I18N } from '../data/translations';
 import { getDeterministicAvatar } from '../utils/avatar';
 import { speakText, stopSpeaking } from '../utils/speech';
 import { offlineSyncManager } from '../utils/offlineSync';
+import { registerBackHandler } from '../utils/backNavigation';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, isFirestoreQuotaExceeded } from '../lib/firebase';
 
@@ -33,13 +34,14 @@ interface DashboardViewProps {
   user: User;
   lang: LanguageCode;
   onUpdateUser: (fields: Partial<User>) => void;
+  activeTab?: DashboardTab;
+  onTabChange?: (tab: DashboardTab) => void;
 }
 
-type DashboardTab = 'profile' | 'admin-pdfs' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations' | 'puzzles';
-
-export default function DashboardView({ user, lang, onUpdateUser }: DashboardViewProps) {
-  // Navigation active tab controller: initialized from localStorage if available
-  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
+export default function DashboardView({ user, lang, onUpdateUser, activeTab: propActiveTab, onTabChange }: DashboardViewProps) {
+  // Navigation active tab controller: initialized from prop or localStorage if available
+  const [internalActiveTab, setInternalActiveTab] = useState<DashboardTab>(() => {
+    if (propActiveTab) return propActiveTab;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gramin_student_active_tab') as DashboardTab | null;
       const validTabs: DashboardTab[] = [
@@ -52,8 +54,43 @@ export default function DashboardView({ user, lang, onUpdateUser }: DashboardVie
     return 'profile';
   });
 
+  // Sync prop changes if provided
+  useEffect(() => {
+    if (propActiveTab && propActiveTab !== internalActiveTab) {
+      setInternalActiveTab(propActiveTab);
+    }
+  }, [propActiveTab]);
+
+  const activeTab = propActiveTab || internalActiveTab;
+
+  const setActiveTab = (tab: DashboardTab) => {
+    setInternalActiveTab(tab);
+    onTabChange?.(tab);
+  };
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobilePageDrawerOpen, setIsMobilePageDrawerOpen] = useState(false);
+
+  // Register hardware/gesture back handlers so mobile back closes open drawers instead of exiting the PWA
+  useEffect(() => {
+    if (isMobilePageDrawerOpen) {
+      const unregister = registerBackHandler(() => {
+        setIsMobilePageDrawerOpen(false);
+        return true;
+      });
+      return unregister;
+    }
+  }, [isMobilePageDrawerOpen]);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      const unregister = registerBackHandler(() => {
+        setMobileMenuOpen(false);
+        return true;
+      });
+      return unregister;
+    }
+  }, [mobileMenuOpen]);
 
   // Scroll to top of page and persist activeTab whenever it changes
   useEffect(() => {
