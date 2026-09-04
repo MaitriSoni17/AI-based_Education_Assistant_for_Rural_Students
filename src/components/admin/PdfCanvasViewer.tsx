@@ -3236,14 +3236,15 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               <button
                 onClick={handleDownloadSmartReader}
                 disabled={isDownloadingPdf}
-                className="p-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded-lg cursor-pointer shadow-xs transition-colors shrink-0"
+                className="px-2 py-1 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-bold rounded-lg cursor-pointer shadow-xs transition-colors shrink-0 flex items-center gap-1 text-xs"
                 title={tPdf.downloadPdf}
               >
                 {isDownloadingPdf ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Download className="h-3.5 w-3.5" />
+                  <Download className="h-3.5 w-3.5" strokeWidth={2.2} />
                 )}
+                <span>PDF</span>
               </button>
 
               {/* Save */}

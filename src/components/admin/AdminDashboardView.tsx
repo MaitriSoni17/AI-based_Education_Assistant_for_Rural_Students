@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Users, BookOpen, Award, Shield, BarChart3, Settings, Search, Plus, Trash2, 
   Edit, CheckCircle, XCircle, RefreshCw, FileText, Video, HelpCircle, 
-  Download, ArrowUpRight, GraduationCap, Filter, Sparkles, UserCheck, UserPlus,
+  ArrowUpRight, GraduationCap, Filter, Sparkles, UserCheck, UserPlus,
   Lock, Eye, EyeOff, AlertTriangle, Layers, Radio, KeyRound, Volume2, VolumeX,
   Folder, FolderPlus, FolderOpen, FilePlus, File, ChevronRight, ArrowLeft, Edit3, Upload, X, ExternalLink, Move, FolderTree,
   ChevronDown, Check, ChevronUp, MoreVertical
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { User, LanguageCode } from '../../types';
+import { User, LanguageCode, AdminTab } from '../../types';
+import { registerBackHandler } from '../../utils/backNavigation';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { 
   getAllFirebaseUsers, updateUserRole, deleteFirebaseUser, setFirebaseUser, updateFirebaseUserFields, FirestoreUser,
@@ -30,11 +31,58 @@ import {
 import { detectDocumentLanguage } from '../dashboard/AdminPdfsTab';
 import { getSystemSettings, updateSystemSettings } from '../../utils/systemSettings';
 
+// Robust vector download icon avoiding adblocker filters targeting "lucide-download"
+const AppDownloadIcon: React.FC<{
+  size?: number;
+  className?: string;
+  color?: string;
+  strokeWidth?: number;
+  style?: React.CSSProperties;
+}> = ({
+  size = 18,
+  className = '',
+  color = 'currentColor',
+  strokeWidth = 2.4,
+  style = {},
+}) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={`shrink-0 inline-block ${className}`}
+    style={{
+      display: 'inline-block',
+      width: `${size}px`,
+      height: `${size}px`,
+      minWidth: `${size}px`,
+      minHeight: `${size}px`,
+      color: color,
+      stroke: color,
+      flexShrink: 0,
+      verticalAlign: 'middle',
+      ...style,
+    }}
+    aria-hidden="true"
+  >
+    <path d="M12 15V3" />
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="m7 10 5 5 5-5" />
+  </svg>
+);
+
 interface AdminDashboardViewProps {
   adminUser: User;
   lang: LanguageCode;
   onLogoutAdmin: () => void;
   onLanguageChange?: (lang: LanguageCode) => void;
+  activeTab?: AdminTab;
+  onTabChange?: (tab: AdminTab) => void;
 }
 
 export interface CurriculumFolder {
@@ -1337,10 +1385,16 @@ const ADMIN_DASHBOARD_TRANSLATIONS = {
   }
 };
 
-type AdminTab = 'analytics' | 'content' | 'certificates' | 'users' | 'settings';
-
-export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin, onLanguageChange }: AdminDashboardViewProps) {
-  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+export default function AdminDashboardView({ 
+  adminUser, 
+  lang, 
+  onLogoutAdmin, 
+  onLanguageChange,
+  activeTab: propActiveTab,
+  onTabChange
+}: AdminDashboardViewProps) {
+  const [internalActiveTab, setInternalActiveTab] = useState<AdminTab>(() => {
+    if (propActiveTab) return propActiveTab;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gramin_admin_active_tab') as AdminTab | null;
       const validTabs: AdminTab[] = ['analytics', 'content', 'certificates', 'users', 'settings'];
@@ -1351,8 +1405,26 @@ export default function AdminDashboardView({ adminUser, lang, onLogoutAdmin, onL
     return 'analytics';
   });
 
+  const activeTab = propActiveTab || internalActiveTab;
+
+  const setActiveTab = (newTab: AdminTab) => {
+    setInternalActiveTab(newTab);
+    try {
+      localStorage.setItem('gramin_current_view', 'admin-dashboard');
+      localStorage.setItem('gramin_admin_active_tab', newTab);
+    } catch (e) {}
+    onTabChange?.(newTab);
+  };
+
+  useEffect(() => {
+    if (propActiveTab && propActiveTab !== internalActiveTab) {
+      setInternalActiveTab(propActiveTab);
+    }
+  }, [propActiveTab]);
+
   useEffect(() => {
     try {
+      localStorage.setItem('gramin_current_view', 'admin-dashboard');
       localStorage.setItem('gramin_admin_active_tab', activeTab);
     } catch (e) {}
   }, [activeTab]);
@@ -1797,6 +1869,70 @@ startxref
   const [addAdminDept, setAddAdminDept] = useState('HQ Education Board');
   const [addAdminError, setAddAdminError] = useState('');
   const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
+
+  // Register mobile back button handlers for all admin dialogs and modals
+  useEffect(() => {
+    if (showExportModal) {
+      return registerBackHandler(() => {
+        setShowExportModal(false);
+        return true;
+      });
+    }
+  }, [showExportModal]);
+
+  useEffect(() => {
+    if (showCreateFolderModal) {
+      return registerBackHandler(() => {
+        setShowCreateFolderModal(false);
+        return true;
+      });
+    }
+  }, [showCreateFolderModal]);
+
+  useEffect(() => {
+    if (showUploadFileModal) {
+      return registerBackHandler(() => {
+        setShowUploadFileModal(false);
+        return true;
+      });
+    }
+  }, [showUploadFileModal]);
+
+  useEffect(() => {
+    if (showBulkCategorizeModal) {
+      return registerBackHandler(() => {
+        setShowBulkCategorizeModal(false);
+        return true;
+      });
+    }
+  }, [showBulkCategorizeModal]);
+
+  useEffect(() => {
+    if (showBulkDeleteModal) {
+      return registerBackHandler(() => {
+        setShowBulkDeleteModal(false);
+        return true;
+      });
+    }
+  }, [showBulkDeleteModal]);
+
+  useEffect(() => {
+    if (showIssueCertModal) {
+      return registerBackHandler(() => {
+        setShowIssueCertModal(false);
+        return true;
+      });
+    }
+  }, [showIssueCertModal]);
+
+  useEffect(() => {
+    if (showAddAdminModal) {
+      return registerBackHandler(() => {
+        setShowAddAdminModal(false);
+        return true;
+      });
+    }
+  }, [showAddAdminModal]);
 
   // Handler for Admin Password / PIN Change in Platform Config
   const handleUpdateAdminPasswordSubmit = async (e: React.FormEvent) => {
@@ -3449,47 +3585,37 @@ startxref
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:items-center gap-2 w-full md:w-auto shrink-0 pt-1 md:pt-0">
-          {/* Admin Language Selector */}
-          {/*<div className="relative inline-block text-left">
-            <select
-              value={adminLang}
-              onChange={(e) => handleSelectAdminLanguage(e.target.value as LanguageCode)}
-              className="w-full pl-3 pr-8 py-2 bg-slate-800 hover:bg-slate-750 text-amber-300 font-extrabold text-xs rounded-xl border border-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-amber-400/40 appearance-none transition-all shadow-xs"
-              title="Select Admin Interface Language"
-            >
-              <option value="en">English (EN)</option>
-              <option value="hi">हिन्दी (Hindi)</option>
-              <option value="gu">ગુજરાતી (Gujarati)</option>
-              <option value="mr">मराठी (Marathi)</option>
-              <option value="ta">தமிழ் (Tamil)</option>
-              <option value="te">తెలుగు (Telugu)</option>
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-amber-400 pointer-events-none" />
-          </div>*/}
-
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto shrink-0 pt-2 md:pt-0">
           <button
+            type="button"
             onClick={() => setShowExportModal(true)}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl border border-emerald-400 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all whitespace-nowrap"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-xs font-bold rounded-xl border border-emerald-400 shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all min-h-[42px] sm:min-h-[38px] whitespace-nowrap"
+            title={t.downloadAnalytics}
           >
-            <Download className="h-3.5 w-3.5 shrink-0" />
-            <span>{t.downloadAnalytics}</span>
+            <AppDownloadIcon 
+              size={18} 
+              strokeWidth={2.4} 
+              color="#ffffff" 
+              className="text-white" 
+            />
+            <span className="leading-none">{t.downloadAnalytics}</span>
           </button>
 
           <button
+            type="button"
             onClick={handleSyncAllData}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer transition-all whitespace-nowrap"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-2 cursor-pointer transition-all min-h-[42px] sm:min-h-[38px] whitespace-nowrap"
+            title={t.syncLiveData}
           >
-            <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${isLoadingUsers || isLoadingCerts ? 'animate-spin' : ''}`} />
-            <span>{t.syncLiveData}</span>
+            <RefreshCw 
+              size={18} 
+              strokeWidth={2.4} 
+              color="#cbd5e1" 
+              className={`w-[18px] h-[18px] min-w-[18px] min-h-[18px] text-slate-300 shrink-0 inline-block ${isLoadingUsers || isLoadingCerts ? 'animate-spin' : ''}`} 
+              aria-hidden="true" 
+            />
+            <span className="leading-none">{t.syncLiveData}</span>
           </button>
-
-          {/*<button
-            onClick={onLogoutAdmin}
-            className="px-3.5 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-bold rounded-xl border border-red-500/30 cursor-pointer transition-all flex items-center justify-center whitespace-nowrap"
-          >
-            {t.exitAdmin}
-          </button>*/}
         </div>
       </div>
 
@@ -3564,28 +3690,41 @@ startxref
               </div>
 
               {/* Direct Quick Downloads */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:items-center gap-2 w-full lg:w-auto shrink-0 pt-1 lg:pt-0">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch sm:items-center gap-2 w-full lg:w-auto shrink-0 pt-2 lg:pt-0">
                 <button
+                  type="button"
                   onClick={() => handleExportMasterPDF(true)}
-                  className="px-3.5 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"
+                  className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 bg-red-600 hover:bg-red-500 active:scale-[0.98] text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px]"
                   title={`Download PDF report for ${getDateFilterLabel()}`}
                 >
-                  <Download className="h-3.5 w-3.5 shrink-0" />
+                  <AppDownloadIcon 
+                    size={18} 
+                    strokeWidth={2.4} 
+                    color="#ffffff" 
+                    className="text-white" 
+                  />
                   <span>{t.pdfReport}</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleExportMasterExcel(true)}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"
+                  className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px]"
                   title={`Download Excel spreadsheet for ${getDateFilterLabel()}`}
                 >
-                  <Download className="h-3.5 w-3.5 shrink-0" />
+                  <AppDownloadIcon 
+                    size={18} 
+                    strokeWidth={2.4} 
+                    color="#ffffff" 
+                    className="text-white" 
+                  />
                   <span>{t.excelExport}</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowExportModal(true)}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 cursor-pointer transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+                  className="w-full sm:w-auto px-3 py-2.5 sm:py-2 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-200 text-xs font-bold rounded-xl border border-slate-700 cursor-pointer transition-all flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px]"
                 >
-                  <Filter className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                  <Filter className="w-4 h-4 min-w-[16px] text-amber-400 shrink-0" strokeWidth={2.2} />
                   <span>{t.allFormats}</span>
                 </button>
               </div>
@@ -3601,7 +3740,7 @@ startxref
                 </span>
 
                 {/* Sleek Segmented Mode Switcher */}
-                <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center gap-1 text-[11px] font-bold">
+                <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center gap-1 text-[11px] font-bold overflow-x-auto max-w-full select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   <button
                     type="button"
                     onClick={() => setAnalyticsFilterMode('all')}
@@ -4270,18 +4409,19 @@ startxref
                                 {isViewable && (
                                   <button
                                     onClick={() => setActivePdfFile(file)}
-                                    className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg cursor-pointer transition-all flex items-center gap-1 border border-emerald-200/60"
+                                    className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-xs rounded-lg cursor-pointer transition-all flex items-center gap-1 border border-emerald-200/60 shrink-0 shadow-3xs"
                                   >
-                                    <FileText className="h-3.5 w-3.5 text-emerald-600" />
+                                    <FileText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                                     <span>View</span>
                                   </button>
                                 )}
                                 <button
                                   onClick={() => handleDownloadFile(file)}
-                                  className="p-1.5 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors border border-slate-200/80"
+                                  className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg cursor-pointer transition-all flex items-center gap-1 border border-blue-200/80 shadow-3xs active:scale-95 shrink-0"
                                   title="Download File"
                                 >
-                                  <Download className="h-3.5 w-3.5" />
+                                  <AppDownloadIcon size={14} strokeWidth={2.2} color="#2563eb" className="text-blue-600" />
+                                  <span>Download</span>
                                 </button>
                                 <button
                                   onClick={(e) => {
@@ -4291,7 +4431,7 @@ startxref
                                   className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg cursor-pointer transition-all flex items-center gap-1 shadow-2xs shrink-0"
                                   title="More Operations"
                                 >
-                                  <MoreVertical className="h-3.5 w-3.5" />
+                                  <MoreVertical className="h-3.5 w-3.5 shrink-0" />
                                   <span>Options</span>
                                 </button>
                               </div>
@@ -4462,10 +4602,11 @@ startxref
 
                                     <button
                                       onClick={() => handleDownloadFile(file)}
-                                      className="p-1.5 text-slate-500 hover:text-slate-850 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-slate-200"
+                                      className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] rounded-lg cursor-pointer transition-all inline-flex items-center gap-1 border border-blue-200/70 shadow-3xs active:scale-95"
                                       title="Download File"
                                     >
-                                      <Download className="h-4 w-4" />
+                                      <AppDownloadIcon size={14} strokeWidth={2.2} color="#2563eb" className="text-blue-600" />
+                                      <span>Download</span>
                                     </button>
 
                                     <button
@@ -5340,13 +5481,13 @@ startxref
                         setActiveFileMenuId(null);
                         handleDownloadFile(file);
                       }}
-                      className="w-full px-3.5 py-3 hover:bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs text-slate-800 transition-colors flex items-center justify-between cursor-pointer"
+                      className="w-full px-3.5 py-3 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-xl font-bold text-xs text-slate-800 hover:text-blue-800 transition-colors flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
-                        <Download className="h-4 w-4 text-blue-500 shrink-0" />
+                        <AppDownloadIcon size={16} strokeWidth={2.2} color="#2563eb" className="text-blue-600" />
                         <span>Download File Locally</span>
                       </div>
-                      <Download className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded-md">Save</span>
                     </button>
 
                     {/* Delete File */}
@@ -6184,7 +6325,7 @@ startxref
             <div className="p-4 sm:p-5 border-b border-slate-100 flex items-start justify-between gap-3 shrink-0 bg-white">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="p-2.5 sm:p-3 bg-emerald-100 text-emerald-700 rounded-2xl shrink-0">
-                  <Download className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <AppDownloadIcon size={24} strokeWidth={2.2} color="#047857" className="text-emerald-700" />
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-snug">
@@ -6362,16 +6503,23 @@ startxref
                 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
                   <button
+                    type="button"
                     onClick={() => handleExportMasterPDF(true)}
-                    className="flex-1 py-2 px-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                    className="flex-1 py-2.5 sm:py-2 px-3.5 bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2 shadow-sm min-h-[38px]"
                   >
-                    <Download className="h-3.5 w-3.5 shrink-0" />
+                    <AppDownloadIcon 
+                      size={18} 
+                      strokeWidth={2.4} 
+                      color="#ffffff" 
+                      className="text-white" 
+                    />
                     <span className="truncate">Download PDF Report ({getDateFilterLabel()})</span>
                   </button>
                   {analyticsFilterMode !== 'all' && (
                     <button
+                      type="button"
                       onClick={() => handleExportMasterPDF(false)}
-                      className="py-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1 shrink-0"
+                      className="py-2.5 sm:py-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0 min-h-[38px]"
                     >
                       <span>All Time PDF</span>
                     </button>
@@ -6397,16 +6545,23 @@ startxref
                 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
                   <button
+                    type="button"
                     onClick={() => handleExportMasterExcel(true)}
-                    className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                    className="flex-1 py-2.5 sm:py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2 shadow-sm min-h-[38px]"
                   >
-                    <Download className="h-3.5 w-3.5 shrink-0" />
+                    <AppDownloadIcon 
+                      size={18} 
+                      strokeWidth={2.4} 
+                      color="#ffffff" 
+                      className="text-white" 
+                    />
                     <span className="truncate">Download Excel Workbook ({getDateFilterLabel()})</span>
                   </button>
                   {analyticsFilterMode !== 'all' && (
                     <button
+                      type="button"
                       onClick={() => handleExportMasterExcel(false)}
-                      className="py-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1 shrink-0"
+                      className="py-2.5 sm:py-2 px-3 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5 shrink-0 min-h-[38px]"
                     >
                       <span>All Time Excel</span>
                     </button>
@@ -6422,17 +6577,19 @@ startxref
                 </div>
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
+                    type="button"
                     onClick={handleExportUsersPDF}
-                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Download className="h-3 w-3" />
+                    <AppDownloadIcon size={14} strokeWidth={2.2} color="#991b1b" className="text-red-800" />
                     <span>PDF</span>
                   </button>
                   <button
+                    type="button"
                     onClick={handleExportUsersExcel}
-                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Download className="h-3 w-3" />
+                    <AppDownloadIcon size={14} strokeWidth={2.2} color="#065f46" className="text-emerald-800" />
                     <span>Excel</span>
                   </button>
                 </div>
@@ -6446,17 +6603,19 @@ startxref
                 </div>
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
+                    type="button"
                     onClick={handleExportVillageHubsPDF}
-                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Download className="h-3 w-3" />
+                    <AppDownloadIcon size={14} strokeWidth={2.2} color="#991b1b" className="text-red-800" />
                     <span>PDF</span>
                   </button>
                   <button
+                    type="button"
                     onClick={handleExportVillageHubsExcel}
-                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Download className="h-3 w-3" />
+                    <AppDownloadIcon size={14} strokeWidth={2.2} color="#065f46" className="text-emerald-800" />
                     <span>Excel</span>
                   </button>
                 </div>
@@ -6470,17 +6629,19 @@ startxref
                 </div>
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
+                    type="button"
                     onClick={handleExportCertificatesPDF}
-                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Download className="h-3 w-3" />
+                    <AppDownloadIcon size={14} strokeWidth={2.2} color="#991b1b" className="text-red-800" />
                     <span>PDF</span>
                   </button>
                   <button
+                    type="button"
                     onClick={handleExportCertificatesExcel}
-                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Download className="h-3 w-3" />
+                    <AppDownloadIcon size={14} strokeWidth={2.2} color="#065f46" className="text-emerald-800" />
                     <span>Excel</span>
                   </button>
                 </div>
@@ -6494,17 +6655,19 @@ startxref
                 </div>
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                   <button
+                    type="button"
                     onClick={handleExportCurriculumPDF}
-                    className="px-2.5 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Download className="h-3 w-3" />
+                    <AppDownloadIcon size={14} strokeWidth={2.2} color="#991b1b" className="text-red-800" />
                     <span>PDF</span>
                   </button>
                   <button
+                    type="button"
                     onClick={handleExportCurriculumExcel}
-                    className="px-2.5 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Download className="h-3 w-3" />
+                    <AppDownloadIcon size={14} strokeWidth={2.2} color="#065f46" className="text-emerald-800" />
                     <span>Excel</span>
                   </button>
                 </div>
@@ -6517,10 +6680,11 @@ startxref
                   <div className="text-[11px] text-slate-500">Full structured object model for developer database restores</div>
                 </div>
                 <button
+                  type="button"
                   onClick={handleExportFullJSONReport}
-                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1.5 shrink-0 self-end sm:self-center shadow-xs"
+                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white text-xs font-bold rounded-xl cursor-pointer transition-all flex items-center gap-2 shrink-0 self-end sm:self-center shadow-xs"
                 >
-                  <Download className="h-3.5 w-3.5 text-amber-400" />
+                  <AppDownloadIcon size={14} strokeWidth={2.2} color="#fbbf24" className="text-amber-400" />
                   <span>Export JSON</span>
                 </button>
               </div>

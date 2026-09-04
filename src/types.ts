@@ -2,6 +2,8 @@ export type CurrentView = 'home' | 'about' | 'features' | 'login' | 'signup' | '
 
 export type DashboardTab = 'profile' | 'admin-pdfs' | 'ai-assistant' | 'tutor' | 'quiz' | 'exam' | 'career' | 'settings' | 'certificates' | 'equations' | 'puzzles';
 
+export type AdminTab = 'analytics' | 'content' | 'certificates' | 'users' | 'settings';
+
 export type LanguageCode = 'en' | 'hi' | 'gu' | 'mr' | 'ta' | 'te';
 
 export interface LanguageInfo {

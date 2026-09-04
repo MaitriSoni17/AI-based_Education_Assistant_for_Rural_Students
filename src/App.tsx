@@ -6,7 +6,7 @@ import FeaturesView from './components/FeaturesView';
 import AuthView from './components/AuthView';
 import DashboardView from './components/DashboardView';
 import ErrorBoundary from './components/ErrorBoundary';
-import { CurrentView, LanguageCode, User, DashboardTab } from './types';
+import { CurrentView, LanguageCode, User, DashboardTab, AdminTab } from './types';
 import { TRANSLATIONS } from './data/translations';
 import { GraduationCap, Shield, LogOut } from 'lucide-react';
 import AdminAuthView from './components/admin/AdminAuthView';
@@ -34,66 +34,138 @@ const VALID_TABS: DashboardTab[] = [
   'profile', 'admin-pdfs', 'ai-assistant', 'tutor', 'quiz', 'exam', 'career', 'settings', 'certificates', 'equations', 'puzzles'
 ];
 
-function parseHash(): { view: CurrentView; tab?: DashboardTab } {
-  if (typeof window === 'undefined') return { view: 'home' };
+const VALID_ADMIN_TABS: AdminTab[] = [
+  'analytics', 'content', 'certificates', 'users', 'settings'
+];
+
+function parseHash(): { view: CurrentView | null; studentTab?: DashboardTab; adminTab?: AdminTab } {
+  if (typeof window === 'undefined') return { view: null };
   const raw = window.location.hash.replace(/^#\/?/, '').trim();
-  if (!raw) return { view: 'home' };
+  if (!raw) return { view: null };
 
   const [viewPart, queryPart] = raw.split('?');
-  const view = viewPart as CurrentView;
+  const view = VALID_VIEWS.includes(viewPart as CurrentView) ? (viewPart as CurrentView) : null;
 
-  let tab: DashboardTab | undefined = undefined;
+  let studentTab: DashboardTab | undefined = undefined;
+  let adminTab: AdminTab | undefined = undefined;
+
   if (queryPart) {
     const params = new URLSearchParams(queryPart);
-    const t = params.get('tab') as DashboardTab;
-    if (t && VALID_TABS.includes(t)) tab = t;
+    const t = params.get('tab');
+    if (view === 'dashboard' && t && VALID_TABS.includes(t as DashboardTab)) {
+      studentTab = t as DashboardTab;
+    } else if (view === 'admin-dashboard' && t && VALID_ADMIN_TABS.includes(t as AdminTab)) {
+      adminTab = t as AdminTab;
+    }
   }
 
-  return {
-    view: VALID_VIEWS.includes(view) ? view : 'home',
-    tab
-  };
+  return { view, studentTab, adminTab };
 }
 
-function constructHash(view: CurrentView, tab?: DashboardTab): string {
-  if (view === 'dashboard' && tab && tab !== 'profile') {
-    return `#dashboard?tab=${tab}`;
+function constructHash(view: CurrentView, studentTab?: DashboardTab, adminTab?: AdminTab): string {
+  if (view === 'dashboard' && studentTab && studentTab !== 'profile') {
+    return `#dashboard?tab=${studentTab}`;
+  }
+  if (view === 'admin-dashboard' && adminTab && adminTab !== 'analytics') {
+    return `#admin-dashboard?tab=${adminTab}`;
   }
   return `#${view}`;
 }
+
+const getStoredAdminUser = (): User | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const adminRaw = localStorage.getItem('gramin_admin_session');
+    if (adminRaw) {
+      const parsed = JSON.parse(adminRaw) as any;
+      if (parsed && (parsed.role === 'admin' || parsed.isAdmin || parsed.mobile)) return parsed as User;
+    }
+    const studentRaw = localStorage.getItem('gramin_student_session');
+    if (studentRaw) {
+      const parsed = JSON.parse(studentRaw) as any;
+      if (parsed && (parsed.role === 'admin' || parsed.isAdmin)) {
+        // Sync to admin session key so subsequent calls find it immediately
+        try { localStorage.setItem('gramin_admin_session', studentRaw); } catch (e) {}
+        return parsed as User;
+      }
+    }
+  } catch (e) {}
+  return null;
+};
+
+const getStoredStudentUser = (): User | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const studentRaw = localStorage.getItem('gramin_student_session');
+    if (studentRaw) {
+      const parsed = JSON.parse(studentRaw) as User;
+      if (parsed && parsed.role !== 'admin') return parsed;
+    }
+  } catch (e) {}
+  return null;
+};
 
 export default function App() {
   const [studentActiveTab, setStudentActiveTab] = useState<DashboardTab>(() => {
     if (typeof window !== 'undefined') {
       const parsed = parseHash();
-      if (parsed.tab) return parsed.tab;
+      if (parsed.studentTab) return parsed.studentTab;
       const savedTab = localStorage.getItem('gramin_student_active_tab') as DashboardTab | null;
       if (savedTab && VALID_TABS.includes(savedTab)) return savedTab;
     }
     return 'profile';
   });
 
+  const [adminActiveTab, setAdminActiveTab] = useState<AdminTab>(() => {
+    if (typeof window !== 'undefined') {
+      const parsed = parseHash();
+      if (parsed.adminTab) return parsed.adminTab;
+      const savedTab = localStorage.getItem('gramin_admin_active_tab') as AdminTab | null;
+      if (savedTab && VALID_ADMIN_TABS.includes(savedTab)) return savedTab;
+    }
+    return 'analytics';
+  });
+
   const [currentView, setCurrentView] = useState<CurrentView>(() => {
     if (typeof window !== 'undefined') {
       const parsed = parseHash();
-      const studentSession = localStorage.getItem('gramin_student_session');
-      const adminSession = localStorage.getItem('gramin_admin_session');
+      const adminUser = getStoredAdminUser();
+      const studentUser = getStoredStudentUser();
 
+      // 1. Explicit view specified in the URL hash (e.g. #admin-dashboard or #dashboard)
       if (parsed.view) {
-        if (parsed.view === 'dashboard' && !studentSession) return 'login';
-        if (parsed.view === 'admin-dashboard' && !adminSession) return 'admin-login';
+        if (parsed.view === 'dashboard') {
+          return (studentUser || adminUser) ? 'dashboard' : 'login';
+        }
+        if (parsed.view === 'admin-dashboard') {
+          return adminUser ? 'admin-dashboard' : 'admin-login';
+        }
         return parsed.view;
       }
 
+      // 2. Saved view in localStorage (e.g. reload on clean URL or standalone mobile app opening)
       const savedView = localStorage.getItem('gramin_current_view') as CurrentView | null;
       if (savedView && VALID_VIEWS.includes(savedView)) {
-        if (savedView === 'dashboard' && !studentSession) return 'login';
-        if (savedView === 'admin-dashboard' && !adminSession) return 'admin-login';
-        return savedView;
+        if (savedView === 'admin-dashboard') {
+          return adminUser ? 'admin-dashboard' : 'admin-login';
+        }
+        if (savedView === 'dashboard') {
+          return (studentUser || adminUser) ? 'dashboard' : 'login';
+        }
+        // If savedView was a specific public content page (about or features), honor it
+        if (savedView === 'about' || savedView === 'features') {
+          return savedView;
+        }
       }
 
-      if (adminSession) return 'admin-dashboard';
-      if (studentSession) return 'dashboard';
+      // 3. Fallback based on active authenticated session (Admin Dashboard always takes priority for Admin)
+      if (adminUser) return 'admin-dashboard';
+      if (studentUser) return 'dashboard';
+
+      // 4. If saved view was set to anything else valid
+      if (savedView && VALID_VIEWS.includes(savedView)) {
+        return savedView;
+      }
     }
     return 'home';
   });
@@ -117,17 +189,7 @@ export default function App() {
   });
 
   const [adminUser, setAdminUser] = useState<User | null>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('gramin_admin_session');
-      if (stored) {
-        try {
-          return JSON.parse(stored) as User;
-        } catch (e) {
-          return null;
-        }
-      }
-    }
-    return null;
+    return getStoredAdminUser();
   });
 
   // Mobile Back Button Navigation, Exit Guard & Modal/Drawer Dismissal
@@ -138,49 +200,87 @@ export default function App() {
   // Prime browser history on app load so mobile back button can be trapped even on first screen
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const initialHash = constructHash(currentView, studentActiveTab);
+      const initialHash = constructHash(currentView, studentActiveTab, adminActiveTab);
       try {
-        window.history.replaceState({ view: currentView, tab: studentActiveTab, isRoot: true }, '', initialHash);
-        window.history.pushState({ view: currentView, tab: studentActiveTab, isGuard: true }, '', initialHash);
+        window.history.replaceState({ view: currentView, studentTab: studentActiveTab, adminTab: adminActiveTab, isRoot: true }, '', initialHash);
+        window.history.pushState({ view: currentView, studentTab: studentActiveTab, adminTab: adminActiveTab, isGuard: true }, '', initialHash);
       } catch (e) {
         console.warn('[history] Prime failed:', e);
       }
     }
   }, []);
 
-  const handleNavigate = (newView: CurrentView, newTab?: DashboardTab) => {
-    const targetTab = newTab || (newView === 'dashboard' ? (studentActiveTab || 'profile') : undefined);
-    const newHash = constructHash(newView, targetTab);
+  const handleNavigate = (newView: CurrentView, newStudentTab?: DashboardTab, newAdminTab?: AdminTab) => {
+    const targetStudentTab = newStudentTab || (newView === 'dashboard' ? (studentActiveTab || 'profile') : undefined);
+    const targetAdminTab = newAdminTab || (newView === 'admin-dashboard' ? (adminActiveTab || 'analytics') : undefined);
+    const newHash = constructHash(newView, targetStudentTab, targetAdminTab);
     
     if (typeof window !== 'undefined') {
-      window.history.pushState({ view: newView, tab: targetTab }, '', newHash);
+      window.history.pushState({ view: newView, studentTab: targetStudentTab, adminTab: targetAdminTab }, '', newHash);
     }
     
     setCurrentView(newView);
     safeSetLocalStorage('gramin_current_view', newView);
     
-    if (targetTab) {
-      setStudentActiveTab(targetTab);
-      safeSetLocalStorage('gramin_student_active_tab', targetTab);
+    if (targetStudentTab) {
+      setStudentActiveTab(targetStudentTab);
+      safeSetLocalStorage('gramin_student_active_tab', targetStudentTab);
+    }
+    if (targetAdminTab) {
+      setAdminActiveTab(targetAdminTab);
+      safeSetLocalStorage('gramin_admin_active_tab', targetAdminTab);
     }
   };
 
   const handleTabChange = (newTab: DashboardTab) => {
     setStudentActiveTab(newTab);
+    safeSetLocalStorage('gramin_current_view', 'dashboard');
     safeSetLocalStorage('gramin_student_active_tab', newTab);
     if (typeof window !== 'undefined') {
-      const newHash = constructHash('dashboard', newTab);
-      window.history.pushState({ view: 'dashboard', tab: newTab }, '', newHash);
+      const newHash = constructHash('dashboard', newTab, undefined);
+      window.history.pushState({ view: 'dashboard', studentTab: newTab }, '', newHash);
     }
   };
+
+  const handleAdminTabChange = (newTab: AdminTab) => {
+    setAdminActiveTab(newTab);
+    safeSetLocalStorage('gramin_current_view', 'admin-dashboard');
+    safeSetLocalStorage('gramin_admin_active_tab', newTab);
+    if (typeof window !== 'undefined') {
+      const newHash = constructHash('admin-dashboard', undefined, newTab);
+      window.history.pushState({ view: 'admin-dashboard', adminTab: newTab }, '', newHash);
+    }
+  };
+
+  // Keep URL hash and localStorage strictly updated when currentView or active tabs change
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (currentView === 'admin-dashboard') {
+      safeSetLocalStorage('gramin_current_view', 'admin-dashboard');
+      safeSetLocalStorage('gramin_admin_active_tab', adminActiveTab);
+      const targetHash = constructHash('admin-dashboard', undefined, adminActiveTab);
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState({ view: 'admin-dashboard', adminTab: adminActiveTab }, '', targetHash);
+      }
+    } else if (currentView === 'dashboard') {
+      safeSetLocalStorage('gramin_current_view', 'dashboard');
+      safeSetLocalStorage('gramin_student_active_tab', studentActiveTab);
+      const targetHash = constructHash('dashboard', studentActiveTab, undefined);
+      if (window.location.hash !== targetHash) {
+        window.history.replaceState({ view: 'dashboard', studentTab: studentActiveTab }, '', targetHash);
+      }
+    } else {
+      safeSetLocalStorage('gramin_current_view', currentView);
+    }
+  }, [currentView, adminActiveTab, studentActiveTab]);
 
   // Listen to popstate (mobile hardware back button / gesture)
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       // 1. Check if any modal or mobile drawer registered a back handler
       if (executeBackHandlers()) {
-        const currentHash = constructHash(currentView, studentActiveTab);
-        window.history.pushState({ view: currentView, tab: studentActiveTab, isGuard: true }, '', currentHash);
+        const currentHash = constructHash(currentView, studentActiveTab, adminActiveTab);
+        window.history.pushState({ view: currentView, studentTab: studentActiveTab, adminTab: adminActiveTab, isGuard: true }, '', currentHash);
         return;
       }
 
@@ -188,7 +288,7 @@ export default function App() {
       const isAtRoot = 
         (!user && !adminUser && currentView === 'home') ||
         (user && currentView === 'dashboard' && studentActiveTab === 'profile') ||
-        (adminUser && currentView === 'admin-dashboard');
+        (adminUser && currentView === 'admin-dashboard' && adminActiveTab === 'analytics');
 
       if (isAtRoot) {
         const now = Date.now();
@@ -200,8 +300,8 @@ export default function App() {
         } else {
           // First tap at root: prevent accidental exit, show helpful exit toast
           lastBackPressRef.current = now;
-          const currentHash = constructHash(currentView, studentActiveTab);
-          window.history.pushState({ view: currentView, tab: studentActiveTab, isGuard: true }, '', currentHash);
+          const currentHash = constructHash(currentView, studentActiveTab, adminActiveTab);
+          window.history.pushState({ view: currentView, studentTab: studentActiveTab, adminTab: adminActiveTab, isGuard: true }, '', currentHash);
 
           setShowExitToast(true);
           if (exitToastTimerRef.current) clearTimeout(exitToastTimerRef.current);
@@ -212,30 +312,43 @@ export default function App() {
         }
       }
 
-      // 3. If in Dashboard on a sub-tab (e.g. equations, puzzles, tutor, etc.), navigate back to Profile tab
-      if (user && currentView === 'dashboard' && studentActiveTab !== 'profile') {
-        setStudentActiveTab('profile');
-        safeSetLocalStorage('gramin_student_active_tab', 'profile');
-        const currentHash = constructHash('dashboard', 'profile');
-        window.history.pushState({ view: 'dashboard', tab: 'profile', isGuard: true }, '', currentHash);
+      // 3. If in Admin Dashboard on a sub-tab (content, certificates, users, settings), navigate back to Analytics tab
+      if (adminUser && currentView === 'admin-dashboard' && adminActiveTab !== 'analytics') {
+        setAdminActiveTab('analytics');
+        safeSetLocalStorage('gramin_admin_active_tab', 'analytics');
+        const currentHash = constructHash('admin-dashboard', studentActiveTab, 'analytics');
+        window.history.pushState({ view: 'admin-dashboard', adminTab: 'analytics', isGuard: true }, '', currentHash);
         return;
       }
 
-      // 4. If on secondary views (about, features, login, signup, admin-login), return to root
+      // 4. If in Student Dashboard on a sub-tab (e.g. equations, puzzles, tutor, etc.), navigate back to Profile tab
+      if (user && currentView === 'dashboard' && studentActiveTab !== 'profile') {
+        setStudentActiveTab('profile');
+        safeSetLocalStorage('gramin_student_active_tab', 'profile');
+        const currentHash = constructHash('dashboard', 'profile', adminActiveTab);
+        window.history.pushState({ view: 'dashboard', studentTab: 'profile', isGuard: true }, '', currentHash);
+        return;
+      }
+
+      // 5. If on secondary views (about, features, login, signup, admin-login), return to root
       const parsed = parseHash();
-      const fallbackView: CurrentView = user ? 'dashboard' : 'home';
+      const fallbackView: CurrentView = adminUser ? 'admin-dashboard' : (user ? 'dashboard' : 'home');
       const targetView = (parsed.view && parsed.view !== currentView) ? parsed.view : fallbackView;
 
       setCurrentView(targetView);
       safeSetLocalStorage('gramin_current_view', targetView);
       if (targetView === 'dashboard') {
-        const targetTab = parsed.tab || 'profile';
+        const targetTab = parsed.studentTab || 'profile';
         setStudentActiveTab(targetTab);
         safeSetLocalStorage('gramin_student_active_tab', targetTab);
+      } else if (targetView === 'admin-dashboard') {
+        const targetTab = parsed.adminTab || 'analytics';
+        setAdminActiveTab(targetTab);
+        safeSetLocalStorage('gramin_admin_active_tab', targetTab);
       }
 
-      const currentHash = constructHash(targetView, parsed.tab);
-      window.history.pushState({ view: targetView, tab: parsed.tab, isGuard: true }, '', currentHash);
+      const currentHash = constructHash(targetView, parsed.studentTab, parsed.adminTab);
+      window.history.pushState({ view: targetView, studentTab: parsed.studentTab, adminTab: parsed.adminTab, isGuard: true }, '', currentHash);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -243,14 +356,16 @@ export default function App() {
       window.removeEventListener('popstate', handlePopState);
       if (exitToastTimerRef.current) clearTimeout(exitToastTimerRef.current);
     };
-  }, [currentView, studentActiveTab, user, adminUser]);
+  }, [currentView, studentActiveTab, adminActiveTab, user, adminUser]);
 
   const handleAdminAuthSuccess = (authenticatedAdmin: User) => {
     setAdminUser(authenticatedAdmin);
     safeSetLocalStorage('gramin_admin_session', JSON.stringify(authenticatedAdmin));
     setUser(authenticatedAdmin);
     safeSetLocalStorage('gramin_student_session', JSON.stringify(authenticatedAdmin));
-    handleNavigate('admin-dashboard');
+    setAdminActiveTab('analytics');
+    safeSetLocalStorage('gramin_admin_active_tab', 'analytics');
+    handleNavigate('admin-dashboard', undefined, 'analytics');
   };
 
   const handleLogoutAdmin = () => {
@@ -262,6 +377,7 @@ export default function App() {
     localStorage.removeItem('gramin_student_active_tab');
     safeSetLocalStorage('gramin_current_view', 'home');
     setStudentActiveTab('profile');
+    setAdminActiveTab('analytics');
     if (typeof window !== 'undefined') {
       window.history.replaceState({ view: 'home', isRoot: true }, '', '#home');
       window.history.pushState({ view: 'home', isGuard: true }, '', '#home');
@@ -669,6 +785,8 @@ export default function App() {
                   lang={currentLanguage}
                   onLogoutAdmin={handleLogoutAdmin}
                   onLanguageChange={setCurrentLanguage}
+                  activeTab={adminActiveTab}
+                  onTabChange={handleAdminTabChange}
                 />
               </ErrorBoundary>
             ) : (
