@@ -1,0 +1,32 @@
+[
+  {
+    "mobile": "9999999999",
+    "name": "System Administrator",
+    "role": "admin",
+    "adminPin": "999999",
+    "defaultLanguage": "en",
+    "signupDate": "6/9/2026",
+    "village": "HQ Control Center",
+    "school": "State Education Board",
+    "standard": "Admin Staff",
+    "streakDays": 99,
+    "totalPoints": 5000,
+    "studyMins": 1200,
+    "updatedAt": 1788695550846
+  },
+  {
+    "mobile": "9173446570",
+    "name": "Student",
+    "signupDate": "6/9/2026",
+    "defaultLanguage": "en",
+    "role": "student",
+    "village": "",
+    "school": "",
+    "standard": "",
+    "board": "",
+    "streakDays": 1,
+    "totalPoints": 15,
+    "studyMins": 30,
+    "updatedAt": 1788696042462
+  }
+]
