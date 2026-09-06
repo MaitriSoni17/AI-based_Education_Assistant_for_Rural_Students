@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Lock, Smartphone, KeyRound, ArrowLeft, CheckCircle2, AlertCircle, RefreshCw, Globe, ChevronDown, WifiOff } from 'lucide-react';
+import React, { useState } from 'react';
+import { Shield, Lock, Smartphone, KeyRound, ArrowLeft, CheckCircle2, AlertCircle, RefreshCw, Globe, ChevronDown } from 'lucide-react';
 import { User, LanguageCode } from '../../types';
 import { getFirebaseUser, setFirebaseUser } from '../../lib/firebase';
 import { getSafeDateString } from '../../utils/dateUtils';
-import { offlineSyncManager } from '../../utils/offlineSync';
-import { safeFetchJson } from '../../utils/safeFetch';
 
 interface AdminAuthViewProps {
   onSuccess: (adminUser: User) => void;
@@ -13,7 +11,6 @@ interface AdminAuthViewProps {
   adminUser?: User | null;
   onGoToDashboard?: () => void;
   onLanguageChange?: (lang: LanguageCode) => void;
-  isOfflineSimulated?: boolean;
 }
 
 const ADMIN_AUTH_TRANSLATIONS = {
@@ -139,28 +136,13 @@ const ADMIN_AUTH_TRANSLATIONS = {
   }
 };
 
-export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser, onGoToDashboard, onLanguageChange, isOfflineSimulated }: AdminAuthViewProps) {
+export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser, onGoToDashboard, onLanguageChange }: AdminAuthViewProps) {
   const [currentLang, setCurrentLang] = useState<LanguageCode>(lang || 'en');
   const t = ADMIN_AUTH_TRANSLATIONS[currentLang] || ADMIN_AUTH_TRANSLATIONS.en;
   const [mobile, setMobile] = useState('9999999999');
   const [pin, setPin] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-
-  const [isOffline, setIsOffline] = useState(() => !offlineSyncManager.isOnline() || Boolean(isOfflineSimulated));
-
-  useEffect(() => {
-    const handleSync = () => setIsOffline(!offlineSyncManager.isOnline() || Boolean(isOfflineSimulated));
-    handleSync();
-    const unsub = offlineSyncManager.subscribe(handleSync);
-    window.addEventListener('online', handleSync);
-    window.addEventListener('offline', handleSync);
-    return () => {
-      unsub();
-      window.removeEventListener('online', handleSync);
-      window.removeEventListener('offline', handleSync);
-    };
-  }, [isOfflineSimulated]);
 
   const handleLangSelect = (newLang: LanguageCode) => {
     setCurrentLang(newLang);
@@ -188,58 +170,61 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
     setIsAuthenticating(true);
 
     try {
-      const isMasterPin = pin === '999999' || pin === '123456' || pin === '888888';
+      // Fetch user doc from Firestore first to see if custom admin PIN exists
+      let dbUser = await getFirebaseUser(mobile);
       const localCustomPin = localStorage.getItem(`gramin_admin_pin_${mobile}`);
-      const cachedLocalUser = offlineSyncManager.getLocalUser(mobile);
-      const savedPin = cachedLocalUser?.adminPin || localCustomPin;
+      const savedPin = dbUser?.adminPin || localCustomPin;
 
-      // 1. PIN CHECK
       if (savedPin) {
-        if (pin !== savedPin && !isMasterPin) {
+        // Strict custom PIN check if configured by admin
+        if (pin !== savedPin) {
           setErrorMessage(t.authFailed);
           setIsAuthenticating(false);
           return;
         }
-      } else if (!isMasterPin) {
-        // If not master pin and online, try checking with backend
-        if (navigator.onLine && !isOfflineSimulated) {
-          try {
-            const res = await safeFetchJson('/api/auth/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ mobile, pin, role: 'admin' }),
-            });
-            if (!res.success) {
-              setErrorMessage(t.masterPinError);
-              setIsAuthenticating(false);
-              return;
-            }
-          } catch (e) {
+      } else {
+        // Fallback to default master passcodes ('999999', '123456', '888888') or OTP API
+        const isMasterPin = pin === '999999' || pin === '123456' || pin === '888888';
+        if (!isMasterPin) {
+          const res = await fetch('/api/otp/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mobile, otp: pin, isSignup: false }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
             setErrorMessage(t.masterPinError);
             setIsAuthenticating(false);
             return;
           }
-        } else {
-          setErrorMessage(t.masterPinError);
-          setIsAuthenticating(false);
-          return;
         }
       }
 
-      // If we got here, PIN is valid!
-      // Retrieve or construct admin profile
-      let dbUser: User | null = cachedLocalUser;
-      if (!dbUser && navigator.onLine && !isOfflineSimulated) {
-        try {
-          dbUser = (await getFirebaseUser(mobile)) as User | null;
-        } catch (e) {
-          // offline fallback
-        }
+      if (!dbUser) {
+        // Automatically provision administrator profile
+        await setFirebaseUser(mobile, {
+          name: 'System Administrator',
+          defaultLanguage: currentLang,
+          role: 'admin',
+          adminPin: pin,
+          signupDate: getSafeDateString(),
+          village: 'HQ Control Center',
+          school: 'State Education Board',
+          standard: 'Admin Staff',
+          streakDays: 99,
+          totalPoints: 5000,
+          studyMins: 1200
+        });
+        dbUser = await getFirebaseUser(mobile);
+      } else if (dbUser.role !== 'admin') {
+        // Upgrade role to admin if logging in via Admin Portal endpoint
+        await setFirebaseUser(mobile, { role: 'admin' });
+        dbUser = { ...dbUser, role: 'admin' };
       }
 
-      const adminUserPayload: User = {
+      const adminUser: User = {
         mobile: dbUser?.mobile || mobile,
-        name: dbUser?.name || (mobile === '9999999999' ? 'System Administrator' : 'Administrator'),
+        name: dbUser?.name || 'System Administrator',
         defaultLanguage: dbUser?.defaultLanguage || currentLang,
         role: 'admin',
         signupDate: dbUser?.signupDate || getSafeDateString(),
@@ -248,58 +233,21 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
         standard: dbUser?.standard || 'Admin Staff',
         streakDays: dbUser?.streakDays ?? 99,
         totalPoints: dbUser?.totalPoints ?? 5000,
-        studyMins: dbUser?.studyMins ?? 1200,
-        adminPin: pin,
-        isOfflineCreated: isOffline
+        studyMins: dbUser?.studyMins ?? 1200
       };
 
-      // Save admin session & local store
-      offlineSyncManager.saveLocalUser(adminUserPayload);
+      // Store separate admin session key for security isolation
       try {
-        localStorage.setItem('gramin_admin_session', JSON.stringify(adminUserPayload));
-        localStorage.setItem('gramin_student_session', JSON.stringify(adminUserPayload));
-        localStorage.setItem(`gramin_admin_pin_${mobile}`, pin);
+        localStorage.setItem('gramin_admin_session', JSON.stringify(adminUser));
+        localStorage.setItem('gramin_student_session', JSON.stringify(adminUser));
       } catch (e) {
         console.warn("Failed to set admin session in localStorage:", e);
       }
 
-      // Attempt background cloud sync if online (without blocking login!)
-      if (navigator.onLine && !isOfflineSimulated) {
-        setFirebaseUser(mobile, adminUserPayload).catch(() => {});
-        safeFetchJson('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(adminUserPayload)
-        }).catch(() => {});
-      }
-
-      onSuccess(adminUserPayload);
+      onSuccess(adminUser);
     } catch (err) {
       console.error("Admin Auth error:", err);
-      // Even on unhandled error, if master PIN was used, authenticate in offline admin mode
-      if (pin === '999999' || pin === '123456' || pin === '888888') {
-        const fallbackAdmin: User = {
-          mobile,
-          name: 'System Administrator (Offline)',
-          defaultLanguage: currentLang,
-          role: 'admin',
-          signupDate: getSafeDateString(),
-          village: 'HQ Control Center',
-          school: 'State Education Board',
-          standard: 'Admin Staff',
-          streakDays: 99,
-          totalPoints: 5000,
-          studyMins: 1200,
-          adminPin: pin,
-          isOfflineCreated: true
-        };
-        offlineSyncManager.saveLocalUser(fallbackAdmin);
-        localStorage.setItem('gramin_admin_session', JSON.stringify(fallbackAdmin));
-        localStorage.setItem('gramin_student_session', JSON.stringify(fallbackAdmin));
-        onSuccess(fallbackAdmin);
-      } else {
-        setErrorMessage(t.masterPinError);
-      }
+      setErrorMessage(t.serverTimeout);
     } finally {
       setIsAuthenticating(false);
     }
@@ -356,22 +304,6 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
             {t.subtitle}
           </p>
         </div>
-
-        {/* Offline Admin Mode Notification */}
-        {isOffline && (
-          <div className="mx-6 sm:mx-8 mt-6 p-4 bg-emerald-950/70 border border-emerald-500/40 rounded-2xl flex items-start gap-3 text-xs text-emerald-200">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse mt-1 shrink-0" />
-            <div>
-              <div className="font-black text-emerald-300 flex items-center gap-1.5">
-                <WifiOff className="w-3.5 h-3.5" />
-                Offline Administrator Access Ready
-              </div>
-              <div className="text-[11px] text-emerald-300/80 mt-1 leading-relaxed">
-                Device is offline. You can log in directly using Master PIN <span className="font-mono font-bold text-emerald-200 bg-emerald-900/80 px-1.5 py-0.5 rounded">999999</span> to access offline curriculum, downloaded materials, and student logs.
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Form Body */}
         <div className="p-6 sm:p-8 space-y-6">

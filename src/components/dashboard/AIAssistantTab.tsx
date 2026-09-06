@@ -11,7 +11,7 @@ import {
   Paperclip, X, Trash, Image as ImageIcon, BookOpen, Compass, Map, 
   GraduationCap, Leaf, Sun, CloudRain, Award, Check, RotateCcw, Play, Plus,
   ChevronDown, ChevronUp, MessageSquare, FileText, FileDown, Copy,
-  Search, Star, Pencil, ArrowUp, ArrowDown, Zap, CheckCircle2, Wifi, WifiOff, RefreshCw
+  Search, Star, Pencil, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas-pro';
@@ -60,9 +60,6 @@ interface ChatMessage {
     name?: string;
   };
   pending?: boolean;
-  failed?: boolean;
-  isGenerating?: boolean;
-  isResumedAfterOnline?: boolean;
   replyTo?: {
     id: string;
     sender: string;
@@ -668,167 +665,6 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     setActiveSessionIdState(id);
   };
 
-  const [isResumingOfflineChats, setIsResumingOfflineChats] = useState<boolean>(false);
-  const isResumingOfflineChatsRef = useRef<boolean>(false);
-  const [resumedNotification, setResumedNotification] = useState<string | null>(null);
-  const [pendingChatsCount, setPendingChatsCount] = useState<number>(() => offlineSyncManager.getPendingChats(user.mobile).length);
-  const [isOnlineStatus, setIsOnlineStatus] = useState<boolean>(() => offlineSyncManager.isOnline());
-
-  const resumeQueuedInquiries = async () => {
-    if (!offlineSyncManager.isOnline()) return;
-    const pending = offlineSyncManager.getPendingChats(user.mobile);
-    if (pending.length === 0) return;
-    if (isResumingOfflineChatsRef.current) return;
-    isResumingOfflineChatsRef.current = true;
-
-    setIsResumingOfflineChats(true);
-    setMascotAction('think');
-
-    // 1. Instantly inject an animated "Generating Response" message into the active mascot chat
-    const charPending = pending.find(p => p.characterId === selectedChar.id);
-    if (charPending) {
-      setMsgHistory(prev => {
-        const history = prev[selectedChar.id] || [];
-        const cleaned = history.filter(m => !m.id.startsWith('ai-off-') && !m.id.startsWith('ai-generating-'));
-        const generatingMsg: ChatMessage = {
-          id: 'ai-generating-' + charPending.id,
-          sender: 'assistant',
-          text: lang === 'hi'
-            ? `🔄 इंटरनेट पुनः प्राप्त हुआ! ${selectedChar.name} आपके ऑफ़लाइन प्रश्न का उत्तर तैयार कर रहे हैं...`
-            : `🔄 Online connection restored! ${selectedChar.name} is generating your queued response now...`,
-          isGenerating: true,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        return {
-          ...prev,
-          [selectedChar.id]: [...cleaned, generatingMsg]
-        };
-      });
-
-      if (chatScrollRef.current) {
-        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-      }
-
-      // Proactively resolve this character's question directly for instant live response
-      try {
-        const characterInfo = offlineSyncManager.getMascotConfig(charPending.characterId);
-        const bodyPayload: any = {
-          message: charPending.message,
-          systemInstruction: charPending.systemInstruction || characterInfo.systemInstruction,
-          board: charPending.board || 'CBSE',
-          lang: charPending.lang || lang
-        };
-        if (charPending.image) {
-          bodyPayload.image = {
-            data: charPending.image.data,
-            mimeType: charPending.image.mimeType
-          };
-        }
-        const data = await safeFetchJson("/api/gemini/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(bodyPayload)
-        });
-
-        if (data.success || data.text) {
-          const responseText = data.text || data.message || "Here is the explanation for your query!";
-          const history = offlineSyncManager.getChatHistory(charPending.characterId, user.mobile);
-          const userIndex = history.findIndex(item => item.id === charPending.id);
-
-          const aiMsg: ChatMessage = {
-            id: 'ai-resumed-' + Date.now(),
-            sender: 'assistant',
-            text: responseText,
-            isResumedAfterOnline: true,
-            isGenerating: false,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          };
-
-          let updatedHistory: ChatMessage[];
-          if (userIndex !== -1) {
-            const confirmedUserMsg: ChatMessage = {
-              ...history[userIndex],
-              pending: false,
-              failed: false
-            };
-            const before = history.slice(0, userIndex).filter(m => !m.id.startsWith('ai-off-') && !m.id.startsWith('ai-generating-'));
-            const after = history.slice(userIndex + 1).filter(m => !m.id.startsWith('ai-off-') && !m.id.startsWith('ai-generating-'));
-            updatedHistory = [...before, confirmedUserMsg, aiMsg, ...after];
-          } else {
-            const cleaned = history.filter(m => !m.id.startsWith('ai-off-') && !m.id.startsWith('ai-generating-'));
-            updatedHistory = [...cleaned, aiMsg];
-          }
-
-          offlineSyncManager.saveChatHistory(charPending.characterId, updatedHistory, user.mobile);
-          offlineSyncManager.removePendingChat(charPending.id, user.mobile);
-
-          setMsgHistory(prev => ({
-            ...prev,
-            [charPending.characterId]: updatedHistory
-          }));
-          updateActiveSessionMessages(updatedHistory);
-
-          const notice = lang === 'hi'
-            ? `✨ नेटवर्क वापस आ गया! ${selectedChar.name} द्वारा आपका उत्तर तैयार कर दिया गया है।`
-            : lang === 'gu'
-            ? `✨ નેટવર્ક પાછું મળ્યું! ${selectedChar.name} એ તમારો જવાબ તૈયાર કરી દીધો છે.`
-            : `✨ Online connection restored! ${selectedChar.name} generated your answer live.`;
-          setResumedNotification(notice);
-          setTimeout(() => setResumedNotification(null), 7000);
-          setMascotAction('explaining');
-          setTimeout(() => setMascotAction('idle'), 4500);
-
-          setTimeout(() => {
-            if (chatScrollRef.current) {
-              chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-            }
-          }, 100);
-        }
-      } catch (directErr) {
-        console.warn("Direct inquiry generation encountered error:", directErr);
-      }
-    }
-
-    try {
-      const res = await offlineSyncManager.reconcileAllPending(user.mobile);
-      const freshHistory = offlineSyncManager.getChatHistory(selectedChar.id, user.mobile);
-      if (freshHistory && freshHistory.length > 0) {
-        setMsgHistory(prev => ({
-          ...prev,
-          [selectedChar.id]: freshHistory
-        }));
-        updateActiveSessionMessages(freshHistory);
-      }
-
-      if (res.chatsSynced > 0 && !resumedNotification) {
-        const notice = lang === 'hi'
-          ? `✨ नेटवर्क वापस आ गया! आपके कतारबद्ध प्रश्न का उत्तर स्वामी एआई द्वारा दे दिया गया है।`
-          : lang === 'gu'
-          ? `✨ નેટવર્ક પાછું મળ્યું! તમારા પેન્ડિંગ પ્રશ્નનો ઉકેલ તૈયાર છે.`
-          : lang === 'mr'
-          ? `✨ नेटवर्क परत आले! आपल्या प्रलंबित प्रश्नाचे उत्तर तयार आहे.`
-          : lang === 'ta'
-          ? `✨ நெட்வொர்க் மீண்டும் கிடைத்தது! உங்கள் கேள்விக்கான பதில் தயாராக உள்ளது.`
-          : lang === 'te'
-          ? `✨ నెట్‌వర్క్ పునరుద్ధరించబడింది! మీ ప్రశ్నకు సమాధానం సిద్ధంగా ఉంది.`
-          : `✨ Online connection restored! Resumed and answered your queued question.`;
-
-        setResumedNotification(notice);
-        setTimeout(() => setResumedNotification(null), 6000);
-        setMascotAction('explaining');
-      } else {
-        setMascotAction('idle');
-      }
-    } catch (err) {
-      console.warn("Auto resume queued inquiry encountered error:", err);
-      setMascotAction('idle');
-    } finally {
-      setIsResumingOfflineChats(false);
-      isResumingOfflineChatsRef.current = false;
-      setPendingChatsCount(offlineSyncManager.getPendingChats(user.mobile).length);
-    }
-  };
-
   useEffect(() => {
     const serialized = JSON.stringify(chatSessions);
     if (user.chatSessions !== serialized) {
@@ -1221,12 +1057,8 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
         characterId: selectedChar.id,
         message: queryText,
         image: imagePayload,
-        timestamp: userMsg.timestamp,
-        lang,
-        board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
-        systemInstruction: getSystemInstructionForMascot()
+        timestamp: userMsg.timestamp
       }, user.mobile);
-      setPendingChatsCount(offlineSyncManager.getPendingChats(user.mobile).length);
 
       const offlineNotice: ChatMessage = {
         id: 'ai-off-' + Date.now(),
@@ -1396,58 +1228,6 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
       setActiveSessionId(null);
     }
   }, [selectedChar.id, lang, user.mobile]);
-
-  // Synchronize and auto-resume queued inquiries when connection is restored
-  useEffect(() => {
-    const handleSync = () => {
-      const online = offlineSyncManager.isOnline();
-      setIsOnlineStatus(online);
-      setPendingChatsCount(offlineSyncManager.getPendingChats(user.mobile).length);
-      
-      const fresh = offlineSyncManager.getChatHistory(selectedChar.id, user.mobile);
-      if (fresh && fresh.length > 0) {
-        setMsgHistory(prev => ({
-          ...prev,
-          [selectedChar.id]: fresh
-        }));
-        updateActiveSessionMessages(fresh);
-      }
-
-      if (online) {
-        const pending = offlineSyncManager.getPendingChats(user.mobile);
-        if (pending.length > 0 && !isResumingOfflineChatsRef.current) {
-          resumeQueuedInquiries();
-        }
-      }
-    };
-
-    const unsubscribe = offlineSyncManager.subscribe(handleSync);
-
-    const handleWindowOnline = () => {
-      setIsOnlineStatus(true);
-      resumeQueuedInquiries();
-    };
-    const handleWindowOffline = () => {
-      setIsOnlineStatus(false);
-    };
-
-    window.addEventListener('online', handleWindowOnline);
-    window.addEventListener('offline', handleWindowOffline);
-
-    // Initial mount check: if online and has pending, resume immediately
-    if (offlineSyncManager.isOnline()) {
-      const pending = offlineSyncManager.getPendingChats(user.mobile);
-      if (pending.length > 0) {
-        resumeQueuedInquiries();
-      }
-    }
-
-    return () => {
-      unsubscribe();
-      window.removeEventListener('online', handleWindowOnline);
-      window.removeEventListener('offline', handleWindowOffline);
-    };
-  }, [selectedChar.id, user.mobile, lang]);
 
   // Keep chat scrolled down
   useEffect(() => {
@@ -2077,74 +1857,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
           </div>
         </div>
 
-        {/* Offline Queued Tasks / Online Auto-Resumption Status Banner */}
-        {(!isOnlineStatus || pendingChatsCount > 0) && (
-          <div className={`px-4 py-2.5 text-xs flex items-center justify-between gap-3 border-b shrink-0 transition-colors ${
-            !isOnlineStatus 
-              ? 'bg-amber-50 text-amber-900 border-amber-200' 
-              : 'bg-blue-50 text-blue-900 border-blue-200'
-          }`}>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-base shrink-0">{!isOnlineStatus ? '📶' : '🔄'}</span>
-              <p className="truncate font-medium text-[11px] sm:text-xs">
-                {!isOnlineStatus ? (
-                  lang === 'hi' 
-                    ? `ऑफ़लाइन मोड सक्रिय: आपके संदेश सुरक्षित कतार में हैं और ऑनलाइन होते ही स्वतः उत्तर प्राप्त होगा।`
-                    : `Offline Mode Active: Your messages are queued safely and will resume automatically when online.`
-                ) : (
-                  lang === 'hi'
-                    ? `नेटवर्क वापस आ गया है: ${pendingChatsCount} कतारबद्ध प्रश्न पुनः प्रारंभ किए जा रहे हैं...`
-                    : `Network Online: ${pendingChatsCount} queued question(s) resuming automatically...`
-                )}
-              </p>
-            </div>
-            {isOnlineStatus && pendingChatsCount > 0 && (
-              <button
-                type="button"
-                onClick={() => resumeQueuedInquiries()}
-                disabled={isResumingOfflineChats}
-                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold shrink-0 cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1 transition-all"
-              >
-                <RotateCcw className={`h-3 w-3 ${isResumingOfflineChats ? 'animate-spin' : ''}`} />
-                <span>{lang === 'hi' ? 'अभी हल करें' : 'Resume Now'}</span>
-              </button>
-            )}
-          </div>
-        )}
 
-        {/* Resuming in progress notification */}
-        {isResumingOfflineChats && (
-          <div className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold flex items-center justify-between gap-2 shadow-xs shrink-0 animate-pulse">
-            <div className="flex items-center gap-2">
-              <RotateCcw className="h-3.5 w-3.5 animate-spin" />
-              <span>
-                {lang === 'hi' 
-                  ? `नेटवर्क पुनः प्राप्त! ${selectedChar.name} आपके कतारबद्ध प्रश्न का उत्तर तैयार कर रहे हैं...` 
-                  : `Connection restored! ${selectedChar.name} is resuming your queued question...`}
-              </span>
-            </div>
-            <span className="text-[9px] uppercase tracking-wider bg-white/20 px-1.5 py-0.5 rounded font-mono">
-              Live Sync
-            </span>
-          </div>
-        )}
-
-        {/* Success notification banner */}
-        {resumedNotification && (
-          <div className="px-4 py-2 bg-emerald-600 text-white text-xs font-semibold flex items-center justify-between gap-2 shadow-xs shrink-0 animate-fade-in">
-            <div className="flex items-center gap-2">
-              <span>⚡</span>
-              <span>{resumedNotification}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setResumedNotification(null)}
-              className="text-white/80 hover:text-white cursor-pointer p-0.5 rounded"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
 
         {/* Message Log Container */}
         <div 
@@ -2590,59 +2303,11 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
           ) : (
             /* NORMAL ACTIVE CONVERSATION FLOW */
             activeMessages.map((msg) => {
-              if (msg.isGenerating) {
-                return (
-                  <div 
-                    key={msg.id} 
-                    id={`msg-${msg.id}`} 
-                    className="mr-auto max-w-[96%] sm:max-w-[85%] flex gap-3 my-3 animate-fade-in"
-                  >
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xl shadow-md bg-gradient-to-tr from-amber-100 to-amber-200 border-2 border-amber-300 animate-pulse select-none">
-                      {selectedChar.char.split(' ')[0]}
-                    </div>
-                    <div className="space-y-1.5 w-full">
-                      <div className="p-4 sm:p-5 rounded-2xl rounded-tl-none bg-gradient-to-br from-amber-50 via-orange-50/40 to-white border-2 border-amber-400 shadow-md">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
-                          </span>
-                          <span className="text-xs font-black text-amber-900 tracking-wide uppercase flex items-center gap-1.5">
-                            <Zap className="h-3.5 w-3.5 text-amber-600 animate-bounce" />
-                            {lang === 'hi' 
-                              ? 'इंटरनेट पुनः स्थापित: उत्तर तैयार किया जा रहा है...' 
-                              : lang === 'gu'
-                              ? 'ઇન્ટરનેટ ફરી મળ્યું: જવાબ તૈયાર થઈ રહ્યો છે...'
-                              : 'Online Restored: Generating Live Response...'}
-                          </span>
-                        </div>
-                        <p className="text-sm sm:text-base font-medium text-amber-950/90 leading-relaxed mb-3">
-                          {msg.text}
-                        </p>
-                        <div className="flex items-center gap-2.5 bg-amber-100/70 py-2 px-3.5 rounded-xl text-xs text-amber-900 font-semibold border border-amber-200">
-                          <RefreshCw className="h-4 w-4 animate-spin text-amber-700 shrink-0" />
-                          <span className="text-xs">
-                            {lang === 'hi' 
-                              ? `${selectedChar.name} आपके प्रश्न का विश्लेषण कर रहे हैं... कृपया कुछ सेकंड प्रतीक्षा करें` 
-                              : lang === 'gu'
-                              ? `${selectedChar.name} તમારા પ્રશ્નનો અભ્યાસ કરી રહ્યા છે... કૃપા કરીને થોડી ક્ષણો રાહ જુઓ`
-                              : `${selectedChar.name} is formulating your educational answer... Please wait a moment`}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-mono text-amber-600 block text-left font-semibold">
-                        ⚡ {msg.timestamp} • Generating response live
-                      </span>
-                    </div>
-                  </div>
-                );
-              }
-
               const isMe = msg.sender === 'user';
               return (
                 <div 
-                  key={msg.id} 
-                  id={`msg-${msg.id}`} 
+                  key={msg.id}
+                  id={`msg-${msg.id}`}
                   className={`flex gap-3 group relative ${
                     editingMsgId === msg.id 
                       ? 'w-full max-w-2xl mx-auto' 
@@ -2689,20 +2354,6 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                         : 'bg-white text-gray-800 border-gray-100 rounded-tl-none'
                     } ${editingMsgId === msg.id ? 'w-full' : ''}`}>
                       
-                      {/* Live Generated Upon Reconnecting Badge */}
-                      {msg.isResumedAfterOnline && (
-                        <div className="mb-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-800 text-[11px] font-bold shadow-2xs">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                          <span>
-                            {lang === 'hi'
-                              ? '✨ इंटरनेट वापस आने पर लाइव तैयार किया गया'
-                              : lang === 'gu'
-                              ? '✨ ઇન્ટરનેટ ફરી આવતાં લાઈવ તૈયાર કરાયો'
-                              : '✨ Generated Live Upon Reconnecting'}
-                          </span>
-                        </div>
-                      )}
-
                       {/* Quoted Reply Preview block inside bubble */}
                       {msg.replyTo && (
                         <div 
@@ -2796,31 +2447,6 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                               {parsed.diagram && (
                                 <InteractiveDiagram data={parsed.diagram} lang={lang} />
                               )}
-                              
-                              {/* Offline notice interactive prompt and manual resume trigger */}
-                              {msg.id.startsWith('ai-off-') && (
-                                <div className="mt-3 pt-2.5 border-t border-amber-200 flex flex-wrap items-center justify-between gap-2">
-                                  <div className="text-[11px] text-amber-900 font-medium flex items-center gap-1.5">
-                                    <Wifi className="h-3.5 w-3.5 text-amber-600" />
-                                    <span>
-                                      {isOnlineStatus 
-                                        ? (lang === 'hi' ? 'इंटरनेट उपलब्ध है! अभी उत्तर प्राप्त करें:' : 'Internet available! Fetch answer now:')
-                                        : (lang === 'hi' ? 'ऑनलाइन आने पर यह प्रश्न स्वतः हल होगा' : 'Will auto-generate as soon as connection returns')}
-                                    </span>
-                                  </div>
-                                  {isOnlineStatus && (
-                                    <button
-                                      type="button"
-                                      onClick={() => resumeQueuedInquiries()}
-                                      disabled={isResumingOfflineChats}
-                                      className="px-3 py-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                                    >
-                                      <Zap className="h-3 w-3 text-amber-200" />
-                                      <span>{lang === 'hi' ? 'अभी उत्तर जनरेट करें ⚡' : 'Generate Response Now ⚡'}</span>
-                                    </button>
-                                  )}
-                                </div>
-                              )}
                             </div>
                           );
                         })()
@@ -2882,25 +2508,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                     </div>
                     
                     <span className={`text-[9px] font-mono text-gray-400 block ${isMe ? 'text-right' : 'text-left'}`}>
-                      {msg.timestamp} {msg.pending && (
-                        <span className="inline-flex items-center gap-1.5 ml-1">
-                          <span className="text-amber-600 font-bold animate-pulse">⏱️ ({SYNC_PENDING_LABELS[lang] || SYNC_PENDING_LABELS['en']})</span>
-                          {isOnlineStatus && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                resumeQueuedInquiries();
-                              }}
-                              className="text-[9px] bg-amber-100 hover:bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold cursor-pointer transition-colors shadow-2xs inline-flex items-center gap-1"
-                              title={lang === 'hi' ? 'उत्तर प्राप्त करने के लिए पुनः शुरू करें' : 'Resume and fetch AI answer now'}
-                            >
-                              <RotateCcw className="h-2.5 w-2.5" />
-                              <span>{lang === 'hi' ? 'अभी हल करें' : 'Resume Now ⚡'}</span>
-                            </button>
-                          )}
-                        </span>
-                      )}
+                      {msg.timestamp} {msg.pending && <span className="text-amber-600 font-bold ml-1 animate-pulse">⏱️ ({SYNC_PENDING_LABELS[lang] || SYNC_PENDING_LABELS['en']})</span>}
                     </span>
                   </div>
                 </div>

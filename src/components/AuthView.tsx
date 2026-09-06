@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
 import { LanguageCode, User } from '../types';
 import { safeFetchJson } from '../utils/safeFetch';
 import SpeakButton from './SpeakButton';
-import { Smartphone, Lock, UserCheck, Globe, RefreshCw, Send, ChevronDown, Check, Search, GraduationCap, MapPin, School, BookOpen, WifiOff, Zap } from 'lucide-react';
+import { Smartphone, Lock, UserCheck, Globe, RefreshCw, Send, ChevronDown, Check, Search, GraduationCap, MapPin, School, BookOpen } from 'lucide-react';
 import { getFirebaseUser, setFirebaseUser } from '../lib/firebase';
 import { getSafeDateString } from '../utils/dateUtils';
 import { STATES, STANDARDS, BOARDS } from '../data/educationData';
-import { offlineSyncManager } from '../utils/offlineSync';
 
 interface AuthViewProps {
   mode: 'login' | 'signup';
@@ -15,7 +14,6 @@ interface AuthViewProps {
   onSwitchMode: (mode: 'login' | 'signup') => void;
   lang: LanguageCode;
   onLanguageChange: (lang: LanguageCode) => void;
-  isOfflineSimulated?: boolean;
 }
 
 export default function AuthView({
@@ -24,7 +22,6 @@ export default function AuthView({
   onSwitchMode,
   lang,
   onLanguageChange,
-  isOfflineSimulated,
 }: AuthViewProps) {
   const t = TRANSLATIONS[lang];
 
@@ -52,69 +49,9 @@ export default function AuthView({
   const [isVerifying, setIsVerifying] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
 
-  // Offline detection state - direct subscription to offlineSyncManager for 100% reliable state
-  const [isOffline, setIsOffline] = useState(() => !offlineSyncManager.isOnline() || Boolean(isOfflineSimulated));
-
-  useEffect(() => {
-    const handleSync = () => {
-      setIsOffline(!offlineSyncManager.isOnline() || Boolean(isOfflineSimulated));
-    };
-    handleSync();
-    const unsub = offlineSyncManager.subscribe(handleSync);
-    window.addEventListener('online', handleSync);
-    window.addEventListener('offline', handleSync);
-    return () => {
-      unsub();
-      window.removeEventListener('online', handleSync);
-      window.removeEventListener('offline', handleSync);
-    };
-  }, [isOfflineSimulated]);
-
   // Validation
   const validateMobile = (num: string) => {
     return /^[6-9]\d{9}$/.test(num);
-  };
-
-  const cachedLocalUser = validateMobile(mobile) ? offlineSyncManager.getLocalUser(mobile) : null;
-
-  const handleQuickOfflineLogin = (targetUser?: User | null) => {
-    const u = targetUser || cachedLocalUser;
-    if (u) {
-      onSuccess(u);
-    }
-  };
-
-  const handleInstantOfflineAccess = (customMobile?: string, customName?: string) => {
-    const finalMobile = customMobile || (validateMobile(mobile) ? mobile : '9876543210');
-    const finalName = customName || (mode === 'signup' ? (name.trim() || 'New Student') : 'Student');
-
-    let existingUser = offlineSyncManager.getLocalUser(finalMobile);
-    if (!existingUser || mode === 'signup') {
-      existingUser = {
-        mobile: finalMobile,
-        name: finalName,
-        defaultLanguage: lang,
-        signupDate: getSafeDateString(),
-        state: state.trim() || 'Gujarat',
-        village: village.trim() || '',
-        school: school.trim() || '',
-        standard: standard || '8th',
-        board: board || 'GSEB',
-        streakDays: 1,
-        totalPoints: 15,
-        studyMins: 30,
-        isOfflineCreated: true,
-        pendingSync: true,
-        updatedAt: Date.now()
-      };
-      offlineSyncManager.saveLocalUser(existingUser, true);
-    }
-    try {
-      localStorage.setItem(`${finalMobile}_profile_state`, state || 'Gujarat');
-      localStorage.setItem(`${finalMobile}_profile_standard`, standard || '8th');
-      localStorage.setItem(`${finalMobile}_profile_board`, board || 'GSEB');
-    } catch (e) {}
-    onSuccess(existingUser);
   };
 
   const handleSendOTP = async (e: React.FormEvent) => {
@@ -142,48 +79,9 @@ export default function AuthView({
 
     setSendingOtp(true);
     try {
-      // 1. If currently offline (or simulated offline):
-      if (isOffline) {
-        if (mode === 'login') {
-          let localUser = offlineSyncManager.getLocalUser(mobile);
-          if (!localUser) {
-            localUser = {
-              mobile,
-              name: 'Student',
-              defaultLanguage: lang,
-              signupDate: getSafeDateString(),
-              state: 'Gujarat',
-              streakDays: 1,
-              totalPoints: 15,
-              studyMins: 30,
-              isOfflineCreated: true,
-              pendingSync: true,
-              updatedAt: Date.now()
-            };
-            offlineSyncManager.saveLocalUser(localUser, true);
-          }
-          setGeneratedOtp('123456');
-          setOtp('123456');
-          setIsSimulated(true);
-          setIsOtpSent(true);
-          setErrorMessage('');
-        } else {
-          // Offline registration
-          setGeneratedOtp('123456');
-          setOtp('123456');
-          setIsSimulated(true);
-          setIsOtpSent(true);
-          setErrorMessage('');
-        }
-        setSendingOtp(false);
-        return;
-      }
-
-      // 2. If online:
       if (mode === 'login') {
         const dbUser = await getFirebaseUser(mobile);
-        const localUser = offlineSyncManager.getLocalUser(mobile);
-        if (!dbUser && !localUser) {
+        if (!dbUser) {
           onSwitchMode('signup');
           const msgs = {
             hi: 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया जारी रखने के लिए अपना विवरण दर्ज करें।',
@@ -213,18 +111,15 @@ export default function AuthView({
           setGeneratedOtp('');
           setIsSimulated(false);
         }
+        if (data.gatewayError) {
+          // console.log("Twilio Gateway Error Details:", data.gatewayError);
+        }
         setIsOtpSent(true);
       } else {
-        // Fall back smoothly to offline simulation code
-        setGeneratedOtp('123456');
-        setIsSimulated(true);
-        setIsOtpSent(true);
+        setErrorMessage(data.message || 'Failed to dispatch verification code. Please try again.');
       }
     } catch (err) {
-      console.warn("OTP generate network error, switching to offline code:", err);
-      setGeneratedOtp('123456');
-      setIsSimulated(true);
-      setIsOtpSent(true);
+      setErrorMessage('Network connection error. Server might be offline. Please try again.');
     } finally {
       setSendingOtp(false);
     }
@@ -242,74 +137,6 @@ export default function AuthView({
     }
 
     setIsVerifying(true);
-    const isMasterBypass = otp === '123456' || otp === '999999' || otp === '888888' || (isSimulated && otp === generatedOtp);
-
-    // If device is offline or master bypass code was entered, verify immediately without requiring external network!
-    if (isOffline || isMasterBypass) {
-      if (mode === 'signup') {
-        const newUserPayload: User = {
-          mobile,
-          name: name.trim() || 'Student',
-          defaultLanguage: lang,
-          signupDate: getSafeDateString(),
-          state: state.trim() || 'Gujarat',
-          village: village.trim(),
-          school: school.trim(),
-          standard: standard,
-          board: board,
-          streakDays: 1,
-          totalPoints: 15,
-          studyMins: 30,
-          isOfflineCreated: isOffline,
-          pendingSync: isOffline,
-          updatedAt: Date.now()
-        };
-
-        offlineSyncManager.saveLocalUser(newUserPayload, isOffline);
-        setFirebaseUser(mobile, newUserPayload).catch(() => {});
-        try {
-          localStorage.setItem(`${mobile}_profile_state`, state);
-          localStorage.setItem(`${mobile}_profile_village`, village);
-          localStorage.setItem(`${mobile}_profile_school`, school);
-          localStorage.setItem(`${mobile}_profile_standard`, standard);
-          localStorage.setItem(`${mobile}_profile_board`, board);
-        } catch (e) {}
-
-        if (!isOffline && navigator.onLine) {
-          safeFetchJson('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newUserPayload)
-          }).catch(() => {});
-        }
-
-        setIsVerifying(false);
-        onSuccess(newUserPayload);
-        return;
-      } else {
-        // Login mode
-        let localUser = offlineSyncManager.getLocalUser(mobile);
-        if (!localUser) {
-          localUser = {
-            mobile,
-            name: 'Student',
-            defaultLanguage: lang,
-            signupDate: getSafeDateString(),
-            streakDays: 1,
-            totalPoints: 15,
-            studyMins: 30,
-            isOfflineCreated: isOffline,
-            updatedAt: Date.now()
-          };
-          offlineSyncManager.saveLocalUser(localUser, isOffline);
-        }
-        setIsVerifying(false);
-        onSuccess(localUser);
-        return;
-      }
-    }
-
-    // Standard online OTP verification
     try {
       const data = await safeFetchJson('/api/otp/verify', {
         method: 'POST',
@@ -324,24 +151,18 @@ export default function AuthView({
 
       if (data.success && data.verified) {
         if (mode === 'signup') {
-          const newUserPayload: User = {
-            mobile,
-            name: name.trim() || 'Student',
+          // Register user profile in Firebase Firestore with all school/location details
+          const newUserPayload = {
+            name: name.trim(),
             defaultLanguage: lang,
-            signupDate: data.user?.signupDate || getSafeDateString(),
+            signupDate: data.user.signupDate || getSafeDateString(),
             state: state.trim() || 'Gujarat',
             village: village.trim(),
             school: school.trim(),
             standard: standard,
             board: board,
-            streakDays: 1,
-            totalPoints: 15,
-            studyMins: 30,
-            isOfflineCreated: false,
-            updatedAt: Date.now()
           };
 
-          offlineSyncManager.saveLocalUser(newUserPayload, false);
           await setFirebaseUser(mobile, newUserPayload);
 
           try {
@@ -352,39 +173,39 @@ export default function AuthView({
             localStorage.setItem(`${mobile}_profile_board`, board);
           } catch(e) {}
           
-          onSuccess(newUserPayload);
-        } else {
-          // Login
           const dbUser = await getFirebaseUser(mobile);
-          const localUser = offlineSyncManager.getLocalUser(mobile);
-          const userToLogin = dbUser || localUser;
-          if (!userToLogin) {
+          if (dbUser) {
+            onSuccess(dbUser as User);
+          } else {
+            onSuccess({
+              mobile,
+              ...newUserPayload
+            });
+          }
+        } else {
+          // Login: Fetch existing user profile from Firebase Firestore
+          const dbUser = await getFirebaseUser(mobile);
+          if (!dbUser) {
             onSwitchMode('signup');
             handleResetForm();
-            setErrorMessage('Account not found for this mobile number. Please register.');
+            const verifyFailMsgs = {
+              hi: 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया अपना नाम दर्ज करें और नया कोड प्राप्त करें।',
+              gu: 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને તમારું નામ લખો અને નવો કોડ મેળવો.',
+              mr: 'या मोबाईल नंबरवर कोणतेही खाते आढळले नाही. आम्ही तुम्हाला नोंदणी पृष्ठावर पाठवले आहे. कृपया तुमचे नाव प्रविष्ट करा आणि नवीन कोड मिळवा.',
+              ta: 'இந்த மொபைல் எண்ணில் கணக்கு எதுவும் இல்லை. நாங்கள் உங்களை பதிவுப் பக்கத்திற்கு அனுப்பியுள்ளோம். தயவுசெய்து உங்கள் பெயரை உள்ளிட்டு புதிய குறியீட்டைப் பெறவும்.',
+              te: 'ఈ మొబైల్ నంబర్‌తో ఎటువంటి ఖాతా కనుగొనబడలేదు. మేము మిమ్మల్ని రిజిస్ట్రేશન పేజీకి మళ్లించాము. దయచేసి మీ పేరును నమోదు చేసి, కొత్త కోడ్‌ని పొందండి.',
+              en: 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your name and request a code to register.'
+            };
+            setErrorMessage(verifyFailMsgs[lang as keyof typeof verifyFailMsgs] || verifyFailMsgs.en);
             return;
           }
-          offlineSyncManager.saveLocalUser(userToLogin as User, false);
-          onSuccess(userToLogin as User);
+          onSuccess(dbUser as User);
         }
       } else {
         setErrorMessage(data.message || 'Invalid code. Please try again.');
       }
     } catch (err) {
-      console.warn("Verify OTP network failure, applying offline fallback:", err);
-      const fallbackUser: User = offlineSyncManager.getLocalUser(mobile) || {
-        mobile,
-        name: name.trim() || 'Student',
-        defaultLanguage: lang,
-        signupDate: getSafeDateString(),
-        streakDays: 1,
-        totalPoints: 15,
-        studyMins: 30,
-        isOfflineCreated: true,
-        updatedAt: Date.now()
-      };
-      offlineSyncManager.saveLocalUser(fallbackUser, true);
-      onSuccess(fallbackUser);
+      setErrorMessage('Verification failed. Unable to reach authentication server.');
     } finally {
       setIsVerifying(false);
     }
@@ -460,48 +281,6 @@ export default function AuthView({
             ))}
           </div>
         </div>
-
-        {/* Offline Mode Alert */}
-        {isOffline && (
-          <div id="auth-offline-badge" className="p-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl text-xs sm:text-sm font-sans flex items-start gap-2.5">
-            <WifiOff className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="text-left">
-              <p className="font-bold text-amber-900">
-                {lang === 'hi' ? '📶 ऑफ़लाइन मोड सक्रिय' : lang === 'gu' ? '📶 ઓફલાઇન મોડ સક્રિય' : '📶 Offline Mode Active'}
-              </p>
-              <p className="text-amber-800 text-xs mt-0.5">
-                {lang === 'hi'
-                  ? 'डिवाइस इंटरनेट से कनेक्ट नहीं है। आप ऑफ़लाइन लॉगिन और नया खाता पंजीकरण कर सकते हैं। डेटा स्थानीय रूप से सुरक्षित रहेगा।'
-                  : lang === 'gu'
-                  ? 'ઇન્ટરનેટ વગર પણ તમે લોગીન અને નવું રજીસ્ટ્રેશન કરી શકો છો. ડેટા સુરક્ષિત રહેશે.'
-                  : 'You can login or register while offline. All progress is saved locally and synchronizes automatically when you reconnect.'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Quick Offline Login Shortcut */}
-        {!isOtpSent && cachedLocalUser && (
-          <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-2xl text-left flex items-center justify-between gap-3">
-            <div>
-              <div className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                <Zap className="h-4 w-4 text-emerald-600" />
-                <span>Saved Offline Account Found</span>
-              </div>
-              <div className="text-xs text-emerald-700 font-sans mt-0.5">
-                {cachedLocalUser.name} ({cachedLocalUser.mobile})
-              </div>
-            </div>
-            <button
-              type="button"
-              id="auth-btn-quick-offline-login"
-              onClick={() => handleQuickOfflineLogin()}
-              className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-            >
-              Instant Login
-            </button>
-          </div>
-        )}
 
         {/* Error Callout */}
         {errorMessage && (
@@ -758,50 +537,17 @@ export default function AuthView({
                 </>
               )}
             </button>
-
-            {/* Direct 1-Click Offline Access Button */}
-            {isOffline && (
-              <button
-                type="button"
-                id="auth-direct-offline-btn"
-                onClick={() => handleInstantOfflineAccess()}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer mt-2"
-              >
-                <Zap className="h-4 w-4 text-amber-300" />
-                <span>
-                  {mode === 'signup' 
-                    ? (lang === 'hi' ? '⚡ 1-क्लिक तुरंत ऑफ़लाइन पंजीकरण' : '⚡ Instant 1-Click Offline Register')
-                    : (lang === 'hi' ? '⚡ 1-क्लिक तुरंत ऑफ़लाइन लॉगिन' : '⚡ Instant 1-Click Offline Login')}
-                </span>
-              </button>
-            )}
           </form>
         ) : (
           /* SECTION 2: OTP typing form */
           <form onSubmit={handleVerifyOTP} className="space-y-4">
 
             {/* Floating Info alert with simulated code */}
-            <div className="bg-[#FAF8F4] border border-[#F2CC8F]/40 p-3.5 rounded-2xl space-y-2 text-left text-xs sm:text-sm">
-              <div className="font-bold text-[#8B6E32] flex items-center justify-between gap-1.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="animate-pulse w-2 h-2 rounded-full bg-[#E07A5F]" />
-                  {t.otpSentMessage}
-                </div>
-                {(isOffline || isSimulated || generatedOtp) && (
-                  <button
-                    type="button"
-                    onClick={() => setOtp(generatedOtp || '123456')}
-                    className="text-[11px] font-mono font-bold text-[#E07A5F] hover:underline bg-white px-2 py-0.5 rounded-md border border-[#E07A5F]/30"
-                  >
-                    Auto-fill ({generatedOtp || '123456'})
-                  </button>
-                )}
+            <div className="bg-[#FAF8F4] border border-[#F2CC8F]/40 p-3.5 rounded-2xl space-y-1.5 text-left text-xs sm:text-sm">
+              <div className="font-bold text-[#8B6E32] flex items-center gap-1.5">
+                <span className="animate-pulse w-2 h-2 rounded-full bg-[#E07A5F]" />
+                {t.otpSentMessage}
               </div>
-              {isOffline && (
-                <p className="text-[11px] text-gray-500">
-                  ⚡ Device is offline: Enter offline passcode <code className="font-mono font-bold text-gray-800">123456</code> to verify immediately.
-                </p>
-              )}
             </div>
 
             <div className="space-y-1.5 text-left">

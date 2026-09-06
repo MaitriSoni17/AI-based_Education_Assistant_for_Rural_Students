@@ -54,8 +54,6 @@ export interface User {
   puzzleStrongTopics?: string; // Stringified JSON array
   puzzleWeakTopics?: string; // Stringified JSON array
   puzzleStatsByClass?: string; // Stringified JSON object mapping class to stats
-  isOfflineCreated?: boolean; // True if registered while offline
-  pendingSync?: boolean; // True if offline changes need to be synced with cloud/backend
 }
 
 export interface QuizQuestion {
