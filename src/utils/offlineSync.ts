@@ -46,6 +46,8 @@ export interface ChatMessage {
   };
   pending?: boolean; // True if sent while offline and not yet processed
   failed?: boolean; // True if sync failed
+  isGenerating?: boolean; // True when currently generating response upon reconnection
+  isResumedAfterOnline?: boolean; // True when answer was successfully generated after reconnecting
 }
 
 class OfflineSyncManager {
@@ -69,25 +71,11 @@ class OfflineSyncManager {
   }
 
   public setSimulatedOffline(simulated: boolean) {
-    const wasSimulated = this.isSimulatedOfflineState;
     this.isSimulatedOfflineState = simulated;
     const realOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
     const effectiveOnline = realOnline && !simulated;
     
     this.handleNetworkChange(effectiveOnline);
-
-    // If we just re-connected (turned simulation off) and network is actually available, resume pending immediately!
-    if (wasSimulated && !simulated && realOnline) {
-      const stored = localStorage.getItem('gramin_student_session');
-      if (stored) {
-        try {
-          const u = JSON.parse(stored);
-          if (u && u.mobile) {
-            this.reconcileAllPending(u.mobile);
-          }
-        } catch (e) {}
-      }
-    }
   }
 
   private async initPersistentStorage() {
@@ -237,6 +225,17 @@ class OfflineSyncManager {
     }
   }
 
+  public removePendingChat(chatId: string, userMobile: string) {
+    if (typeof localStorage === 'undefined' || !userMobile) return;
+    try {
+      const list = this.getPendingChats(userMobile).filter(c => c.id !== chatId);
+      localStorage.setItem(`gramin_pending_chats_${userMobile}`, JSON.stringify(list));
+      this.notifyUpdate();
+    } catch (e) {
+      console.warn("Failed to remove pending chat:", e);
+    }
+  }
+
   // --- PENDING PROGRESS QUEUE ---
 
   public getPendingProgress(userMobile: string): PendingProgress[] {
@@ -287,54 +286,32 @@ class OfflineSyncManager {
     let progressSynced = 0;
 
     try {
-      // 0. Reconcile user session itself using Last-Write-Wins (LWW) conflict resolution based on timestamps
-      const stored = localStorage.getItem('gramin_student_session');
-      if (stored) {
-        try {
-          const localUser = JSON.parse(stored);
-          if (localUser && localUser.mobile === userMobile) {
-            const { syncFirebaseUserWithLWW } = await import('../lib/firebase');
-            const { resolvedUser, conflictResolved, source } = await syncFirebaseUserWithLWW(userMobile, localUser);
-            if (conflictResolved && source === 'remote') {
-              localStorage.setItem('gramin_student_session', JSON.stringify(resolvedUser));
-              // console.log(`[LWW Reconciler] Conflict resolved. Remote user profile is newer than local. Applied remote changes locally.`);
-            }
-          }
-        } catch (sessionErr) {
-          console.warn("[LWW Reconciler] User session LWW reconciliation skipped or failed:", sessionErr);
-        }
-      }
-
-      // 1. Reconcile Learning Progress
-      const pendingProgress = this.getPendingProgress(userMobile);
-      if (pendingProgress.length > 0) {
-        // Submit each progress update to the backend or apply locally to confirmed states
-        for (const prog of pendingProgress) {
-          if (prog.type === 'quiz_points') {
-            const confirmedPoints = parseInt(localStorage.getItem(`${userMobile}_quizzes_total_points`) || '0', 10);
-            const nextPoints = confirmedPoints + Number(prog.value);
-            localStorage.setItem(`${userMobile}_quizzes_total_points`, String(nextPoints));
-          } else if (prog.type === 'medal_earned') {
-            const rawMedals = localStorage.getItem(`${userMobile}_profile_earned_medals`);
-            const medals: string[] = rawMedals ? JSON.parse(rawMedals) : [];
-            if (!medals.includes(String(prog.value))) {
-              medals.push(String(prog.value));
-              localStorage.setItem(`${userMobile}_profile_earned_medals`, JSON.stringify(medals));
-            }
-          }
-          progressSynced++;
-        }
-        // Safely clear the progress queue
-        localStorage.setItem(`gramin_pending_progress_${userMobile}`, JSON.stringify([]));
-      }
-
-      // 2. Reconcile Pending Chats with live Gemini
+      // 1. Reconcile Pending Chats FIRST with live Gemini (highest priority for user feedback)
       const pendingChats = this.getPendingChats(userMobile);
       if (pendingChats.length > 0) {
         const remainingChats: PendingChat[] = [];
 
         for (const chat of pendingChats) {
           try {
+            // 0. Set generating placeholder in chat history and notify subscribers immediately
+            try {
+              const currentHist = this.getChatHistory(chat.characterId, userMobile);
+              const cleaned = currentHist.filter(m => !m.id.startsWith('ai-off-') && !m.id.startsWith('ai-generating-'));
+              const generatingMsg: ChatMessage = {
+                id: 'ai-generating-' + chat.id,
+                sender: 'assistant',
+                text: chat.lang === 'hi' 
+                  ? '🔄 इंटरनेट बहाल हुआ! स्वामी एआई आपके प्रश्न का उत्तर तैयार कर रहे हैं...'
+                  : '🔄 Online connection restored! Generating your response now...',
+                isGenerating: true,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              };
+              this.saveChatHistory(chat.characterId, [...cleaned, generatingMsg], userMobile);
+              this.notifyUpdate();
+            } catch (genErr) {
+              console.warn("Failed to inject generating placeholder:", genErr);
+            }
+
             const characterInfo = this.getMascotConfig(chat.characterId);
             
             const bodyPayload: any = {
@@ -369,6 +346,8 @@ class OfflineSyncManager {
                 id: 'ai-resumed-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
                 sender: 'assistant',
                 text: responseText,
+                isResumedAfterOnline: true,
+                isGenerating: false,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               };
 
@@ -379,12 +358,12 @@ class OfflineSyncManager {
                   pending: false,
                   failed: false
                 };
-                // Strip out any offline notice(s) that were posted while offline
-                const before = history.slice(0, userIndex).filter(m => !m.id.startsWith('ai-off-'));
-                const after = history.slice(userIndex + 1).filter(m => !m.id.startsWith('ai-off-'));
+                // Strip out any offline notice(s) or generating placeholders
+                const before = history.slice(0, userIndex).filter(m => !m.id.startsWith('ai-off-') && !m.id.startsWith('ai-generating-'));
+                const after = history.slice(userIndex + 1).filter(m => !m.id.startsWith('ai-off-') && !m.id.startsWith('ai-generating-'));
                 updatedHistory = [...before, confirmedUserMsg, aiMsg, ...after];
               } else {
-                const cleaned = history.filter(m => !m.id.startsWith('ai-off-'));
+                const cleaned = history.filter(m => !m.id.startsWith('ai-off-') && !m.id.startsWith('ai-generating-'));
                 updatedHistory = [...cleaned, aiMsg];
               }
 
@@ -414,16 +393,68 @@ class OfflineSyncManager {
                 // Non-critical session sync
               }
             } else {
-              // Hold for next attempt
+              // Hold for next attempt - clean up temporary generating notice
+              try {
+                const hist = this.getChatHistory(chat.characterId, userMobile);
+                const cleaned = hist.filter(m => !m.id.startsWith('ai-generating-'));
+                this.saveChatHistory(chat.characterId, cleaned, userMobile);
+              } catch {}
               remainingChats.push(chat);
             }
           } catch (itemErr) {
             console.error("Error synchronizing single chat index:", chat.id, itemErr);
+            try {
+              const hist = this.getChatHistory(chat.characterId, userMobile);
+              const cleaned = hist.filter(m => !m.id.startsWith('ai-generating-'));
+              this.saveChatHistory(chat.characterId, cleaned, userMobile);
+            } catch {}
             remainingChats.push(chat);
           }
         }
         
         localStorage.setItem(`gramin_pending_chats_${userMobile}`, JSON.stringify(remainingChats));
+      }
+
+      // 2. Reconcile Learning Progress
+      const pendingProgress = this.getPendingProgress(userMobile);
+      if (pendingProgress.length > 0) {
+        // Submit each progress update to the backend or apply locally to confirmed states
+        for (const prog of pendingProgress) {
+          if (prog.type === 'quiz_points') {
+            const confirmedPoints = parseInt(localStorage.getItem(`${userMobile}_quizzes_total_points`) || '0', 10);
+            const nextPoints = confirmedPoints + Number(prog.value);
+            localStorage.setItem(`${userMobile}_quizzes_total_points`, String(nextPoints));
+          } else if (prog.type === 'medal_earned') {
+            const rawMedals = localStorage.getItem(`${userMobile}_profile_earned_medals`);
+            const medals: string[] = rawMedals ? JSON.parse(rawMedals) : [];
+            if (!medals.includes(String(prog.value))) {
+              medals.push(String(prog.value));
+              localStorage.setItem(`${userMobile}_profile_earned_medals`, JSON.stringify(medals));
+            }
+          }
+          progressSynced++;
+        }
+        // Safely clear the progress queue
+        localStorage.setItem(`gramin_pending_progress_${userMobile}`, JSON.stringify([]));
+      }
+
+      // 3. Reconcile user session non-blocking using Last-Write-Wins (LWW) conflict resolution
+      const stored = localStorage.getItem('gramin_student_session');
+      if (stored) {
+        try {
+          const localUser = JSON.parse(stored);
+          if (localUser && localUser.mobile === userMobile) {
+            import('../lib/firebase').then(({ syncFirebaseUserWithLWW }) => {
+              syncFirebaseUserWithLWW(userMobile, localUser).then(({ resolvedUser, conflictResolved, source }) => {
+                if (conflictResolved && source === 'remote') {
+                  localStorage.setItem('gramin_student_session', JSON.stringify(resolvedUser));
+                }
+              }).catch(() => {});
+            }).catch(() => {});
+          }
+        } catch (sessionErr) {
+          console.warn("[LWW Reconciler] User session LWW reconciliation skipped:", sessionErr);
+        }
       }
 
       this.notifyUpdate();
@@ -491,7 +522,7 @@ class OfflineSyncManager {
   }
 
   // Helper to fetch Mascot System Instructions
-  private getMascotConfig(id: string) {
+  public getMascotConfig(id: string) {
     switch (id) {
       case 'dadi':
         return {

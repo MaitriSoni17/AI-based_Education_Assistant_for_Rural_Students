@@ -147,16 +147,18 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
   const [errorMessage, setErrorMessage] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const [isOffline, setIsOffline] = useState(() => (typeof navigator !== 'undefined' && !navigator.onLine) || Boolean(isOfflineSimulated));
+  const [isOffline, setIsOffline] = useState(() => !offlineSyncManager.isOnline() || Boolean(isOfflineSimulated));
 
   useEffect(() => {
-    const handleOnline = () => setIsOffline(Boolean(isOfflineSimulated));
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    const handleSync = () => setIsOffline(!offlineSyncManager.isOnline() || Boolean(isOfflineSimulated));
+    handleSync();
+    const unsub = offlineSyncManager.subscribe(handleSync);
+    window.addEventListener('online', handleSync);
+    window.addEventListener('offline', handleSync);
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      unsub();
+      window.removeEventListener('online', handleSync);
+      window.removeEventListener('offline', handleSync);
     };
   }, [isOfflineSimulated]);
 

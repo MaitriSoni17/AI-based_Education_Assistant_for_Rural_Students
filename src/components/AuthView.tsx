@@ -52,17 +52,21 @@ export default function AuthView({
   const [isVerifying, setIsVerifying] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
 
-  // Offline detection state
-  const [isOffline, setIsOffline] = useState(() => (typeof navigator !== 'undefined' && !navigator.onLine) || Boolean(isOfflineSimulated));
+  // Offline detection state - direct subscription to offlineSyncManager for 100% reliable state
+  const [isOffline, setIsOffline] = useState(() => !offlineSyncManager.isOnline() || Boolean(isOfflineSimulated));
 
   useEffect(() => {
-    const handleOnline = () => setIsOffline(Boolean(isOfflineSimulated));
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    const handleSync = () => {
+      setIsOffline(!offlineSyncManager.isOnline() || Boolean(isOfflineSimulated));
+    };
+    handleSync();
+    const unsub = offlineSyncManager.subscribe(handleSync);
+    window.addEventListener('online', handleSync);
+    window.addEventListener('offline', handleSync);
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      unsub();
+      window.removeEventListener('online', handleSync);
+      window.removeEventListener('offline', handleSync);
     };
   }, [isOfflineSimulated]);
 
@@ -73,10 +77,44 @@ export default function AuthView({
 
   const cachedLocalUser = validateMobile(mobile) ? offlineSyncManager.getLocalUser(mobile) : null;
 
-  const handleQuickOfflineLogin = () => {
-    if (cachedLocalUser) {
-      onSuccess(cachedLocalUser);
+  const handleQuickOfflineLogin = (targetUser?: User | null) => {
+    const u = targetUser || cachedLocalUser;
+    if (u) {
+      onSuccess(u);
     }
+  };
+
+  const handleInstantOfflineAccess = (customMobile?: string, customName?: string) => {
+    const finalMobile = customMobile || (validateMobile(mobile) ? mobile : '9876543210');
+    const finalName = customName || (mode === 'signup' ? (name.trim() || 'New Student') : 'Student');
+
+    let existingUser = offlineSyncManager.getLocalUser(finalMobile);
+    if (!existingUser || mode === 'signup') {
+      existingUser = {
+        mobile: finalMobile,
+        name: finalName,
+        defaultLanguage: lang,
+        signupDate: getSafeDateString(),
+        state: state.trim() || 'Gujarat',
+        village: village.trim() || '',
+        school: school.trim() || '',
+        standard: standard || '8th',
+        board: board || 'GSEB',
+        streakDays: 1,
+        totalPoints: 15,
+        studyMins: 30,
+        isOfflineCreated: true,
+        pendingSync: true,
+        updatedAt: Date.now()
+      };
+      offlineSyncManager.saveLocalUser(existingUser, true);
+    }
+    try {
+      localStorage.setItem(`${finalMobile}_profile_state`, state || 'Gujarat');
+      localStorage.setItem(`${finalMobile}_profile_standard`, standard || '8th');
+      localStorage.setItem(`${finalMobile}_profile_board`, board || 'GSEB');
+    } catch (e) {}
+    onSuccess(existingUser);
   };
 
   const handleSendOTP = async (e: React.FormEvent) => {
@@ -107,27 +145,32 @@ export default function AuthView({
       // 1. If currently offline (or simulated offline):
       if (isOffline) {
         if (mode === 'login') {
-          const localUser = offlineSyncManager.getLocalUser(mobile);
-          if (localUser) {
-            setGeneratedOtp('123456');
-            setIsSimulated(true);
-            setIsOtpSent(true);
-            setErrorMessage('');
-          } else {
-            onSwitchMode('signup');
-            const msgs = {
-              hi: 'ऑफ़लाइन डिवाइस पर इस मोबाइल नंबर का कोई खाता नहीं मिला। हमने आपको ऑफ़लाइन पंजीकरण पर भेज दिया है ताकि आप तुरंत प्रोफ़ाइल बना सकें!',
-              gu: 'ઓફલાઇન ડિવાઇસ પર આ મોબાઈલ નંબરનું ખાતું મળ્યું નથી. અમે તમને ઓફલાઇન નોંધણી પર લઈ જઈએ છીએ!',
-              mr: 'ऑफलाइन डिव्हाइसवर या नंबरचे खाते आढळले नाही. ऑफलाइन नोंदणीवर पुनर्निर्देशित केले.',
-              ta: 'ஆஃப்லைனில் கணக்கு இல்லை. ஆஃப்லைன் பதிவுக்கு திருப்பி விடப்பட்டது.',
-              te: 'ఆఫ్‌లైన్‌లో ఖాతా కనుగొనబడలేదు. ఆఫ్‌లైన్ రిజిస్ట్రేషన్‌కు దారి మళ్లించబడింది.',
-              en: 'No offline profile found for this number. Guided you to offline registration so you can start right now!'
+          let localUser = offlineSyncManager.getLocalUser(mobile);
+          if (!localUser) {
+            localUser = {
+              mobile,
+              name: 'Student',
+              defaultLanguage: lang,
+              signupDate: getSafeDateString(),
+              state: 'Gujarat',
+              streakDays: 1,
+              totalPoints: 15,
+              studyMins: 30,
+              isOfflineCreated: true,
+              pendingSync: true,
+              updatedAt: Date.now()
             };
-            setErrorMessage(msgs[lang as keyof typeof msgs] || msgs.en);
+            offlineSyncManager.saveLocalUser(localUser, true);
           }
+          setGeneratedOtp('123456');
+          setOtp('123456');
+          setIsSimulated(true);
+          setIsOtpSent(true);
+          setErrorMessage('');
         } else {
           // Offline registration
           setGeneratedOtp('123456');
+          setOtp('123456');
           setIsSimulated(true);
           setIsOtpSent(true);
           setErrorMessage('');
@@ -452,7 +495,7 @@ export default function AuthView({
             <button
               type="button"
               id="auth-btn-quick-offline-login"
-              onClick={handleQuickOfflineLogin}
+              onClick={() => handleQuickOfflineLogin()}
               className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
             >
               Instant Login
@@ -715,6 +758,23 @@ export default function AuthView({
                 </>
               )}
             </button>
+
+            {/* Direct 1-Click Offline Access Button */}
+            {isOffline && (
+              <button
+                type="button"
+                id="auth-direct-offline-btn"
+                onClick={() => handleInstantOfflineAccess()}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer mt-2"
+              >
+                <Zap className="h-4 w-4 text-amber-300" />
+                <span>
+                  {mode === 'signup' 
+                    ? (lang === 'hi' ? '⚡ 1-क्लिक तुरंत ऑफ़लाइन पंजीकरण' : '⚡ Instant 1-Click Offline Register')
+                    : (lang === 'hi' ? '⚡ 1-क्लिक तुरंत ऑफ़लाइन लॉगिन' : '⚡ Instant 1-Click Offline Login')}
+                </span>
+              </button>
+            )}
           </form>
         ) : (
           /* SECTION 2: OTP typing form */

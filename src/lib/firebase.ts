@@ -195,7 +195,7 @@ export interface FirestoreUser {
  */
 export async function getFirebaseUser(mobile: string): Promise<FirestoreUser | null> {
   // If offline or quota exceeded, instantly retrieve locally cached profile
-  if ((typeof navigator !== 'undefined' && !navigator.onLine) || isQuotaExceeded) {
+  if (!offlineSyncManager.isOnline() || (typeof navigator !== 'undefined' && !navigator.onLine) || isQuotaExceeded) {
     const local = offlineSyncManager.getLocalUser(mobile);
     return (local as unknown as FirestoreUser) || null;
   }
@@ -241,7 +241,7 @@ export async function syncFirebaseUserWithLWW(
     ...localUser
   };
 
-  if (isQuotaExceeded) {
+  if (!offlineSyncManager.isOnline() || (typeof navigator !== 'undefined' && !navigator.onLine) || isQuotaExceeded) {
     return { resolvedUser: fallbackUser, conflictResolved: false, source: 'local' };
   }
 
@@ -318,7 +318,7 @@ export async function setFirebaseUser(mobile: string, userData: Partial<Firestor
   // Always update local cache immediately
   offlineSyncManager.saveLocalUser({ mobile, ...userData });
 
-  if ((typeof navigator !== 'undefined' && !navigator.onLine) || isQuotaExceeded) return;
+  if (!offlineSyncManager.isOnline() || (typeof navigator !== 'undefined' && !navigator.onLine) || isQuotaExceeded) return;
   const path = `users/${mobile}`;
   try {
     const userDocRef = doc(db, "users", mobile);
