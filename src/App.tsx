@@ -630,6 +630,10 @@ export default function App() {
 
   const [isOfflineSimulated, setIsOfflineSimulated] = useState(false);
 
+  useEffect(() => {
+    offlineSyncManager.setSimulatedOffline(isOfflineSimulated);
+  }, [isOfflineSimulated]);
+
   const handleUpdateUser = async (fields: Partial<User>) => {
     if (!user) return;
 
@@ -749,6 +753,7 @@ export default function App() {
                 onSwitchMode={handleNavigate}
                 lang={currentLanguage}
                 onLanguageChange={handleLanguageChange}
+                isOfflineSimulated={isOfflineSimulated}
               />
             </ErrorBoundary>
           )}
@@ -773,6 +778,7 @@ export default function App() {
                 lang={currentLanguage}
                 adminUser={adminUser}
                 onGoToDashboard={() => handleNavigate('admin-dashboard')}
+                isOfflineSimulated={isOfflineSimulated}
               />
             </ErrorBoundary>
           )}
@@ -798,6 +804,7 @@ export default function App() {
                   adminUser={adminUser}
                   onGoToDashboard={() => handleNavigate('admin-dashboard')}
                   onLanguageChange={setCurrentLanguage}
+                  isOfflineSimulated={isOfflineSimulated}
                 />
               </ErrorBoundary>
             )

@@ -1,4 +1,4 @@
-import { LanguageCode } from '../types';
+import { LanguageCode, User } from '../types';
 import { safeFetchJson } from './safeFetch';
 
 export interface LearningFeedEvent {
@@ -29,6 +29,9 @@ export interface PendingChat {
     name?: string;
   };
   timestamp: string;
+  lang?: LanguageCode;
+  board?: string;
+  systemInstruction?: string;
 }
 
 export interface ChatMessage {
@@ -48,15 +51,42 @@ export interface ChatMessage {
 class OfflineSyncManager {
   private listeners: Set<() => void> = new Set();
   private isOnlineState: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  private isSimulatedOfflineState: boolean = false;
   private isPersistedState: boolean = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
-      window.addEventListener('online', () => this.handleNetworkChange(true));
+      window.addEventListener('online', () => {
+        if (!this.isSimulatedOfflineState) {
+          this.handleNetworkChange(true);
+        }
+      });
       window.addEventListener('offline', () => this.handleNetworkChange(false));
       
       // Auto request/check storage persistence to shield cheap smartphones from data eviction
       this.initPersistentStorage();
+    }
+  }
+
+  public setSimulatedOffline(simulated: boolean) {
+    const wasSimulated = this.isSimulatedOfflineState;
+    this.isSimulatedOfflineState = simulated;
+    const realOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    const effectiveOnline = realOnline && !simulated;
+    
+    this.handleNetworkChange(effectiveOnline);
+
+    // If we just re-connected (turned simulation off) and network is actually available, resume pending immediately!
+    if (wasSimulated && !simulated && realOnline) {
+      const stored = localStorage.getItem('gramin_student_session');
+      if (stored) {
+        try {
+          const u = JSON.parse(stored);
+          if (u && u.mobile) {
+            this.reconcileAllPending(u.mobile);
+          }
+        } catch (e) {}
+      }
     }
   }
 
@@ -107,6 +137,7 @@ class OfflineSyncManager {
     this.notifyUpdate();
     if (online) {
       try {
+        this.syncPendingUsers().catch(() => {});
         const stored = localStorage.getItem('gramin_student_session');
         if (stored) {
           const u = JSON.parse(stored);
@@ -138,7 +169,9 @@ class OfflineSyncManager {
   }
 
   public isOnline(): boolean {
-    return this.isOnlineState;
+    if (this.isSimulatedOfflineState) return false;
+    const navOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    return this.isOnlineState && navOnline;
   }
 
   // --- CHAT HISTORY CACHING ---
@@ -306,7 +339,9 @@ class OfflineSyncManager {
             
             const bodyPayload: any = {
               message: chat.message,
-              systemInstruction: characterInfo.systemInstruction
+              systemInstruction: chat.systemInstruction || characterInfo.systemInstruction,
+              board: chat.board || 'CBSE',
+              lang: chat.lang || 'en'
             };
 
             if (chat.image) {
@@ -324,28 +359,60 @@ class OfflineSyncManager {
             });
 
             if (data.success || data.text) {
-              // Append to character chat logs, removing the 'pending' tag from user message
+              const responseText = data.text || data.message || "Here is the explanation for your query!";
               const history = this.getChatHistory(chat.characterId, userMobile);
               
-              // Find and un-pending the message
-              const updatedHistory = history.map(item => {
-                if (item.id === chat.id) {
-                  return { ...item, pending: false };
-                }
-                return item;
-              });
-
-              // Add actual mascot answer
+              // Un-pending user message and remove any temporary offline notice!
+              const userIndex = history.findIndex(item => item.id === chat.id);
+              
               const aiMsg: ChatMessage = {
-                id: 'ai-' + Date.now(),
+                id: 'ai-resumed-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
                 sender: 'assistant',
-                text: data.text,
+                text: responseText,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               };
-              
-              updatedHistory.push(aiMsg);
+
+              let updatedHistory: ChatMessage[];
+              if (userIndex !== -1) {
+                const confirmedUserMsg: ChatMessage = {
+                  ...history[userIndex],
+                  pending: false,
+                  failed: false
+                };
+                // Strip out any offline notice(s) that were posted while offline
+                const before = history.slice(0, userIndex).filter(m => !m.id.startsWith('ai-off-'));
+                const after = history.slice(userIndex + 1).filter(m => !m.id.startsWith('ai-off-'));
+                updatedHistory = [...before, confirmedUserMsg, aiMsg, ...after];
+              } else {
+                const cleaned = history.filter(m => !m.id.startsWith('ai-off-'));
+                updatedHistory = [...cleaned, aiMsg];
+              }
+
               this.saveChatHistory(chat.characterId, updatedHistory, userMobile);
               chatsSynced++;
+
+              // Also sync into stored session if present
+              try {
+                const storedSession = localStorage.getItem('gramin_student_session');
+                if (storedSession) {
+                  const u = JSON.parse(storedSession);
+                  if (u && u.chatSessions) {
+                    const sessions = JSON.parse(u.chatSessions);
+                    if (Array.isArray(sessions)) {
+                      const updatedSessions = sessions.map((s: any) => {
+                        if (s.characterId === chat.characterId) {
+                          return { ...s, messages: updatedHistory, updatedAt: Date.now() };
+                        }
+                        return s;
+                      });
+                      u.chatSessions = JSON.stringify(updatedSessions);
+                      localStorage.setItem('gramin_student_session', JSON.stringify(u));
+                    }
+                  }
+                }
+              } catch (sessErr) {
+                // Non-critical session sync
+              }
             } else {
               // Hold for next attempt
               remainingChats.push(chat);
@@ -440,6 +507,188 @@ Your goal is to teach rural Indian children concept of stars, clouds, rain, farm
           systemInstruction: `You are Swami AI 🤖, a friendly, encouraging robot educational mascot designed for rural Indian students. Teach Science, Logic, and lessons easily.`
         };
     }
+  }
+
+  // =========================================================================
+  // OFFLINE USER REGISTRY & RECONCILIATION
+  // =========================================================================
+
+  public getLocalUser(mobile: string): User | null {
+    if (typeof localStorage === 'undefined' || !mobile) return null;
+    try {
+      // 1. Check direct mobile key
+      const rawUser = localStorage.getItem(`gramin_user_${mobile}`);
+      if (rawUser) {
+        return JSON.parse(rawUser) as User;
+      }
+
+      // 2. Check registered users dictionary
+      const rawReg = localStorage.getItem('gramin_registered_users');
+      if (rawReg) {
+        const dict = JSON.parse(rawReg) as Record<string, User>;
+        if (dict && dict[mobile]) {
+          return dict[mobile];
+        }
+      }
+
+      // 3. Check active student/admin sessions
+      const studentSession = localStorage.getItem('gramin_student_session');
+      if (studentSession) {
+        const u = JSON.parse(studentSession) as User;
+        if (u && u.mobile === mobile) return u;
+      }
+      const adminSession = localStorage.getItem('gramin_admin_session');
+      if (adminSession) {
+        const u = JSON.parse(adminSession) as User;
+        if (u && u.mobile === mobile) return u;
+      }
+
+      // 4. Default Admin fallback for administrative mobile
+      if (mobile === '9999999999') {
+        const defaultAdmin: User = {
+          mobile: '9999999999',
+          name: 'System Administrator',
+          role: 'admin',
+          adminPin: '999999',
+          defaultLanguage: 'en',
+          signupDate: new Date().toLocaleDateString(),
+          village: 'HQ Control Center',
+          school: 'State Education Board',
+          standard: 'Admin Staff',
+          streakDays: 99,
+          totalPoints: 5000,
+          studyMins: 1200
+        };
+        return defaultAdmin;
+      }
+    } catch (e) {
+      console.warn("Error reading local user:", e);
+    }
+    return null;
+  }
+
+  public saveLocalUser(user: Partial<User> & { mobile: string }, isNewRegistration: boolean = false): User {
+    if (typeof localStorage === 'undefined' || !user.mobile) return user as User;
+    
+    const existing = this.getLocalUser(user.mobile);
+    const fullUser: User = {
+      mobile: user.mobile,
+      name: user.name || existing?.name || "Student",
+      defaultLanguage: user.defaultLanguage || existing?.defaultLanguage || "en",
+      role: user.role || existing?.role || (user.mobile === "9999999999" ? "admin" : "student"),
+      signupDate: user.signupDate || existing?.signupDate || new Date().toLocaleDateString(),
+      state: user.state || existing?.state || "Gujarat",
+      village: user.village || existing?.village || "",
+      school: user.school || existing?.school || "",
+      standard: user.standard || existing?.standard || "",
+      board: user.board || existing?.board || "",
+      streakDays: user.streakDays ?? existing?.streakDays ?? 1,
+      totalPoints: user.totalPoints ?? existing?.totalPoints ?? 15,
+      studyMins: user.studyMins ?? existing?.studyMins ?? 30,
+      adminPin: user.adminPin || existing?.adminPin || (user.role === 'admin' ? '999999' : undefined),
+      isOfflineCreated: user.isOfflineCreated ?? existing?.isOfflineCreated ?? !this.isOnline(),
+      pendingSync: user.pendingSync ?? (isNewRegistration || !this.isOnline()),
+      updatedAt: user.updatedAt || Date.now(),
+      ...user
+    };
+
+    try {
+      localStorage.setItem(`gramin_user_${user.mobile}`, JSON.stringify(fullUser));
+      
+      const rawReg = localStorage.getItem('gramin_registered_users');
+      const dict: Record<string, User> = rawReg ? JSON.parse(rawReg) : {};
+      dict[user.mobile] = fullUser;
+      localStorage.setItem('gramin_registered_users', JSON.stringify(dict));
+
+      if (fullUser.pendingSync) {
+        this.queuePendingUserSync(fullUser);
+      }
+    } catch (e) {
+      console.warn("Failed saving local user:", e);
+    }
+
+    this.notifyUpdate();
+
+    if (this.isOnline()) {
+      this.syncPendingUsers().catch(() => {});
+    }
+
+    return fullUser;
+  }
+
+  public getAllLocalUsers(): User[] {
+    if (typeof localStorage === 'undefined') return [];
+    try {
+      const rawReg = localStorage.getItem('gramin_registered_users');
+      if (rawReg) {
+        const dict = JSON.parse(rawReg) as Record<string, User>;
+        return Object.values(dict);
+      }
+    } catch (e) {
+      console.warn("Error getting all local users:", e);
+    }
+    return [];
+  }
+
+  public getPendingUsersToSync(): User[] {
+    if (typeof localStorage === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem('gramin_pending_user_sync');
+      if (raw) return JSON.parse(raw) as User[];
+    } catch (e) {}
+    return [];
+  }
+
+  public queuePendingUserSync(user: User) {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const list = this.getPendingUsersToSync();
+      const existingIdx = list.findIndex(u => u.mobile === user.mobile);
+      if (existingIdx >= 0) {
+        list[existingIdx] = user;
+      } else {
+        list.push(user);
+      }
+      localStorage.setItem('gramin_pending_user_sync', JSON.stringify(list));
+    } catch (e) {
+      console.warn("Failed to queue pending user sync:", e);
+    }
+  }
+
+  public async syncPendingUsers(): Promise<number> {
+    if (!this.isOnline()) return 0;
+    const pending = this.getPendingUsersToSync();
+    if (pending.length === 0) return 0;
+
+    let synced = 0;
+    try {
+      // 1. Sync batch with backend API
+      const res = await safeFetchJson('/api/auth/offline-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users: pending })
+      });
+
+      // 2. Sync each with Firestore
+      const { syncFirebaseUserWithLWW } = await import('../lib/firebase');
+      for (const u of pending) {
+        try {
+          await syncFirebaseUserWithLWW(u.mobile, u);
+          synced++;
+        } catch (fbErr) {
+          console.warn("Firestore sync for user skipped/deferred:", fbErr);
+        }
+      }
+
+      // Clear pending queue upon successful backend broadcast
+      if (res && res.success) {
+        localStorage.setItem('gramin_pending_user_sync', JSON.stringify([]));
+      }
+    } catch (err) {
+      console.warn("Failed syncing pending users:", err);
+    }
+
+    return synced;
   }
 }
 

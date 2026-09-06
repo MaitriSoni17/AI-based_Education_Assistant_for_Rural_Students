@@ -13,6 +13,7 @@ import {
   disableNetwork,
   setLogLevel
 } from "firebase/firestore";
+import { offlineSyncManager } from "../utils/offlineSync";
 
 // Suppress raw SDK internal console errors/warnings for quota exhaustion
 try {
@@ -193,18 +194,26 @@ export interface FirestoreUser {
  * Fetch a user profile by mobile number.
  */
 export async function getFirebaseUser(mobile: string): Promise<FirestoreUser | null> {
-  if (isQuotaExceeded) return null;
+  // If offline or quota exceeded, instantly retrieve locally cached profile
+  if ((typeof navigator !== 'undefined' && !navigator.onLine) || isQuotaExceeded) {
+    const local = offlineSyncManager.getLocalUser(mobile);
+    return (local as unknown as FirestoreUser) || null;
+  }
   const path = `users/${mobile}`;
   try {
     const userDocRef = doc(db, "users", mobile);
     const docSnap = await getDoc(userDocRef);
     if (docSnap.exists()) {
-      return docSnap.data() as FirestoreUser;
+      const data = docSnap.data() as FirestoreUser;
+      offlineSyncManager.saveLocalUser(data, false);
+      return data;
     }
     return null;
   } catch (error) {
-    handleFirestoreError(error, OperationType.GET, path);
-    return null;
+    // When offline, network dropped, or Firestore unavailable, fall back to local user store seamlessly
+    console.warn(`Firestore getDoc offline/failed on ${path}. Falling back to local user.`);
+    const local = offlineSyncManager.getLocalUser(mobile);
+    return (local as unknown as FirestoreUser) || null;
   }
 }
 
@@ -306,7 +315,10 @@ export async function syncFirebaseUserWithLWW(
  * Register a new user profile or update existing.
  */
 export async function setFirebaseUser(mobile: string, userData: Partial<FirestoreUser>): Promise<void> {
-  if (isQuotaExceeded) return;
+  // Always update local cache immediately
+  offlineSyncManager.saveLocalUser({ mobile, ...userData });
+
+  if ((typeof navigator !== 'undefined' && !navigator.onLine) || isQuotaExceeded) return;
   const path = `users/${mobile}`;
   try {
     const userDocRef = doc(db, "users", mobile);
@@ -333,7 +345,7 @@ export async function setFirebaseUser(mobile: string, userData: Partial<Firestor
       await setDoc(userDocRef, defaultUser);
     }
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    console.warn(`Firestore write deferred on ${path}. Cached locally.`);
   }
 }
 
@@ -341,13 +353,15 @@ export async function setFirebaseUser(mobile: string, userData: Partial<Firestor
  * Update specific fields in user profile.
  */
 export async function updateFirebaseUserFields(mobile: string, fields: Partial<FirestoreUser>): Promise<void> {
-  if (isQuotaExceeded) return;
+  offlineSyncManager.saveLocalUser({ mobile, ...fields });
+
+  if ((typeof navigator !== 'undefined' && !navigator.onLine) || isQuotaExceeded) return;
   const path = `users/${mobile}`;
   try {
     const userDocRef = doc(db, "users", mobile);
     await updateDoc(userDocRef, fields);
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    console.warn(`Firestore updateDoc deferred on ${path}. Cached locally.`);
   }
 }
 
@@ -355,19 +369,29 @@ export async function updateFirebaseUserFields(mobile: string, fields: Partial<F
  * Fetch all user profiles for Admin Dashboard analytics & management.
  */
 export async function getAllFirebaseUsers(): Promise<FirestoreUser[]> {
-  if (isQuotaExceeded) return [];
+  const localList = (offlineSyncManager.getAllLocalUsers() as unknown as FirestoreUser[]) || [];
+  if ((typeof navigator !== 'undefined' && !navigator.onLine) || isQuotaExceeded) {
+    return localList;
+  }
   const path = "users";
   try {
     const usersCol = collection(db, "users");
     const querySnapshot = await getDocs(usersCol);
-    const usersList: FirestoreUser[] = [];
+    const remoteList: FirestoreUser[] = [];
     querySnapshot.forEach((docSnap) => {
-      usersList.push(docSnap.data() as FirestoreUser);
+      const u = docSnap.data() as FirestoreUser;
+      remoteList.push(u);
+      offlineSyncManager.saveLocalUser(u, false);
     });
-    return usersList;
+
+    // Merge remote list with any locally stored users
+    const map = new Map<string, FirestoreUser>();
+    localList.forEach(u => map.set(u.mobile, u));
+    remoteList.forEach(u => map.set(u.mobile, u));
+    return Array.from(map.values());
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
-    return [];
+    console.warn(`Firestore list failed on ${path}. Returning local users.`);
+    return localList;
   }
 }
 
