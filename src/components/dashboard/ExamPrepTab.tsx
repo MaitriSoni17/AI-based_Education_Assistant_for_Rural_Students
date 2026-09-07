@@ -2690,10 +2690,11 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
 
                     {parsedReport.questions.map((q, idx) => {
                       const isExpanded = expandedQuestionIdx === idx;
-                      const isCorrect = q.status.toLowerCase().includes("correct") && !q.status.toLowerCase().includes("partially");
-                      const isPartially = q.status.toLowerCase().includes("partially");
-                      const isIncorrect = q.status.toLowerCase().includes("incorrect");
-                      const isUnattempted = q.status.toLowerCase().includes("unattempted");
+                      const statusStr = (q.status || '').toLowerCase();
+                      const isCorrect = statusStr.includes("correct") && !statusStr.includes("partially");
+                      const isPartially = statusStr.includes("partially");
+                      const isIncorrect = statusStr.includes("incorrect");
+                      const isUnattempted = statusStr.includes("unattempted");
 
                       let pillColor = "bg-gray-100 text-gray-700";
                       let borderColor = "border-gray-200 hover:border-gray-300";

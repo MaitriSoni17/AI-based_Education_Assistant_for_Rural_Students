@@ -2760,7 +2760,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     
     // Filter out welcome prompts if there are actual conversations
     const meaningfulMessages = messagesToExport.filter(m => 
-      m.sender === 'user' || (m.sender === 'bot' && !m.text.includes("Welcome to the Smart Equation & Science Hub"))
+      m.sender === 'user' || (m.sender === 'bot' && (!m.text || !m.text.includes("Welcome to the Smart Equation & Science Hub")))
     );
 
     const exportList = meaningfulMessages.length > 0 ? meaningfulMessages : messagesToExport;
@@ -5465,7 +5465,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                       )}
 
                       {/* Quick practice question solution chip */}
-                      {msg.sender === 'bot' && (
+                      {msg.sender === 'bot' && !!msg.text && (
                         (msg.text.toLowerCase().includes('practice') || 
                          msg.text.includes('अभ्यास') || 
                          msg.text.includes('स्वाध्याय') || 

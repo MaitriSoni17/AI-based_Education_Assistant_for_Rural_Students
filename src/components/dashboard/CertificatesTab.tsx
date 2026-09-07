@@ -126,7 +126,7 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(c => 
-        c.quizTitle.toLowerCase().includes(q) || 
+        (c.quizTitle || '').toLowerCase().includes(q) || 
         c.recipientName?.toLowerCase().includes(q) ||
         c.date?.toLowerCase().includes(q)
       );

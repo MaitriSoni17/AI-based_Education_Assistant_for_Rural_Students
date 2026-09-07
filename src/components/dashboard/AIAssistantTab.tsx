@@ -1399,8 +1399,10 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     const messagesToExport = customMessages || activeMessages;
     
     // Filter out bare welcome message if there are other conversation items
+    const welcomeEn = selectedChar?.welcome?.['en'] || '';
+    const welcomeCurr = selectedChar?.welcome?.[lang] || welcomeEn;
     const meaningfulMessages = messagesToExport.filter(m => 
-      m.sender === 'user' || (m.sender === 'assistant' && !m.text.includes(selectedChar.welcome[lang] || selectedChar.welcome['en']))
+      m.sender === 'user' || (m.sender === 'assistant' && (!welcomeCurr || !(m.text || '').includes(welcomeCurr)))
     );
 
     const exportList = meaningfulMessages.length > 0 ? meaningfulMessages : messagesToExport;
@@ -2182,8 +2184,13 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                       {/* Render Messages in exact native bubble styling, collapsible */}
                       {expandedSessions[session.id] && (
                         <div className="space-y-4 pl-1 sm:pl-3 border-t border-gray-150/40 pt-3 animate-fade-in">
-                          {session.messages
-                            .filter(msg => msg.sender === 'user' || (msg.sender === 'assistant' && !msg.text.includes(selectedChar.welcome[lang] || '')))
+                          {(session.messages || [])
+                            .filter(msg => {
+                              if (msg.sender === 'user') return true;
+                              if (!msg.text) return false;
+                              const welcomeStr = selectedChar?.welcome?.[lang] || selectedChar?.welcome?.['en'] || '';
+                              return !welcomeStr || !msg.text.includes(welcomeStr);
+                            })
                             .map((msg, idx) => {
                               const isMe = msg.sender === 'user';
                               return (

@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Sparkles, Lightbulb } from 'lucide-react';
 
 interface InteractiveAITeacherProps {
-  avatarChar: string;
-  avatarName: string;
+  avatarChar?: string;
+  avatarName?: string;
   action?: 'idle' | 'explaining' | 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think';
   isPlaying?: boolean;
   themeColor?: string;
@@ -12,13 +12,16 @@ interface InteractiveAITeacherProps {
 }
 
 export default function InteractiveAITeacher({
-  avatarChar,
-  avatarName,
+  avatarChar = "🤖 Swami AI",
+  avatarName = "Swami AI",
   action = 'idle',
   isPlaying = false,
   className = "",
   minimal = false
 }: InteractiveAITeacherProps) {
+  const safeChar = avatarChar || "🤖 Swami AI";
+  const safeName = avatarName || "Swami AI";
+
   const [blink, setBlink] = useState(false);
   const [mouthStep, setMouthStep] = useState(0);
   const [eyeLook, setEyeLook] = useState<'center' | 'left' | 'right' | 'up'>('center');
@@ -26,24 +29,24 @@ export default function InteractiveAITeacher({
 
   // Parse teacher type
   let teacherType: 'dadi' | 'swami' | 'chanda' | 'scholar' | 'eagle' | 'panther' | 'rocket' | 'legend' | 'poet' | 'nature' | 'generic' = 'generic';
-  const charLower = (avatarChar + " " + avatarName).toLowerCase();
-  if (avatarChar.includes('👵') || charLower.includes('dadi')) {
+  const charLower = (safeChar + " " + safeName).toLowerCase();
+  if (safeChar.includes('👵') || charLower.includes('dadi')) {
     teacherType = 'dadi';
-  } else if (avatarChar.includes('🤖') || (charLower.includes('swami') && !charLower.includes('panther')) || (charLower.includes('robot'))) {
+  } else if (safeChar.includes('🤖') || (charLower.includes('swami') && !charLower.includes('panther')) || (charLower.includes('robot'))) {
     teacherType = 'swami';
-  } else if (avatarChar.includes('🦊') || charLower.includes('chanda')) {
+  } else if (safeChar.includes('🦊') || charLower.includes('chanda')) {
     teacherType = 'chanda';
   } else if (charLower.includes('panther') || charLower.includes('turing')) {
     teacherType = 'panther';
-  } else if (avatarChar.includes('🦅') || charLower.includes('william') || charLower.includes('eagle')) {
+  } else if (safeChar.includes('🦅') || charLower.includes('william') || charLower.includes('eagle')) {
     teacherType = 'eagle';
-  } else if (avatarChar.includes('📜') || avatarChar.includes('📖') || avatarChar.includes('✍️') || charLower.includes('narmad') || charLower.includes('premchand') || charLower.includes('tulsi') || charLower.includes('kavi') || charLower.includes('scholar')) {
+  } else if (safeChar.includes('📜') || safeChar.includes('📖') || safeChar.includes('✍️') || charLower.includes('narmad') || charLower.includes('premchand') || charLower.includes('tulsi') || charLower.includes('kavi') || charLower.includes('scholar')) {
     teacherType = 'scholar';
-  } else if (avatarChar.includes('🛡️') || charLower.includes('laxmi') || charLower.includes('shivaji') || charLower.includes('ashoka')) {
+  } else if (safeChar.includes('🛡️') || charLower.includes('laxmi') || charLower.includes('shivaji') || charLower.includes('ashoka')) {
     teacherType = 'legend';
-  } else if (avatarChar.includes('🦚') || charLower.includes('shakespeare') || charLower.includes('poet') || charLower.includes('wordsworth')) {
+  } else if (safeChar.includes('🦚') || charLower.includes('shakespeare') || charLower.includes('poet') || charLower.includes('wordsworth')) {
     teacherType = 'poet';
-  } else if (avatarChar.includes('🌿') || avatarChar.includes('🦌') || charLower.includes('prakriti') || charLower.includes('flora')) {
+  } else if (safeChar.includes('🌿') || safeChar.includes('🦌') || charLower.includes('prakriti') || charLower.includes('flora')) {
     teacherType = 'nature';
   }
 
@@ -704,24 +707,24 @@ export default function InteractiveAITeacher({
 
   // 4. Render Generic/Specialized AI Teacher Face - High quality Human avatar with dynamic mascot badge pin
   const renderGenericFace = () => {
-    const avatarEmoji = avatarChar.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|👵|🤖|🦊|🚀|📜|🛡️|🦅|🧪|📐|🦚|🌿|📈|💻|🕉️|✍️|🎓|🔢|🍎|🦁|🗺️/u)?.[0] || '🎓';
+    const avatarEmoji = safeChar.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|👵|🤖|🦊|🚀|📜|🛡️|🦅|🧪|📐|🦚|🌿|📈|💻|🕉️|✍️|🎓|🔢|🍎|🦁|🗺️/u)?.[0] || '🎓';
     
-    // Choose dynamic shirt gradient based on character avatarChar or avatarName
+    // Choose dynamic shirt gradient based on character safeChar or safeName
     let shirtBg = "from-indigo-600 via-indigo-700 to-indigo-600";
-    if (avatarChar.includes('🚀') || avatarChar.includes('🔬') || avatarChar.includes('🍎')) shirtBg = "from-sky-600 via-blue-700 to-sky-600";
-    if (avatarChar.includes('📜') || avatarChar.includes('📖') || avatarChar.includes('✍️')) shirtBg = "from-amber-600 via-amber-700 to-amber-600";
-    if (avatarChar.includes('🛡️') || avatarChar.includes('🏛️')) shirtBg = "from-rose-600 via-red-700 to-rose-600";
-    if (avatarChar.includes('🌿') || avatarChar.includes('🍃')) shirtBg = "from-emerald-600 via-teal-700 to-emerald-600";
-    if (avatarChar.includes('🦚') || avatarChar.includes('🦅')) shirtBg = "from-purple-600 via-violet-700 to-purple-600";
-    if (avatarChar.includes('📐') || avatarChar.includes('🔢')) shirtBg = "from-orange-600 via-amber-600 to-orange-600";
-    if (avatarChar.includes('📈') || avatarChar.includes('💻')) shirtBg = "from-cyan-600 via-[#3D405B] to-cyan-600";
+    if (safeChar.includes('🚀') || safeChar.includes('🔬') || safeChar.includes('🍎')) shirtBg = "from-sky-600 via-blue-700 to-sky-600";
+    if (safeChar.includes('📜') || safeChar.includes('📖') || safeChar.includes('✍️')) shirtBg = "from-amber-600 via-amber-700 to-amber-600";
+    if (safeChar.includes('🛡️') || safeChar.includes('🏛️')) shirtBg = "from-rose-600 via-red-700 to-rose-600";
+    if (safeChar.includes('🌿') || safeChar.includes('🍃')) shirtBg = "from-emerald-600 via-teal-700 to-emerald-600";
+    if (safeChar.includes('🦚') || safeChar.includes('🦅')) shirtBg = "from-purple-600 via-violet-700 to-purple-600";
+    if (safeChar.includes('📐') || safeChar.includes('🔢')) shirtBg = "from-orange-600 via-amber-600 to-orange-600";
+    if (safeChar.includes('📈') || safeChar.includes('💻')) shirtBg = "from-cyan-600 via-[#3D405B] to-cyan-600";
 
     return (
       <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
         {/* Mascot Emoji Badge Pin Floating above Head */}
         <div className="absolute top-0 z-20 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded-full shadow-md border border-amber-300 text-xs flex items-center gap-1 animate-bounce">
           <span>{avatarEmoji}</span>
-          <span className="text-[8px] font-mono font-bold text-slate-800 uppercase tracking-tighter truncate max-w-16">{avatarName.split(' ')[0]}</span>
+          <span className="text-[8px] font-mono font-bold text-slate-800 uppercase tracking-tighter truncate max-w-16">{safeName.split(' ')[0]}</span>
         </div>
 
         {/* Slick neat stylized top hairstyle with gradients */}
@@ -875,7 +878,7 @@ export default function InteractiveAITeacher({
       {/* Name Title label card */}
       <div className="mt-2 text-center">
         <span className="bg-[#E07A5F] text-white text-[10px] font-sans font-black uppercase tracking-wider px-3.5 py-1 rounded-full shadow-md select-none border border-white">
-          {avatarName}
+          {safeName}
         </span>
       </div>
     </div>

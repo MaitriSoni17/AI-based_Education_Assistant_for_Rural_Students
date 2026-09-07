@@ -538,7 +538,10 @@ export default function App() {
           // Parse checkInDates array
           let checkInList: string[] = [];
           try {
-            if (current.checkInDates) checkInList = JSON.parse(current.checkInDates);
+            if (current.checkInDates) {
+              const parsed = JSON.parse(current.checkInDates);
+              if (Array.isArray(parsed)) checkInList = parsed;
+            }
           } catch(e) {}
 
           // Parse dailyStudyLog object

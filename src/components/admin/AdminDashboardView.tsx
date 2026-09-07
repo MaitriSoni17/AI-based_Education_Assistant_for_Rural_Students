@@ -3484,7 +3484,9 @@ startxref
     }
     const query = certSearch.trim().toLowerCase();
     const found = certificates.find(
-      (c) => c.id.toLowerCase() === query || c.studentMobile.includes(query) || c.studentName.toLowerCase().includes(query)
+      (c) => (c.id || '').toLowerCase() === query || 
+             (c.studentMobile || '').includes(query) || 
+             (c.studentName || '').toLowerCase().includes(query)
     );
     setVerificationResult(found || 'not_found');
   };
@@ -3492,8 +3494,8 @@ startxref
   // Filtered users list
   const filteredUsers = usersList.filter((u) => {
     const matchesSearch =
-      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.mobile.includes(userSearch) ||
+      (u.name || '').toLowerCase().includes(userSearch.toLowerCase()) ||
+      (u.mobile || '').includes(userSearch) ||
       (u.village && u.village.toLowerCase().includes(userSearch.toLowerCase())) ||
       (u.school && u.school.toLowerCase().includes(userSearch.toLowerCase()));
     

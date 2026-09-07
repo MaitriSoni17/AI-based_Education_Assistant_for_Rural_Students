@@ -1573,8 +1573,8 @@ export default function AdminPdfsTab({ user, lang }: AdminPdfsTabProps) {
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const nameMatch = f.name.toLowerCase().includes(q);
-        const subjMatch = f.subject.toLowerCase().includes(q);
+        const nameMatch = (f.name || '').toLowerCase().includes(q);
+        const subjMatch = (f.subject || '').toLowerCase().includes(q);
         const descMatch = (f.description || '').toLowerCase().includes(q);
         if (!nameMatch && !subjMatch && !descMatch) return false;
       }

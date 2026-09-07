@@ -412,7 +412,10 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
 
   let checkInDatesList: string[] = [];
   try {
-    if (user.checkInDates) checkInDatesList = JSON.parse(user.checkInDates);
+    if (user.checkInDates) {
+      const parsed = JSON.parse(user.checkInDates);
+      if (Array.isArray(parsed)) checkInDatesList = parsed;
+    }
   } catch(e) {}
 
   let dailyStudyLogMap: Record<string, number> = {};
@@ -511,7 +514,10 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
 
     let checkInList: string[] = [];
     try {
-      if (user.checkInDates) checkInList = JSON.parse(user.checkInDates);
+      if (user.checkInDates) {
+        const parsed = JSON.parse(user.checkInDates);
+        if (Array.isArray(parsed)) checkInList = parsed;
+      }
     } catch(e) {}
     if (!checkInList.includes(todayStr)) {
       checkInList.push(todayStr);
@@ -980,7 +986,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
               : (dailyStudyLogMap[dateStr] ?? 0);
             
             // Determine if checked in strictly based on actual records or >=5 mins logged:
-            const isExplicitCheckIn = checkInDatesList.includes(dateStr) || dayMinsRecorded >= 5;
+            const isExplicitCheckIn = (Array.isArray(checkInDatesList) && checkInDatesList.includes(dateStr)) || dayMinsRecorded >= 5;
             const isDayCompleted = isExplicitCheckIn || (info.isToday && hasCheckedInToday);
             const isToday = info.isToday;
             

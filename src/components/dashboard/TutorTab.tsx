@@ -1285,55 +1285,55 @@ export default function TutorTab({
 
     // 1. Math / Algebra / Geometry / Equations
     if (/math|algebra|geometry|pythagoras|trigonometry|equation|square|fraction|calculus|number|arithmetic|ગણિત|બીજગણિત|ભૂમિતિ|સમીકરણ|સંખ્યા|गणित|बीजगणित|ज्यामिति|समीकरण|संख्या/.test(q)) {
-      const match = boardMascots.find(m => m.id.includes('math') || m.avatarChar.includes('📐') || m.avatarChar.includes('🦊'));
+      const match = boardMascots.find(m => (m.id || '').includes('math') || (m.avatarChar || '').includes('📐') || (m.avatarChar || '').includes('🦊'));
       if (match) return match;
     }
 
     // 2. Physics / Space / Gravity / Motion / Rocket / Optics / Energy
     if (/physics|space|gravity|rocket|planet|orbit|motion|force|optics|light|energy|atom|speed|ભૌતિક|સ્પેસ|રોકેટ|ગુરુત્વાકર્ષણ|અવકાશ|પ્રકાશ|ઉર્જા|भौतिक|अंतरिक्ष|रॉकेट|गुरुत्वाकर्षण|प्रकाश|ऊर्जा|गति/.test(q)) {
-      const match = boardMascots.find(m => m.id.includes('phy') || m.avatarChar.includes('🚀') || m.avatarChar.includes('🍎') || m.avatarChar.includes('🤖'));
+      const match = boardMascots.find(m => (m.id || '').includes('phy') || (m.avatarChar || '').includes('🚀') || (m.avatarChar || '').includes('🍎') || (m.avatarChar || '').includes('🤖'));
       if (match) return match;
     }
 
     // 3. Biology / Health / Human Body / Blood / Cell / Plant / Organ / Photosynthesis
     if (/biology|bio|cell|blood|organ|heart|plant|photosynthesis|health|disease|doctor|medicine|જીવવિજ્ઞાન|કોષ|ઓક્સિજન|હૃદય|વનસ્પતિ|આરોગ્ય|દવા|जीवविज्ञान|कोशिका|रक्त|ऑक्सीजन|हृदय|पौधे|स्वास्थ्य/.test(q)) {
-      const match = boardMascots.find(m => m.id.includes('bio') || m.avatarChar.includes('🧪') || m.avatarChar.includes('🤖'));
+      const match = boardMascots.find(m => (m.id || '').includes('bio') || (m.avatarChar || '').includes('🧪') || (m.avatarChar || '').includes('🤖'));
       if (match) return match;
     }
 
     // 4. Science / Chemistry / Experiment
     if (/science|chemistry|acid|base|reaction|element|વિજ્ઞાન|રસાયણ|પ્રયોગ|તત્વ|તત્વો|विज्ञान|रसायन|प्रयोग|तत्व/.test(q)) {
-      const match = boardMascots.find(m => m.id.includes('sci') || m.avatarChar.includes('🤖') || m.avatarChar.includes('🧪'));
+      const match = boardMascots.find(m => (m.id || '').includes('sci') || (m.avatarChar || '').includes('🤖') || (m.avatarChar || '').includes('🧪'));
       if (match) return match;
     }
 
     // 5. History / Civics / Social Science / Freedom / Constitution / Democracy
     if (/history|civics|constitution|democracy|freedom|ambedkar|laxmi|gandhi|war|dynasty|government|rights|ઇતિહાસ|નાગરિક|બંધારણ|લોકશાહી|સ્વાતંત્ર્ય|ઇતિહાસ|इतिहास|नागरिक|संविधान|लोकतंत्र|स्वतंत्रता/.test(q)) {
-      const match = boardMascots.find(m => m.id.includes('hist') || m.avatarChar.includes('👵') || m.avatarChar.includes('🛡️'));
+      const match = boardMascots.find(m => (m.id || '').includes('hist') || (m.avatarChar || '').includes('👵') || (m.avatarChar || '').includes('🛡️'));
       if (match) return match;
     }
 
     // 6. Gujarati / Literature / Poetry / Sahitya / Grammar / Vyakaran
     if (/gujarati|sahitya|vyakaran|kavita|grammar|narmad|કવિતા|સાહિત્ય|વ્યાકરણ|ગુજરાતી|કવિ|સાહિત્યકાર/.test(q)) {
-      const match = boardMascots.find(m => m.id.includes('guj') || m.avatarChar.includes('📜'));
+      const match = boardMascots.find(m => (m.id || '').includes('guj') || (m.avatarChar || '').includes('📜'));
       if (match) return match;
     }
 
     // 7. English / Vocabulary / Tense / Essay / Grammar
     if (/english|grammar|vocabulary|tense|essay|poem|english|અંગ્રેજી|વ્યાકરણ|શબ્દો|अंग्रेजी|व्याकरण|शब्द/.test(q)) {
-      const match = boardMascots.find(m => m.id.includes('eng') || m.avatarChar.includes('🦅'));
+      const match = boardMascots.find(m => (m.id || '').includes('eng') || (m.avatarChar || '').includes('🦅'));
       if (match) return match;
     }
 
     // 8. Computer Science / Coding / Python / Binary / AI / Tech
     if (/computer|code|coding|binary|bit|byte|python|algorithm|software|tech|ai|કમ્પ્યુટર|કોડિંગ|બાઈનરી|સૉફ્ટવેર|कंप्यूटर|कोडिंग|बाइनरी|सॉफ्टवेयर/.test(q)) {
-      const match = boardMascots.find(m => m.id.includes('cs') || m.avatarChar.includes('💻'));
+      const match = boardMascots.find(m => (m.id || '').includes('cs') || (m.avatarChar || '').includes('💻'));
       if (match) return match;
     }
 
     // 9. Agriculture / Farming / Crop / Soil / Drip
     if (/agri|agriculture|crop|farm|soil|kisan|drip|fertilizer|ખેતી|પાક|જમીન|કૃષિ|ખાતર|खेती|फसल|मिट्टी|कृषि|खाद/.test(q)) {
-      const match = boardMascots.find(m => m.id.includes('agri') || m.avatarChar.includes('🌾'));
+      const match = boardMascots.find(m => (m.id || '').includes('agri') || (m.avatarChar || '').includes('🌾'));
       if (match) return match;
     }
 
@@ -1664,7 +1664,7 @@ export default function TutorTab({
                 .replace(/[^a-z0-9]/g, '_')
                 .replace(/_+/g, '_')
                 .substring(0, 40);
-              const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+              const extension = (mimeType || '').includes('mp4') ? 'mp4' : 'webm';
               a.download = `mascot_lecture_${sanitizedTitle}.${extension}`;
               
               document.body.appendChild(a);
