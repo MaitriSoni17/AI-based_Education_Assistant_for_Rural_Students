@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LanguageCode, User } from '../../types';
 import { SUPPORTED_LANGUAGES, TRANSLATIONS } from '../../data/translations';
 import { STATES, STANDARDS, BOARDS } from '../../data/educationData';
-import { speakText, stopSpeaking } from '../../utils/speech';
-import { Settings, Volume2, Globe, GraduationCap, Check, Download, ChevronDown, Search } from 'lucide-react';
+import { speakText, stopSpeaking, checkVoiceAvailability } from '../../utils/speech';
+import { Settings, Volume2, Globe, GraduationCap, Check, Download, ChevronDown, Search, Play, Square, Radio } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 interface SettingsTabProps {
@@ -31,6 +31,44 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
   const [speechRate, setSpeechRate] = useState(() => {
     return localStorage.getItem('speech_rate_multiplier') || '1';
   });
+  const [isPlayingTest, setIsPlayingTest] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState(() => checkVoiceAvailability(lang));
+
+  useEffect(() => {
+    setVoiceStatus(checkVoiceAvailability(lang));
+    const handleVoicesChanged = () => {
+      setVoiceStatus(checkVoiceAvailability(lang));
+    };
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+    }
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+      }
+    };
+  }, [lang]);
+
+  const handleTestSpeech = () => {
+    if (isPlayingTest) {
+      stopSpeaking();
+      setIsPlayingTest(false);
+      return;
+    }
+    const samplePhrases: Record<string, string> = {
+      hi: 'नमस्ते! विद्यासेतु में आपका स्वागत है। आपकी पढ़ाई अब और भी आसान और रोचक होगी।',
+      gu: 'નમસ્તે! વિદ્યાસેતુમાં આપનું હાર્દિક સ્વાગત છે. તમારો અભ્યાસ હવે વધુ સરળ બનશે.',
+      mr: 'नमस्कार! विद्यासेतू मध्ये आपले स्वागत आहे. आपला अभ्यास आता अधिक सोपा आणि रंजक होईल.',
+      ta: 'வணக்கம்! வித்யாசேதுவிற்கு உங்களை அன்புடன் வரவேற்கிறோம்.',
+      te: 'నమస్కారం! విద్యాసేతుకు స్వాగతం. మీ చదువు ఇప్పుడు మరింత సులభం.',
+      en: 'Hello! Welcome to VidyaSetu AI Education Platform.'
+    };
+    const sample = samplePhrases[lang] || samplePhrases.en;
+    setIsPlayingTest(true);
+    speakText(sample, lang, 'Swami', '🤖', () => {
+      setIsPlayingTest(false);
+    });
+  };
 
   const [savingKey, setSavingKey] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -392,6 +430,56 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* 2. Audio Engine Diagnostics & Live Voice Tester */}
+        <div className="bg-white rounded-2xl border border-gray-150 p-5 shadow-3xs space-y-3.5">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+            <h3 className="font-display font-extrabold text-xs text-[#3D405B] uppercase tracking-wider flex items-center gap-1.5">
+              <Radio className="h-4 w-4 text-[#81B29A]" />
+              Voice Engine & Diagnostics
+            </h3>
+            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+              voiceStatus.hasNativeVoice
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : 'bg-blue-50 text-blue-700 border border-blue-200'
+            }`}>
+              {voiceStatus.hasNativeVoice ? 'Native Device Voice' : 'Cloud Regional TTS'}
+            </span>
+          </div>
+
+          <div className="text-xs space-y-2 text-gray-600 font-sans">
+            <p className="text-[11px] leading-relaxed text-gray-500">
+              {voiceStatus.hasNativeVoice
+                ? `Detected ${voiceStatus.matchingVoicesCount} native device voice pack(s) for your language: ${voiceStatus.voiceNames.slice(0, 2).join(', ')}.`
+                : `Your browser or mobile operating system does not have an offline voice pack for ${SUPPORTED_LANGUAGES.find(l => l.code === lang)?.label || lang}. VidyaSetu automatically routes all speech via the High-Definition Cloud Regional TTS proxy for clear, natural native pronunciation.`
+              }
+            </p>
+
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={handleTestSpeech}
+                className={`w-full py-2 px-3 rounded-xl text-xs font-bold font-sans flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                  isPlayingTest
+                    ? 'bg-rose-500 hover:bg-rose-600 text-white'
+                    : 'bg-[#81B29A] hover:bg-[#6FA088] text-white shadow-xs'
+                }`}
+              >
+                {isPlayingTest ? (
+                  <>
+                    <Square className="h-3.5 w-3.5 fill-current" />
+                    <span>Stop Speech Test</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-3.5 w-3.5 fill-current" />
+                    <span>Test Audio Pronunciation ({SUPPORTED_LANGUAGES.find(l => l.code === lang)?.label || lang})</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

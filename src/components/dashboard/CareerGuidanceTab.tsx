@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { LanguageCode, User } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
+import { CAREER_LOCALIZATIONS } from '../../data/careerTranslations';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { 
   Compass, BookOpen, GraduationCap, ChevronRight, Sparkles, 
@@ -1533,10 +1534,22 @@ const TRANSLATED_CAREERS: Record<LanguageCode, Record<string, Partial<typeof CAR
 };
 
 const getTranslatedCareer = (career: typeof CAREERS[0], lang: string) => {
-  const langOverrides = TRANSLATED_CAREERS[lang] || {};
+  const deepOverrides = (CAREER_LOCALIZATIONS[lang] as any)?.[career.id];
+  const shallowOverrides = (TRANSLATED_CAREERS[lang] as any)?.[career.id] || {};
+  
+  if (!deepOverrides && !shallowOverrides) {
+    return career;
+  }
+
   return {
     ...career,
-    ...langOverrides[career.id]
+    ...deepOverrides,
+    ...shallowOverrides,
+    salary: deepOverrides?.salary || career.salary,
+    growth: deepOverrides?.growth || career.growth,
+    exams: deepOverrides?.exams || career.exams,
+    skills: deepOverrides?.skills || career.skills,
+    scholarshipsList: deepOverrides?.scholarshipsList || shallowOverrides.scholarshipsList || career.scholarshipsList,
   };
 };
 

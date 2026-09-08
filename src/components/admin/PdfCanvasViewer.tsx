@@ -487,6 +487,134 @@ export const PDF_VIEWER_I18N: Record<LanguageCode, {
   },
 };
 
+export const PDF_AI_CHAT_LABELS: Record<string, {
+  downloadFullChat: string;
+  downloadChatBtn: string;
+  documentTitle: string;
+  downloadSessionPdf: string;
+  preparingFullChat: string;
+  fullChatSuccess: string;
+  noMessagesToExport: string;
+  student: string;
+  aiSolver: string;
+  date: string;
+  verification: string;
+  verifiedText: string;
+  chatTranscript: string;
+  messagesWord: string;
+  studentQuestion: string;
+  aiSolution: string;
+}> = {
+  en: {
+    downloadFullChat: "Download Full Chat PDF",
+    downloadChatBtn: "Full Chat PDF",
+    documentTitle: "FULL PDF STUDY & AI SOLVER TRANSCRIPT",
+    downloadSessionPdf: "Download session PDF",
+    preparingFullChat: "Preparing your full PDF study session transcript...",
+    fullChatSuccess: "Your full PDF study transcript has been successfully generated and downloaded!",
+    noMessagesToExport: "No study chat messages available to export.",
+    student: "STUDENT:",
+    aiSolver: "AI SOLVER:",
+    date: "DATE & TIME:",
+    verification: "VERIFICATION:",
+    verifiedText: "🔒 Verified Academic Study Session",
+    chatTranscript: "STUDY SESSION TRANSCRIPT",
+    messagesWord: "messages",
+    studentQuestion: "Student Question / Prompt",
+    aiSolution: "Verified AI Solution & Analysis"
+  },
+  hi: {
+    downloadFullChat: "सम्पूर्ण चैट PDF डाउनलोड करें",
+    downloadChatBtn: "सम्पूर्ण चैट PDF",
+    documentTitle: "सम्पूर्ण पीडीएफ अध्ययन एवं एआई सॉल्वर प्रतिलिपि",
+    downloadSessionPdf: "पूरा सत्र PDF डाउनलोड करें",
+    preparingFullChat: "आपका संपूर्ण अध्ययन सत्र PDF तैयार किया जा रहा है...",
+    fullChatSuccess: "आपकी संपूर्ण अध्ययन चैट PDF सफलतापूर्वक डाउनलोड हो गई है!",
+    noMessagesToExport: "निर्यात करने के लिए कोई संवाद संदेश उपलब्ध नहीं है।",
+    student: "छात्र:",
+    aiSolver: "एआई सॉल्वर:",
+    date: "तारीख व समय:",
+    verification: "सत्यापन:",
+    verifiedText: "🔒 सत्यापित शैक्षणिक अध्ययन सत्र",
+    chatTranscript: "अध्ययन संवाद प्रतिलिपि",
+    messagesWord: "संदेश",
+    studentQuestion: "छात्र प्रश्न / संकेत",
+    aiSolution: "सत्यापित एआई समाधान व विश्लेषण"
+  },
+  gu: {
+    downloadFullChat: "સંપૂર્ણ ચેટ PDF ડાઉનલોડ કરો",
+    downloadChatBtn: "સંપૂર્ણ ચેટ PDF",
+    documentTitle: "સંપૂર્ણ પીડીએફ અભ્યાસ અને AI સોલ્વર ટ્રાન્સક્રિપ્ટ",
+    downloadSessionPdf: "સંપૂર્ણ સત્ર PDF ડાઉનલોડ કરો",
+    preparingFullChat: "તમારો સંપૂર્ણ અભ્યાસ સત્ર PDF તૈયાર થઈ રહ્યો છે...",
+    fullChatSuccess: "તમારી સંપૂર્ણ અભ્યાસ ચેટ PDF સફળતાપૂર્વક ડાઉનલોડ થઈ ગઈ છે!",
+    noMessagesToExport: "નિકાસ કરવા માટે કોઈ સંદેશ ઉપલબ્ધ નથી.",
+    student: "વિદ્યાર્થી:",
+    aiSolver: "AI સોલ્વર:",
+    date: "તારીખ અને સમય:",
+    verification: "ચકાસણી:",
+    verifiedText: "🔒 પ્રમાણિત શૈક્ષણિક અભ્યાસ સત્ર",
+    chatTranscript: "અભ્યાસ સત્ર સંવાદ",
+    messagesWord: "સંદેશાઓ",
+    studentQuestion: "વિદ્યાર્થી પ્રશ્ન",
+    aiSolution: "ચકાસાયેલ AI ઉકેલ અને વિશ્લેષણ"
+  },
+  mr: {
+    downloadFullChat: "संपूर्ण चॅट PDF डाउनलोड करा",
+    downloadChatBtn: "संपूर्ण चॅट PDF",
+    documentTitle: "संपूर्ण पीडीएफ अभ्यास आणि AI सॉल्व्हर प्रतिलिपि",
+    downloadSessionPdf: "पूर्ण सत्र PDF डाउनलोड करा",
+    preparingFullChat: "तुमचे संपूर्ण अभ्यास सत्र PDF तयार केले जात आहे...",
+    fullChatSuccess: "तुमची संपूर्ण अभ्यास चॅट PDF यशस्वीरीत्या डाउनलोड झाली आहे!",
+    noMessagesToExport: "निर्यात करण्यासाठी कोणतेही संदेश उपलब्ध नाहीत.",
+    student: "विद्यार्थी:",
+    aiSolver: "AI सॉल्व्हर:",
+    date: "तारीख आणि वेळ:",
+    verification: "पडताळणी:",
+    verifiedText: "🔒 सत्यापित शैक्षणिक अभ्यास सत्र",
+    chatTranscript: "अभ्यास सत्र संवाद",
+    messagesWord: "संदेश",
+    studentQuestion: "विद्यार्थी प्रश्न",
+    aiSolution: "सत्यापित AI उत्तर आणि विश्लेषण"
+  },
+  ta: {
+    downloadFullChat: "முழு அரட்டை PDF பதிவிறக்கு",
+    downloadChatBtn: "முழு அரட்டை PDF",
+    documentTitle: "முழு PDF படிப்பு மற்றும் AI தீர்வு அறிக்கை",
+    downloadSessionPdf: "அமர்வு PDF பதிவிறக்கு",
+    preparingFullChat: "முழு படிப்பு அரட்டை PDF தயாராகிறது...",
+    fullChatSuccess: "முழு படிப்பு அரட்டை PDF வெற்றிகரமாக பதிவிறக்கம் செய்யப்பட்டது!",
+    noMessagesToExport: "ஏற்றுமதி செய்ய எந்த செய்தியும் இல்லை.",
+    student: "மாணவர்:",
+    aiSolver: "AI தீர்வு:",
+    date: "தேதி மற்றும் நேரம்:",
+    verification: "சரிபார்ப்பு:",
+    verifiedText: "🔒 சரிபார்க்கப்பட்ட கல்வி படிப்பு அமர்வு",
+    chatTranscript: "படிப்பு அமர்வு உரையாடல்",
+    messagesWord: "செய்திகள்",
+    studentQuestion: "மாணவர் கேள்வி",
+    aiSolution: "சரிபார்க்கப்பட்ட AI தீர்வு"
+  },
+  te: {
+    downloadFullChat: "పూర్తి చాట్ PDF డౌన్‌లోడ్ చేయండి",
+    downloadChatBtn: "పూర్తి చాట్ PDF",
+    documentTitle: "పూర్తి PDF అధ్యయనం & AI సాధని నివేదిక",
+    downloadSessionPdf: "పూర్తి సెషన్ PDF డౌన్‌లోడ్ చేయండి",
+    preparingFullChat: "మీ పూర్తి అధ్యయన సెషన్ PDF సిద్ధమవుతోంది...",
+    fullChatSuccess: "పూర్తి అధ్యయన చాట్ PDF విజయవంతంగా డౌన్‌లోడ్ చేయబడింది!",
+    noMessagesToExport: "ఎగుమతి చేయడానికి సందేశాలు లేవు.",
+    student: "విద్యార్థి:",
+    aiSolver: "AI సాధని:",
+    date: "తేదీ మరియు సమయం:",
+    verification: "ధృవీకరణ:",
+    verifiedText: "🔒 ధృవీకరించబడిన విద్యా అధ్యయన సెషన్",
+    chatTranscript: "అధ్యయన సెషన్ సంభాషణ",
+    messagesWord: "సందేశాలు",
+    studentQuestion: "విద్యార్థి ప్రశ్న",
+    aiSolution: "ధృవీకరించబడిన AI పరిష్కారం"
+  }
+};
+
 interface PdfCanvasViewerProps {
   fileId: string;
   fileDataUrl?: string;
@@ -1679,16 +1807,6 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
     const exportList = meaningfulMessages.length > 0 ? meaningfulMessages : messagesToExport;
 
-    if (exportList.length === 0) {
-      setToastMessage("No messages available to export.");
-      setTimeout(() => setToastMessage(null), 2500);
-      return;
-    }
-
-    const sessionTitle = customTitle || (
-      exportList.find(m => m.sender === 'user')?.text.substring(0, 35) || `${fileName} Page ${activePageNum} Session`
-    );
-
     const codeMap: Record<string, LanguageCode> = {
       'English': 'en',
       'Hindi': 'hi',
@@ -1697,12 +1815,21 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
       'Tamil': 'ta',
       'Telugu': 'te',
     };
-    const speechLang = codeMap[targetLanguage] || 'en';
+    const speechLang = codeMap[targetLanguage] || currentLangCode || 'en';
+    const pdfLabels = PDF_AI_CHAT_LABELS[speechLang] || PDF_AI_CHAT_LABELS.en;
+
+    if (exportList.length === 0) {
+      setToastMessage(pdfLabels.noMessagesToExport);
+      setTimeout(() => setToastMessage(null), 2500);
+      return;
+    }
+
+    const sessionTitle = customTitle || (
+      exportList.find(m => m.sender === 'user')?.text.substring(0, 35) || `${fileName} Page ${activePageNum} Session`
+    );
 
     speakText(
-      targetLanguage === 'Hindi'
-        ? "आपका संपूर्ण अध्ययन सत्र PDF तैयार किया जा रहा है..."
-        : "Preparing your full study session PDF...",
+      pdfLabels.preparingFullChat,
       speechLang
     );
 
@@ -3835,6 +3962,32 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                     )}
                   </button>
 
+                  {/* Export Full Chat PDF Button - ALWAYS VISIBLE */}
+                  {(() => {
+                    const codeMap: Record<string, LanguageCode> = {
+                      'English': 'en',
+                      'Hindi': 'hi',
+                      'Gujarati': 'gu',
+                      'Marathi': 'mr',
+                      'Tamil': 'ta',
+                      'Telugu': 'te',
+                    };
+                    const activeLang = codeMap[targetLanguage] || currentLangCode || 'en';
+                    const activePdfLabels = PDF_AI_CHAT_LABELS[activeLang] || PDF_AI_CHAT_LABELS.en;
+                    return (
+                      <button
+                        id="btn-pdf-solver-full-chat-pdf-download"
+                        type="button"
+                        onClick={() => handleExportFullChatPDF()}
+                        className="text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/40 px-2 sm:px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm"
+                        title={activePdfLabels.downloadFullChat}
+                      >
+                        <FileDown className="h-3.5 w-3.5 text-white shrink-0" />
+                        <span className="hidden sm:inline">{activePdfLabels.downloadChatBtn}</span>
+                      </button>
+                    );
+                  })()}
+
                   {/* Regenerate Last Answer Button */}
                   {aiMessages.some(m => m.sender === 'user') && (
                     <button
@@ -4170,10 +4323,11 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                                     e.stopPropagation();
                                     handleExportFullChatPDF(session.messages, session.title);
                                   }}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 cursor-pointer transition-colors"
+                                  className="flex items-center gap-1 text-[11px] font-bold text-emerald-300 hover:text-white bg-emerald-950/70 hover:bg-emerald-900/90 border border-emerald-700/60 px-2 py-1 rounded-md transition-all cursor-pointer shadow-sm active:scale-95"
                                   title="Download full session PDF"
                                 >
-                                  <FileDown className="w-3.5 h-3.5" />
+                                  <FileDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                  <span>PDF</span>
                                 </button>
 
                                 {/* Toggle Messages View */}
@@ -4251,6 +4405,48 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             ) : (
               /* REGULAR ACTIVE CHAT MESSAGES */
               <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto p-2.5 sm:p-3 space-y-3 scrollbar-thin max-w-full min-w-0">
+                {aiMessages.some(m => m.sender === 'user') && (
+                  <div className="flex items-center justify-between px-3.5 py-2 bg-purple-950/60 border border-purple-800/60 rounded-2xl text-xs text-purple-200 shadow-sm mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base shrink-0">📄</span>
+                      <span className="font-semibold truncate">
+                        {(() => {
+                          const codeMap: Record<string, LanguageCode> = {
+                            'English': 'en',
+                            'Hindi': 'hi',
+                            'Gujarati': 'gu',
+                            'Marathi': 'mr',
+                            'Tamil': 'ta',
+                            'Telugu': 'te',
+                          };
+                          const activeLang = codeMap[targetLanguage] || currentLangCode || 'en';
+                          return PDF_AI_CHAT_LABELS[activeLang]?.documentTitle || PDF_AI_CHAT_LABELS.en.documentTitle;
+                        })()}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleExportFullChatPDF()}
+                      className="flex items-center gap-1.5 px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition-all shadow-sm cursor-pointer active:scale-95 shrink-0 text-[11px]"
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      <span>
+                        {(() => {
+                          const codeMap: Record<string, LanguageCode> = {
+                            'English': 'en',
+                            'Hindi': 'hi',
+                            'Gujarati': 'gu',
+                            'Marathi': 'mr',
+                            'Tamil': 'ta',
+                            'Telugu': 'te',
+                          };
+                          const activeLang = codeMap[targetLanguage] || currentLangCode || 'en';
+                          return PDF_AI_CHAT_LABELS[activeLang]?.downloadChatBtn || PDF_AI_CHAT_LABELS.en.downloadChatBtn;
+                        })()}
+                      </span>
+                    </button>
+                  </div>
+                )}
               {aiMessages.map((msg) => (
                 <div
                   key={msg.id}
@@ -4527,61 +4723,128 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
             <div
               id="pdf-canvas-viewer-full-chat-render-template"
               className="w-[800px] p-8 bg-slate-950 text-slate-100 font-sans leading-relaxed border border-purple-900/50 space-y-6"
-              style={{ backgroundColor: '#0f172a', color: '#f8fafc' }}
+              style={{ backgroundColor: '#0f172a', color: '#f8fafc', minHeight: '1100px' }}
             >
-              {/* Full Chat Document Header */}
-              <div className="flex items-center justify-between pb-4 border-b-2 border-purple-500/40">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white font-extrabold text-xl shadow-md">
-                    G
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-extrabold tracking-tight text-white">
-                      {pdfExportFullChatTitle || 'Full PDF Study Session Chat'}
-                    </h1>
-                    <p className="text-xs text-purple-300 font-medium">
-                      {fileName} &bull; Page {activePageNum}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right text-xs text-slate-400">
-                  <p className="font-semibold text-purple-300">{targetLanguage} Edition</p>
-                  <p>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-              </div>
+              {(() => {
+                const codeMap: Record<string, LanguageCode> = {
+                  'English': 'en',
+                  'Hindi': 'hi',
+                  'Gujarati': 'gu',
+                  'Marathi': 'mr',
+                  'Tamil': 'ta',
+                  'Telugu': 'te',
+                };
+                const activeLang = codeMap[targetLanguage] || currentLangCode || 'en';
+                const templateLabels = PDF_AI_CHAT_LABELS[activeLang] || PDF_AI_CHAT_LABELS.en;
+                const studentName = user?.name || adminUser?.name || 'Verified Student';
+                const studentGrade = (user as any)?.standard || localStorage.getItem(`${user?.mobile}_profile_standard`) || 'Primary Grade';
 
-              {/* Messages Stack */}
-              <div className="space-y-4">
-                {pdfExportFullChatMessages.map((msg, index) => (
-                  <div
-                    key={msg.id || index}
-                    className={`p-4 rounded-2xl space-y-2 border ${
-                      msg.sender === 'user'
-                        ? 'bg-purple-950/70 border-purple-800/80 text-purple-100 ml-8'
-                        : 'bg-slate-900 border-slate-800 text-slate-100 mr-8'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-xs font-bold pb-2 border-b border-white/10">
-                      <span className={msg.sender === 'user' ? 'text-purple-300' : 'text-emerald-400'}>
-                        {msg.sender === 'user' ? '👤 Student Question' : '🤖 AI Study Task Assistant'}
-                      </span>
-                      <span className="text-slate-400 font-mono text-[11px]">{msg.timestamp}</span>
+                return (
+                  <>
+                    {/* Full Chat Document Header */}
+                    <div className="flex items-center justify-between pb-4 border-b-2 border-purple-500/60">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white font-extrabold text-xl shadow-md">
+                          G
+                        </div>
+                        <div>
+                          <h1 className="text-xl font-extrabold tracking-tight text-white uppercase">
+                            {templateLabels.documentTitle}
+                          </h1>
+                          <p className="text-xs text-purple-300 font-medium">
+                            {fileName} &bull; Page {activePageNum} &bull; {pdfExportFullChatTitle}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-slate-400">
+                        <p className="font-semibold text-purple-300">{targetLanguage} Edition</p>
+                        <p>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
                     </div>
 
-                    {msg.sender === 'assistant' ? (
-                      <MathRenderer content={msg.text} isUser={false} isDark={true} className="text-slate-100 text-sm leading-relaxed" />
-                    ) : (
-                      <p className="text-white text-sm font-medium">{msg.text}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
+                    {/* Student Meta Details Grid */}
+                    <div className="grid grid-cols-2 gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 text-xs font-sans">
+                      <div>
+                        <p className="font-bold text-purple-300 uppercase mb-0.5">
+                          {templateLabels.student}
+                        </p>
+                        <p className="text-slate-200 font-medium">
+                          {studentName} ({studentGrade})
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-purple-300 uppercase mb-0.5">
+                          {templateLabels.aiSolver}
+                        </p>
+                        <p className="text-slate-200 font-medium">
+                          GyaanBot AI PDF Solver & Tutor
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-purple-300 uppercase mb-0.5">
+                          {templateLabels.date}
+                        </p>
+                        <p className="text-slate-300">
+                          {new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-purple-300 uppercase mb-0.5">
+                          {templateLabels.verification}
+                        </p>
+                        <p className="text-emerald-400 font-semibold">
+                          {templateLabels.verifiedText}
+                        </p>
+                      </div>
+                    </div>
 
-              {/* Footer */}
-              <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
-                <span>GyaanBot Smart Reader AI &bull; Full Study Session Transcript</span>
-                <span>Page {activePageNum} Session &bull; {pdfExportFullChatMessages.length} Messages</span>
-              </div>
+                    {/* Transcript Header */}
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-xs">
+                      <h2 className="font-bold text-slate-200 tracking-wider uppercase">
+                        {templateLabels.chatTranscript} ({pdfExportFullChatMessages.length} {templateLabels.messagesWord})
+                      </h2>
+                      <span className="text-slate-400 font-mono">
+                        🤖 GyaanBot AI Solver
+                      </span>
+                    </div>
+
+                    {/* Messages Stack */}
+                    <div className="space-y-4">
+                      {pdfExportFullChatMessages.map((msg, index) => (
+                        <div
+                          key={msg.id || index}
+                          className={`p-4 rounded-2xl space-y-2 border ${
+                            msg.sender === 'user'
+                              ? 'bg-purple-950/70 border-purple-800/80 text-purple-100 ml-6'
+                              : 'bg-slate-900 border-slate-800 text-slate-100 mr-6'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-xs font-bold pb-2 border-b border-white/10">
+                            <span className={msg.sender === 'user' ? 'text-purple-300' : 'text-emerald-400'}>
+                              {msg.sender === 'user' 
+                                ? `👤 ${studentName} (${templateLabels.studentQuestion})` 
+                                : `🤖 GyaanBot (${templateLabels.aiSolution})`}
+                            </span>
+                            <span className="text-slate-400 font-mono text-[11px]">{msg.timestamp || `#${index + 1}`}</span>
+                          </div>
+
+                          {msg.sender === 'assistant' ? (
+                            <MathRenderer content={msg.text} isUser={false} isDark={true} className="text-slate-100 text-sm leading-relaxed" />
+                          ) : (
+                            <p className="text-white text-sm font-medium">{msg.text}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
+                      <span>GyaanBot Smart Reader AI &bull; Full Study Session Transcript</span>
+                      <span>Page {activePageNum} Session &bull; {pdfExportFullChatMessages.length} Messages</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}

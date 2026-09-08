@@ -1736,6 +1736,141 @@ const FILTER_ATTACHMENT_LABELS: Record<string, string> = {
   de: "Mit Anhängen"
 };
 
+export const EQUATION_PDF_LABELS: Record<string, {
+  documentTitle: string;
+  subTitle: string;
+  student: string;
+  solver: string;
+  date: string;
+  verification: string;
+  verifiedText: string;
+  docSubtitle: string;
+  chatTranscript: string;
+  downloadFullChat: string;
+  downloadChatBtn: string;
+  preparingFullChat: string;
+  fullChatSuccess: string;
+  noMessagesToExport: string;
+  userQuestion: string;
+  solutionLabel: string;
+  messagesWord: string;
+}> = {
+  en: {
+    documentTitle: "COMPLETE MATH & SCIENCE CALCULATION TRANSCRIPT",
+    subTitle: "Full equation and science problem-solving session log",
+    student: "STUDENT:",
+    solver: "AI SOLVER:",
+    date: "DATE & TIME:",
+    verification: "VERIFICATION:",
+    verifiedText: "🔒 Verified Academic Session Sync",
+    docSubtitle: "Gramin Shiksha Math Hub",
+    chatTranscript: "CALCULATION TRANSCRIPT",
+    downloadFullChat: "Download Full Chat PDF",
+    downloadChatBtn: "Chat PDF",
+    preparingFullChat: "Preparing your full equation & science calculation session PDF...",
+    fullChatSuccess: "Your full calculation transcript PDF has been successfully generated and downloaded!",
+    noMessagesToExport: "No calculation messages available to export.",
+    userQuestion: "Math / Science Question",
+    solutionLabel: "Step-by-Step AI Solution",
+    messagesWord: "messages"
+  },
+  hi: {
+    documentTitle: "सम्पूर्ण गणित और विज्ञान सत्र प्रतिलिपि",
+    subTitle: "एआई गणित और विज्ञान सॉल्वर द्वारा संपूर्ण समस्या समाधान लॉग",
+    student: "छात्र:",
+    solver: "एआई सॉल्वर:",
+    date: "तारीख व समय:",
+    verification: "सत्यापन:",
+    verifiedText: "🔒 सत्यापित शैक्षणिक सत्र सिंक",
+    docSubtitle: "ग्रामीण शिक्षा गणित एवं विज्ञान हब",
+    chatTranscript: "गणना एवं संवाद प्रतिलिपि",
+    downloadFullChat: "सम्पूर्ण चैट PDF डाउनलोड करें",
+    downloadChatBtn: "चैट PDF",
+    preparingFullChat: "आपका संपूर्ण समीकरण एवं विज्ञान सत्र PDF तैयार किया जा रहा है...",
+    fullChatSuccess: "आपकी सम्पूर्ण गणित व विज्ञान PDF सफलतापूर्वक डाउनलोड हो गई है!",
+    noMessagesToExport: "निर्यात करने के लिए कोई संवाद संदेश उपलब्ध नहीं है।",
+    userQuestion: "गणित / विज्ञान प्रश्न",
+    solutionLabel: "चरणबद्ध एआई समाधान",
+    messagesWord: "संदेश"
+  },
+  gu: {
+    documentTitle: "સંપૂર્ણ ગણિત અને વિજ્ઞાન સત્ર ટ્રાન્સક્રિપ્ટ",
+    subTitle: "AI ગણિત અને વિજ્ઞાન સોલ્વર દ્વારા સંપૂર્ણ સમસ્યા નિવારણ લોગ",
+    student: "વિદ્યાર્થી:",
+    solver: "AI સોલ્વર:",
+    date: "તારીખ અને સમય:",
+    verification: "ચકાસણી:",
+    verifiedText: "🔒 પ્રમાણિત શૈક્ષણિક સત્ર સમન્વયન",
+    docSubtitle: "ગ્રામીણ શિક્ષણ ગણિત અને વિજ્ઞાન હબ",
+    chatTranscript: "ગણતરી અને વાતચીત ટ્રાંસ્ક્રિપ્ટ",
+    downloadFullChat: "સંપૂર્ણ ચેટ PDF ડાઉનલોડ કરો",
+    downloadChatBtn: "ચેટ PDF",
+    preparingFullChat: "તમારી સંપૂર્ણ ગણિત અને વિજ્ઞાન PDF તૈયાર થઈ રહી છે...",
+    fullChatSuccess: "તમારી સંપૂર્ણ ચેટ PDF સફળતાપૂર્વક ડાઉનલોડ થઈ ગઈ છે!",
+    noMessagesToExport: "નિકાસ કરવા માટે કોઈ સંદેશાઓ ઉપલબ્ધ નથી.",
+    userQuestion: "વિદ્યાર્થીનો પ્રશ્ન / સમીકરણ",
+    solutionLabel: "પગલું-દર-પગલું ઉકેલ",
+    messagesWord: "સંદેશાઓ"
+  },
+  mr: {
+    documentTitle: "संपूर्ण गणित आणि विज्ञान सत्र उतारे (ट्रान्सक्रिप्ट)",
+    subTitle: "AI गणित आणि विज्ञान सॉल्वरद्वारे संपूर्ण समस्या निवारण लॉग",
+    student: "विद्यार्थी:",
+    solver: "AI सॉल्वर:",
+    date: "दिनांक व वेळ:",
+    verification: "पडताळणी:",
+    verifiedText: "🔒 प्रमाणित शैक्षणिक सत्र संकालन",
+    docSubtitle: "ग्रामीण शिक्षण गणित व विज्ञान केंद्र",
+    chatTranscript: "गणना आणि संभाषण प्रतिलिपी",
+    downloadFullChat: "संपूर्ण चॅट PDF डाउनलोड करा",
+    downloadChatBtn: "चॅट PDF",
+    preparingFullChat: "तुमचा संपूर्ण गणित व विज्ञान PDF तयार केला जात आहे...",
+    fullChatSuccess: "तुमचे संपूर्ण चॅट PDF यशस्वीरित्या डाउनलोड झाले आहे!",
+    noMessagesToExport: "डाउनलोड करण्यासाठी कोणतेही संदेश उपलब्ध नाहीत.",
+    userQuestion: "विद्यार्थ्याचा प्रश्न / समीकरण",
+    solutionLabel: "टप्प्याटप्प्याने AI स्पष्टीकरण व उत्तर",
+    messagesWord: "संदेश"
+  },
+  ta: {
+    documentTitle: "முழு கணிதம் & அறிவியல் தீர்வு ஆவணம்",
+    subTitle: "AI கணித மற்றும் அறிவியல் தீர்வு மூலம் முழு சிக்கல் தீர்க்கும் பதிவு",
+    student: "மாணவர்:",
+    solver: "AI தீர்வு:",
+    date: "தேதி & நேரம்:",
+    verification: "சரிபார்ப்பு:",
+    verifiedText: "🔒 சரிபார்க்கப்பட்ட கல்வி அமர்வு ஒத்திசைவு",
+    docSubtitle: "கிராமின் சிக்ஷா கணித மையம்",
+    chatTranscript: "கணக்கீடு & உரையாடல் பதிவு",
+    downloadFullChat: "முழு அரட்டையையும் PDF ஆக பதிவிறக்கவும்",
+    downloadChatBtn: "அரட்டை PDF",
+    preparingFullChat: "உங்கள் முழு கணித அமர்வு PDF தயாராகிறது...",
+    fullChatSuccess: "உங்கள் முழு அரட்டை PDF வெற்றிகரமாக பதிவிறக்கம் செய்யப்பட்டது!",
+    noMessagesToExport: "பதிவிறக்க உரையாடல் செய்திகள் எதுவும் இல்லை.",
+    userQuestion: "மாணவர் வினா / சமன்பாடு",
+    solutionLabel: "படி-படியாக AI தீர்வு",
+    messagesWord: "செய்திகள்"
+  },
+  te: {
+    documentTitle: "పూర్తి గణితం & సైన్స్ సాధన ట్రాన్స్క్రిప్ట్",
+    subTitle: "AI గణితం మరియు సైన్స్ సాల్వర్ ద్వారా పూర్తి సమస్య పరిష్కార లాగ్",
+    student: "విద్యార్థి:",
+    solver: "AI సాల్వర్:",
+    date: "తేదీ & సమయం:",
+    verification: "ధృవీకరణ:",
+    verifiedText: "🔒 ధృవీకరించబడిన విద్యా సెషన్ సమకాలీకరణ",
+    docSubtitle: "గ్రామీణ శిక్షా గణిత కేంద్రం",
+    chatTranscript: "లెక్కింపు మరియు సంభాషణ ట్రాన్స్క్రిప్ట్",
+    downloadFullChat: "పూర్తి చాట్ PDFని డౌన్‌లోడ్ చేయండి",
+    downloadChatBtn: "చాట్ PDF",
+    preparingFullChat: "మీ పూర్తి గణిత సెషన్ PDF సిద్ధం అవుతోంది...",
+    fullChatSuccess: "మీ పూర్తి చాట్ ట్రాన్స్క్రిప్ట్ PDF విజయవంతంగా డౌన్‌లోడ్ చేయబడింది!",
+    noMessagesToExport: "ఎగుమతి చేయడానికి సంభాషణ సందేశాలు లేవు.",
+    userQuestion: "విద్యార్థి ప్రశ్న / సమీకరణం",
+    solutionLabel: "దశలవారీగా AI పరిష్కారం",
+    messagesWord: "సందేశాలు"
+  }
+};
+
 export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabProps) {
   // Main Category state: 'science' or 'math' or 'chatbot'
   const [activeCategory, setActiveCategory] = useState<'science' | 'math' | 'chatbot'>('chatbot');
@@ -2756,6 +2891,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
   };
 
   const handleExportFullChatPDF = (customMessages?: ChatMessage[], customTitle?: string) => {
+    const pdfLabels = EQUATION_PDF_LABELS[chatbotLang] || EQUATION_PDF_LABELS[lang] || EQUATION_PDF_LABELS.en;
     const messagesToExport = customMessages || chatMessages;
     
     // Filter out welcome prompts if there are actual conversations
@@ -2766,7 +2902,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     const exportList = meaningfulMessages.length > 0 ? meaningfulMessages : messagesToExport;
 
     if (exportList.length === 0) {
-      alert(lang === 'hi' ? "निर्यात करने के लिए कोई संवाद संदेश उपलब्ध नहीं है।" : "No calculation messages available to export.");
+      alert(pdfLabels.noMessagesToExport);
       return;
     }
 
@@ -2775,10 +2911,8 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     );
 
     speakText(
-      lang === 'hi' 
-        ? "आपका संपूर्ण समीकरण एवं विज्ञान सत्र PDF तैयार किया जा रहा है..." 
-        : "Preparing your full equation & science calculation session PDF...",
-      lang,
+      pdfLabels.preparingFullChat,
+      (chatbotLang || lang) as LanguageCode,
       "AI Solver",
       "🤖 AI Solver"
     );
@@ -2881,10 +3015,8 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
         setPdfExportFullChatTitle("");
 
         speakText(
-          lang === 'hi' 
-            ? "आपकी संपूर्ण चैट PDF सफलतापूर्वक डाउनलोड हो गई है!" 
-            : "Your complete equation calculation report PDF has been successfully generated and downloaded!",
-          lang,
+          pdfLabels.fullChatSuccess,
+          (chatbotLang || lang) as LanguageCode,
           "AI Solver",
           "🤖 AI Solver"
         );
@@ -3232,106 +3364,113 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
           <div className="h-2 bg-[#3D405B] rounded-t-lg -mx-10 -mt-10 mb-8" />
 
           {/* Title Block */}
-          <div className="flex justify-between items-center border-b-2 border-[#E07A5F] pb-5 mb-6">
-            <div>
-              <h1 className="text-2xl font-extrabold text-[#3D405B] uppercase tracking-wide font-serif">
-                {lang === 'hi' ? "सम्पूर्ण गणित और विज्ञान सत्र प्रतिलिपि" : "COMPLETE MATH & SCIENCE CALCULATION TRANSCRIPT"}
-              </h1>
-              <p className="text-xs text-gray-500 font-sans mt-1">
-                {lang === 'hi' ? "एआई गणित और विज्ञान सॉल्वर द्वारा संपूर्ण समस्या समाधान लॉग" : "Full equation and science problem-solving session"} • {pdfExportFullChatTitle}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="text-3xl">🧮</span>
-              <p className="text-[10px] text-gray-400 font-mono mt-1 font-bold">
-                Gramin Shiksha Math Hub
-              </p>
-            </div>
-          </div>
-
-          {/* Student Meta Details Grid */}
-          <div className="grid grid-cols-2 gap-4 bg-[#F9F6F0] border border-[#E6E1D7] rounded-2xl p-5 mb-8 text-xs font-sans">
-            <div>
-              <p className="font-bold text-[#3D405B] uppercase mb-1">
-                {lang === 'hi' ? "छात्र:" : "STUDENT:"}
-              </p>
-              <p className="text-gray-700 font-medium">
-                {user.name || 'Verified Student'} ({localStorage.getItem(`${user.mobile}_profile_standard`) || user.standard || 'Primary Grade'})
-              </p>
-            </div>
-            <div>
-              <p className="font-bold text-[#3D405B] uppercase mb-1">
-                {lang === 'hi' ? "एआई सॉल्वर:" : "AI SOLVER:"}
-              </p>
-              <p className="text-gray-700 font-medium">
-                {lang === 'hi' ? "स्मार्ट एआई गणित और विज्ञान शिक्षक" : "Smart AI Math & Science Tutor (Owl)"}
-              </p>
-            </div>
-            <div>
-              <p className="font-bold text-[#3D405B] uppercase mb-1">
-                {lang === 'hi' ? "तारीख व समय:" : "DATE & TIME:"}
-              </p>
-              <p className="text-gray-700">
-                {new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
-            <div>
-              <p className="font-bold text-[#3D405B] uppercase mb-1">
-                {lang === 'hi' ? "सत्यापन:" : "VERIFICATION:"}
-              </p>
-              <p className="text-emerald-600 font-semibold">
-                🔒 {lang === 'hi' ? "सत्यापित शैक्षणिक सत्र सिंक" : "Verified Academic Session Sync"}
-              </p>
-            </div>
-          </div>
-
-          {/* Transcript Header */}
-          <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
-            <h2 className="text-sm font-bold text-[#3D405B] tracking-wider uppercase">
-              {lang === 'hi' ? "संवाद प्रतिलिपि (समीकरण समाधान इतिहास)" : "CALCULATION TRANSCRIPT"} ({pdfExportFullChatMessages.length} {lang === 'hi' ? 'संदेश' : 'messages'})
-            </h2>
-            <span className="text-xs text-gray-500 font-mono">
-              🤖 Smart AI Solver
-            </span>
-          </div>
-
-          {/* Messages Loop */}
-          <div className="space-y-6">
-            {pdfExportFullChatMessages.map((msg, index) => {
-              const isUser = msg.sender === 'user';
-              return (
-                <div 
-                  key={msg.id || index}
-                  className={`rounded-2xl p-5 border ${
-                    isUser 
-                      ? 'bg-[#FDF6ED] border-l-4 border-l-[#E07A5F] border-amber-200/90 shadow-3xs' 
-                      : 'bg-white border-[#E6E1D7] shadow-3xs'
-                  }`}
-                >
-                  {/* Speaker Header & Timestamp */}
-                  <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-gray-200/70 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{isUser ? '👤' : '🤖'}</span>
-                      <span className={`font-extrabold ${isUser ? 'text-[#C55A3E]' : 'text-[#3D405B]'}`}>
-                        {isUser ? (user.name || (lang === 'hi' ? 'छात्र' : 'Student')) : (lang === 'hi' ? 'स्मार्ट सॉल्वर' : 'AI Solver')}
-                      </span>
-                      <span className="text-[10px] text-gray-500 font-semibold">
-                        ({isUser ? (lang === 'hi' ? 'समीकरण / प्रश्न' : 'Problem / Question') : (lang === 'hi' ? 'हल एवं चरणबद्ध गणना' : 'Solution & Calculation')})
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-gray-500 font-mono font-medium">
-                      {msg.timestamp || `#${index + 1}`}
-                    </span>
+          {(() => {
+            const templateLabels = EQUATION_PDF_LABELS[chatbotLang] || EQUATION_PDF_LABELS[lang] || EQUATION_PDF_LABELS.en;
+            return (
+              <>
+                <div className="flex justify-between items-center border-b-2 border-[#E07A5F] pb-5 mb-6">
+                  <div>
+                    <h1 className="text-2xl font-extrabold text-[#3D405B] uppercase tracking-wide font-serif">
+                      {templateLabels.documentTitle}
+                    </h1>
+                    <p className="text-xs text-gray-500 font-sans mt-1">
+                      {templateLabels.subTitle} • {pdfExportFullChatTitle}
+                    </p>
                   </div>
-
-                  {/* Message Content */}
-                  <div className={`text-sm leading-relaxed space-y-3 ${isUser ? 'text-slate-900 font-semibold' : 'text-slate-800'}`}>
-                    {formatMessageText(msg.text, false)}
+                  <div className="text-right">
+                    <span className="text-3xl">🧮</span>
+                    <p className="text-[10px] text-gray-400 font-mono mt-1 font-bold">
+                      {templateLabels.docSubtitle}
+                    </p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Student Meta Details Grid */}
+                <div className="grid grid-cols-2 gap-4 bg-[#F9F6F0] border border-[#E6E1D7] rounded-2xl p-5 mb-8 text-xs font-sans">
+                  <div>
+                    <p className="font-bold text-[#3D405B] uppercase mb-1">
+                      {templateLabels.student}
+                    </p>
+                    <p className="text-gray-700 font-medium">
+                      {user.name || 'Verified Student'} ({localStorage.getItem(`${user.mobile}_profile_standard`) || user.standard || 'Primary Grade'})
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#3D405B] uppercase mb-1">
+                      {templateLabels.solver}
+                    </p>
+                    <p className="text-gray-700 font-medium">
+                      Smart AI Math & Science Tutor (Owl)
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#3D405B] uppercase mb-1">
+                      {templateLabels.date}
+                    </p>
+                    <p className="text-gray-700">
+                      {new Date().toLocaleDateString()} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="font-bold text-[#3D405B] uppercase mb-1">
+                      {templateLabels.verification}
+                    </p>
+                    <p className="text-emerald-600 font-semibold">
+                      {templateLabels.verifiedText}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Transcript Header */}
+                <div className="mb-4 flex items-center justify-between border-b border-gray-200 pb-2">
+                  <h2 className="text-sm font-bold text-[#3D405B] tracking-wider uppercase">
+                    {templateLabels.chatTranscript} ({pdfExportFullChatMessages.length} {templateLabels.messagesWord})
+                  </h2>
+                  <span className="text-xs text-gray-500 font-mono">
+                    🤖 Smart AI Solver
+                  </span>
+                </div>
+
+                {/* Messages Loop */}
+                <div className="space-y-6">
+                  {pdfExportFullChatMessages.map((msg, index) => {
+                    const isUser = msg.sender === 'user';
+                    return (
+                      <div 
+                        key={msg.id || index}
+                        className={`rounded-2xl p-5 border ${
+                          isUser 
+                            ? 'bg-[#FDF6ED] border-l-4 border-l-[#E07A5F] border-amber-200/90 shadow-3xs' 
+                            : 'bg-white border-[#E6E1D7] shadow-3xs'
+                        }`}
+                      >
+                        {/* Speaker Header & Timestamp */}
+                        <div className="flex items-center justify-between mb-2.5 pb-2 border-b border-gray-200/70 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">{isUser ? '👤' : '🤖'}</span>
+                            <span className={`font-extrabold ${isUser ? 'text-[#C55A3E]' : 'text-[#3D405B]'}`}>
+                              {isUser ? (user.name || (lang === 'hi' ? 'छात्र' : 'Student')) : (lang === 'hi' ? 'स्मार्ट सॉल्वर' : 'AI Solver')}
+                            </span>
+                            <span className="text-[10px] text-gray-500 font-semibold">
+                              ({isUser ? templateLabels.userQuestion : templateLabels.solutionLabel})
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-gray-500 font-mono font-medium">
+                            {msg.timestamp || `#${index + 1}`}
+                          </span>
+                        </div>
+
+                        {/* Message Content */}
+                        <div className={`text-sm leading-relaxed space-y-3 ${isUser ? 'text-slate-900 font-semibold' : 'text-slate-800'}`}>
+                          {formatMessageText(msg.text, false)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
 
           {/* Footer Accent Bar */}
           <div className="h-1 bg-[#E07A5F] rounded-b-lg -mx-10 -mb-10 mt-10" />
@@ -4872,20 +5011,24 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
                     {/* History & New Chat Buttons inline next to heading */}
                     <div className="flex items-center gap-1.5 ml-1">
-                      {/* Export Full Chat PDF Button */}
-                      {chatMessages.some(m => m.sender === 'user') && !showHistory && (
-                        <button
-                          type="button"
-                          onClick={() => handleExportFullChatPDF()}
-                          className="text-[11px] bg-[#81B29A] hover:bg-[#6FA38B] text-white border border-transparent px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-3xs"
-                          title={chatbotLang === 'hi' ? 'सम्पूर्ण चैट PDF डाउनलोड करें' : 'Download Full Chat PDF'}
-                        >
-                          <FileDown className="h-3.5 w-3.5 text-white" />
-                          <span className="hidden sm:inline">
-                            {chatbotLang === 'hi' ? 'सम्पूर्ण चैट PDF' : 'Download Full Chat PDF'}
+                      {/* Export Full Chat PDF Button - ALWAYS VISIBLE */}
+                      <button
+                        id="btn-equations-full-chat-pdf-download"
+                        type="button"
+                        onClick={() => handleExportFullChatPDF()}
+                        className="text-[11px] bg-[#81B29A] hover:bg-[#6FA38B] text-white border border-emerald-400/40 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-3xs"
+                        title={EQUATION_PDF_LABELS[chatbotLang]?.downloadFullChat || EQUATION_PDF_LABELS.en.downloadFullChat}
+                      >
+                        <FileDown className="h-3.5 w-3.5 text-white shrink-0" />
+                        <span>
+                          <span className="inline sm:hidden">
+                            {EQUATION_PDF_LABELS[chatbotLang]?.downloadChatBtn || EQUATION_PDF_LABELS.en.downloadChatBtn}
                           </span>
-                        </button>
-                      )}
+                          <span className="hidden sm:inline">
+                            {EQUATION_PDF_LABELS[chatbotLang]?.downloadFullChat || EQUATION_PDF_LABELS.en.downloadFullChat}
+                          </span>
+                        </span>
+                      </button>
 
                       {/* Search History Toggle button */}
                       <button
@@ -5203,10 +5346,11 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                                       e.stopPropagation();
                                       handleExportFullChatPDF(session.messages, session.title);
                                     }}
-                                    className="p-1.5 rounded-md text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
-                                    title={chatbotLang === "hi" ? "पूरा सत्र PDF डाउनलोड करें" : "Download session PDF"}
+                                    className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded-md transition-all cursor-pointer shadow-3xs active:scale-95"
+                                    title={EQUATION_PDF_LABELS[chatbotLang]?.downloadFullChat || EQUATION_PDF_LABELS.en.downloadFullChat}
                                   >
-                                    <FileDown className="h-3.5 w-3.5" />
+                                    <FileDown className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                    <span>PDF</span>
                                   </button>
                                 </div>
 
@@ -5334,7 +5478,26 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                 </div>
               ) : (
                 /* NORMAL ACTIVE CONVERSATION FLOW */
-                chatMessages.map((msg) => (
+                <>
+                  {chatMessages.some(m => m.sender === 'user') && (
+                    <div className="flex items-center justify-between px-3.5 py-2 bg-emerald-50 border border-emerald-200/80 rounded-2xl text-xs text-emerald-950 shadow-3xs mb-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base shrink-0">🧮</span>
+                        <span className="font-semibold truncate">
+                          {EQUATION_PDF_LABELS[chatbotLang]?.documentTitle || EQUATION_PDF_LABELS.en.documentTitle}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleExportFullChatPDF()}
+                        className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-3xs cursor-pointer active:scale-95 shrink-0"
+                      >
+                        <FileDown className="h-3.5 w-3.5" />
+                        <span>{EQUATION_PDF_LABELS[chatbotLang]?.downloadFullChat || EQUATION_PDF_LABELS.en.downloadFullChat}</span>
+                      </button>
+                    </div>
+                  )}
+                  {chatMessages.map((msg) => (
                   <div
                     key={msg.id}
                     id={`eq-msg-${msg.id}`}
@@ -5557,6 +5720,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                     </div>
                   </div>
                 ))
+              }</>
               )}
 
               {/* Loader indicator */}

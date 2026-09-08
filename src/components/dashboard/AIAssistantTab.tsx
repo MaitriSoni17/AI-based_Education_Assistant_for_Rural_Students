@@ -1802,17 +1802,19 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Download Full Chat PDF Button */}
-            {activeMessages.some(m => m.sender === 'user') && !showHistory && (
-              <button
-                onClick={() => handleExportFullChatPDF()}
-                className="text-[11px] sm:text-xs bg-[#81B29A] hover:bg-[#6FA38B] text-white border border-transparent px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-3xs"
-                title={PDF_LABELS[lang]?.downloadFullChat || PDF_LABELS['en'].downloadFullChat}
-              >
-                <FileDown className="h-3.5 w-3.5 text-white" />
+            {/* Download Full Chat PDF Button - ALWAYS VISIBLE */}
+            <button
+              id="btn-ai-full-chat-pdf-download"
+              onClick={() => handleExportFullChatPDF()}
+              className="text-[11px] sm:text-xs bg-[#81B29A] hover:bg-[#6FA38B] text-white border border-emerald-400/40 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-3xs"
+              title={PDF_LABELS[lang]?.downloadFullChat || PDF_LABELS['en'].downloadFullChat}
+            >
+              <FileDown className="h-3.5 w-3.5 text-white shrink-0" />
+              <span>
+                <span className="inline sm:hidden">{lang === 'gu' ? 'ચેટ PDF' : lang === 'hi' ? 'चैट PDF' : 'Chat PDF'}</span>
                 <span className="hidden sm:inline">{PDF_LABELS[lang]?.downloadFullChat || PDF_LABELS['en'].downloadFullChat}</span>
-              </button>
-            )}
+              </span>
+            </button>
 
             {/* View History Button */}
             <button
@@ -2147,10 +2149,11 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                                   e.stopPropagation();
                                   handleExportFullChatPDF(session.messages, session.title);
                                 }}
-                                className="p-1.5 rounded-md text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
-                                title={lang === "hi" ? "पूरा सत्र PDF डाउनलोड करें" : "Download session PDF"}
+                                className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-1 rounded-md transition-all cursor-pointer shadow-3xs active:scale-95"
+                                title={lang === "hi" ? "पूरा सत्र PDF डाउनलोड करें" : lang === "gu" ? "સંપૂર્ણ સત્ર PDF ડાઉનલોડ કરો" : "Download session PDF"}
                               >
-                                <FileDown className="h-3.5 w-3.5" />
+                                <FileDown className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                <span>PDF</span>
                               </button>
                             </div>
 
@@ -2309,7 +2312,26 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
             </div>
           ) : (
             /* NORMAL ACTIVE CONVERSATION FLOW */
-            activeMessages.map((msg) => {
+            <>
+              {activeMessages.some(m => m.sender === 'user') && (
+                <div className="flex items-center justify-between px-3.5 py-2 bg-emerald-50 border border-emerald-200/80 rounded-2xl text-xs text-emerald-950 shadow-3xs mb-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-base shrink-0">📄</span>
+                    <span className="font-semibold truncate">
+                      {PDF_LABELS[lang]?.fullChatTitle || "Complete AI Study Session Transcript"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleExportFullChatPDF()}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-3xs cursor-pointer active:scale-95 shrink-0"
+                  >
+                    <FileDown className="h-3.5 w-3.5" />
+                    <span>{PDF_LABELS[lang]?.downloadFullChat || "Download PDF"}</span>
+                  </button>
+                </div>
+              )}
+              {activeMessages.map((msg) => {
               const isMe = msg.sender === 'user';
               return (
                 <div 
@@ -2520,7 +2542,8 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                   </div>
                 </div>
               );
-            })
+            })}
+            </>
           )}
 
           {/* Simulated thinking indicator */}

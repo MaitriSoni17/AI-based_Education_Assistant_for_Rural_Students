@@ -415,7 +415,22 @@ function runNativeSpeechFallback(
     });
 
     if (eligibleVoices.length === 0) {
-      eligibleVoices = voices;
+      // Look for any Indic or Indian English voice as fallback before default global voices
+      const indicVoices = voices.filter(v => {
+        const vLang = v.lang.toLowerCase().replace('_', '-');
+        const vName = v.name.toLowerCase();
+        return (
+          vLang.includes('-in') ||
+          vLang.startsWith('hi') ||
+          vLang.startsWith('gu') ||
+          vLang.startsWith('mr') ||
+          vLang.startsWith('ta') ||
+          vLang.startsWith('te') ||
+          vName.includes('india') ||
+          vName.includes('hindi')
+        );
+      });
+      eligibleVoices = indicVoices.length > 0 ? indicVoices : voices;
     }
 
     let matchedVoice: SpeechSynthesisVoice | undefined;
@@ -518,3 +533,48 @@ function runNativeSpeechFallback(
     if (currentSpeechSession === session && onEnd) onEnd();
   }
 }
+
+/**
+ * Checks whether the user's browser/device currently has a native TTS voice installed
+ * for the requested language code, or whether it relies on the /api/tts cloud service.
+ */
+export function checkVoiceAvailability(lang: LanguageCode): {
+  hasNativeVoice: boolean;
+  matchingVoicesCount: number;
+  engine: 'cloud-regional' | 'device-native';
+  voiceNames: string[];
+} {
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    return {
+      hasNativeVoice: false,
+      matchingVoicesCount: 0,
+      engine: 'cloud-regional',
+      voiceNames: []
+    };
+  }
+
+  const voices = window.speechSynthesis.getVoices();
+  const targetLangLower = (LANG_MAP[lang] || 'en-IN').toLowerCase().replace('_', '-');
+  const langLower = lang.toLowerCase();
+
+  const matching = voices.filter(v => {
+    const vLang = v.lang.toLowerCase().replace('_', '-');
+    const vName = v.name.toLowerCase();
+    const matchesLang = vLang === targetLangLower || vLang.startsWith(langLower);
+    let matchesName = false;
+    if (langLower === 'gu' && (vName.includes('gujarati') || vName.includes('guj'))) matchesName = true;
+    if (langLower === 'mr' && (vName.includes('marathi') || vName.includes('mar'))) matchesName = true;
+    if (langLower === 'ta' && (vName.includes('tamil') || vName.includes('tam'))) matchesName = true;
+    if (langLower === 'te' && (vName.includes('telugu') || vName.includes('tel'))) matchesName = true;
+    if (langLower === 'hi' && (vName.includes('hindi') || vName.includes('hin'))) matchesName = true;
+    return matchesLang || matchesName;
+  });
+
+  return {
+    hasNativeVoice: matching.length > 0,
+    matchingVoicesCount: matching.length,
+    engine: matching.length > 0 ? 'device-native' : 'cloud-regional',
+    voiceNames: matching.map(v => v.name)
+  };
+}
+

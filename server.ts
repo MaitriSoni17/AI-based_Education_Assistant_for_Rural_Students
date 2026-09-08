@@ -3084,6 +3084,56 @@ Generate a concise JSON feedback object with this exact structure:
     }
   });
 
+  // API ROUTE: HIGH DEFINITION REGIONAL TEXT-TO-SPEECH (TTS) PROXY
+  // Provides authentic audio synthesis for Hindi, Gujarati, Marathi, Tamil, Telugu, and English
+  // across all devices and browsers, bypassing device-level speech voice limitations.
+  app.get("/api/tts", async (req, res) => {
+    try {
+      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      const tl = typeof req.query.tl === "string" ? req.query.tl.trim() : "en";
+
+      if (!q) {
+        return res.status(400).send("Missing text parameter (q)");
+      }
+
+      // Limit length per chunk to 200 characters for optimal upstream streaming
+      const textToSpeak = q.slice(0, 200);
+
+      // Map language codes to supported Google Translate TTS language codes
+      let langCode = tl.toLowerCase();
+      if (langCode.startsWith("gu")) langCode = "gu";
+      else if (langCode.startsWith("mr")) langCode = "mr";
+      else if (langCode.startsWith("ta")) langCode = "ta";
+      else if (langCode.startsWith("te")) langCode = "te";
+      else if (langCode.startsWith("hi")) langCode = "hi";
+      else langCode = "en";
+
+      const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(langCode)}&q=${encodeURIComponent(textToSpeak)}`;
+
+      const audioResponse = await fetch(googleTtsUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "Referer": "https://translate.google.com/"
+        }
+      });
+
+      if (!audioResponse.ok) {
+        console.warn(`[TTS PROXY] Upstream returned status ${audioResponse.status}`);
+        return res.status(audioResponse.status).send("Upstream TTS service error");
+      }
+
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Cache-Control", "public, max-age=86400"); // Cache audio chunk for 24 hours
+      res.setHeader("Accept-Ranges", "bytes");
+
+      const arrayBuffer = await audioResponse.arrayBuffer();
+      return res.send(Buffer.from(arrayBuffer));
+    } catch (err: any) {
+      console.error("[TTS PROXY ERROR]:", err?.message || err);
+      return res.status(500).send("Internal server error in TTS proxy");
+    }
+  });
+
   // Serve Vite or static compilation
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

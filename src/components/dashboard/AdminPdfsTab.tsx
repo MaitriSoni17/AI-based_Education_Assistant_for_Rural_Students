@@ -152,9 +152,10 @@ const generateMultiLanguagePdfDataUrl = async (
     container.style.backgroundColor = '#ffffff';
     container.style.color = '#0f172a';
     container.style.padding = '44px 48px 56px 48px';
-    container.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Hind", "Gujarati", "Mukta", sans-serif';
+    container.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", "Noto Sans Gujarati", "Noto Sans Tamil", "Noto Sans Telugu", "Hind", "Gujarati", "Mukta", sans-serif';
     container.style.boxSizing = 'border-box';
-    container.style.lineHeight = '1.7';
+    container.style.lineHeight = '1.75';
+    container.style.wordBreak = 'break-word';
 
     // Normalize math syntax first to ensure standard $ ... $ or $$ ... $$ blocks for KaTeX
     const normalizedBodyText = normalizeMathText(fullBodyText || '');

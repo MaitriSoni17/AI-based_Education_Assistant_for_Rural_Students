@@ -359,6 +359,88 @@ export const generateSmartReaderPdfDataUrl = async (
   }
 
   const generationPromise = (async () => {
+    const hasIndic = /[\u0900-\u0D7F]/.test(fullBodyText || '') || /[\u0900-\u0D7F]/.test(title || '');
+    if (hasIndic && typeof document !== 'undefined') {
+      try {
+        const { default: html2canvas } = await import('html2canvas-pro');
+        const container = document.createElement('div');
+        container.style.position = 'absolute';
+        container.style.left = '-9999px';
+        container.style.top = '-9999px';
+        container.style.width = '794px';
+        container.style.backgroundColor = '#ffffff';
+        container.style.color = '#0f172a';
+        container.style.padding = '44px 48px 56px 48px';
+        container.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", "Noto Sans Gujarati", "Noto Sans Tamil", "Noto Sans Telugu", "Hind", "Mukta", sans-serif';
+        container.style.boxSizing = 'border-box';
+        container.style.lineHeight = '1.75';
+        container.style.wordBreak = 'break-word';
+
+        const headerBadge = materialTypeHeaderLabel || 'AI Study Guide';
+        const formattedHtml = (fullBodyText || '')
+          .split('\n')
+          .map(line => {
+            const trimmed = line.trim();
+            if (!trimmed) return '<div style="height: 10px;"></div>';
+            if (trimmed.startsWith('# ')) return `<h1 style="font-size: 20px; font-weight: 900; color: #be123c; margin: 18px 0 8px 0; border-bottom: 2px solid #be123c; padding-bottom: 4px;">${trimmed.replace(/^#\s*/, '')}</h1>`;
+            if (trimmed.startsWith('## ')) return `<h2 style="font-size: 15px; font-weight: 800; color: #0369a1; margin: 14px 0 6px 0; background-color: #f0f9ff; padding: 6px 12px; border-left: 4px solid #0284c7; border-radius: 4px;">${trimmed.replace(/^##\s*/, '')}</h2>`;
+            if (trimmed.startsWith('### ')) return `<h3 style="font-size: 13.5px; font-weight: 800; color: #0f172a; margin: 10px 0 4px 0;">${trimmed.replace(/^###\s*/, '')}</h3>`;
+            if (trimmed.startsWith('> ')) return `<div style="background-color: #fffbe0; border-left: 4px solid #d97706; padding: 8px 12px; border-radius: 6px; margin: 8px 0; font-size: 13px; color: #0f172a; font-weight: 600;">${trimmed.replace(/^>\s*/, '')}</div>`;
+            if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) return `<div style="padding-left: 16px; margin-bottom: 4px; font-size: 13px; color: #0f172a;"><span style="color: #e11d48; font-weight: 900;">•</span> ${trimmed.substring(2)}</div>`;
+            return `<p style="margin: 0 0 8px 0; color: #0f172a; font-size: 13px; line-height: 1.7;">${trimmed}</p>`;
+          })
+          .join('');
+
+        container.innerHTML = `
+          <div style="border-bottom: 3px solid #e11d48; padding-bottom: 14px; margin-bottom: 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 11px; font-weight: 900; color: #e11d48; text-transform: uppercase;">Gramin Shiksha • ${headerBadge}</span>
+              <span style="font-size: 11px; background-color: #ffe4e6; padding: 3px 10px; border-radius: 10px; font-weight: 800; color: #9f1239;">Language: ${language}</span>
+            </div>
+            <h1 style="font-size: 21px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">${title}</h1>
+            <div style="font-size: 12px; color: #334155; font-weight: 700; display: flex; gap: 20px;">
+              <span>Subject: <strong style="color: #0f172a;">${subject}</strong></span>
+              <span>Standard: <strong style="color: #0f172a;">${std}</strong></span>
+            </div>
+          </div>
+          <div style="font-size: 13px; line-height: 1.75; color: #0f172a;">
+            ${formattedHtml}
+          </div>
+          <div style="margin-top: 28px; border-top: 1px solid #cbd5e1; padding-top: 10px; text-align: center; font-size: 10.5px; color: #475569; font-weight: 600;">
+            Gramin Shiksha AI Educational Platform • Official Study Document (${language})
+          </div>
+        `;
+
+        document.body.appendChild(container);
+        const canvas = await html2canvas(container, { scale: 1.6, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+        if (document.body.contains(container)) document.body.removeChild(container);
+
+        const indicDoc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgWidth = 210;
+        const pageHeight = 297;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        indicDoc.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft > 5) {
+          position = heightLeft - imgHeight;
+          indicDoc.addPage();
+          indicDoc.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        const indicDataUrl = indicDoc.output('datauristring');
+        pdfDataUrlMemoryCache.set(cacheKey, indicDataUrl);
+        return indicDataUrl;
+      } catch (indicErr) {
+        console.warn("Indic high-fidelity DOM rasterization fallback to vector PDF:", indicErr);
+      }
+    }
+
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',

@@ -2272,16 +2272,16 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                     3. {t.questionPaper}
                   </h3>
                   
-                  <div className="flex bg-gray-100 p-1 rounded-xl mt-5 w-[310px] items-center">
+                  <div className="flex bg-gray-100 p-1 rounded-xl mt-3 sm:mt-5 w-full max-w-[310px] items-center">
                     <button 
                       onClick={() => setQpMode('text')}
-                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${qpMode === 'text' ? 'bg-white shadow-2xs text-gray-800' : 'text-gray-500 hover:text-gray-800'}`}
+                      className={`flex-1 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all text-center ${qpMode === 'text' ? 'bg-white shadow-2xs text-gray-800' : 'text-gray-500 hover:text-gray-800'}`}
                     >
                       {t.pasteText}
                     </button>
                     <button 
                       onClick={() => setQpMode('file')}
-                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${qpMode === 'file' ? 'bg-white shadow-2xs text-gray-800' : 'text-gray-500 hover:text-gray-800'}`}
+                      className={`flex-1 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all text-center ${qpMode === 'file' ? 'bg-white shadow-2xs text-gray-800' : 'text-gray-500 hover:text-gray-800'}`}
                     >
                       {t.uploadDoc}
                     </button>
@@ -2360,16 +2360,16 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                     4. {t.answerKey}
                   </h3>
                   
-                  <div className="flex bg-gray-100 p-1 rounded-xl mt-5 w-[310px] items-center">
+                  <div className="flex bg-gray-100 p-1 rounded-xl mt-3 sm:mt-5 w-full max-w-[310px] items-center">
                     <button 
                       onClick={() => setAkMode('text')}
-                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${akMode === 'text' ? 'bg-white shadow-2xs text-gray-800' : 'text-gray-500 hover:text-gray-800'}`}
+                      className={`flex-1 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all text-center ${akMode === 'text' ? 'bg-white shadow-2xs text-gray-800' : 'text-gray-500 hover:text-gray-800'}`}
                     >
                       {t.pasteText}
                     </button>
                     <button 
                       onClick={() => setAkMode('file')}
-                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${akMode === 'file' ? 'bg-white shadow-2xs text-gray-800' : 'text-gray-500 hover:text-gray-800'}`}
+                      className={`flex-1 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all text-center ${akMode === 'file' ? 'bg-white shadow-2xs text-gray-800' : 'text-gray-500 hover:text-gray-800'}`}
                     >
                       {t.uploadDoc}
                     </button>
