@@ -1534,8 +1534,8 @@ const TRANSLATED_CAREERS: Record<LanguageCode, Record<string, Partial<typeof CAR
 };
 
 const getTranslatedCareer = (career: typeof CAREERS[0], lang: string) => {
-  const deepOverrides = (CAREER_LOCALIZATIONS[lang] as any)?.[career.id];
-  const shallowOverrides = (TRANSLATED_CAREERS[lang] as any)?.[career.id] || {};
+  const deepOverrides = (CAREER_LOCALIZATIONS as Record<string, any>)?.[lang]?.[career.id];
+  const shallowOverrides = (TRANSLATED_CAREERS as Record<string, any>)?.[lang]?.[career.id] || {};
   
   if (!deepOverrides && !shallowOverrides) {
     return career;
@@ -2330,7 +2330,7 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                     
                     {activeCareer.scholarshipsList && activeCareer.scholarshipsList.length > 0 && (
                       <div className="grid grid-cols-1 gap-2 pt-1 text-left">
-                        {activeCareer.scholarshipsList.map((scholarship, idx) => (
+                        {activeCareer.scholarshipsList.map((scholarship: any, idx: number) => (
                           <div key={idx} className="bg-emerald-50/30 p-3 rounded-xl border border-emerald-100/40 space-y-1">
                             <h5 className="font-sans font-bold text-xs text-emerald-900 flex items-center gap-1">
                               <span>🏅</span> {scholarship.name}
@@ -2350,7 +2350,7 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                     )}
                   </div>
 
-                  {selectedCareer.salary && (
+                  {activeCareer.salary && (
                     <div className="space-y-2 pt-2 border-t border-gray-100">
                       <span className="text-[10px] font-mono uppercase text-[#3D405B] font-black block flex items-center gap-1.5">
                         <IndianRupee className="h-3.5 w-3.5 text-emerald-600" />
@@ -2359,21 +2359,21 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50 text-left">
                           <span className="text-[9px] font-mono text-emerald-800 font-bold uppercase tracking-wider block">Beginner</span>
-                          <span className="text-xs font-black text-[#3D405B] block mt-1">{selectedCareer.salary.beginner}</span>
+                          <span className="text-xs font-black text-[#3D405B] block mt-1">{activeCareer.salary.beginner}</span>
                         </div>
                         <div className="bg-[#FAF8F4] p-3 rounded-xl border border-[#F2CC8F]/30 text-left">
                           <span className="text-[9px] font-mono text-amber-800 font-bold uppercase tracking-wider block">Mid-Level</span>
-                          <span className="text-xs font-black text-[#3D405B] block mt-1">{selectedCareer.salary.midLevel}</span>
+                          <span className="text-xs font-black text-[#3D405B] block mt-1">{activeCareer.salary.midLevel}</span>
                         </div>
                         <div className="bg-amber-50/40 p-3 rounded-xl border border-amber-200/30 text-left">
                           <span className="text-[9px] font-mono text-amber-700 font-bold uppercase tracking-wider block">Experienced</span>
-                          <span className="text-xs font-black text-[#3D405B] block mt-1">{selectedCareer.salary.experienced}</span>
+                          <span className="text-xs font-black text-[#3D405B] block mt-1">{activeCareer.salary.experienced}</span>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {selectedCareer.skills && (
+                  {activeCareer.skills && (
                     <div className="space-y-3 pt-3 border-t border-gray-100 text-left">
                       <span className="text-[10px] font-mono uppercase text-[#3D405B] font-black block flex items-center gap-1.5">
                         <Wrench className="h-3.5 w-3.5 text-emerald-700 animate-pulse" />
@@ -2386,7 +2386,7 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                             Technical Skills
                           </span>
                           <div className="flex flex-wrap gap-1.5">
-                            {selectedCareer.skills.technical.map((sk, idx) => (
+                            {activeCareer.skills.technical.map((sk: string, idx: number) => (
                               <span key={idx} className="bg-white text-emerald-850 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-3xs border border-emerald-100">
                                 {sk}
                               </span>
@@ -2399,7 +2399,7 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                             Soft Skills
                           </span>
                           <div className="flex flex-wrap gap-1.5">
-                            {selectedCareer.skills.soft.map((sk, idx) => (
+                            {activeCareer.skills.soft.map((sk: string, idx: number) => (
                               <span key={idx} className="bg-white text-gray-750 px-2.5 py-1 rounded-lg text-xs font-semibold shadow-3xs border border-[#F2CC8F]/20">
                                 {sk}
                               </span>
@@ -2410,7 +2410,7 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                     </div>
                   )}
 
-                  {selectedCareer.growth && (
+                  {activeCareer.growth && (
                     <div className="space-y-3 pt-3 border-t border-gray-100 text-left">
                       <span className="text-[10px] font-mono uppercase text-[#3D405B] font-black block flex items-center gap-1.5">
                         <Sparkles className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
@@ -2419,32 +2419,32 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="bg-[#FAF8F4] p-3.5 rounded-xl border border-[#F2CC8F]/30 space-y-1">
                           <span className="text-[9px] font-mono font-bold text-amber-800 uppercase block">Future Scope</span>
-                          <p className="text-xs text-gray-750 font-medium leading-relaxed">{selectedCareer.growth.futureScope}</p>
+                          <p className="text-xs text-gray-750 font-medium leading-relaxed">{activeCareer.growth.futureScope}</p>
                         </div>
                         <div className="bg-emerald-50/40 p-3.5 rounded-xl border border-emerald-100/40 space-y-1">
                           <span className="text-[9px] font-mono font-bold text-emerald-800 uppercase block">Job Opportunities</span>
-                          <p className="text-xs text-gray-750 font-medium leading-relaxed">{selectedCareer.growth.jobOpportunities}</p>
+                          <p className="text-xs text-gray-750 font-medium leading-relaxed">{activeCareer.growth.jobOpportunities}</p>
                         </div>
                         <div className="bg-amber-50/40 p-3.5 rounded-xl border border-amber-200/30 space-y-1">
                           <span className="text-[9px] font-mono font-bold text-amber-700 uppercase block">Market Demand in India</span>
-                          <p className="text-xs text-gray-750 font-medium leading-relaxed">{selectedCareer.growth.demand}</p>
+                          <p className="text-xs text-gray-750 font-medium leading-relaxed">{activeCareer.growth.demand}</p>
                         </div>
                         <div className="bg-teal-50/40 p-3.5 rounded-xl border border-teal-100/30 space-y-1">
                           <span className="text-[9px] font-mono font-bold text-teal-800 uppercase block">Career Growth Progression</span>
-                          <p className="text-xs text-gray-755 font-semibold leading-relaxed">{selectedCareer.growth.careerGrowth}</p>
+                          <p className="text-xs text-gray-755 font-semibold leading-relaxed">{activeCareer.growth.careerGrowth}</p>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {selectedCareer.exams && selectedCareer.exams.length > 0 && (
+                  {activeCareer.exams && activeCareer.exams.length > 0 && (
                     <div className="space-y-3 pt-3 border-t border-gray-100">
                       <span className="text-[10px] font-mono uppercase text-amber-700 block font-black flex items-center gap-1.5">
                         <BookOpen className="h-3.5 w-3.5" />
                         Required Entrance Exams & Preparation Guides
                       </span>
                       <div className="space-y-3.5">
-                        {selectedCareer.exams.map((ex, exIdx) => (
+                        {activeCareer.exams.map((ex: any, exIdx: number) => (
                           <div key={exIdx} className="bg-amber-50/40 rounded-xl p-3.5 border border-amber-200/40 space-y-2">
                             <h4 className="font-display font-extrabold text-xs text-[#3D405B]">
                               📝 {ex.name}

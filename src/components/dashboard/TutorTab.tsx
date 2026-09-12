@@ -4257,7 +4257,7 @@ JSON Schema:
                                   {/* Inline bullets/highlights if active */}
                                   {isActive && s.bullets && s.bullets.length > 0 && (
                                     <div className="mt-1.5 flex flex-wrap gap-1.5 pt-1.5 border-t border-[#E07A5F]/15">
-                                      {s.bullets.map((bullet, bIdx) => (
+                                      {s.bullets.map((bullet: string, bIdx: number) => (
                                         <span 
                                           key={bIdx} 
                                           className="text-[9px] bg-slate-950/80 text-amber-300 px-1.5 py-0.5 rounded border border-white/5 font-sans"
