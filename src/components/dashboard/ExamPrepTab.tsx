@@ -1688,7 +1688,7 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                 <div className="bg-white rounded-3xl border border-gray-150 p-10 shadow-xs text-center space-y-6 animate-pulse">
                   <div className="relative mx-auto w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center">
                     <RefreshCw className="h-10 w-10 text-indigo-600 animate-spin" />
-                    <Sparkles className="h-5 w-5 text-amber-500 absolute -top-1 -right-1 animate-bounce" />
+                    {/* <Sparkles className="h-5 w-5 text-amber-500 absolute -top-1 -right-1 animate-bounce" /> */}
                   </div>
                   <div className="space-y-2 max-w-md mx-auto">
                     <h3 className="font-display font-extrabold text-[#3D405B] text-lg">

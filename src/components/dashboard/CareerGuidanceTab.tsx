@@ -1676,7 +1676,7 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
           <div className="bg-gradient-to-tr from-amber-50 to-[#FAF8F4] border border-amber-250 p-5 rounded-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600">
-                <Sparkle className="h-5.5 w-5.5 animate-spin" style={{ animationDuration: '4s' }} />
+                <Sparkle className="h-5.5 w-5.5"/>
               </div>
               <div>
                 <h3 className="font-display font-extrabold text-[#3D405B] text-sm">{t('aiGuidanceTitle')}</h3>

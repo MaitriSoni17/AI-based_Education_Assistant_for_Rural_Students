@@ -4124,7 +4124,7 @@ JSON Schema:
                           }}
                           className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center gap-3.5 z-10 cursor-pointer animate-fadeIn rounded-2xl border-2 border-[#E07A5F]/40"
                         >
-                          <div className="w-16 h-16 rounded-full bg-[#E07A5F] hover:bg-[#D56B4E] text-white flex items-center justify-center shadow-lg transform hover:scale-105 active:scale-95 transition-all animate-bounce">
+                          <div className="w-16 h-16 rounded-full bg-[#E07A5F] hover:bg-[#D56B4E] text-white flex items-center justify-center shadow-lg transform hover:scale-105 active:scale-95 transition-all">
                             <Play className="h-8 w-8 fill-current ml-1" />
                           </div>
                           <div className="space-y-1 text-center px-4">
@@ -4353,7 +4353,7 @@ JSON Schema:
                 className="w-full sm:w-auto px-5 py-2 bg-amber-500 hover:bg-amber-650 active:bg-amber-700 text-white font-sans font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all hover:scale-102"
               >
                 <HelpCircle className="h-4 w-4" />
-                <span>📝 Take Lesson Quiz</span>
+                <span>Take Lesson Quiz</span>
               </button>
             </div>
           )}

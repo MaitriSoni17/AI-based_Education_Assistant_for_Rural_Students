@@ -506,7 +506,7 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
         /* EMPTY STATE WRAPPER */
         <div className="flex flex-col items-center justify-center text-center py-16 px-4 space-y-5 bg-white rounded-3xl border border-dashed border-gray-200 max-w-xl mx-auto my-4 shadow-3xs">
           <div className="relative flex justify-center">
-            <div className="h-20 w-20 rounded-3xl bg-amber-50 border border-amber-200 flex items-center justify-center text-4xl shadow-inner animate-bounce">
+            <div className="h-20 w-20 rounded-3xl bg-amber-50 border border-amber-200 flex items-center justify-center text-4xl shadow-inner">
               🎓
             </div>
             <div className="absolute -bottom-2 -right-2 p-1.5 bg-indigo-600 rounded-full text-white shadow-md">
