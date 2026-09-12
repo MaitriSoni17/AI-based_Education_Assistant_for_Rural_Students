@@ -3836,8 +3836,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
             {/* AI Assistant Header with Clean Actions & Controls */}
             <div className="px-3 py-2 border-b border-slate-800 bg-slate-900/95 backdrop-blur-xs flex items-center justify-between shrink-0 gap-2 select-none w-full min-w-0">
-              {/* Left Title & Mobile Back */}
-              <div className="flex items-center gap-2 min-w-0 shrink">
+              {/* Left Title & Mobile Back (shrink-0 ensures it is NEVER crushed or overlapped) */}
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowAiAssistant(false)}
@@ -3849,81 +3849,98 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                 <div className="w-7 h-7 bg-purple-600/25 rounded-lg border border-purple-500/30 text-purple-300 flex items-center justify-center shrink-0">
                   <Bot className="w-3.5 h-3.5" />
                 </div>
-                <div className="min-w-0">
+                <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
-                    <h4 className="font-bold text-xs text-slate-100 truncate">AI Solver</h4>
+                    <h4 className="font-bold text-xs text-slate-100 whitespace-nowrap">AI Solver</h4>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title="Online" />
                   </div>
-                  <span className="text-[10px] text-slate-400 truncate block">
-                    Page {activePageNum} • {targetLanguage}
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap block">
+                    P.{activePageNum} • {targetLanguage}
                   </span>
                 </div>
               </div>
 
-              {/* Header Controls: Clean Responsive Actions & Utilities */}
+              {/* Header Controls: Fully visible in both Compact and Wide modes */}
               <div className="flex items-center gap-1 shrink-0">
                 {/* New Chat Button */}
                 <button
                   type="button"
                   onClick={handleStartNewChat}
-                  className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shrink-0"
+                  className={`p-1.5 rounded-lg text-[11px] font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shrink-0 ${
+                    aiPanelWidth > 460 ? 'px-2' : 'px-1.5'
+                  }`}
                   title="Start New Chat Session"
                 >
-                  <Plus className="w-3 h-3" />
-                  <span className="hidden sm:inline">New Chat</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  {aiPanelWidth > 460 && <span>New Chat</span>}
                 </button>
 
                 {/* History / Active Chat Toggle Button */}
                 <button
                   type="button"
                   onClick={() => setShowHistory(!showHistory)}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shrink-0 border ${
+                  className={`p-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 whitespace-nowrap cursor-pointer transition-all active:scale-95 shrink-0 border ${
                     showHistory
                       ? 'bg-purple-600 text-white border-purple-500 shadow-xs'
                       : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700/60'
-                  }`}
+                  } ${aiPanelWidth > 460 ? 'px-2' : 'px-1.5'}`}
                   title={showHistory ? 'Back to Active Chat' : 'Search & Session History'}
                 >
-                  <BookOpen className="w-3 h-3 text-purple-400" />
-                  <span className="hidden sm:inline">{showHistory ? 'Chat' : 'History'}</span>
+                  <BookOpen className="w-3.5 h-3.5 text-purple-400" />
+                  {aiPanelWidth > 460 && <span>{showHistory ? 'Chat' : 'History'}</span>}
                 </button>
 
                 {/* Utilities Toolbar Group */}
                 <div className="flex items-center bg-slate-950/70 border border-slate-800 rounded-lg p-0.5 shrink-0 gap-0.5">
-                  {/* Width Presets (Desktop Split Mode only on extra-wide screens) */}
+                  {/* Width Preset / Toggle (Desktop Split Mode) */}
                   {aiPanelMode === 'split' && (
-                    <div className="hidden 2xl:flex items-center border-r border-slate-800 pr-1 mr-0.5 text-[10px] gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setAiPanelWidth(340)}
-                        className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                          aiPanelWidth <= 360 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                        title="Compact (340px)"
-                      >
-                        Compact
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAiPanelWidth(500)}
-                        className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                          aiPanelWidth > 360 && aiPanelWidth <= 560 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                        title="Medium (500px)"
-                      >
-                        50%
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAiPanelWidth(720)}
-                        className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
-                          aiPanelWidth > 560 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                        title="Wide (720px)"
-                      >
-                        Wide
-                      </button>
-                    </div>
+                    <>
+                      {/* Detailed Width Presets for Wide sidebars (width > 540px) */}
+                      {aiPanelWidth > 540 ? (
+                        <div className="hidden lg:flex items-center border-r border-slate-800 pr-1 mr-0.5 text-[10px] gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setAiPanelWidth(340)}
+                            className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                              aiPanelWidth <= 360 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                            title="Compact (340px)"
+                          >
+                            Compact
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAiPanelWidth(500)}
+                            className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                              aiPanelWidth > 360 && aiPanelWidth <= 560 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                            title="Medium (500px)"
+                          >
+                            50%
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAiPanelWidth(720)}
+                            className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                              aiPanelWidth > 560 ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                            title="Wide (720px)"
+                          >
+                            Wide
+                          </button>
+                        </div>
+                      ) : (
+                        /* Sleek Quick Width Toggle Icon for Compact mode */
+                        <button
+                          type="button"
+                          onClick={() => setAiPanelWidth(aiPanelWidth <= 380 ? 520 : 340)}
+                          className="p-1.5 text-slate-400 hover:text-purple-300 hover:bg-slate-800/80 rounded-md cursor-pointer transition-colors"
+                          title={aiPanelWidth <= 380 ? "Expand to 50% width" : "Collapse to Compact width"}
+                        >
+                          <Columns className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </>
                   )}
 
                   {/* Export Full Chat PDF Button */}
@@ -3986,7 +4003,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAiAssistant(false)}
-                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-md cursor-pointer transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800/80 rounded-md cursor-pointer transition-colors"
                     title="Close AI Assistant"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -4018,7 +4035,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
               </div>
 
               {showQuickAiTools && (
-                <div className="px-3 py-1.5 border-t border-slate-800/40 animate-fade-in">
+                <div className="px-2.5 py-1.5 border-t border-slate-800/40 animate-fade-in relative">
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
                     {/* 1. Solve Page Questions */}
                     <button
@@ -4028,7 +4045,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                       title="Solve all questions on active page"
                     >
                       <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
-                      <span>Solve Questions</span>
+                      <span>Solve Page</span>
                     </button>
 
                     {/* 2. Key Formulas */}
@@ -4039,7 +4056,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                       title="Extract key formulas & concepts"
                     >
                       <Wand2 className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span>Key Formulas</span>
+                      <span>Formulas</span>
                     </button>
 
                     {/* 3. Practice Quiz */}
@@ -4050,7 +4067,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                       title="Generate 5 practice questions"
                     >
                       <HelpCircle className="w-3 h-3 text-sky-400 shrink-0" />
-                      <span>5 Practice Quiz</span>
+                      <span>5-Q Quiz</span>
                     </button>
 
                     {/* 4. Summarize Page */}
@@ -4061,7 +4078,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                       title="Summarize page in bullet points"
                     >
                       <FileText className="w-3 h-3 text-indigo-400 shrink-0" />
-                      <span>Page Summary</span>
+                      <span>Summary</span>
                     </button>
 
                     {/* 5. Revision Notes */}
@@ -4072,7 +4089,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
                       title="Create revision short notes"
                     >
                       <Star className="w-3 h-3 text-purple-400 shrink-0" />
-                      <span>Revision Notes</span>
+                      <span>Notes</span>
                     </button>
                   </div>
                 </div>
