@@ -29,7 +29,19 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   handleReset = () => {
+    if (this.state.error?.message?.includes('useState') || this.state.error?.message?.includes('hook') || this.state.error?.message?.includes('reading')) {
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+        return;
+      }
+    }
     this.setState({ hasError: false, error: null });
+  };
+
+  handleHardRefresh = () => {
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
   };
 
   render() {
@@ -48,13 +60,19 @@ export class ErrorBoundary extends React.Component<Props, State> {
               {this.state.error.message}
             </div>
           )}
-          <div className="pt-1">
+          <div className="pt-1 flex items-center gap-2">
             <button
               onClick={this.handleReset}
               className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors flex items-center gap-2 shadow-sm"
             >
               <RefreshCw className="h-4 w-4" />
               <span>Reload Section</span>
+            </button>
+            <button
+              onClick={this.handleHardRefresh}
+              className="px-4 py-2 bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 font-bold text-xs rounded-xl cursor-pointer transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <span>Refresh Page</span>
             </button>
           </div>
         </div>

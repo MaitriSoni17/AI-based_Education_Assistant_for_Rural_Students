@@ -20,16 +20,31 @@ if (typeof window !== 'undefined' && window.location.search) {
 }
 
 // Register offline-ready Service Worker securely on launch
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((reg) => {
-        // console.log('[Service Worker] Registered successfully with scope:', reg.scope);
-      })
-      .catch((err) => {
-        console.warn('[Service Worker] Registration bypassed or limited inside environment sandbox:', err);
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  const isDev = Boolean((import.meta as any).env?.DEV);
+  if (isDev) {
+    // In development mode, purge any registered service worker and stale browser caches
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const reg of registrations) {
+        reg.unregister();
+      }
+    });
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        keys.forEach((key) => caches.delete(key));
       });
-  });
+    }
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          reg.update();
+        })
+        .catch((err) => {
+          console.warn('[Service Worker] Registration bypassed or limited inside environment sandbox:', err);
+        });
+    });
+  }
 }
 
 createRoot(document.getElementById('root')!).render(
