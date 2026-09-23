@@ -77,6 +77,12 @@ interface ChatSession {
   starred?: boolean;
 }
 
+type LocalizedText = Partial<Record<LanguageCode, string>> & { en: string };
+
+const getLocalizedText = (text: LocalizedText, lang: LanguageCode) => {
+  return text[lang] || text.en;
+};
+
 const CHARACTERS = [
   { 
     id: 'swami', 
@@ -875,7 +881,7 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   const handleStartLearningPath = async (path: typeof LOCAL_LEARNING_PATHS[0]) => {
     setActivePathId(path.id);
     // Send starter prompt
-    const promptText = path.starterPrompt[lang] || path.starterPrompt['en'];
+    const promptText = getLocalizedText(path.starterPrompt, lang);
     await sendMessageWithPayload(promptText);
   };
 
@@ -2727,7 +2733,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                   {(PDF_LABELS[lang] || PDF_LABELS['en']).mentor}
                 </p>
                 <p className="text-gray-700 font-medium">
-                  {selectedChar.name} ({selectedChar.role[lang] || selectedChar.role['en']})
+                  {selectedChar.name} ({COMPANION_ROLE_LABELS[lang]?.[selectedChar.id] || selectedChar.role})
                 </p>
               </div>
               <div>
@@ -2830,7 +2836,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                   {(PDF_LABELS[lang] || PDF_LABELS['en']).mentor}
                 </p>
                 <p className="text-gray-700 font-medium">
-                  {selectedChar.name} ({selectedChar.role[lang] || selectedChar.role['en']})
+                  {selectedChar.name} ({COMPANION_ROLE_LABELS[lang]?.[selectedChar.id] || selectedChar.role})
                 </p>
               </div>
               <div>
