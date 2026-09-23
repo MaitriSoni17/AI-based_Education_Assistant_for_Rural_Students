@@ -5,6 +5,7 @@ import { LanguageCode, User } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import SpeechInputButton from '../SpeechInputButton';
+import ErrorBoundary from '../ErrorBoundary';
 import InteractiveAITeacher from '../InteractiveAITeacher';
 import { 
   Sparkles, Send, Volume2, VolumeX, Smile, ArrowRight, CornerDownRight, CornerUpLeft,
@@ -2313,7 +2314,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
           ) : (
             /* NORMAL ACTIVE CONVERSATION FLOW */
             <>
-              {activeMessages.some(m => m.sender === 'user') && (
+              {/*{activeMessages.some(m => m.sender === 'user') && (
                 <div className="flex items-center justify-between px-3.5 py-2 bg-emerald-50 border border-emerald-200/80 rounded-2xl text-xs text-emerald-950 shadow-3xs mb-3">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-base shrink-0">📄</span>
@@ -2330,7 +2331,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                     <span>{PDF_LABELS[lang]?.downloadFullChat || "Download PDF"}</span>
                   </button>
                 </div>
-              )}
+              )}*/}
               {activeMessages.map((msg) => {
               const isMe = msg.sender === 'user';
               return (
@@ -2660,10 +2661,12 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
               className="w-full pl-3.5 pr-12 py-3.5 bg-white rounded-xl border border-gray-200 text-sm sm:text-base font-sans placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]"
             />
             <div className="absolute right-2.5 top-2.5">
-              <SpeechInputButton
-                lang={lang}
-                onTranscript={(text) => setInputText(text)}
-              />
+              <ErrorBoundary fallbackTitle="">
+                <SpeechInputButton
+                  lang={lang}
+                  onTranscript={(text) => setInputText(text)}
+                />
+              </ErrorBoundary>
             </div>
           </div>
 

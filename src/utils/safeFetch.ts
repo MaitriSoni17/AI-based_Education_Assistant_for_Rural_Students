@@ -41,8 +41,16 @@ export async function safeFetchJson<T = any>(
     headers: reqHeaders,
   };
 
+  let response: Response;
   try {
-    const response = await fetch(url, modifiedOptions);
+    try {
+      response = await fetch(url, modifiedOptions);
+    } catch (fetchErr) {
+      // In case of momentary socket reset, connection blip, or dev server reload, retry once after 350ms
+      await new Promise((r) => setTimeout(r, 350));
+      response = await fetch(url, modifiedOptions);
+    }
+
     const rawText = await response.text();
     const trimmed = rawText.trim();
 
@@ -79,7 +87,7 @@ export async function safeFetchJson<T = any>(
       ...(fallbackData || {})
     } as unknown as T;
   } catch (netErr: any) {
-    console.error(`[safeFetchJson] Network exception fetching ${url}:`, netErr);
+    console.warn(`[safeFetchJson] Network exception fetching ${url}:`, netErr?.message || netErr);
     const errorMsg = netErr?.message || "Network error. Please check your connection.";
     return {
       success: false,

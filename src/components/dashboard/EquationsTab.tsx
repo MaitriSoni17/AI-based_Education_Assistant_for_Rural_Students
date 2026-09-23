@@ -5479,7 +5479,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
               ) : (
                 /* NORMAL ACTIVE CONVERSATION FLOW */
                 <>
-                  {chatMessages.some(m => m.sender === 'user') && (
+                  {/*{chatMessages.some(m => m.sender === 'user') && (
                     <div className="flex items-center justify-between px-3.5 py-2 bg-emerald-50 border border-emerald-200/80 rounded-2xl text-xs text-emerald-950 shadow-3xs mb-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-base shrink-0">🧮</span>
@@ -5496,7 +5496,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                         <span>{EQUATION_PDF_LABELS[chatbotLang]?.downloadFullChat || EQUATION_PDF_LABELS.en.downloadFullChat}</span>
                       </button>
                     </div>
-                  )}
+                  )}*/}
                   {chatMessages.map((msg) => (
                   <div
                     key={msg.id}
