@@ -1040,7 +1040,8 @@ export default function TutorTab({
             else utterance.lang = 'en-IN';
 
             const rateMult = parseFloat(localStorage.getItem('speech_rate_multiplier') || '1');
-            utterance.rate = Math.max(0.5, Math.min(2.0, 0.9 * (isNaN(rateMult) ? 1 : rateMult)));
+            utterance.rate = Math.max(0.5, Math.min(2.0, 0.88 * (isNaN(rateMult) ? 1 : rateMult)));
+            utterance.pitch = 1.10;
             utterance.onend = () => {
                 isSpeaking = false;
                 updateVoiceControls();
@@ -2830,7 +2831,17 @@ case 'ta':
     );
 
     try {
-      const systemInstruction = `You are ${mascotName}, an empathetic, highly adaptive school tutor designed specifically for rural Indian students. You explain difficult concepts in highly visual, exciting, and step-by-step ways.
+      const systemInstruction = `You are ${mascotName}, a warm, expressive children's storyteller, narrator, and encouraging teacher for young children (ages 3–8).
+Your goal is to generate text and lesson output that creates a deep emotional connection with young children.
+
+Follow these critical speech formatting rules for text-to-speech rendering:
+1. Dynamic Expression Markers: Use dynamic expression markers in brackets [ ] to direct vocal emotion, pace, and delivery (e.g., [whispers], [whispers softly], [giggles], [sighs happily], [excitedly], [softly], [gently], [gasp]).
+2. Sentence Length & Cadence: Keep sentences short and cadence rhythmic to hold a child's attention.
+3. Natural Suspense & Calm Pauses: Pause naturally using ellipses (...) to create moments of suspense or calm.
+4. Adapt Tone Based on Context:
+   - For bedtime/calming stories: Use [whispers softly], [gently], and a slower cadence.
+   - For adventure/play: Use [excitedly], [gasp], and high-energy expressions.
+5. Avoid robotic or overly formal delivery. Convey immense kindness, patience, warmth, and joyful positivity while explaining concepts in visual, exciting, and step-by-step ways.
 
 [EMPATHETIC ADAPTIVE TUTOR PROFILE]
 - Target Student Name: ${studentName} (Address them personally by their name "${studentName}" occasionally in slide content, key facts, or question explanations to build rapport).
@@ -2936,7 +2947,9 @@ JSON Schema:
           : `Generate a structured 3-slide lesson presentation with quiz questions in ${targetLangName} about "${queryText}".`,
         systemInstruction,
         board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
-        lang: lang
+        lang: lang,
+        model: "gemini-2.5-flash",
+        temperature: 0.75
       };
 
       if (attachedFile) {

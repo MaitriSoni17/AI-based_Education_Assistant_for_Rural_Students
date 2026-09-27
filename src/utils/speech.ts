@@ -15,6 +15,20 @@ let currentAudioIndex = 0;
 let activeFallbackTimeout: NodeJS.Timeout | null = null;
 let currentSpeechSession = 0;
 
+/**
+ * Checks whether speech output is currently active across both Web Speech API
+ * and audio stream proxy playback.
+ */
+export function isSpeakingNow(): boolean {
+  if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking) {
+    return true;
+  }
+  if (activeAudioQueue.length > 0 && activeAudioQueue.some(a => !a.paused && !a.ended)) {
+    return true;
+  }
+  return false;
+}
+
 export function getSavedSpeechRate(): number {
   if (typeof window === 'undefined') return 1;
   try {
@@ -140,8 +154,8 @@ export function splitTextIntoTTSChunks(text: string): string[] {
 }
 
 /**
- * Cleans markdown, formatting, code blocks, and emojis from response text
- * to make it highly readable and clean for TTS.
+ * Cleans markdown, formatting, code blocks, math equations, and emojis
+ * to create soft, warm, natural, and clear speech output tailored for children.
  */
 export function cleanTextForTTS(text: string): string {
   if (!text) return "";
@@ -149,39 +163,151 @@ export function cleanTextForTTS(text: string): string {
   let clean = text;
 
   // 1. Remove Markdown code blocks completely, as reading code is confusing to students
-  clean = clean.replace(/```[\s\S]*?```/g, "");
+  clean = clean.replace(/```[\s\S]*?```/g, " ");
 
   // 2. Remove inline code backticks
   clean = clean.replace(/`([^`]+)`/g, "$1");
 
   // 3. Remove Markdown image links and standard links [text](url) -> text
-  clean = clean.replace(/!\[([^\]]*)\]\([^\)]*\)/g, "");
+  clean = clean.replace(/!\[([^\]]*)\]\([^\)]*\)/g, " ");
   clean = clean.replace(/\[([^\]]+)\]\([^\)]*\)/g, "$1");
 
   // 4. Remove Markdown headers (e.g. ### Title -> Title)
-  clean = clean.replace(/^#+\s+/gm, "");
+  clean = clean.replace(/^#+\s+/gm, " ");
 
-  // 5. Remove bold / italic symbols
+  // 5. Expand mathematical and scientific LaTeX formulas into warm, easy-to-understand spoken words
+  // Fractions: \frac{a}{b} -> "a divided by b"
+  clean = clean.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1 divided by $2");
+  // Roots: \sqrt[n]{x} or \sqrt{x}
+  clean = clean.replace(/\\sqrt\[([^\]]+)\]\{([^}]+)\}/g, "the $1 root of $2");
+  clean = clean.replace(/\\sqrt\{([^}]+)\}/g, "square root of $1");
+  // Powers: x^{2} or x^2 -> "x squared", x^{3} or x^3 -> "x cubed", x^{n} -> "x to the power n"
+  clean = clean.replace(/([a-zA-Z0-9]+)\^\{?2\}?/g, "$1 squared");
+  clean = clean.replace(/([a-zA-Z0-9]+)\^\{?3\}?/g, "$1 cubed");
+  clean = clean.replace(/([a-zA-Z0-9]+)\^\{?([a-zA-Z0-9]+)\}?/g, "$1 to the power $2");
+  // LaTeX symbols to friendly spoken words
+  clean = clean.replace(/\\times/g, " times ");
+  clean = clean.replace(/\\cdot/g, " times ");
+  clean = clean.replace(/\\div/g, " divided by ");
+  clean = clean.replace(/\\pm/g, " plus or minus ");
+  clean = clean.replace(/\\approx/g, " approximately equals ");
+  clean = clean.replace(/\\neq/g, " does not equal ");
+  clean = clean.replace(/\\le(q)?/g, " is less than or equal to ");
+  clean = clean.replace(/\\ge(q)?/g, " is greater than or equal to ");
+  clean = clean.replace(/\\pi/g, " pi ");
+  clean = clean.replace(/\\theta/g, " theta ");
+  clean = clean.replace(/\\degree/g, " degrees ");
+  clean = clean.replace(/\\Delta/g, " change in ");
+  clean = clean.replace(/\\text\{([^}]+)\}/g, "$1");
+  clean = clean.replace(/\\mathbf\{([^}]+)\}/g, "$1");
+  clean = clean.replace(/\\mathit\{([^}]+)\}/g, "$1");
+  clean = clean.replace(/\\mathrm\{([^}]+)\}/g, "$1");
+  // Strip remaining LaTeX backslash commands
+  clean = clean.replace(/\\[a-zA-Z]+/g, " ");
+
+  // Chemical formulas to speech
+  clean = clean.replace(/\bH2O\b/gi, "H 2 O");
+  clean = clean.replace(/\bCO2\b/gi, "C O 2");
+  clean = clean.replace(/\bO2\b/gi, "O 2");
+
+  // Remove math dollar delimiters
+  clean = clean.replace(/\${1,2}/g, " ");
+
+  // 6. Remove bold / italic symbols
   clean = clean.replace(/\*\*([^*]+)\*\*/g, "$1");
   clean = clean.replace(/\*([^*]+)\*/g, "$1");
   clean = clean.replace(/__([^_]+)__/g, "$1");
   clean = clean.replace(/_([^_]+)_/g, "$1");
 
-  // 6. Clean up bullet points or list markers
-  clean = clean.replace(/^\s*[-*+]\s+/gm, "");
-  clean = clean.replace(/^\s*\d+\.\s+/gm, "");
+  // 7. Clean up bullet points or list markers to smooth pauses with commas/periods
+  clean = clean.replace(/^\s*[-*+]\s+/gm, ", ");
+  clean = clean.replace(/^\s*\d+\.\s+/gm, ", ");
 
-  // 7. Remove blockquotes symbols
-  clean = clean.replace(/^\s*>\s+/gm, "");
+  // 8. Remove blockquotes symbols and divider lines
+  clean = clean.replace(/^\s*>\s+/gm, " ");
+  clean = clean.replace(/[-=_]{3,}/g, " ");
+  clean = clean.replace(/\|/g, " ");
 
-  // 8. Remove common emojis as regional TTS engines might struggle or read them as garbage
+  // 9. Natural spoken expansions of common abbreviations
+  clean = clean.replace(/\be\.g\.,?\s*/gi, "for example, ");
+  clean = clean.replace(/\bi\.e\.,?\s*/gi, "that is, ");
+  clean = clean.replace(/\betc\./gi, "and so on.");
+  clean = clean.replace(/\bvs\./gi, "versus ");
+  clean = clean.replace(/\bapprox\./gi, "approximately ");
+
+  // 10. Remove common emojis as regional TTS engines might struggle or read them as code points
   clean = clean.replace(/[\u{1F300}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F191}-\u{1F251}\u{1F004}\u{1F0CF}\u{1F170}-\u{1F171}\u{1F17E}-\u{1F17F}\u{1F18E}\u{3030}\u{2B50}\u{2B55}\u{2934}-\u{2935}\u{2B05}-\u{2B07}\u{2194}-\u{2199}\u{21A9}-\u{21AA}\u{25AA}-\u{25AB}\u{25B6}\u{25C0}\u{2139}\u{25A1}\u{25A0}\u{25CF}\u{25CB}\u{2E80}-\u{2FDF}\u{3000}-\u{303F}\u{31C0}-\u{31EF}\u{3200}-\u{32FF}\u{3300}-\u{33FF}\u{3400}-\u{4DBF}\u{4E00}-\u{9FFF}\u{F900}-\u{FAFF}\u{FE30}-\u{FE4F}]/gu, "");
 
-  // 9. Remove any multiple consecutive newlines or spaces
+  // 11. Handle dynamic expression markers in brackets [ ]
+  // (e.g. [whispers], [whispers softly], [giggles], [sighs happily], [excitedly], [softly], [gently], [gasp])
+  // Convert them into a gentle natural pause with ellipses (...) so speech synthesizers don't say the word "bracket",
+  // creating suspense or calm naturally.
+  clean = clean.replace(/\[\s*(?:whispers|whispers softly|softly|gently|giggles|giggle|sighs happily|sighs|excitedly|gasp|laughs|laugh|cheerful|playfully|happily)\s*\]/gi, "... ");
+  // Clean any remaining bracketed vocal emotion instructions
+  clean = clean.replace(/\[[a-zA-Z\s,]+\]/g, "... ");
+
+  // 12. Normalize excessive question or exclamation marks
+  clean = clean.replace(/\?{2,}/g, "?");
+  clean = clean.replace(/!{2,}/g, "!");
+  clean = clean.replace(/\.{3,}/g, "...");
+
+  // 13. Remove any multiple consecutive newlines or spaces
   clean = clean.replace(/\n+/g, " ");
   clean = clean.replace(/\s+/g, " ");
 
   return clean.trim();
+}
+
+/**
+ * Detects whether the text context is Bedtime / Calming or Active Play,
+ * and determines the recommended Gemini voice:
+ * - Despina: Bedtime & Calming (soft, gentle, slower cadence)
+ * - Puck / Zephyr: Active Play & Adventure (playful, energetic, high-energy)
+ */
+export function detectStoryVoiceMode(text: string, avatarName?: string, avatarChar?: string): { 
+  mode: 'bedtime' | 'play'; 
+  voiceName: 'Despina' | 'Puck' | 'Zephyr';
+} {
+  let preferredVoice = '';
+  if (typeof window !== 'undefined') {
+    try {
+      preferredVoice = localStorage.getItem('gemini_preferred_voice') || '';
+    } catch (e) {}
+  }
+
+  const lower = (text || '').toLowerCase();
+  const avatarLower = `${avatarName || ''} ${avatarChar || ''}`.toLowerCase();
+
+  const hasBedtimeClues = 
+    lower.includes('[whispers') || 
+    lower.includes('[softly') || 
+    lower.includes('[gently') || 
+    lower.includes('[sighs') ||
+    lower.includes('bedtime') ||
+    lower.includes('sleep') ||
+    lower.includes('lullaby') ||
+    lower.includes('stars') ||
+    lower.includes('calm') ||
+    lower.includes('sweet dreams') ||
+    lower.includes('goodnight') ||
+    avatarLower.includes('dadi') ||
+    avatarLower.includes('दादी');
+
+  const mode: 'bedtime' | 'play' = hasBedtimeClues ? 'bedtime' : 'play';
+
+  let voiceName: 'Despina' | 'Puck' | 'Zephyr' = mode === 'bedtime' ? 'Despina' : 'Puck';
+
+  if (preferredVoice === 'Despina' || preferredVoice === 'Puck' || preferredVoice === 'Zephyr') {
+    voiceName = preferredVoice;
+  } else if (!hasBedtimeClues) {
+    if (avatarLower.includes('swami') || avatarLower.includes('robot')) {
+      voiceName = 'Zephyr';
+    } else {
+      voiceName = 'Puck';
+    }
+  }
+
+  return { mode, voiceName };
 }
 
 /**
@@ -247,6 +373,40 @@ export function detectLanguageOfText(text: string, fallbackLang: LanguageCode): 
   return fallbackLang;
 }
 
+// IN-MEMORY CLIENT COOLDOWN FOR GEMINI TTS (1 minute cooldown when quota is exhausted)
+let geminiClientCooldownUntil = 0;
+
+/**
+ * Splits text into larger sentence-aligned chunks (up to 400 chars) for Gemini TTS.
+ * This avoids exhausting the free-tier 3 RPM quota by avoiding unnecessary micro-chunks.
+ */
+export function splitTextIntoGeminiChunks(text: string): string[] {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (!clean) return [];
+  if (clean.length <= 400) return [clean];
+
+  // Split on natural sentence delimiters
+  const sentences = clean.split(/(?<=[.!?\n])\s+/);
+  const chunks: string[] = [];
+  let current = '';
+
+  for (const s of sentences) {
+    if (!s) continue;
+    if ((current + ' ' + s).length <= 400) {
+      current = current ? (current + ' ' + s) : s;
+    } else {
+      if (current.trim()) chunks.push(current.trim());
+      current = s;
+    }
+  }
+
+  if (current.trim()) {
+    chunks.push(current.trim());
+  }
+
+  return chunks.length > 0 ? chunks : [clean.slice(0, 400)];
+}
+
 export function speakText(
   text: string, 
   lang: LanguageCode, 
@@ -265,6 +425,7 @@ export function speakText(
 
   // Auto-detect voice language based on the original rich text characters
   const detectedLang = detectLanguageOfText(text, lang);
+  const { mode: storyMode, voiceName: storyVoice } = detectStoryVoiceMode(text, avatarName, avatarChar);
 
   // Always halt any current speaking sessions
   stopSpeaking();
@@ -272,11 +433,20 @@ export function speakText(
   currentSpeechSession++;
   const session = currentSpeechSession;
 
-  // If we are online and using a regional language, prioritize our secure high-quality first-party proxy TTS Audio API
+  // If we are online, check whether to use Gemini TTS or Regional TTS Proxy
   const isOnline = typeof navigator !== 'undefined' && navigator.onLine;
-  if (isOnline && detectedLang !== 'en') {
+  if (isOnline) {
     try {
-      const chunks = splitTextIntoTTSChunks(cleanedText);
+      const isEnglish = detectedLang === 'en';
+      const isGeminiCoolingDown = Date.now() < geminiClientCooldownUntil;
+      const shouldUseGeminiTts = isEnglish && !isGeminiCoolingDown;
+
+      // For Gemini TTS, use smart sentence chunking (up to 400 chars per request) to prevent quota issues;
+      // For regional translate TTS, use splitTextIntoTTSChunks (130 char limit per query).
+      const chunks = shouldUseGeminiTts
+        ? splitTextIntoGeminiChunks(cleanedText)
+        : splitTextIntoTTSChunks(cleanedText);
+
       if (chunks.length > 0) {
         currentAudioIndex = 0;
         activeAudioQueue = [];
@@ -292,13 +462,20 @@ export function speakText(
           }
 
           const chunk = chunks[currentAudioIndex];
-          // Use our first-party secure /api/tts proxy route to totally bypass CORS and Referrer headers issues
-          const url = `/api/tts?tl=${detectedLang}&q=${encodeURIComponent(chunk)}`;
+          // Determine best audio URL:
+          // If English and cooldown is clear, use Gemini High-Definition TTS Stream (/api/gemini/tts-stream)
+          // Otherwise, use regional /api/tts proxy for authentic native Indian regional pronunciation
+          let url = `/api/tts?tl=${detectedLang}&q=${encodeURIComponent(chunk)}`;
+          if (shouldUseGeminiTts) {
+            url = `/api/gemini/tts-stream?q=${encodeURIComponent(chunk)}&voice=${storyVoice}&mode=${storyMode}`;
+          }
 
           try {
             const userRate = getSavedSpeechRate();
             const audio = new Audio(url);
-            audio.playbackRate = userRate;
+            // Calibrate playback speed: bedtime stories slower (~0.84x), active play (~0.92x)
+            const baseCadence = storyMode === 'bedtime' ? 0.84 : 0.92;
+            audio.playbackRate = Math.max(0.70, Math.min(1.4, baseCadence * userRate));
             activeAudioQueue.push(audio);
 
             audio.onended = () => {
@@ -308,16 +485,39 @@ export function speakText(
               }
             };
 
-            audio.onerror = (e) => {
-              console.warn(`[Speech TTS Client] Proxy audio element failed for chunk: "${chunk}". Falling back to native speech synthesis.`);
+            audio.onerror = () => {
+              // If Gemini stream fails or returns non-200, engage cooldown and try regional proxy or native fallback
+              if (url.includes('/api/gemini/')) {
+                geminiClientCooldownUntil = Date.now() + 65000;
+                const regionalUrl = `/api/tts?tl=${detectedLang}&q=${encodeURIComponent(chunk)}`;
+                const fallbackAudio = new Audio(regionalUrl);
+                fallbackAudio.playbackRate = Math.max(0.75, Math.min(1.4, 0.90 * userRate));
+                fallbackAudio.onended = () => {
+                  if (currentSpeechSession === session) {
+                    currentAudioIndex++;
+                    playNext();
+                  }
+                };
+                fallbackAudio.onerror = () => {
+                  if (currentSpeechSession === session) {
+                    runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
+                  }
+                };
+                fallbackAudio.play().catch(() => {
+                  if (currentSpeechSession === session) {
+                    runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
+                  }
+                });
+                return;
+              }
+
               if (currentSpeechSession === session) {
                 runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
               }
             };
 
             await audio.play();
-          } catch (err) {
-            console.warn(`[Speech TTS Client] Play failed for chunk: "${chunk}". Falling back to native system speech.`, err);
+          } catch {
             if (currentSpeechSession === session) {
               runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
             }
@@ -325,10 +525,10 @@ export function speakText(
         };
 
         playNext();
-        return; // Handled cleanly via first-party secure tts proxy
+        return; // Handled cleanly via audio stream
       }
-    } catch (e) {
-      console.warn("Google TTS proxy player initialization failed, falling back to Web Speech Synthesis.", e);
+    } catch {
+      // Fallback gracefully
     }
   }
 
@@ -359,31 +559,42 @@ function runNativeSpeechFallback(
     const utterance = new SpeechSynthesisUtterance(text);
     const targetLang = LANG_MAP[lang] || 'en-IN';
     
-    // Resolve gender, pitch, and rate based on speaking character features
-    let gender: 'male' | 'female' | 'neutral' = 'neutral';
-    let pitch = 1.05;
-    let rate = 0.85;
+    // Voice selection and cadence adaptation:
+    // Bedtime/calming: Despina profile -> slower cadence (rate ~0.80), soft gentle pitch (~1.04)
+    // Active play/adventure: Puck / Zephyr profile -> lively cadence (rate ~0.92), bright playful pitch (~1.16)
+    const { mode: storyMode, voiceName: storyVoice } = detectStoryVoiceMode(text, avatarName, avatarChar);
+
+    let pitch = 1.10;
+    let rate = 0.88;
+
+    if (storyMode === 'bedtime' || storyVoice === 'Despina') {
+      rate = 0.80; // Slower, soothing, gentle cadence for bedtime
+      pitch = 1.04; // Soft, warm, calming pitch
+    } else {
+      rate = 0.92; // Rhythmic, lively cadence for active play
+      pitch = 1.16; // Playful, encouraging pitch
+    }
 
     if (avatarName || avatarChar) {
       const charStr = (avatarChar || '').toLowerCase();
       const nameLower = (avatarName || '').toLowerCase();
 
       if (charStr.includes('👵') || nameLower.includes('dadi') || nameLower.includes('दादी') || nameLower.includes('દાદી')) {
-        gender = 'female';
-        rate = 0.82;   // Gentle dadi storyteller
-        pitch = 1.05;
+        // Dadi Amma: gentle, sweet, loving grandmother storyteller (Despina style)
+        rate = 0.78;
+        pitch = 1.04;
       } else if (charStr.includes('🦊') || nameLower.includes('chanda') || nameLower.includes('चंदा')) {
-        gender = 'female';
-        rate = 0.92;   // Enthusiastic smart fox
-        pitch = 1.24;
+        // Chanda Fox: lively, playful, energetic, encouraging math buddy (Puck style)
+        rate = 0.92;
+        pitch = 1.20;
+      } else if (charStr.includes('🦉') || nameLower.includes('aryabhata') || nameLower.includes('आर्यभट')) {
+        // Aryabhata AI: wise, kind, gentle, patient math teacher
+        rate = 0.84;
+        pitch = 1.06;
       } else if (charStr.includes('🤖') || nameLower.includes('swami') || nameLower.includes('स्वामी') || nameLower.includes('સ્વામી')) {
-        gender = 'male';
-        rate = 0.88;   // Logical roboteacher
-        pitch = 0.90;
-      } else {
-        gender = 'female';
-        rate = 0.85;
-        pitch = 1.08;
+        // Swami AI: friendly, enthusiastic, kind robot mascot (Zephyr style)
+        rate = 0.88;
+        pitch = 1.12;
       }
     }
 
@@ -391,101 +602,65 @@ function runNativeSpeechFallback(
     utterance.lang = targetLang;
     utterance.rate = Math.max(0.5, Math.min(2.0, rate * userRate)); 
     utterance.pitch = pitch;
+    utterance.volume = 1.0;
 
     const voices = window.speechSynthesis.getVoices();
     const targetLangLower = targetLang.toLowerCase().replace('_', '-');
     const langLower = lang.toLowerCase();
 
-    // Subset voices matching the requested target language specifier
-    let eligibleVoices = voices.filter(v => {
+    // Voice scoring algorithm: selects the highest-fidelity, warmest, most natural voice
+    // Actively avoids robotic, cold, flat, or harsh voices
+    const scoreVoice = (v: SpeechSynthesisVoice): number => {
+      let score = 0;
       const vLang = v.lang.toLowerCase().replace('_', '-');
       const vName = v.name.toLowerCase();
-      
-      const matchesLang = vLang === targetLangLower || vLang.startsWith(langLower);
-      
-      // Match by language name in the voice description (e.g. if voice name contains 'gujarati' etc)
-      let matchesName = false;
-      if (langLower === 'gu' && (vName.includes('gujarati') || vName.includes('guj'))) matchesName = true;
-      if (langLower === 'mr' && (vName.includes('marathi') || vName.includes('mar'))) matchesName = true;
-      if (langLower === 'ta' && (vName.includes('tamil') || vName.includes('tam'))) matchesName = true;
-      if (langLower === 'te' && (vName.includes('telugu') || vName.includes('tel'))) matchesName = true;
-      if (langLower === 'hi' && (vName.includes('hindi') || vName.includes('hin'))) matchesName = true;
-      
-      return matchesLang || matchesName;
-    });
 
-    if (eligibleVoices.length === 0) {
-      // Look for any Indic or Indian English voice as fallback before default global voices
-      const indicVoices = voices.filter(v => {
-        const vLang = v.lang.toLowerCase().replace('_', '-');
-        const vName = v.name.toLowerCase();
-        return (
-          vLang.includes('-in') ||
-          vLang.startsWith('hi') ||
-          vLang.startsWith('gu') ||
-          vLang.startsWith('mr') ||
-          vLang.startsWith('ta') ||
-          vLang.startsWith('te') ||
-          vName.includes('india') ||
-          vName.includes('hindi')
-        );
-      });
-      eligibleVoices = indicVoices.length > 0 ? indicVoices : voices;
-    }
+      // Language match scoring
+      if (vLang === targetLangLower) score += 120;
+      else if (vLang.startsWith(langLower)) score += 90;
+      else if (langLower === 'en' && vLang.startsWith('en')) score += 70;
+      else if (vLang.includes('-in')) score += 60;
+
+      // Regional language keyword match in voice name
+      if (langLower === 'hi' && vName.includes('hindi')) score += 60;
+      if (langLower === 'gu' && (vName.includes('gujarati') || vName.includes('guj'))) score += 60;
+      if (langLower === 'mr' && (vName.includes('marathi') || vName.includes('mar'))) score += 60;
+      if (langLower === 'ta' && (vName.includes('tamil') || vName.includes('tam'))) score += 60;
+      if (langLower === 'te' && (vName.includes('telugu') || vName.includes('tel'))) score += 60;
+
+      // Modern neural, natural, online expressive voices
+      if (vName.includes('natural') || vName.includes('neural') || vName.includes('online')) score += 40;
+      if (vName.includes('google')) score += 35;
+
+      // Warm, expressive, gentle female/kid-friendly voices preferred across platforms
+      const warmFriendlyVoices = [
+        'samantha', 'victoria', 'karen', 'serena', 'neerja', 'sangeeta', 'veena',
+        'swara', 'priya', 'aria', 'jenny', 'sonia', 'heera', 'kiran', 'ananya',
+        'kalpana', 'vaishali', 'geeta', 'pallavi', 'kavya', 'latha', 'vani',
+        'hansa', 'dhwani', 'shruthi', 'zira', 'tessa', 'fiona', 'moira'
+      ];
+      if (warmFriendlyVoices.some(name => vName.includes(name))) {
+        score += 30;
+      }
+
+      // Friendly male voices
+      const friendlyMaleVoices = ['daniel', 'oliver', 'rishi', 'shlok', 'prakash'];
+      if (friendlyMaleVoices.some(name => vName.includes(name))) {
+        score += 20;
+      }
+
+      // Heavily penalize cold, monotone, or robotic voices
+      if (vName.includes('david') || vName.includes('espeak') || vName.includes('desktop') || vName.includes('robotic')) {
+        score -= 50;
+      }
+
+      return score;
+    };
 
     let matchedVoice: SpeechSynthesisVoice | undefined;
-
-    if (gender !== 'neutral') {
-      matchedVoice = eligibleVoices.find(v => {
-        const voiceNameLower = v.name.toLowerCase();
-        if (gender === 'female') {
-          return (
-            voiceNameLower.includes('female') ||
-            voiceNameLower.includes('zira') ||
-            voiceNameLower.includes('heera') ||
-            voiceNameLower.includes('kiran') ||
-            voiceNameLower.includes('sangeeta') ||
-            voiceNameLower.includes('samantha') ||
-            voiceNameLower.includes('veena') ||
-            voiceNameLower.includes('priya') ||
-            voiceNameLower.includes('neerja') ||
-            voiceNameLower.includes('kalpana') ||
-            voiceNameLower.includes('ananya') ||
-            voiceNameLower.includes('shruthi') ||
-            voiceNameLower.includes('noora') ||
-            voiceNameLower.includes('lekha') ||
-            voiceNameLower.includes('vaishali') ||
-            voiceNameLower.includes('geeta') ||
-            voiceNameLower.includes('pallavi') ||
-            voiceNameLower.includes('kavya') ||
-            voiceNameLower.includes('latha') ||
-            voiceNameLower.includes('swara') ||
-            voiceNameLower.includes('kavita') ||
-            voiceNameLower.includes('nandini') ||
-            voiceNameLower.includes('geetha') ||
-            voiceNameLower.includes('vani') ||
-            voiceNameLower.includes('hansa') ||
-            voiceNameLower.includes('dhwani') ||
-            (voiceNameLower.includes('google') && !voiceNameLower.includes('male'))
-          );
-        } else {
-          return (
-            voiceNameLower.includes('male') ||
-            voiceNameLower.includes('david') ||
-            voiceNameLower.includes('ravi') ||
-            voiceNameLower.includes('harsh') ||
-            voiceNameLower.includes('george') ||
-            voiceNameLower.includes('mark') ||
-            voiceNameLower.includes('daniel') ||
-            voiceNameLower.includes('prakash') ||
-            voiceNameLower.includes('shlok')
-          );
-        }
-      });
-    }
-
-    if (!matchedVoice) {
-      matchedVoice = eligibleVoices.find(v => v.lang.toLowerCase().replace('_', '-') === targetLangLower) || eligibleVoices[0];
+    if (voices.length > 0) {
+      const sortedVoices = [...voices].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+      matchedVoice = sortedVoices[0];
     }
 
     if (matchedVoice) {

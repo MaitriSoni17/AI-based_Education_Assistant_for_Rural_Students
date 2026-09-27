@@ -363,6 +363,33 @@ const COMPANION_ROLE_LABELS: Record<LanguageCode, Record<string, string>> = {
   te: { swami: "మస్కట్ సహచరుడు", dadi: "గ్రామ కథకురాలు", chanda: "తెలివైన గణిత నక్క" }
 };
 
+const CHAT_PDF_SHORT_LABELS: Record<LanguageCode, string> = {
+  en: "Chat PDF",
+  hi: "चैट PDF",
+  gu: "ચેટ PDF",
+  mr: "चॅट PDF",
+  ta: "அரட்டை PDF",
+  te: "చాట్ PDF"
+};
+
+const HISTORY_BTN_LABELS: Record<LanguageCode, string> = {
+  en: "History",
+  hi: "इतिहास",
+  gu: "ઇતિહાસ",
+  mr: "इतिहास",
+  ta: "வரலாறு",
+  te: "చరిత్ర"
+};
+
+const ACTIVE_CHAT_LABELS: Record<LanguageCode, string> = {
+  en: "Active Chat",
+  hi: "सक्रिय संवाद",
+  gu: "સક્રિય ચેટ",
+  mr: "સક્રિય चॅट",
+  ta: "செயலில் அரட்டை",
+  te: "యాక్టివ్ చాట్"
+};
+
 const NEW_CHAT_LABELS: Record<LanguageCode, string> = {
   en: "New Chat",
   hi: "नया चैट",
@@ -1796,73 +1823,86 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
       <div className="bg-white rounded-3xl border border-gray-150 shadow-sm flex flex-col h-[calc(100vh-140px)] sm:h-[750px] overflow-hidden relative">
         
         {/* Chat Ribbon Header */}
-        <div className="bg-[#3D405B] text-white p-2.5 px-4 sm:p-3.5 sm:px-5 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-2.5">
-            <span className="text-2xl">{selectedChar.char.split(' ')[0]}</span>
-            <div>
-              <h4 className="font-display font-extrabold text-sm">{selectedChar.name}</h4>
-              <p className="text-[10px] text-[#FAF8F4]/80 font-sans flex items-center gap-1">
-                <span className="h-1.5 w-1.5 bg-green-400 rounded-full" />
-                <span>{READY_EXPLAIN_LABELS[lang] || READY_EXPLAIN_LABELS['en']}</span>
-              </p>
+        <div className="bg-[#2B2D42] border-b border-white/10 px-3.5 py-2.5 sm:px-5 sm:py-3 flex justify-between items-center gap-3 shrink-0 select-none shadow-xs">
+          {/* Identity & Status */}
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-xs flex items-center justify-center text-xl shrink-0 shadow-inner">
+              {selectedChar.char.split(' ')[0]}
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-display font-bold text-sm sm:text-base text-white tracking-tight leading-tight truncate">
+                {selectedChar.name}
+              </h4>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <p className="text-[11px] text-emerald-300/90 font-medium truncate max-w-[120px] xs:max-w-[190px] sm:max-w-xs md:max-w-sm">
+                  {READY_EXPLAIN_LABELS[lang] || READY_EXPLAIN_LABELS['en']}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Action Toolbar */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {/* Download Full Chat PDF Button - ALWAYS VISIBLE */}
             <button
               id="btn-ai-full-chat-pdf-download"
               onClick={() => handleExportFullChatPDF()}
-              className="text-[11px] sm:text-xs bg-[#81B29A] hover:bg-[#6FA38B] text-white border border-emerald-400/40 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-3xs"
+              className="h-8.5 sm:h-9 px-2.5 sm:px-3 text-xs font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/15 active:bg-white/20 border border-white/15 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap shrink-0 shadow-xs cursor-pointer"
               title={PDF_LABELS[lang]?.downloadFullChat || PDF_LABELS['en'].downloadFullChat}
             >
-              <FileDown className="h-3.5 w-3.5 text-white shrink-0" />
-              <span>
-                <span className="inline sm:hidden">{lang === 'gu' ? 'ચેટ PDF' : lang === 'hi' ? 'चैट PDF' : 'Chat PDF'}</span>
-                <span className="hidden sm:inline">{PDF_LABELS[lang]?.downloadFullChat || PDF_LABELS['en'].downloadFullChat}</span>
+              <FileDown className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">
+                {CHAT_PDF_SHORT_LABELS[lang] || CHAT_PDF_SHORT_LABELS.en}
               </span>
             </button>
 
             {/* View History Button */}
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className={`text-[11px] sm:text-xs border px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+              className={`h-8.5 sm:h-9 px-2.5 sm:px-3 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-all active:scale-95 whitespace-nowrap shrink-0 shadow-xs cursor-pointer ${
                 showHistory 
-                  ? 'bg-[#FAF8F4] text-[#3D405B] border-[#F2CC8F]' 
-                  : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                  ? 'bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-400/40' 
+                  : 'text-white/90 hover:text-white bg-white/10 hover:bg-white/15 active:bg-white/20 border border-white/15'
               }`}
               title={showHistory 
                 ? (lang === 'hi' ? 'सक्रिय संवाद पर वापस जाएं' : 'Back to Active Chat') 
                 : (VIEW_HISTORY_LABELS[lang] || VIEW_HISTORY_LABELS['en'])}
             >
-              <BookOpen className={`h-3.5 w-3.5 ${showHistory ? 'text-[#E07A5F]' : 'text-[#F2CC8F]'}`} />
+              <BookOpen className={`h-3.5 w-3.5 shrink-0 ${showHistory ? 'text-amber-300' : 'text-amber-400/90'}`} />
               <span className="hidden sm:inline">
                 {showHistory 
-                  ? (lang === 'hi' ? 'सक्रिय संवाद' : 'Active Chat') 
-                  : (VIEW_HISTORY_LABELS[lang] || VIEW_HISTORY_LABELS['en'])}
+                  ? (ACTIVE_CHAT_LABELS[lang] || ACTIVE_CHAT_LABELS.en)
+                  : (HISTORY_BTN_LABELS[lang] || HISTORY_BTN_LABELS.en)}
               </span>
             </button>
 
-            {/* New Chat Button */}
+            {/* New Chat Button (Primary Action) */}
             <button
               onClick={() => {
                 handleNewChat();
                 setShowHistory(false);
               }}
-              className="text-[11px] sm:text-xs bg-[#E07A5F] hover:bg-[#CE6B50] text-white border border-transparent px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+              className="h-8.5 sm:h-9 px-3 sm:px-3.5 text-xs font-semibold bg-[#E07A5F] hover:bg-[#CE6B50] active:scale-95 text-white rounded-xl flex items-center gap-1.5 transition-all whitespace-nowrap shrink-0 shadow-xs cursor-pointer"
               title={NEW_CHAT_LABELS[lang] || NEW_CHAT_LABELS['en']}
             >
-              <Plus className="h-3.5 w-3.5 text-white" />
+              <Plus className="h-3.5 w-3.5 text-white shrink-0 stroke-[2.5]" />
               <span className="hidden sm:inline">{NEW_CHAT_LABELS[lang] || NEW_CHAT_LABELS['en']}</span>
+              <span className="sm:hidden">{lang === 'hi' ? 'नया' : 'New'}</span>
             </button>
           
             {isPlayingVoice && (
               <button
                 onClick={() => { stopSpeaking(); setIsPlayingVoice(null); setMascotAction('idle'); }}
-                className="text-xs bg-red-500/20 text-rose-300 border border-red-500/40 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer animate-pulse"
+                className="h-8.5 sm:h-9 px-2.5 sm:px-3 text-xs font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/40 rounded-xl flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 whitespace-nowrap shrink-0 animate-pulse"
+                title={STOP_ALOUD_LABELS[lang] || STOP_ALOUD_LABELS['en']}
               >
-                <VolumeX className="h-3.5 w-3.5" />
-                <span>{STOP_ALOUD_LABELS[lang] || STOP_ALOUD_LABELS['en']}</span>
+                <VolumeX className="h-3.5 w-3.5 text-rose-300 shrink-0" />
+                <span className="hidden sm:inline">{STOP_ALOUD_LABELS[lang] || STOP_ALOUD_LABELS['en']}</span>
+                <span className="sm:hidden">{lang === 'hi' ? 'रोकें' : 'Stop'}</span>
               </button>
             )}
           </div>

@@ -1259,7 +1259,13 @@ const SmartReaderView: React.FC<SmartReaderViewProps> = ({
     } else {
       stopSpeaking();
       setSpeakingIdx(idx);
-      speakText(textToSpeak, language === 'Hindi' ? 'hi' : language === 'Gujarati' ? 'gu' : 'en');
+      speakText(
+        textToSpeak, 
+        language === 'Hindi' ? 'hi' : language === 'Gujarati' ? 'gu' : 'en',
+        'Swami AI',
+        '🤖 Swami AI',
+        () => setSpeakingIdx(null)
+      );
     }
   };
 
@@ -2771,7 +2777,16 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
         body: JSON.stringify({
           message: promptText,
           prompt: promptText,
-          systemInstruction: `You are GyaanBot's expert AI Solver Chatbot. Help the student understand the study material document "${fileName}". Provide clear, well-structured educational explanations with markdown formatting.`,
+          systemInstruction: `You are GyaanBot's warm, expressive children's storyteller, narrator, and educational companion for young learners (ages 3–8).
+Help the student understand the study material document "${fileName}".
+Follow these speech formatting rules for text-to-speech rendering:
+1. Use dynamic expression markers in brackets [ ] to direct vocal emotion, pace, and delivery (e.g., [whispers], [giggles], [sighs happily], [excitedly], [softly], [gently]).
+2. Keep sentences short and cadence rhythmic to hold a child's attention.
+3. Pause naturally using ellipses (...) to create moments of suspense, curiosity, or calm.
+4. Adapt tone based on context: for calming explanations use [whispers softly], [gently]; for active learning use [excitedly], [gasp].
+5. Provide clear, encouraging, friendly explanations without robotic or overly formal phrasing.`,
+          model: "gemini-2.5-flash",
+          temperature: 0.75,
         })
       });
 

@@ -1,11 +1,13 @@
 import React, { Component } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
-import { speakText, stopSpeaking } from '../utils/speech';
+import { speakText, stopSpeaking, isSpeakingNow } from '../utils/speech';
 import { LanguageCode } from '../types';
 
 interface SpeakButtonProps {
   text: string;
   lang: LanguageCode;
+  avatarName?: string;
+  avatarChar?: string;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
 }
@@ -28,14 +30,10 @@ export default class SpeakButton extends Component<SpeakButtonProps, SpeakButton
     if (!prevState.isSpeaking && this.state.isSpeaking) {
       if (this.checkSpeechInterval) clearInterval(this.checkSpeechInterval);
       this.checkSpeechInterval = setInterval(() => {
-        if (typeof window !== 'undefined' && window.speechSynthesis) {
-          if (!window.speechSynthesis.speaking) {
-            this.setState({ isSpeaking: false });
-          }
-        } else {
+        if (!isSpeakingNow()) {
           this.setState({ isSpeaking: false });
         }
-      }, 500);
+      }, 400);
     } else if (prevState.isSpeaking && !this.state.isSpeaking) {
       if (this.checkSpeechInterval) {
         clearInterval(this.checkSpeechInterval);
@@ -59,7 +57,15 @@ export default class SpeakButton extends Component<SpeakButtonProps, SpeakButton
       this.setState({ isSpeaking: false });
     } else {
       this.setState({ isSpeaking: true });
-      speakText(this.props.text, this.props.lang);
+      speakText(
+        this.props.text, 
+        this.props.lang,
+        this.props.avatarName || 'Swami AI',
+        this.props.avatarChar || '🤖 Swami AI',
+        () => {
+          this.setState({ isSpeaking: false });
+        }
+      );
     }
   };
 

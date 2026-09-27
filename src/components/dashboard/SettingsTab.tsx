@@ -49,23 +49,63 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
     };
   }, [lang]);
 
-  const handleTestSpeech = () => {
+  const [preferredVoice, setPreferredVoice] = useState<string>(() => {
+    try {
+      return localStorage.getItem('gemini_preferred_voice') || 'Despina';
+    } catch {
+      return 'Despina';
+    }
+  });
+
+  const handleVoiceSelect = (voice: string) => {
+    setPreferredVoice(voice);
+    try {
+      localStorage.setItem('gemini_preferred_voice', voice);
+    } catch (e) {}
+
+    const sample = voice === 'Despina'
+      ? '[whispers softly] Hello little friend... [gently] I am Despina, your calming bedtime storyteller.'
+      : voice === 'Puck'
+      ? '[excitedly] Yoohoo! [giggles] I am Puck! Ready for active play and exciting adventures?'
+      : '[excitedly] Hi there! [softly] I am Zephyr, your cheerful companion for science and fun!';
+
+    speakText(sample, lang, voice, '🎙️');
+  };
+
+  const handleTestSpeech = (testType: 'bedtime' | 'play' = 'bedtime') => {
     if (isPlayingTest) {
       stopSpeaking();
       setIsPlayingTest(false);
       return;
     }
-    const samplePhrases: Record<string, string> = {
-      hi: 'नमस्ते! विद्यासेतु में आपका स्वागत है। आपकी पढ़ाई अब और भी आसान और रोचक होगी।',
-      gu: 'નમસ્તે! વિદ્યાસેતુમાં આપનું હાર્દિક સ્વાગત છે. તમારો અભ્યાસ હવે વધુ સરળ બનશે.',
-      mr: 'नमस्कार! विद्यासेतू मध्ये आपले स्वागत आहे. आपला अभ्यास आता अधिक सोपा आणि रंजक होईल.',
-      ta: 'வணக்கம்! வித்யாசேதுவிற்கு உங்களை அன்புடன் வரவேற்கிறோம்.',
-      te: 'నమస్కారం! విద్యాసేతుకు స్వాగతం. మీ చదువు ఇప్పుడు మరింత సులభం.',
-      en: 'Hello! Welcome to VidyaSetu AI Education Platform.'
+
+    const bedtimeSamples: Record<string, string> = {
+      en: '[whispers softly] Close your little eyes... [gently] and listen to the stars twinkling in the calm night sky... [sighs happily] You are safe and loved. Sweet dreams, little star...',
+      hi: '[whispers softly] अपनी नन्हीं आँखें बंद करो... [gently] और रात के शांत आसमान में चमकते तारों को सुनो... [sighs happily] तुम बहुत प्यारे हो। मीठे सपने, नन्हे तारे...',
+      gu: '[whispers softly] તમારી નાની આંખો બંધ કરો... [gently] અને શાંત રાત્રિના આકાશમાં ચમકતા તારાઓને સાંભળો... [sighs happily] મીઠા સપના, વ્હાલા મિત્ર...',
+      mr: '[whispers softly] तुझे छोटे डोळे मिटून घे... [gently] आणि रात्रीच्या शांत आकाशातल्या चांदण्यांचं गाणं ऐक... [sighs happily] छान स्वप्ने पडोत, बालमित्रा...',
+      ta: '[whispers softly] உன் குட்டி கண்களை மூடு... [gently] அமைதியான இரவு வானில் மின்னும் நட்சத்திரங்களைக் கேள்... [sighs happily] இனிய கனவுகள் செல்லமே...',
+      te: '[whispers softly] నీ చిన్ని కళ్ళు మూసుకో... [gently] ప్రశాంతమైన రాత్రి వేళ మెరిసే తారల పాట విను... [sighs happily] తియ్యని కలలు, చిన్ని నేస్తమా...'
     };
-    const sample = samplePhrases[lang] || samplePhrases.en;
+
+    const playSamples: Record<string, string> = {
+      en: '[excitedly] Wow, look at that! [gasp] A hidden treasure in the jungle... [giggles] Come on, little explorer, let\'s jump right in!',
+      hi: '[excitedly] अरे वाह, उधर देखो! [gasp] जंगल में एक छिपा हुआ खज़ाना... [giggles] चलो नन्हे खोजी, मिलकर कूद पड़ते हैं!',
+      gu: '[excitedly] અરે વાહ, ત્યાં જુઓ! [gasp] જંગલમાં એક છુપાયેલો ખજાનો... [giggles] ચાલો નાનકડા દોસ્ત, સાથે મળીને સાહસ કરીએ!',
+      mr: '[excitedly] अरे वा, तिकडे बघ! [gasp] जंगलात एक लपलेला खजिना... [giggles] चल छोट्या दोस्ता, आपण मिळून शोधूया!',
+      ta: '[excitedly] ஆஹா, அங்கே பார்! [gasp] காட்டில் ஒரு மறைந்த புதையல்... [giggles] வா குட்டி நண்பா, குதித்து மகிழ்வோம்!',
+      te: '[excitedly] అరెరే, అటు చూడండి! [gasp] అడవిలో దాగి ఉన్న నిధి... [giggles] రా చిన్ని నేస్తమా, కలిసి దూకుదాం!'
+    };
+
+    const sample = testType === 'bedtime'
+      ? (bedtimeSamples[lang] || bedtimeSamples.en)
+      : (playSamples[lang] || playSamples.en);
+
+    const testAvatar = testType === 'bedtime' ? 'Dadi Amma' : 'Puck';
+    const testChar = testType === 'bedtime' ? '👵' : '🦊';
+
     setIsPlayingTest(true);
-    speakText(sample, lang, 'Swami', '🤖', () => {
+    speakText(sample, lang, testAvatar, testChar, () => {
       setIsPlayingTest(false);
     });
   };
@@ -99,7 +139,7 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
       setSavingKey(false);
       setFeedbackMsg(lang === 'hi' ? "सेटिंग्स सफलतापूर्वक सहेजी गईं! ✨" : "Settings saved successfully! ✨");
       speakText(
-        lang === 'hi' ? "आपकी सेटिंग्स बदल दी गई हैं।" : "Your settings have been registered successfully.", 
+        lang === 'hi' ? "शाबाश! आपकी सेटिंग्स प्यार से सहेज ली गई हैं।" : "Wonderful! Your profile settings have been updated beautifully.", 
         lang, 
         "Swami AI", 
         "🤖 Swami AI"
@@ -111,7 +151,7 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
   const handleLanguageUpdate = (code: LanguageCode) => {
     onChangeLanguage(code);
     speakText(
-      code === 'hi' ? "हिंदी भाषा चुनी गई।" : code === 'gu' ? "ગુજરાતી ભાષા પસંદ કરી." : "Language updated successfully.", 
+      code === 'hi' ? "नमस्ते दोस्त! अब हम हिंदी में बातें करेंगे।" : code === 'gu' ? "નમસ્તે મિત્ર! હવે આપણે ગુજરાતીમાં વાત કરીશું." : "Hello friend! Your learning language has been updated.", 
       code, 
       "Swami AI", 
       "🤖 Swami AI"
@@ -127,8 +167,8 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
     }
     speakText(
       lang === 'hi' 
-        ? "आवाज़ की गति अद्यतन की गई।" 
-        : `Voice readout speed configured to ${rate} times speed.`, 
+        ? "आवाज़ की गति आपके लिए बिल्कुल सही कर दी गई है।" 
+        : `Voice speed tuned to ${rate} times speed, perfect for listening!`, 
       lang, 
       "Swami AI", 
       "🤖 Swami AI"
@@ -405,6 +445,54 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
         <div className="bg-white rounded-2xl border border-gray-150 p-5 shadow-3xs space-y-4">
           <h3 className="font-display font-extrabold text-xs text-[#3D405B] uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-2">
             <Volume2 className="h-4.5 w-4.5 text-[#F2CC8F]" />
+            Storyteller Voice Selection (Gemini Audio)
+          </h3>
+          
+          <div className="space-y-2">
+            {[
+              { 
+                key: 'Despina', 
+                label: '🌙 Despina — Bedtime & Calming Storyteller', 
+                desc: 'Soft, gentle, whispery, slower cadence for bedtime and comforting stories' 
+              },
+              { 
+                key: 'Puck', 
+                label: '🦊 Puck — Active Play & Joyful Explorer', 
+                desc: 'Bubbly, energetic, high-energy delivery for adventure, games, and math tricks' 
+              },
+              { 
+                key: 'Zephyr', 
+                label: '🤖 Zephyr — Active Play & Learning Companion', 
+                desc: 'Bright, rhythmic, encouraging companion voice for science & daily curiosity' 
+              }
+            ].map(voiceItem => {
+              const isActive = preferredVoice === voiceItem.key;
+              return (
+                <button
+                  key={voiceItem.key}
+                  type="button"
+                  onClick={() => handleVoiceSelect(voiceItem.key)}
+                  className={`w-full p-2.5 rounded-xl border text-left text-xs font-sans transition-all flex items-start justify-between cursor-pointer ${
+                    isActive 
+                      ? 'border-[#E07A5F] bg-orange-50/60 text-amber-950 font-bold ring-1 ring-orange-300'
+                      : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  <div className="space-y-0.5 pr-2">
+                    <span className="font-bold text-xs block">{voiceItem.label}</span>
+                    <span className="text-[10px] text-gray-500 block leading-tight font-normal">{voiceItem.desc}</span>
+                  </div>
+                  {isActive && <Check className="h-4 w-4 text-orange-600 shrink-0 mt-0.5" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 2. Mascot Speak Velocity */}
+        <div className="bg-white rounded-2xl border border-gray-150 p-5 shadow-3xs space-y-4">
+          <h3 className="font-display font-extrabold text-xs text-[#3D405B] uppercase tracking-wider flex items-center gap-1.5 border-b border-gray-100 pb-2">
+            <Volume2 className="h-4.5 w-4.5 text-[#81B29A]" />
             Mascot Speak Velocity
           </h3>
           
@@ -433,7 +521,7 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
           </div>
         </div>
 
-        {/* 2. Audio Engine Diagnostics & Live Voice Tester */}
+        {/* 3. Audio Engine Diagnostics & Live Story Voice Testers */}
         <div className="bg-white rounded-2xl border border-gray-150 p-5 shadow-3xs space-y-3.5">
           <div className="flex items-center justify-between border-b border-gray-100 pb-2">
             <h3 className="font-display font-extrabold text-xs text-[#3D405B] uppercase tracking-wider flex items-center gap-1.5">
@@ -451,31 +539,50 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
 
           <div className="text-xs space-y-2 text-gray-600 font-sans">
             <p className="text-[11px] leading-relaxed text-gray-500">
-              {voiceStatus.hasNativeVoice
-                ? `Detected ${voiceStatus.matchingVoicesCount} native device voice pack(s) for your language: ${voiceStatus.voiceNames.slice(0, 2).join(', ')}.`
-                : `Your browser or mobile operating system does not have an offline voice pack for ${SUPPORTED_LANGUAGES.find(l => l.code === lang)?.label || lang}. VidyaSetu automatically routes all speech via the High-Definition Cloud Regional TTS proxy for clear, natural native pronunciation.`
-              }
+              Audio engine features soft, warm, child-friendly expression markers [whispers], [giggles], rhythmic short cadence, and ellipses pauses.
             </p>
 
-            <div className="pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
-                onClick={handleTestSpeech}
-                className={`w-full py-2 px-3 rounded-xl text-xs font-bold font-sans flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                onClick={() => handleTestSpeech('bedtime')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
                   isPlayingTest
                     ? 'bg-rose-500 hover:bg-rose-600 text-white'
-                    : 'bg-[#81B29A] hover:bg-[#6FA088] text-white shadow-xs'
+                    : 'bg-amber-600 hover:bg-amber-700 text-white shadow-3xs'
                 }`}
               >
                 {isPlayingTest ? (
                   <>
                     <Square className="h-3.5 w-3.5 fill-current" />
-                    <span>Stop Speech Test</span>
+                    <span>Stop</span>
                   </>
                 ) : (
                   <>
                     <Play className="h-3.5 w-3.5 fill-current" />
-                    <span>Test Audio Pronunciation ({SUPPORTED_LANGUAGES.find(l => l.code === lang)?.label || lang})</span>
+                    <span>🌙 Test Bedtime (Despina)</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleTestSpeech('play')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold font-sans flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                  isPlayingTest
+                    ? 'bg-rose-500 hover:bg-rose-600 text-white'
+                    : 'bg-[#E07A5F] hover:bg-[#CE6B50] text-white shadow-3xs'
+                }`}
+              >
+                {isPlayingTest ? (
+                  <>
+                    <Square className="h-3.5 w-3.5 fill-current" />
+                    <span>Stop</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-3.5 w-3.5 fill-current" />
+                    <span>☀️ Test Play (Puck)</span>
                   </>
                 )}
               </button>

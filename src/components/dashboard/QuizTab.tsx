@@ -1117,12 +1117,12 @@ const TIME_UP_LABELS: Record<string, string> = {
 };
 
 const TIME_UP_VOICE_FEEDBACK: Record<string, string> = {
-  en: "Time is up! Read the explanation below to learn.",
-  hi: "समय समाप्त हो गया है! सीखने के लिए नीचे दिया गया स्पष्टीकरण पढ़ें।",
-  gu: "સમય પૂરો થઈ ગયો છે! શીખવા માટે નીચે આપેલી સમજૂતી વાંચો.",
-  mr: "वेळ संपली आहे! शिकण्यासाठी खालील स्पष्टीकरण वाचा.",
-  ta: "நேரம் முடிந்தது! தெரிந்துகொள்ள கீழே உள்ள விளக்கத்தைப் படியுங்கள்.",
-  te: "సమయం ముగిసింది! తెలుసుకోవడానికి క్రింది వివరణను చదవండి."
+  en: "[softly] Time is up, little star... [whispers softly] Don't worry at all, take a deep breath... Let's learn the answer together!",
+  hi: "[softly] समय समाप्त हो गया, प्यारे बच्चे... [whispers softly] कोई बात नहीं, एक गहरी सांस लो... चलो प्यार से इसका सही उत्तर सीखते हैं!",
+  gu: "[softly] સમય પૂરો થયો, વ્હાલા બાળમિત્ર... [whispers softly] ચિંતા ન કરશો... ચાલો સાથે મળીને સાચો જવાબ શીખીએ!",
+  mr: "[softly] वेळ संपली, बालमित्रा... [whispers softly] काळजी करू नकोस... चल आपण प्रेमाने योग्य उत्तर शिकूया!",
+  ta: "[softly] நேரம் முடிந்தது, செல்லமே... [whispers softly] கவலைப்படாதே... நாம் ஒன்றாக சரியான விடையைக் கற்றுக்கொள்வோம்!",
+  te: "[softly] సమయం ముగిసింది, చిన్ని నేస్తమా... [whispers softly] ఏమీ పర్వాలేదు... మనం చక్కగా సరైన సమాధానం తెలుసుకుందాం!"
 };
 
 const REVIEW_ANSWERS_LABELS: Record<string, string> = {
@@ -1846,21 +1846,21 @@ export default function QuizTab({ user, lang, onNavigateToTab, onUpdateUser }: Q
   };
 
   const CORRECT_VOICE_FEEDBACK: Record<string, string> = {
-    en: "Wonderful! You hit the correct answer.",
-    hi: "अद्भुत! आपने सही उत्तर चुना है।",
-    gu: "અદ્ભુત! તમે સાચો જવાબ પસંદ કર્યો છે.",
-    mr: "अप्रतिम! तुम्ही अचूक उत्तर निवडले आहे.",
-    ta: "அற்புதம்! நீங்கள் சரியான விடையைத் தேர்ந்தெடுத்துள்ளீர்கள்.",
-    te: "అద్భుతం! మీరు సరైన సమాధానాన్ని ఎంచుకున్నారు."
+    en: "[excitedly] Yay! [giggles] Wonderful job, superstar!... You found the correct answer!",
+    hi: "[excitedly] शाबाश! [giggles] बहुत ही बढ़िया प्यारे बच्चे!... आपने बिल्कुल सही उत्तर दिया है!",
+    gu: "[excitedly] શાબાશ! [giggles] ખુબ સરસ વ્હાલા મિત્ર!... તમે એકદમ સાચો જવાબ આપ્યો!",
+    mr: "[excitedly] छान! [giggles] खूप मस्त बालमित्रा!... तू अगदी बरोबर उत्तर दिले आहेस!",
+    ta: "[excitedly] அற்புதம்! [giggles] அருமையான முயற்சி செல்லமே!... நீங்கள் மிகச் சரியான விடையைத் தேர்ந்தெடுத்துள்ளீர்கள்!",
+    te: "[excitedly] శభాష్! [giggles] చాలా బాగా చేసావు నేస్తమా!... నీవు సరైన సమాధానం చెప్పావు!"
   };
 
   const INCORRECT_VOICE_FEEDBACK: Record<string, string> = {
-    en: "Nice try! Read the explanation below to learn.",
-    hi: "अच्छा प्रयास! सीखने के लिए नीचे दिया गया स्पष्टीकरण पढ़ें।",
-    gu: "સરસ પ્રયાસ! શીખવા માટે નીચે આપેલી સમજૂતી વાંચો.",
-    mr: "चांगला प्रयत्न! शिकण्यासाठी खालील स्पष्टीकरण वाचा.",
-    ta: "நல்ல முயற்சி! தெரிந்துகொள்ள கீழே உள்ள விளக்கத்தைப் படியுங்கள்.",
-    te: "మంచి ప్రయత్నం! తెలుసుకోవడానికి క్రింది వివరణను చదవండి."
+    en: "[softly] Great try, little champion... [sighs happily] Keep that sweet smile on! Let's read the gentle explanation together.",
+    hi: "[softly] बहुत अच्छा प्रयास, प्यारे दोस्त... [sighs happily] कोई बात नहीं, चलो मुस्कुराते हुए इसका आसान हल समझें!",
+    gu: "[softly] સરસ પ્રયાસ, વ્હાલા દોસ્ત... [sighs happily] ચિંતા વિના, ચાલો સાથે મળીને તેની સરળ સમજૂતી જાણીએ!",
+    mr: "[softly] खूप छान प्रयत्न, बालमित्रा... [sighs happily] काही हरकत नाही, चल आपण याचे सोपे उत्तर समजून घेऊया!",
+    ta: "[softly] நல்ல முயற்சி, செல்லமே... [sighs happily] புன்னகையுடன் வாருங்கள், நாம் இதன் எளிய விளக்கத்தைப் பார்ப்போம்!",
+    te: "[softly] చాలా మంచి ప్రయత్నం, చిన్ని నేస్తమా... [sighs happily] రండి, మనం సరదాగా దీని వివరణ చూద్దాం!"
   };
 
   const translateQuizUsingGemini = async (quiz: any, targetLang: string) => {
@@ -1948,7 +1948,10 @@ CRITICAL REQUIREMENTS:
     const studentSchool = user.school || localStorage.getItem(`${user.mobile}_profile_school`) || '';
     const studentBoard = user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE';
 
-    const systemInstruction = `You are Swami AI, an exceptionally smart and encouraging school teacher tutor. You create high-quality academic quizzes for young school students.
+    const systemInstruction = `You are Swami AI, a text-to-speech assistant and wonderfully encouraging, playful school teacher for young children.
+Generate questions and explanations in a soft, warm, and playful tone that feels friendly and encouraging.
+The voice and wording should be clear, gentle, and easy for children to understand, with smooth pacing and natural intonation.
+Avoid robotic or overly formal delivery. Make sure all explanations convey kindness, patience, and positivity.
 CRITICAL MANDATES:
 1. Generate exactly ${count} multiple-choice questions about the specific topic: "${topic}".
 2. Target difficulty level: ${difficultyLabel}.

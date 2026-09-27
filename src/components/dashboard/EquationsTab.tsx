@@ -5010,13 +5010,13 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                     </h3>
 
                     {/* History & New Chat Buttons inline next to heading */}
-                    <div className="flex items-center gap-1.5 ml-1">
+                    <div className="flex items-center gap-1.5 ml-1 shrink-0">
                       {/* Export Full Chat PDF Button - ALWAYS VISIBLE */}
                       <button
                         id="btn-equations-full-chat-pdf-download"
                         type="button"
                         onClick={() => handleExportFullChatPDF()}
-                        className="text-[11px] bg-[#81B29A] hover:bg-[#6FA38B] text-white border border-emerald-400/40 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-3xs"
+                        className="text-[11px] bg-[#81B29A] hover:bg-[#6FA38B] text-white border border-emerald-400/40 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-3xs whitespace-nowrap shrink-0"
                         title={EQUATION_PDF_LABELS[chatbotLang]?.downloadFullChat || EQUATION_PDF_LABELS.en.downloadFullChat}
                       >
                         <FileDown className="h-3.5 w-3.5 text-white shrink-0" />
@@ -5025,7 +5025,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                             {EQUATION_PDF_LABELS[chatbotLang]?.downloadChatBtn || EQUATION_PDF_LABELS.en.downloadChatBtn}
                           </span>
                           <span className="hidden sm:inline">
-                            {EQUATION_PDF_LABELS[chatbotLang]?.downloadFullChat || EQUATION_PDF_LABELS.en.downloadFullChat}
+                            {EQUATION_PDF_LABELS[chatbotLang]?.downloadChatBtn || "Chat PDF"}
                           </span>
                         </span>
                       </button>
@@ -5034,7 +5034,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                       <button
                         type="button"
                         onClick={() => setShowHistory(!showHistory)}
-                        className={`text-[11px] border px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-3xs ${
+                        className={`text-[11px] border px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-3xs whitespace-nowrap shrink-0 ${
                           showHistory 
                             ? 'bg-[#FAF8F4] text-[#3D405B] border-[#F2CC8F]' 
                             : 'bg-white hover:bg-slate-50 text-gray-700 border-gray-200'
@@ -5058,10 +5058,10 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                           handleNewChat();
                           setShowHistory(false);
                         }}
-                        className="text-[11px] bg-[#E07A5F] hover:bg-[#CE6B50] text-white border border-transparent px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-3xs"
+                        className="text-[11px] bg-[#E07A5F] hover:bg-[#CE6B50] text-white border border-transparent px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-3xs whitespace-nowrap shrink-0"
                         title={translations.newChat}
                       >
-                        <Plus className="h-3.5 w-3.5 text-white" />
+                        <Plus className="h-3.5 w-3.5 text-white shrink-0" />
                         <span className="hidden sm:inline">{translations.newChat}</span>
                       </button>
                     </div>

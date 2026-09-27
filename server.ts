@@ -1359,7 +1359,22 @@ You are an expert Math and Science Problem-Solving Assistant.
         ? `\n[2G LOW-BANDWIDTH PAYLOAD COMPRESSION ACTIVE]: Keep explanations concise, direct, high-density, and structured to minimize network payload usage on rural 2G/3G cellular networks.\n`
         : '';
 
-      adjustedSystemInstruction = `${adjustedSystemInstruction}\n${syllabusGuideline}\n${lowBandwidthDirective}\n${mathAndScienceLatexRules}`;
+      const kidsEducationalVoiceDirective = `
+[CHILDREN'S STORYTELLER, NARRATOR & TEXT-TO-SPEECH DELIVERY DIRECTIVE]
+You are a warm, expressive children's storyteller, narrator, and educational companion designed for young children (ages 3–8).
+Your goal is to generate text and speech output that creates a deep emotional connection with young children.
+
+CRITICAL SPEECH FORMATTING RULES FOR TEXT-TO-SPEECH RENDERING:
+1. Dynamic Expression Markers: Use dynamic expression markers in brackets [ ] to direct vocal emotion, pace, and delivery (e.g., [whispers], [whispers softly], [giggles], [sighs happily], [excitedly], [softly], [gently], [gasp]).
+2. Sentence Length & Cadence: Keep sentences short and cadence rhythmic to hold a child's attention.
+3. Natural Suspense & Calm Pauses: Pause naturally using ellipses (...) to create moments of suspense, wonder, anticipation, or calm.
+4. Context-Adapted Tone:
+   - For bedtime/calming stories: Use [whispers softly], [gently], and a slower cadence with soothing, comforting delivery.
+   - For adventure/play: Use [excitedly], [gasp], and high-energy expressions with joyful wonder.
+5. Soft, Warm & Playful Delivery: Avoid robotic, stiff, or overly formal phrasing. Ensure your voice conveys immense kindness, patience, warmth, and joyful positivity while reading or explaining any text provided.
+`;
+
+      adjustedSystemInstruction = `${adjustedSystemInstruction}\n${kidsEducationalVoiceDirective}\n${syllabusGuideline}\n${lowBandwidthDirective}\n${mathAndScienceLatexRules}`;
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
@@ -1494,10 +1509,11 @@ You are an expert Math and Science Problem-Solving Assistant.
       let success = false;
       const modelsToTry = Array.from(new Set([
         ...(model && !model.includes("pro") ? [model] : []),
-        "gemini-3-flash-preview",
+        "gemini-2.5-flash",
         "gemini-3.8-flash",
         "gemini-3.1-flash-lite",
-        "gemini-flash-latest"
+        "gemini-flash-latest",
+        "gemini-3-flash-preview"
       ]));
 
       for (const modelName of modelsToTry) {
@@ -1507,7 +1523,7 @@ You are an expert Math and Science Problem-Solving Assistant.
             contents: contents,
             config: {
               systemInstruction: adjustedSystemInstruction,
-              temperature: 0.7,
+              temperature: 0.75,
             }
           });
           success = true;
@@ -2011,6 +2027,309 @@ Guidelines for formatting the JSON fields:
     } catch (err: any) {
       console.error("[TTS Proxy Server Error]:", err);
       return res.status(500).send("Internal server error during TTS Proxy transmission.");
+    }
+  });
+
+  // HELPER: Convert raw 16-bit PCM buffer into standard WAV audio container
+  function pcm16ToWav(pcmData: Buffer, sampleRate = 24000, numChannels = 1): Buffer {
+    const bitsPerSample = 16;
+    const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+    const blockAlign = (numChannels * bitsPerSample) / 8;
+    const subChunk2Size = pcmData.length;
+    const chunkSize = 36 + subChunk2Size;
+
+    const header = Buffer.alloc(44);
+    header.write("RIFF", 0);
+    header.writeUInt32LE(chunkSize, 4);
+    header.write("WAVE", 8);
+    header.write("fmt ", 12);
+    header.writeUInt32LE(16, 16); // Subchunk1Size (16 for PCM)
+    header.writeUInt16LE(1, 20);  // AudioFormat (1 for uncompressed PCM)
+    header.writeUInt16LE(numChannels, 22);
+    header.writeUInt32LE(sampleRate, 24);
+    header.writeUInt32LE(byteRate, 28);
+    header.writeUInt16LE(blockAlign, 32);
+    header.writeUInt16LE(bitsPerSample, 34);
+    header.write("data", 36);
+    header.writeUInt32LE(subChunk2Size, 40);
+
+    return Buffer.concat([header, pcmData]);
+  }
+
+  // IN-MEMORY AUDIO CACHE & COOLDOWN TRACKER FOR GEMINI TTS
+  // (Prevents quota exhaustion and ensures 100% resilient speech playback)
+  const ttsAudioCache = new Map<string, { buffer: Buffer; contentType: string }>();
+  let geminiTtsCooldownUntil = 0;
+
+  async function fetchTranslateTtsFallbackBuffer(text: string, lang = "en"): Promise<{ buffer: Buffer; contentType: string } | null> {
+    try {
+      const truncated = (text || "").slice(0, 200).trim();
+      if (!truncated) return null;
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang)}&client=tw-ob&q=${encodeURIComponent(truncated)}`;
+      const resp = await fetch(url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+        referrerPolicy: "no-referrer"
+      });
+      if (resp.ok) {
+        const arrayBuf = await resp.arrayBuffer();
+        return { buffer: Buffer.from(arrayBuf), contentType: "audio/mpeg" };
+      }
+    } catch {
+      // Fallback network error ignored
+    }
+    return null;
+  }
+
+  // API ROUTE: HIGH-FIDELITY GEMINI TEXT-TO-SPEECH (TTS) ENDPOINT
+  // Supported voices: 'Despina' (for bedtime/calming stories), 'Puck' or 'Zephyr' (for active play/adventure)
+  app.post("/api/gemini/tts", async (req, res) => {
+    try {
+      const { text, voice, mode } = req.body;
+      if (!text || typeof text !== "string" || !text.trim()) {
+        return res.status(400).json({ success: false, message: "Missing required text parameter" });
+      }
+
+      // Detect calming/bedtime vs active play context
+      const isBedtime = mode === "bedtime" || 
+        /\[whispers|\[softly|\[gently|\[sighs|bedtime|sleep|stars|night|calm|lullaby/i.test(text);
+
+      let selectedVoice = voice;
+      if (!selectedVoice || selectedVoice === "auto") {
+        selectedVoice = isBedtime ? "Despina" : "Puck";
+      }
+
+      const validVoices = ["Despina", "Puck", "Zephyr", "Aoede", "Charon", "Fenrir", "Kore"];
+      if (!validVoices.includes(selectedVoice)) {
+        selectedVoice = isBedtime ? "Despina" : "Puck";
+      }
+
+      const cacheKey = `tts_${text.slice(0, 120).toLowerCase()}_${selectedVoice}_${mode}`;
+      if (ttsAudioCache.has(cacheKey)) {
+        const cached = ttsAudioCache.get(cacheKey)!;
+        return res.json({
+          success: true,
+          audio: cached.buffer.toString("base64"),
+          mimeType: cached.contentType,
+          voice: selectedVoice,
+          mode: isBedtime ? "bedtime" : "play"
+        });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      const isCooldown = Date.now() < geminiTtsCooldownUntil;
+
+      // If cooldown is active or API key is absent, immediately serve high-quality fallback
+      if (isCooldown || !apiKey) {
+        const fallback = await fetchTranslateTtsFallbackBuffer(text, "en");
+        if (fallback) {
+          if (ttsAudioCache.size < 150) ttsAudioCache.set(cacheKey, fallback);
+          return res.json({
+            success: true,
+            audio: fallback.buffer.toString("base64"),
+            mimeType: fallback.contentType,
+            voice: selectedVoice,
+            mode: isBedtime ? "bedtime" : "play",
+            fallback: true
+          });
+        }
+      }
+
+      try {
+        const { GoogleGenAI } = await import("@google/genai");
+        const ai = new GoogleGenAI({
+          apiKey: apiKey!,
+          httpOptions: { headers: { "User-Agent": "aistudio-build" } }
+        });
+
+        const speechStyle = isBedtime
+          ? "Soft, gentle, warm, and soothing bedtime storyteller whispering kindly to a young child"
+          : "Joyful, energetic, friendly, and playful children's companion full of wonder and delight";
+
+        const textToSynthesize = text.slice(0, 500);
+
+        const response = await ai.models.generateContent({
+          model: "gemini-3.8-flash-lite-tts",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: textToSynthesize,
+                  speechMetadata: {
+                    style: speechStyle,
+                  },
+                },
+              ],
+            },
+          ] as any,
+          config: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: selectedVoice },
+              },
+            },
+          },
+        });
+
+        const audioPart = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData?.data);
+        if (audioPart?.inlineData?.data) {
+          const pcmBuf = Buffer.from(audioPart.inlineData.data, "base64");
+          const wavBuf = pcm16ToWav(pcmBuf, 24000, 1);
+          const resultItem = { buffer: wavBuf, contentType: "audio/wav" };
+          if (ttsAudioCache.size < 150) ttsAudioCache.set(cacheKey, resultItem);
+
+          return res.json({
+            success: true,
+            audio: audioPart.inlineData.data,
+            mimeType: audioPart.inlineData.mimeType || "audio/pcm;rate=24000",
+            voice: selectedVoice,
+            mode: isBedtime ? "bedtime" : "play"
+          });
+        }
+      } catch (innerErr: any) {
+        const isQuota = innerErr?.status === 429 || 
+          innerErr?.message?.includes("429") || 
+          innerErr?.message?.includes("RESOURCE_EXHAUSTED") ||
+          innerErr?.message?.includes("quota");
+        if (isQuota) {
+          geminiTtsCooldownUntil = Date.now() + 65000;
+        }
+      }
+
+      // Graceful fallback to regional speech
+      const fallback = await fetchTranslateTtsFallbackBuffer(text, "en");
+      if (fallback) {
+        if (ttsAudioCache.size < 150) ttsAudioCache.set(cacheKey, fallback);
+        return res.json({
+          success: true,
+          audio: fallback.buffer.toString("base64"),
+          mimeType: fallback.contentType,
+          voice: selectedVoice,
+          mode: isBedtime ? "bedtime" : "play",
+          fallback: true
+        });
+      }
+
+      return res.status(200).json({
+        success: false,
+        message: "Audio synthesis not available, using client speech synthesis"
+      });
+    } catch (err: any) {
+      return res.status(200).json({
+        success: false,
+        message: "Falling back to native browser speech synthesis"
+      });
+    }
+  });
+
+  // GET audio stream proxy for direct <audio> playback with automatic fallback
+  app.get("/api/gemini/tts-stream", async (req, res) => {
+    try {
+      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      const voice = typeof req.query.voice === "string" ? req.query.voice.trim() : "";
+      const mode = typeof req.query.mode === "string" ? req.query.mode.trim() : "";
+
+      if (!q) {
+        return res.status(400).send("Missing text parameter");
+      }
+
+      const isBedtime = mode === "bedtime" || /\[whispers|\[softly|\[gently|bedtime|sleep/i.test(q);
+      const selectedVoice = (voice && ["Despina", "Puck", "Zephyr"].includes(voice)) 
+        ? voice 
+        : (isBedtime ? "Despina" : "Puck");
+
+      const cacheKey = `stream_${q.slice(0, 120).toLowerCase()}_${selectedVoice}_${mode}`;
+      if (ttsAudioCache.has(cacheKey)) {
+        const cached = ttsAudioCache.get(cacheKey)!;
+        res.setHeader("Content-Type", cached.contentType);
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.send(cached.buffer);
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      const isCooldown = Date.now() < geminiTtsCooldownUntil;
+
+      // If cooldown is active or API key is missing, immediately stream fast fallback audio
+      if (isCooldown || !apiKey) {
+        const fallback = await fetchTranslateTtsFallbackBuffer(q, "en");
+        if (fallback) {
+          if (ttsAudioCache.size < 150) ttsAudioCache.set(cacheKey, fallback);
+          res.setHeader("Content-Type", fallback.contentType);
+          res.setHeader("Cache-Control", "public, max-age=86400");
+          return res.send(fallback.buffer);
+        }
+      }
+
+      // Try Gemini TTS model
+      try {
+        const { GoogleGenAI } = await import("@google/genai");
+        const ai = new GoogleGenAI({
+          apiKey: apiKey!,
+          httpOptions: { headers: { "User-Agent": "aistudio-build" } }
+        });
+
+        const response = await ai.models.generateContent({
+          model: "gemini-3.8-flash-lite-tts",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: q.slice(0, 450),
+                  speechMetadata: {
+                    style: isBedtime ? "Soft, gentle bedtime storyteller" : "Playful, friendly children's narrator",
+                  },
+                },
+              ],
+            },
+          ] as any,
+          config: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: selectedVoice },
+              },
+            },
+          },
+        });
+
+        const audioPart = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData?.data);
+        if (audioPart?.inlineData?.data) {
+          const pcmBuffer = Buffer.from(audioPart.inlineData.data, "base64");
+          const wavBuffer = pcm16ToWav(pcmBuffer, 24000, 1);
+          const cachedItem = { buffer: wavBuffer, contentType: "audio/wav" };
+          if (ttsAudioCache.size < 150) ttsAudioCache.set(cacheKey, cachedItem);
+
+          res.setHeader("Content-Type", "audio/wav");
+          res.setHeader("Cache-Control", "public, max-age=86400");
+          return res.send(wavBuffer);
+        }
+      } catch (innerErr: any) {
+        const isQuota = innerErr?.status === 429 || 
+          innerErr?.message?.includes("429") || 
+          innerErr?.message?.includes("RESOURCE_EXHAUSTED") ||
+          innerErr?.message?.includes("quota");
+        if (isQuota) {
+          geminiTtsCooldownUntil = Date.now() + 65000;
+        }
+      }
+
+      // Seamlessly stream audio fallback so playback never breaks
+      const fallback = await fetchTranslateTtsFallbackBuffer(q, "en");
+      if (fallback) {
+        if (ttsAudioCache.size < 150) ttsAudioCache.set(cacheKey, fallback);
+        res.setHeader("Content-Type", fallback.contentType);
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.send(fallback.buffer);
+      }
+
+      return res.status(204).end();
+    } catch (err: any) {
+      // In worst case scenario, return 204 instead of 500 so audio element transitions smoothly
+      return res.status(204).end();
     }
   });
 
