@@ -48,6 +48,123 @@ function guaranteeNonSequential<T extends { id: string }>(items: T[], correctOrd
   return shuffled;
 }
 
+// Safely normalizes number_grid data into an array of { cells: [...] } rows
+// Guarantees rows is ALWAYS a valid array to prevent any TypeError: rows.map is not a function
+export function getNormalizedGridRows(interactiveData: any): Array<{
+  cells: Array<{
+    value: string;
+    isMissing: boolean;
+    isOperator: boolean;
+    cellId: string;
+    id?: string;
+    expectedVal?: any;
+    text?: string;
+  }>;
+}> {
+  if (!interactiveData || typeof interactiveData !== 'object') return [];
+  const missingPositions: any[] = Array.isArray(interactiveData.missingPositions)
+    ? interactiveData.missingPositions
+    : [];
+
+  let candidateGrid: any[] = [];
+
+  // 1. If interactiveData.rows is an array
+  if (Array.isArray(interactiveData.rows) && interactiveData.rows.length > 0) {
+    // If rows already has .cells structure, verify and return
+    if (interactiveData.rows[0] && Array.isArray(interactiveData.rows[0].cells)) {
+      return interactiveData.rows;
+    }
+    // If rows is array of arrays or array of values
+    if (Array.isArray(interactiveData.rows[0])) {
+      candidateGrid = interactiveData.rows;
+    }
+  } else if (interactiveData.rows && typeof interactiveData.rows === 'object') {
+    // If rows was provided as an object map (e.g. { "0": [...], "1": [...] })
+    const vals = Object.values(interactiveData.rows);
+    if (vals.length > 0 && Array.isArray(vals[0])) {
+      candidateGrid = vals as any[];
+    } else if (vals.length > 0 && vals[0] && Array.isArray((vals[0] as any).cells)) {
+      return vals as any[];
+    }
+  }
+
+  // 2. Check matrix or grid arrays
+  if (candidateGrid.length === 0) {
+    if (Array.isArray(interactiveData.matrix) && interactiveData.matrix.length > 0) {
+      candidateGrid = interactiveData.matrix;
+    } else if (Array.isArray(interactiveData.grid) && interactiveData.grid.length > 0) {
+      candidateGrid = interactiveData.grid;
+    }
+  }
+
+  // 3. Format candidateGrid into standard { cells: [...] }
+  if (candidateGrid.length > 0) {
+    return candidateGrid.map((rowArr: any, rIdx: number) => {
+      const items: any[] = Array.isArray(rowArr)
+        ? rowArr
+        : (rowArr && typeof rowArr === 'object' ? Object.values(rowArr) : [rowArr]);
+
+      return {
+        cells: items.map((valRaw: any, cIdx: number) => {
+          if (valRaw && typeof valRaw === 'object' && ('value' in valRaw || 'isMissing' in valRaw)) {
+            return {
+              value: String(valRaw.value ?? ''),
+              isMissing: Boolean(valRaw.isMissing),
+              isOperator: Boolean(valRaw.isOperator || ["+", "-", "×", "÷", "=", " "].includes(String(valRaw.value))),
+              cellId: valRaw.cellId || `cell_${rIdx}_${cIdx}`,
+              id: valRaw.id || (valRaw.isMissing ? `cell_${rIdx}_${cIdx}` : undefined),
+              expectedVal: valRaw.expectedVal
+            };
+          }
+          const val = String(valRaw ?? '');
+          const isMissing = val.startsWith("?") || val === "" || val === "_";
+          const missingObj = missingPositions.find((m: any) => m.id === val || m.cellId === `cell_${rIdx}_${cIdx}`);
+          const isOperator = ["+", "-", "×", "÷", "=", " "].includes(val);
+          return {
+            value: isMissing ? "?" : val,
+            isMissing,
+            isOperator,
+            cellId: `cell_${rIdx}_${cIdx}`,
+            id: isMissing ? (missingObj?.id || `cell_${rIdx}_${cIdx}`) : undefined,
+            expectedVal: missingObj?.expectedVal
+          };
+        })
+      };
+    });
+  }
+
+  // 4. Default mathematical balance grid fallback
+  return [
+    {
+      cells: [
+        { value: "4", isMissing: false, isOperator: false, cellId: "cell_0_0" },
+        { value: "+", isMissing: false, isOperator: true, cellId: "cell_0_1" },
+        { value: "?", isMissing: true, isOperator: false, cellId: "cell_0_2", id: "?1", expectedVal: 7 },
+        { value: "=", isMissing: false, isOperator: true, cellId: "cell_0_3" },
+        { value: "11", isMissing: false, isOperator: false, cellId: "cell_0_4" }
+      ]
+    },
+    {
+      cells: [
+        { value: "+", isMissing: false, isOperator: true, cellId: "cell_1_0" },
+        { value: " ", isMissing: false, isOperator: true, cellId: "cell_1_1" },
+        { value: "+", isMissing: false, isOperator: true, cellId: "cell_1_2" },
+        { value: " ", isMissing: false, isOperator: true, cellId: "cell_1_3" },
+        { value: "+", isMissing: false, isOperator: true, cellId: "cell_1_4" }
+      ]
+    },
+    {
+      cells: [
+        { value: "6", isMissing: false, isOperator: false, cellId: "cell_2_0" },
+        { value: "+", isMissing: false, isOperator: true, cellId: "cell_2_1" },
+        { value: "5", isMissing: false, isOperator: false, cellId: "cell_2_2" },
+        { value: "=", isMissing: false, isOperator: true, cellId: "cell_2_3" },
+        { value: "?", isMissing: true, isOperator: false, cellId: "cell_2_4", id: "?2", expectedVal: 11 }
+      ]
+    }
+  ];
+}
+
 // Multi-language Translations for the Puzzle Arena Page
 export const PUZZLE_I18N: Record<LanguageCode, Record<string, string>> = {
   en: {
@@ -525,27 +642,31 @@ export default function PuzzleGamesTab({ user, lang, onUpdateUser }: PuzzleGames
         });
         // Shuffle deck
         setMemoryCards(shuffleArray(deck));
-      } else if (type === 'food_chain' && puzzle.interactiveData?.items) {
+      } else if (type === 'food_chain' && Array.isArray(puzzle.interactiveData?.items)) {
         const rawItems = puzzle.interactiveData.items;
-        const correctOrder = puzzle.interactiveData.correctOrder || rawItems.map((i: any) => i.id);
+        const correctOrder = Array.isArray(puzzle.interactiveData.correctOrder)
+          ? puzzle.interactiveData.correctOrder
+          : rawItems.map((i: any) => i.id);
         const randomized = guaranteeNonSequential(rawItems, correctOrder);
         setUserAnswers({
-          currentOrder: randomized.map((i: any) => i.id)
+          currentOrder: Array.isArray(randomized) ? randomized.map((i: any) => i.id) : []
         });
-      } else if (type === 'history_timeline' && puzzle.interactiveData?.events) {
+      } else if (type === 'history_timeline' && Array.isArray(puzzle.interactiveData?.events)) {
         const rawEvents = puzzle.interactiveData.events;
-        const correctOrder = puzzle.interactiveData.correctOrder || rawEvents.map((e: any) => e.id);
+        const correctOrder = Array.isArray(puzzle.interactiveData.correctOrder)
+          ? puzzle.interactiveData.correctOrder
+          : rawEvents.map((e: any) => e.id);
         const randomized = guaranteeNonSequential(rawEvents, correctOrder);
         setUserAnswers({
-          currentOrder: randomized.map((e: any) => e.id)
+          currentOrder: Array.isArray(randomized) ? randomized.map((e: any) => e.id) : []
         });
-      } else if (type === 'circuit_puzzle' && puzzle.interactiveData?.availableComponents) {
+      } else if (type === 'circuit_puzzle' && Array.isArray(puzzle.interactiveData?.availableComponents)) {
         // Shuffle available component choices
         puzzle.interactiveData.availableComponents = shuffleArray(puzzle.interactiveData.availableComponents);
         setUserAnswers({
           placedComponents: {}
         });
-      } else if (type === 'odd_one_out' && puzzle.interactiveData?.items) {
+      } else if (type === 'odd_one_out' && Array.isArray(puzzle.interactiveData?.items)) {
         // Shuffle items so odd item position is completely random
         puzzle.interactiveData.items = shuffleArray(puzzle.interactiveData.items);
         setUserAnswers({
@@ -656,8 +777,10 @@ export default function PuzzleGamesTab({ user, lang, onUpdateUser }: PuzzleGames
       const placed = userAnswers.placedComponents || {};
       evaluatedCorrect = missingSlots.every((slot: any) => placed[slot.slotIndex] === slot.correctComponentId);
     } else if (activePuzzle.puzzleType === 'number_grid') {
-      const missingPositions = activePuzzle.interactiveData?.missingPositions || [];
-      const rows = activePuzzle.interactiveData?.rows || [];
+      const missingPositions = Array.isArray(activePuzzle.interactiveData?.missingPositions)
+        ? activePuzzle.interactiveData.missingPositions
+        : [];
+      const rows = getNormalizedGridRows(activePuzzle.interactiveData);
       const inputs = userAnswers.inputs || {};
       
       if (missingPositions.length > 0) {
@@ -665,19 +788,21 @@ export default function PuzzleGamesTab({ user, lang, onUpdateUser }: PuzzleGames
           const userVal = inputs[pos.id] || inputs[pos.cellId] || inputs[`cell_${pos.row}_${pos.col}`];
           return Number(userVal) === Number(pos.expectedVal);
         });
-      } else if (rows.length > 0) {
+      } else if (Array.isArray(rows) && rows.length > 0) {
         let allCorrect = true;
         rows.forEach((row: any, rIdx: number) => {
-          row.cells?.forEach((cell: any, cIdx: number) => {
-            if (cell.isMissing) {
-              const cellKey = cell.id || cell.cellId || `cell_${rIdx}_${cIdx}`;
-              const userVal = inputs[cellKey] || inputs[`cell_${rIdx}_${cIdx}`];
-              const expected = cell.expectedVal ?? cell.value;
-              if (Number(userVal) !== Number(expected)) {
-                allCorrect = false;
+          if (Array.isArray(row.cells)) {
+            row.cells.forEach((cell: any, cIdx: number) => {
+              if (cell.isMissing) {
+                const cellKey = cell.id || cell.cellId || `cell_${rIdx}_${cIdx}`;
+                const userVal = inputs[cellKey] || inputs[`cell_${rIdx}_${cIdx}`];
+                const expected = cell.expectedVal ?? cell.value;
+                if (Number(userVal) !== Number(expected)) {
+                  allCorrect = false;
+                }
               }
-            }
-          });
+            });
+          }
         });
         evaluatedCorrect = allCorrect;
       }
@@ -1193,25 +1318,7 @@ export default function PuzzleGamesTab({ user, lang, onUpdateUser }: PuzzleGames
 
             {/* GAME 5: NUMBER GRID */}
             {activePuzzle.puzzleType === 'number_grid' && activePuzzle.interactiveData && (() => {
-              const matrix = activePuzzle.interactiveData.matrix;
-              const missingPositions = activePuzzle.interactiveData.missingPositions || [];
-              const rawRows = activePuzzle.interactiveData.rows;
-              
-              const rows = rawRows || (matrix ? matrix.map((rowArr: string[], rIdx: number) => ({
-                cells: rowArr.map((val: string, cIdx: number) => {
-                  const isMissing = val.startsWith("?");
-                  const missingObj = missingPositions.find((m: any) => m.id === val || m.cellId === `cell_${rIdx}_${cIdx}`);
-                  const isOperator = ["+", "-", "×", "÷", "=", " "].includes(val);
-                  return {
-                    value: isMissing ? "?" : val,
-                    isMissing,
-                    isOperator,
-                    cellId: `cell_${rIdx}_${cIdx}`,
-                    id: isMissing ? (missingObj?.id || `cell_${rIdx}_${cIdx}`) : undefined,
-                    expectedVal: missingObj?.expectedVal
-                  };
-                })
-              })) : []);
+              const rows = getNormalizedGridRows(activePuzzle.interactiveData);
 
               return (
                 <div className="space-y-3">
@@ -1219,9 +1326,9 @@ export default function PuzzleGamesTab({ user, lang, onUpdateUser }: PuzzleGames
                     {t.gridPrompt}
                   </div>
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 flex flex-col items-center justify-center gap-3">
-                    {rows.map((row: any, rIdx: number) => (
+                    {Array.isArray(rows) && rows.map((row: any, rIdx: number) => (
                       <div key={rIdx} className="flex items-center gap-2">
-                        {row.cells?.map((cell: any, cIdx: number) => {
+                        {Array.isArray(row.cells) && row.cells.map((cell: any, cIdx: number) => {
                           const cellKey = cell.id || cell.cellId || `cell_${rIdx}_${cIdx}`;
                           const isMissing = cell.isMissing;
 
@@ -1262,7 +1369,7 @@ export default function PuzzleGamesTab({ user, lang, onUpdateUser }: PuzzleGames
                       </div>
                     ))}
                   </div>
-                  {activePuzzle.interactiveData.candidateNumbers && (
+                  {Array.isArray(activePuzzle.interactiveData.candidateNumbers) && activePuzzle.interactiveData.candidateNumbers.length > 0 && (
                     <div className="flex items-center justify-center gap-2 pt-1 text-xs text-gray-500">
                       <span className="font-medium">Candidates:</span>
                       <div className="flex gap-1.5 flex-wrap justify-center">

@@ -3482,10 +3482,16 @@ Strict Requirements:
           generatedData.interactiveData.availableComponents = fallback.interactiveData.availableComponents;
         }
       } else if (type === 'number_grid') {
+        if (generatedData.interactiveData) {
+          if (generatedData.interactiveData.rows && !Array.isArray(generatedData.interactiveData.rows)) {
+            delete generatedData.interactiveData.rows;
+          }
+        }
         if (!Array.isArray(generatedData.interactiveData.matrix) || !Array.isArray(generatedData.interactiveData.missingPositions) || generatedData.interactiveData.missingPositions.length === 0) {
           generatedData.interactiveData.matrix = fallback.interactiveData.matrix;
           generatedData.interactiveData.missingPositions = fallback.interactiveData.missingPositions;
           generatedData.interactiveData.candidateNumbers = fallback.interactiveData.candidateNumbers;
+          generatedData.interactiveData.rows = fallback.interactiveData.rows;
         }
       } else if (type === 'crossword') {
         if (!generatedData.interactiveData.clues || (!Array.isArray(generatedData.interactiveData.clues.across) && !Array.isArray(generatedData.interactiveData.clues.down))) {
