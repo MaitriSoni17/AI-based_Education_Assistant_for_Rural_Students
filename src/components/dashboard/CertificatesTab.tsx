@@ -244,7 +244,7 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
     try {
       setIsGeneratingPdf(true);
       speakText(
-        lang === 'hi' ? "आपका प्रमाण पत्र पीडीएफ के रूप में तैयार किया जा रहा है..." : "Generating your certificate PDF...",
+        lang === 'hi' ? "आपका सुंदर प्रमाण पत्र तैयार किया जा रहा है... आप सचमुच बहुत होशियार हैं!" : "Preparing your beautiful certificate PDF... You are such a brilliant star!",
         lang,
         "Swami AI",
         "🤖 Swami AI"
@@ -455,7 +455,7 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
       pdf.save(fileName);
 
       speakText(
-        lang === 'hi' ? "प्रमाण पत्र सफलतापूर्वक डाउनलोड हो गया है!" : "Certificate downloaded successfully!",
+        lang === 'hi' ? "शाबाश मेरे प्यारे सुपरस्टार! 🌟 आपका सम्मान प्रमाण पत्र सफलतापूर्वक डाउनलोड हो गया है! ऐसे ही रोज मन लगाकर पढ़ते रहिए और चमकते रहिए!" : "Hooray! Shabash, superstar! 🌟 Your certificate of excellence has been downloaded! Keep shining and learning every day!",
         lang,
         "Swami AI",
         "🤖 Swami AI"
@@ -463,7 +463,7 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
     } catch (error) {
       console.error('Failed to generate Canvas PDF:', error);
       speakText(
-        lang === 'hi' ? "प्रमाण पत्र डाउनलोड करने में विफल रहा। कृपया पुनः प्रयास करें।" : "Failed to download certificate. Please try again.",
+        lang === 'hi' ? "कोई बात नहीं मेरे प्यारे दोस्त! हम इसे थोड़ी देर में दोबारा प्यार से डाउनलोड करेंगे।" : "Don't worry, little champion! We will try downloading your certificate again in just a moment.",
         lang,
         "Swami AI",
         "🤖 Swami AI"

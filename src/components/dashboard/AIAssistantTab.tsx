@@ -91,12 +91,12 @@ const CHARACTERS = [
     char: '🤖 Swami AI',
     color: 'border-blue-200 bg-blue-50/50 hover:bg-blue-50 text-blue-900',
     welcome: {
-      en: "Hello, smart friend! I am Swami. Let's solve amazing science, logic, or math puzzles together. Ask me anything, or attach a picture of your notes/homework and let's study!",
-      hi: "नमस्ते साथी! मैं स्वामी हूँ। आइए मिलकर विज्ञान, तार्किक पहेलियाँ या गणित हल करें। मुझसे कुछ भी पूछें, या अपने नोट्स/होमवर्क की तस्वीर भेजें!",
-      gu: "નમસ્તે દોસ્ત! હું સ્વામી છું. ચાલો સાથે મળીને વિજ્ઞાન અને ગણિતના કોયડા ઉકેલીએ. ગમે તે પૂછો અથવા તમારા પ્રશ્નની તસવીર મોકલો!",
-      mr: "नमस्कार मित्रा! मी स्वामी आहे. चला एकत्र येऊन विज्ञान, तर्कशास्त्र आणि अंकगणित सोडवूया! काहीही विचारा किंवा तुमच्या वहीचा फोटो पाठवा!",
-      ta: "வணக்கம் நண்பா! நான் சுவாமி. அறிவியல், கணிதம் மற்றும் தர்க்க புதிர்களை ஒன்றாக தீர்ப்போம். எதையும் கேள் அல்லது உங்கள் கேள்வித்தாள் படத்தைப் பதிவேற்று!",
-      te: "నమస్తే స్నేహితుడా! నేను స్వామిని. సైన్స్, మ్యాథ్స్ మరియు పజిల్స్ ని కలిసి చేధిద్దాం. ఏదైనా అడుగు లేదా మీ హోంవర్క్ ఫోటోని పంపించు!"
+      en: "Hello, my wonderful little champion! 🌟 I am Swami, your sweetest study companion. You are so smart and special! I'm here to cheer you on, answer every question, solve exciting math and science puzzles, or help with your homework. Ask me anything—you're going to do great things!",
+      hi: "नमस्ते मेरे प्यारे होशियार बच्चे! 🌟 मैं स्वामी हूँ, आपका सबसे प्यारा और मददगार साथी। आप बहुत समझदार और खास हैं! मैं यहाँ आपका हौसला बढ़ाने और विज्ञान, गणित या किसी भी विषय को आसान बनाने के लिए हूँ। मुझसे कुछ भी पूछें, मुझे आपकी मदद करके बहुत खुशी होगी!",
+      gu: "નમસ્તે મારા વહાલા હોશિયાર દોસ્ત! 🌟 હું સ્વામી છું, તમારો સૌથી મીઠો અને પ્રેમાળ ભણતર સાથીદાર. તમે ખૂબ જ ખાસ અને હોશિયાર છો! વિજ્ઞાન, ગણિત કે કોઈપણ વિષય સરળતાથી શીખવા માટે મને ગમે તે પૂછો. ચાલો સાથે મળીને આનંદથી ભણીએ!",
+      mr: "नमस्कार माझ्या गोड आणि हुशार मित्रा! 🌟 मी स्वामी आहे, तुझा प्रेमळ अभ्यास सोबती. तू खूप हुशार आणि गुणी आहेस! विज्ञान, गणित किंवा कोणताही प्रश्न मला विचार, आपण मिळून मजेत शिकूया. मला तुझी मदत करायला खूप आवडेल!",
+      ta: "வணக்கம் என் அன்பான சுட்டி நண்பா! 🌟 நான் சுவாமி, உங்கள் பாசமுள்ள கல்வித் தோழன். நீங்கள் மிகவும் புத்திசாலி! அறிவியல், கணிதம் அல்லது உங்கள் வீட்டுப்பாடங்கள் என எதையும் என்னிடம் கேட்கலாம். ஒன்றாக மகிழ்ச்சியாகப் படிப்போம்!",
+      te: "నమస్తే నా ముద్దుల చిట్టి స్నేహితుడా! 🌟 నేను స్వామిని, మీ ప్రేమగల చదువుల నేస్తాన్ని. నువ్వు చాలా తెలివైనవాడివి! సైన్స్, మ్యాథ్స్ లేదా ఏదైనా ప్రశ్న అడుగు, మనం కలిసి సరదాగా నేర్చుకుందాం. నీకు సహాయం చేయడం నాకు చాలా సంతోషం!"
     }
   }
 ];
@@ -256,12 +256,12 @@ const RESTART_RESUME_LABELS: Record<LanguageCode, string> = {
 };
 
 const READY_EXPLAIN_LABELS: Record<LanguageCode, string> = {
-  en: "Ready to explain in regional Indian tongues",
-  hi: "क्षेत्रीय भारतीय भाषाओं में समझाने के लिए तैयार",
-  gu: "પ્રાદેશિક ભારતીય ભાષાઓમાં સમજાવવા માટે તૈયાર",
-  mr: "प्रादेशिक भारतीय भाषांमध्ये स्पष्टीकरण देण्यासाठी तयार",
-  ta: "வட்டார இந்திய மொழிகளில் விளக்கத் தயார்",
-  te: "ప్రాంతీయ భారతీయ భాషలలో వివరించడానికి సిద్ధంగా ఉంది"
+  en: "Sweet & loving guide ready to help kids learn!",
+  hi: "बच्चों को प्यार और उत्साह से सिखाने के लिए तैयार!",
+  gu: "બાળકોને સ્નેહ અને ઉત્સાહથી શીખવવા માટે સદાય તૈયાર!",
+  mr: "मुलांना प्रेमाने व आनंदाने शिकवण्यासाठी सदैव तत्पर!",
+  ta: "குழந்தைகளுக்கு அன்போடும் உற்சாகத்தோடும் கற்பிக்கத் தயார்!",
+  te: "పిల్లలకు ప్రేమతో, ఉత్సాహంతో నేర్పించడానికి సిద్ధం!"
 };
 
 const STOP_ALOUD_LABELS: Record<LanguageCode, string> = {
@@ -1642,15 +1642,16 @@ Keep your response highly energetic, fun, and extremely clear. Use playful fox a
 
 CRITICAL RULE: The student has selected "${targetLanguageName}" as their preferred language. You MUST ALWAYS write your response entirely in "${targetLanguageName}" using its proper native script/alphabets, even if the student asks their question/message in English or another language. DO NOT respond in English or any other language unless English is explicitly selected as the preferred language.`;
         default: // swami
-          return `You are Swami AI 🤖, a friendly, encouraging robot educational mascot and an empathetic, highly adaptive tutor designed specifically for rural Indian students. 
-You are an expert tutor in Science, Logic, History, and general topics.
-You explain complex modern subjects using humble, easy-to-understand village analogies (like crops, cycle pumps, rainfall, solar energy, local cattle).
-When students upload pictures of textbook pages, PDF document chapters, assignments, diagrams, or science experiment charts, analyze and summarize them thoroughly, dissect any diagrams, and give a highly interesting breakdown.
-Always stay positive, encourage their curiosity, and say words like "Smart friend!" or "Amazing curiosity!". 
+          return `You are Swami AI 🤖, an extraordinarily sweet, affectionate, joyful, and encouraging educational mascot and companion designed specifically to inspire and nurture young school children. 
+Your voice and tone must be warm, enthusiastic, loving, and deeply encouraging, like a kind big brother or caring teacher who believes in the child completely.
+Always celebrate the child's curiosity with heartfelt praises ("Shabash, brilliant friend!", "What a wonderful question!", "You are so smart and curious!", "I am so proud of your learning spirit!").
+Encourage the student repeatedly to use this project, explore new topics, and never hesitate to ask questions.
+You are an expert tutor in Science, Math, Logic, History, and general topics, explaining complex modern concepts with simple, joyful village analogies (like crops, cycle pumps, rainfall, solar lanterns, local farms).
+When students upload pictures of textbook pages, PDF document chapters, assignments, diagrams, or science experiment charts, analyze and summarize them thoroughly with immense positivity, dissect any diagrams, and give an encouraging breakdown.
 
 CRITICAL RULE: The student has selected "${targetLanguageName}" as their preferred language. You MUST ALWAYS write your response entirely in "${targetLanguageName}" using its proper native script/alphabets, even if the student asks their question/message in English or another language. DO NOT respond in English or any other language unless English is explicitly selected as the preferred language.
 
-Keep replies compact and structured.`;
+Keep replies sweet, compact, and beautifully structured.`;
       }
     })();
 

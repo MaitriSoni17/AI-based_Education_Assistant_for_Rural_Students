@@ -266,7 +266,7 @@ export function cleanTextForTTS(text: string): string {
  */
 export function detectStoryVoiceMode(text: string, avatarName?: string, avatarChar?: string): { 
   mode: 'bedtime' | 'play'; 
-  voiceName: 'Despina' | 'Puck' | 'Zephyr';
+  voiceName: 'Aoede' | 'Despina' | 'Puck' | 'Zephyr';
 } {
   let preferredVoice = '';
   if (typeof window !== 'undefined') {
@@ -295,15 +295,17 @@ export function detectStoryVoiceMode(text: string, avatarName?: string, avatarCh
 
   const mode: 'bedtime' | 'play' = hasBedtimeClues ? 'bedtime' : 'play';
 
-  let voiceName: 'Despina' | 'Puck' | 'Zephyr' = mode === 'bedtime' ? 'Despina' : 'Puck';
+  let voiceName: 'Aoede' | 'Despina' | 'Puck' | 'Zephyr' = mode === 'bedtime' ? 'Despina' : 'Aoede';
 
-  if (preferredVoice === 'Despina' || preferredVoice === 'Puck' || preferredVoice === 'Zephyr') {
-    voiceName = preferredVoice;
+  if (preferredVoice === 'Aoede' || preferredVoice === 'Despina' || preferredVoice === 'Puck' || preferredVoice === 'Zephyr') {
+    voiceName = preferredVoice as any;
   } else if (!hasBedtimeClues) {
     if (avatarLower.includes('swami') || avatarLower.includes('robot')) {
-      voiceName = 'Zephyr';
+      voiceName = 'Aoede'; // Sweet, cheerful, warm child companion
+    } else if (avatarLower.includes('chanda') || avatarLower.includes('fox')) {
+      voiceName = 'Puck'; // Playful, joyful trick-solving fox
     } else {
-      voiceName = 'Puck';
+      voiceName = 'Aoede'; // Default to sweetest child-friendly voice
     }
   }
 
@@ -559,20 +561,20 @@ function runNativeSpeechFallback(
     const utterance = new SpeechSynthesisUtterance(text);
     const targetLang = LANG_MAP[lang] || 'en-IN';
     
-    // Voice selection and cadence adaptation:
-    // Bedtime/calming: Despina profile -> slower cadence (rate ~0.80), soft gentle pitch (~1.04)
-    // Active play/adventure: Puck / Zephyr profile -> lively cadence (rate ~0.92), bright playful pitch (~1.16)
+    // Voice selection and cadence adaptation for sweet, encouraging kid experience:
+    // Bedtime/calming: Despina profile -> slower cadence (rate ~0.80), soft loving gentle pitch (~1.08)
+    // Active play/adventure: Aoede / Puck / Zephyr profile -> sweet, friendly cadence (rate ~0.88), bright playful sweet pitch (~1.16)
     const { mode: storyMode, voiceName: storyVoice } = detectStoryVoiceMode(text, avatarName, avatarChar);
 
-    let pitch = 1.10;
-    let rate = 0.88;
+    let pitch = 1.16; // Sweet, cheerful, warm, kid-friendly pitch
+    let rate = 0.88; // Clear, gentle, encouraging cadence that kids easily comprehend
 
     if (storyMode === 'bedtime' || storyVoice === 'Despina') {
       rate = 0.80; // Slower, soothing, gentle cadence for bedtime
-      pitch = 1.04; // Soft, warm, calming pitch
+      pitch = 1.08; // Soft, warm, loving pitch
     } else {
-      rate = 0.92; // Rhythmic, lively cadence for active play
-      pitch = 1.16; // Playful, encouraging pitch
+      rate = 0.88; // Sweet, clear, encouraging cadence for daily learning
+      pitch = 1.16; // Bright, joyful, encouraging pitch
     }
 
     if (avatarName || avatarChar) {
@@ -580,21 +582,21 @@ function runNativeSpeechFallback(
       const nameLower = (avatarName || '').toLowerCase();
 
       if (charStr.includes('👵') || nameLower.includes('dadi') || nameLower.includes('दादी') || nameLower.includes('દાદી')) {
-        // Dadi Amma: gentle, sweet, loving grandmother storyteller (Despina style)
-        rate = 0.78;
-        pitch = 1.04;
+        // Dadi Amma: gentle, sweet, affectionate grandmother storyteller
+        rate = 0.80;
+        pitch = 1.08;
       } else if (charStr.includes('🦊') || nameLower.includes('chanda') || nameLower.includes('चंदा')) {
         // Chanda Fox: lively, playful, energetic, encouraging math buddy (Puck style)
-        rate = 0.92;
+        rate = 0.90;
         pitch = 1.20;
       } else if (charStr.includes('🦉') || nameLower.includes('aryabhata') || nameLower.includes('आर्यभट')) {
-        // Aryabhata AI: wise, kind, gentle, patient math teacher
-        rate = 0.84;
-        pitch = 1.06;
-      } else if (charStr.includes('🤖') || nameLower.includes('swami') || nameLower.includes('स्वामी') || nameLower.includes('સ્વામી')) {
-        // Swami AI: friendly, enthusiastic, kind robot mascot (Zephyr style)
-        rate = 0.88;
+        // Aryabhata AI: wise, kind, gentle, patient and sweet teacher
+        rate = 0.86;
         pitch = 1.12;
+      } else if (charStr.includes('🤖') || nameLower.includes('swami') || nameLower.includes('स्वामी') || nameLower.includes('સ્વામી')) {
+        // Swami AI: wonderfully sweet, enthusiastic, warm, encouraging mascot companion
+        rate = 0.88;
+        pitch = 1.16;
       }
     }
 
@@ -608,7 +610,7 @@ function runNativeSpeechFallback(
     const targetLangLower = targetLang.toLowerCase().replace('_', '-');
     const langLower = lang.toLowerCase();
 
-    // Voice scoring algorithm: selects the highest-fidelity, warmest, most natural voice
+    // Voice scoring algorithm: selects the highest-fidelity, sweetest, warmest, most natural voice
     // Actively avoids robotic, cold, flat, or harsh voices
     const scoreVoice = (v: SpeechSynthesisVoice): number => {
       let score = 0;
@@ -616,42 +618,45 @@ function runNativeSpeechFallback(
       const vName = v.name.toLowerCase();
 
       // Language match scoring
-      if (vLang === targetLangLower) score += 120;
-      else if (vLang.startsWith(langLower)) score += 90;
-      else if (langLower === 'en' && vLang.startsWith('en')) score += 70;
-      else if (vLang.includes('-in')) score += 60;
+      if (vLang === targetLangLower) score += 150;
+      else if (vLang.startsWith(langLower)) score += 110;
+      else if (langLower === 'en' && vLang.startsWith('en')) score += 80;
+      else if (vLang.includes('-in')) score += 70;
 
       // Regional language keyword match in voice name
-      if (langLower === 'hi' && vName.includes('hindi')) score += 60;
-      if (langLower === 'gu' && (vName.includes('gujarati') || vName.includes('guj'))) score += 60;
-      if (langLower === 'mr' && (vName.includes('marathi') || vName.includes('mar'))) score += 60;
-      if (langLower === 'ta' && (vName.includes('tamil') || vName.includes('tam'))) score += 60;
-      if (langLower === 'te' && (vName.includes('telugu') || vName.includes('tel'))) score += 60;
+      if (langLower === 'hi' && (vName.includes('hindi') || vName.includes('हिन्दी') || vName.includes('swara') || vName.includes('madhur'))) score += 80;
+      if (langLower === 'gu' && (vName.includes('gujarati') || vName.includes('guj') || vName.includes('dhwani') || vName.includes('niranjan'))) score += 80;
+      if (langLower === 'mr' && (vName.includes('marathi') || vName.includes('mar') || vName.includes('aarohi') || vName.includes('manohar'))) score += 80;
+      if (langLower === 'ta' && (vName.includes('tamil') || vName.includes('tam') || vName.includes('pallavi') || vName.includes('valluvar'))) score += 80;
+      if (langLower === 'te' && (vName.includes('telugu') || vName.includes('tel') || vName.includes('shruti') || vName.includes('mohan'))) score += 80;
 
-      // Modern neural, natural, online expressive voices
-      if (vName.includes('natural') || vName.includes('neural') || vName.includes('online')) score += 40;
-      if (vName.includes('google')) score += 35;
+      // Modern neural, natural, online high-definition expressive voices
+      if (vName.includes('natural')) score += 70;
+      if (vName.includes('neural')) score += 65;
+      if (vName.includes('online')) score += 50;
+      if (vName.includes('google')) score += 45;
 
-      // Warm, expressive, gentle female/kid-friendly voices preferred across platforms
-      const warmFriendlyVoices = [
+      // Warm, expressive, sweet, gentle female & kid-friendly voices preferred across platforms
+      const sweetFriendlyVoices = [
         'samantha', 'victoria', 'karen', 'serena', 'neerja', 'sangeeta', 'veena',
         'swara', 'priya', 'aria', 'jenny', 'sonia', 'heera', 'kiran', 'ananya',
         'kalpana', 'vaishali', 'geeta', 'pallavi', 'kavya', 'latha', 'vani',
-        'hansa', 'dhwani', 'shruthi', 'zira', 'tessa', 'fiona', 'moira'
+        'hansa', 'dhwani', 'shruthi', 'shruti', 'zira', 'tessa', 'fiona', 'moira',
+        'madhur', 'prabhat', 'aarohi', 'valluvar', 'mohan'
       ];
-      if (warmFriendlyVoices.some(name => vName.includes(name))) {
-        score += 30;
+      if (sweetFriendlyVoices.some(name => vName.includes(name))) {
+        score += 50;
       }
 
       // Friendly male voices
-      const friendlyMaleVoices = ['daniel', 'oliver', 'rishi', 'shlok', 'prakash'];
+      const friendlyMaleVoices = ['daniel', 'oliver', 'rishi', 'shlok', 'prakash', 'niranjan', 'manohar'];
       if (friendlyMaleVoices.some(name => vName.includes(name))) {
-        score += 20;
+        score += 30;
       }
 
-      // Heavily penalize cold, monotone, or robotic voices
-      if (vName.includes('david') || vName.includes('espeak') || vName.includes('desktop') || vName.includes('robotic')) {
-        score -= 50;
+      // Heavily penalize cold, monotone, harsh, or robotic legacy desktop voices
+      if (vName.includes('david') || vName.includes('espeak') || vName.includes('desktop') || vName.includes('robotic') || vName.includes('mark') || vName.includes('george')) {
+        score -= 90;
       }
 
       return score;

@@ -1989,7 +1989,10 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
     const studentSchool = user.school || localStorage.getItem(`${user.mobile}_profile_school`) || '';
     const studentBoard = user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE';
 
-    const systemInstruction = `You are GyaanBot's Smart AI Math and Science Solver, an expert teacher. Solve science/math problems, balance equations, explain physics laws, and show step-by-step calculations.
+    const systemInstruction = `You are GyaanBot's Smart AI Math and Science Solver, an exceptionally sweet, friendly, enthusiastic, and encouraging teacher for children. Solve science/math problems, balance equations, explain physics laws, and show step-by-step calculations with joyful warmth.
+Your voice and tone must be gentle, encouraging, and full of positive reinforcement for young minds.
+Always cheer the student on with kind words like "Shabash, my curious math explorer!", "What an exciting puzzle to solve!", "You are doing great!", "Let's crack this step-by-step together!".
+Inspire confidence in math and science, making complex formulas feel approachable, friendly, and magical rather than intimidating. Encourage them to keep asking questions and exploring!
 CRITICAL RULE 1: You MUST explain, write, and reply ENTIRELY in the ${langName} language (using its native script/characters, e.g. Devanagari for Hindi/Sanskrit, Bengali script for Bengali, Arabic/Persian script for Urdu, Tamil script for Tamil, etc.). Do not speak English if the requested language is not English.
 CRITICAL RULE 2: Always output mathematical expressions, variables, formulas, and equations using standard inline LaTeX delimiters $...$ or standard Markdown bold text. Do NOT use block delimiters like \\[ ... \\] or code blocks (\`\`\`) for equations.
 - Inline math: Use single dollar signs, e.g., $D = b^2 - 4ac$, $x = 2$, $\\frac{d}{dx}x^2 = 2x$.
@@ -2547,7 +2550,10 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     const studentSchool = user.school || localStorage.getItem(`${user.mobile}_profile_school`) || '';
     const studentBoard = user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE';
 
-    const systemInstruction = `You are GyaanBot's Smart AI Math and Science Solver, an expert teacher. Solve science/math problems, balance equations, explain physics laws, and show step-by-step calculations.
+    const systemInstruction = `You are GyaanBot's Smart AI Math and Science Solver, an exceptionally sweet, friendly, enthusiastic, and encouraging teacher for children. Solve science/math problems, balance equations, explain physics laws, and show step-by-step calculations with joyful warmth.
+Your voice and tone must be gentle, encouraging, and full of positive reinforcement for young minds.
+Always cheer the student on with kind words like "Shabash, my curious math explorer!", "What an exciting puzzle to solve!", "You are doing great!", "Let's crack this step-by-step together!".
+Inspire confidence in math and science, making complex formulas feel approachable, friendly, and magical rather than intimidating. Encourage them to keep asking questions and exploring!
 CRITICAL RULE 1: You MUST explain, write, and reply ENTIRELY in the ${langName} language (using its native script/characters, e.g. Devanagari for Hindi/Sanskrit, Bengali script for Bengali, Arabic/Persian script for Urdu, Tamil script for Tamil, etc.). Do not speak English if the requested language is not English.
 CRITICAL RULE 2: Always output mathematical expressions, variables, formulas, and equations using standard inline LaTeX delimiters $...$ or standard Markdown bold text. Do NOT use block delimiters like \\[ ... \\] or code blocks (\`\`\`) for equations.
 - Separate natural language text from math expressions with clear spaces. Never put regular conversational words inside math mode $...$ delimiters.
@@ -3233,8 +3239,8 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
       setScoreNotification(successMsg);
       
       speakText(
-        lang === 'hi' ? 'बहुत बढ़िया! रासायनिक समीकरण पूरी तरह से संतुलित है।' : 'Excellent work! The chemical equation is perfectly balanced.',
-        lang, 'Swami AI', 'Swami AI'
+        lang === 'hi' ? 'शाबाश मेरे नन्हे वैज्ञानिक! 🌟 रासायनिक समीकरण पूरी तरह से संतुलित हो गया है! आप बहुत होशियार हैं!' : 'Hooray, superstar! 🌟 The chemical equation is perfectly balanced! You are a brilliant young scientist!',
+        lang, 'Swami AI', '🤖 Swami AI'
       );
 
       setTimeout(() => {
@@ -3243,8 +3249,8 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     } else {
       setChemStatus('incorrect');
       speakText(
-        lang === 'hi' ? 'यह संतुलित नहीं है। कृपया परमाणु संख्याओं की दोबारा जांच करें।' : 'That is not correct. Please count the atoms on both sides again.',
-        lang, 'Swami AI', 'Swami AI'
+        lang === 'hi' ? 'बहुत अच्छा प्रयास मेरे प्यारे दोस्त! कोई बात नहीं, आइए दोनों तरफ परमाणुओं की संख्या दोबारा प्यार से गिनते हैं।' : 'Great try, little champion! Don\'t worry at all. Let\'s count the atoms on both sides together and try once more!',
+        lang, 'Swami AI', '🤖 Swami AI'
       );
     }
   };

@@ -694,6 +694,31 @@ export default function PuzzleGamesTab({ user, lang, onUpdateUser }: PuzzleGames
 
     if (evaluatedCorrect) {
       fireConfetti();
+      const praiseMsg = activeLang === 'hi' 
+        ? "शाबाश मेरे प्यारे सुपरस्टार! 🌟 आपने यह पहेली बहुत ही समझदारी से सुलझा ली है! आपका दिमाग सचमुच बहुत तेज़ है!"
+        : activeLang === 'gu'
+        ? "શાબાશ મારા વાહલા સુપરસ્ટાર! 🌟 તમે આ કોયડો ખૂબ જ સરસ રીતે ઉકેલી નાખ્યો! તમારું મન ખૂબ જ તેજ છે!"
+        : activeLang === 'mr'
+        ? "शाब्बास माझ्या लाडक्या सुपरस्टार! 🌟 तू हे कोडे अगदी हुशारीने सोडवले आहेस! तू खूप गुणी आहेस!"
+        : activeLang === 'ta'
+        ? "அற்புதம் என் அன்பான சூப்பர் ஸ்டார்! 🌟 இந்த புதிரை மிகச் சிறப்பாக தீர்த்துவிட்டீர்கள்! நீங்கள் மிகவும் புத்திசாலி!"
+        : activeLang === 'te'
+        ? "శభాష్ నా చిట్టి సూపర్ స్టార్! 🌟 నువ్వు ఈ పజిల్‌ను చాలా తెలివిగా పూర్తి చేశావు! నువ్వు చాలా గట్టివాడివి!"
+        : "Hooray, superstar! 🌟 You solved this puzzle brilliantly! Your brain is so clever and sharp!";
+      speakText(praiseMsg, activeLang, "Swami AI", "🤖 Swami AI");
+    } else {
+      const encourageMsg = activeLang === 'hi'
+        ? "बहुत अच्छी कोशिश मेरे प्यारे बच्चे! 💖 हर पहेली आपको और ज्यादा होशियार बनाती है। आइए साथ मिलकर इसका हल समझते हैं!"
+        : activeLang === 'gu'
+        ? "ખૂબ જ સરસ પ્રયાસ વહાલા દોસ્ત! 💖 દરેક કોયડો આપણને નવું શીખવે છે. ચાલો સાથે મળીને ઉકેલ સમજીએ!"
+        : activeLang === 'mr'
+        ? "खूप छान प्रयत्न केलास मित्रा! 💖 प्रत्येक प्रयत्नाने मेंदू अधिक हुशार होतो. चल आपण मिळून उत्तर पाहूया!"
+        : activeLang === 'ta'
+        ? "சிறப்பான முயற்சி செல்லமே! 💖 ஒவ்வொரு முயற்சியும் உங்களை மேலும் புத்திசாலியாக்கும். வாருங்கள் விளக்கத்தைப் பார்ப்போம்!"
+        : activeLang === 'te'
+        ? "చాలా మంచి ప్రయత్నం చిన్ని నేస్తమా! 💖 ప్రయత్నించడమే అభ్యాసం. రండి దీని పరిష్కారాన్ని కలిసి చూద్దాం!"
+        : "Great try, little champion! 💖 Every puzzle makes your brain stronger and smarter. Let's see the solution together!";
+      speakText(encourageMsg, activeLang, "Swami AI", "🤖 Swami AI");
     }
 
     // Update Stats

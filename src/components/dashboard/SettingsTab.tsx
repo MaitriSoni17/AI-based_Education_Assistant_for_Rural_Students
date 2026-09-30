@@ -51,9 +51,9 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
 
   const [preferredVoice, setPreferredVoice] = useState<string>(() => {
     try {
-      return localStorage.getItem('gemini_preferred_voice') || 'Despina';
+      return localStorage.getItem('gemini_preferred_voice') || 'Aoede';
     } catch {
-      return 'Despina';
+      return 'Aoede';
     }
   });
 
@@ -63,7 +63,9 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
       localStorage.setItem('gemini_preferred_voice', voice);
     } catch (e) {}
 
-    const sample = voice === 'Despina'
+    const sample = voice === 'Aoede'
+      ? '[excitedly] Hello, my wonderful little friend! [giggles] I am Aoede, your sweetest companion! I love learning and exploring with you!'
+      : voice === 'Despina'
       ? '[whispers softly] Hello little friend... [gently] I am Despina, your calming bedtime storyteller.'
       : voice === 'Puck'
       ? '[excitedly] Yoohoo! [giggles] I am Puck! Ready for active play and exciting adventures?'
@@ -450,6 +452,11 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
           
           <div className="space-y-2">
             {[
+              { 
+                key: 'Aoede', 
+                label: '🌟 Aoede — Sweet & Cheerful Child Companion (Recommended)', 
+                desc: 'Warm, melodious, joyful, and encouraging voice specially tuned to inspire kids' 
+              },
               { 
                 key: 'Despina', 
                 label: '🌙 Despina — Bedtime & Calming Storyteller', 

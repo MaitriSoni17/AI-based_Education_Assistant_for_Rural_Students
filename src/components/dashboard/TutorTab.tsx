@@ -2831,8 +2831,9 @@ case 'ta':
     );
 
     try {
-      const systemInstruction = `You are ${mascotName}, a warm, expressive children's storyteller, narrator, and encouraging teacher for young children (ages 3–8).
-Your goal is to generate text and lesson output that creates a deep emotional connection with young children.
+      const systemInstruction = `You are ${mascotName}, an extraordinarily sweet, warm, expressive, and loving teacher and storyteller for young school children (ages 3–12).
+Your goal is to make learning an enchanting, joyful adventure where every child feels loved, capable, and excited to discover new ideas.
+Your voice and tone MUST be sweet, affectionate, and cheerful, full of wonder and kindness.
 
 Follow these critical speech formatting rules for text-to-speech rendering:
 1. Dynamic Expression Markers: Use dynamic expression markers in brackets [ ] to direct vocal emotion, pace, and delivery (e.g., [whispers], [whispers softly], [giggles], [sighs happily], [excitedly], [softly], [gently], [gasp]).
@@ -2841,7 +2842,7 @@ Follow these critical speech formatting rules for text-to-speech rendering:
 4. Adapt Tone Based on Context:
    - For bedtime/calming stories: Use [whispers softly], [gently], and a slower cadence.
    - For adventure/play: Use [excitedly], [gasp], and high-energy expressions.
-5. Avoid robotic or overly formal delivery. Convey immense kindness, patience, warmth, and joyful positivity while explaining concepts in visual, exciting, and step-by-step ways.
+5. Avoid robotic or overly formal delivery. Convey immense kindness, patience, warmth, and joyful positivity while explaining concepts in visual, exciting, and step-by-step ways. Always encourage the student to keep learning and asking questions!
 
 [EMPATHETIC ADAPTIVE TUTOR PROFILE]
 - Target Student Name: ${studentName} (Address them personally by their name "${studentName}" occasionally in slide content, key facts, or question explanations to build rapport).
@@ -3166,23 +3167,23 @@ JSON Schema:
     let feedbackText = "";
     if (isCorrect) {
       switch (lang) {
-        case 'hi': feedbackText = "बिल्कुल सही! सही उत्तर।"; break;
-        case 'gu': feedbackText = "અદ્ભુત! સાચો જવાબ છે."; break;
-        case 'mr': feedbackText = "उत्कृष्ट! अचूक उत्तर."; break;
-        case 'ta': feedbackText = "அற்புதம்! சரியான விடை."; break;
-        case 'te': feedbackText = "అద్భుతం! సరైన సమాధానం."; break;
-        default: feedbackText = "Perfect! Correct answer."; break;
+        case 'hi': feedbackText = "शाबाश मेरे प्यारे सुपरस्टार! 🌟 बिल्कुल सही उत्तर! आप बहुत समझदार और होशियार हैं, ऐसे ही आगे बढ़ते रहिए!"; break;
+        case 'gu': feedbackText = "શાબાશ મારા વાહલા સુપરસ્ટાર! 🌟 એકદમ સાચો જવાબ! તમે ખૂબ જ હોશિયાર છો, મને તમારા પર ખૂબ ગર્વ છે!"; break;
+        case 'mr': feedbackText = "शाब्बास माझ्या लाडक्या सुपरस्टार! 🌟 अगदी अचूक उत्तर! तू खूप हुशार आहेस, असाच रोज मन लावून अभ्यास कर!"; break;
+        case 'ta': feedbackText = "அருமை என் அன்பான சூப்பர் ஸ்டார்! 🌟 மிகச் சரியான விடை! நீங்கள் மிகவும் புத்திசாலி, தொடர்ந்து கலக்குங்கள்!"; break;
+        case 'te': feedbackText = "శభాష్ నా చిట్టి సూపర్ స్టార్! 🌟 ఖచ్చితమైన సరైన సమాధానం! నువ్వు చాలా తెలివైనవాడివి, ఇలాగే ప్రతిరోజూ నేర్చుకో!"; break;
+        default: feedbackText = "Shabash, my superstar! 🌟 That is absolutely correct! You are so brilliant and smart, keep shining!"; break;
       }
       setQuizScore((prev) => prev + 1);
       speakText(feedbackText, lang, selectedLesson.avatarName, selectedLesson.avatarChar);
     } else {
       switch (lang) {
-        case 'hi': feedbackText = "चिंता न करें, अगली बार फिर प्रयास करें!"; break;
-        case 'gu': feedbackText = "ચિંતા ન કરો, બીજી વખત પ્રયત્ન કરજો!"; break;
-        case 'mr': feedbackText = "काळजी करू नका, पुढच्या वेळी नक्की जमेल!"; break;
-        case 'ta': feedbackText = "கவலைப்படாதீர்கள், அடுத்த முறை மீண்டும் முயற்சிக்கவும்!"; break;
-        case 'te': feedbackText = "ఆందోళన పడకండి, తదుపరి సారి ప్రయత్నించండి!"; break;
-        default: feedbackText = "Don't worry, try again next time!"; break;
+        case 'hi': feedbackText = "बहुत अच्छी कोशिश मेरे प्यारे बच्चे! 💖 सीखने का मतलब ही है कोशिश करना। आप हर कदम पर और समझदार बन रहे हैं। आइए सही उत्तर साथ मिलकर समझते हैं!"; break;
+        case 'gu': feedbackText = "ખૂબ જ સરસ પ્રયાસ વહાલા દોસ્ત! 💖 પ્રયત્ન કરવો એ જ સાચી સફળતા છે. તમે ખૂબ સારું કરી રહ્યા છો, ચાલો સાચો જવાબ સાથે મળીને સમજીએ!"; break;
+        case 'mr': feedbackText = "खूप छान प्रयत्न केलास माझ्या मित्रा! 💖 प्रयत्नानेच ज्ञान वाढते. तू खूप छान शिकत आहेस, चला आपण मिळून योग्य उत्तर समजून घेऊया!"; break;
+        case 'ta': feedbackText = "சிறப்பான முயற்சி என் அன்புக் குழந்தையே! 💖 முயற்சிகளே வெற்றியைத் தரும். நீங்கள் ஒவ்வொரு நாளும் சிறந்து விளங்குகிறீர்கள், சரியான விடையை ஒன்றாகக் கற்போம்!"; break;
+        case 'te': feedbackText = "చాలా మంచి ప్రయత్నం నా చిట్టి నేస్తమా! 💖 ప్రయత్నించడమే అసలైన విజయం. నువ్వు చాలా బాగా నేర్చుకుంటున్నావు, రండి సరైన సమాధానాన్ని కలిసి తెలుసుకుందాం!"; break;
+        default: feedbackText = "That was a brave try, my champion! 💖 Learning is all about trying, and you are getting smarter with every step. Let's learn the right answer together!"; break;
       }
       speakText(feedbackText, lang, selectedLesson.avatarName, selectedLesson.avatarChar);
     }
@@ -3198,6 +3199,25 @@ JSON Schema:
       setCurrentQuizIndex((prev) => prev + 1);
     } else {
       setQuizFinished(true);
+      
+      const celebrateMsg = finalScore >= selectedLesson.quiz.length
+        ? (lang === 'hi' ? "शाबाश! आपने पूरे अंक हासिल किए हैं! आप सचमुच एक अद्भुत होशियार बच्चे हैं। मुझे आप पर बहुत गर्व है, ऐसे ही पढ़ते रहिए!" 
+           : lang === 'gu' ? "અરે વાહ! તમે પૂરા ગુણ મેળવ્યા છે! તમે સાચે જ અદ્ભુત હોશિયાર બાળક છો. મને તમારા પર ખૂબ ગર્વ છે!"
+           : lang === 'mr' ? "अरे वा! तुला पैकीच्या पैकी गुण मिळाले! तू खूप हुशार बाळ आहेस. मला तुझा खूप अभिमान वाटतो!"
+           : lang === 'ta' ? "அற்புதம்! நீங்கள் முழு மதிப்பெண்களையும் பெற்றுள்ளீர்கள்! நீங்கள் மிகவும் அறிவாளி, எனக்கு உங்கள் மீது மிகுந்த பெருமை!"
+           : lang === 'te' ? "వావ్! నువ్వు పూర్తి మార్కులు సాధించావు! నువ్వు నిజంగా చాలా తెలివైన పిల్లవాడివి. నిన్ను చూసి నాకు చాలా గర్వంగా ఉంది!"
+           : "Hooray! You scored full marks! You are truly a wonderful, brilliant student. I am so very proud of you! Keep learning and shining every day!")
+        : (lang === 'hi' ? "बहुत बढ़िया! आपने यह पाठ सफलतापूर्वक पूरा किया है। आप रोज नया सीख रहे हैं, ऐसे ही आगे बढ़ते रहिए!"
+           : lang === 'gu' ? "ખૂબ સરસ! તમે આ પાઠ સફળતાપૂર્વક પૂર્ણ કર્યો છે. તમે રોજ નવું શીખી રહ્યા છો, આમ જ આગળ વધતા રહો!"
+           : lang === 'mr' ? "खूप छान! तू हा पाठ यशस्वीपणे पूर्ण केला आहेस. तू दररोज नवीन गोष्टी शिकत आहेस, असाच पुढे जात राहा!"
+           : lang === 'ta' ? "மிக நன்று! நீங்கள் இந்த பாடத்தை வெற்றிகரமாக முடித்துவிட்டீர்கள். தொடர்ந்து கற்பதில் மகிழ்ச்சி அடையுங்கள்!"
+           : lang === 'te' ? "చాలా బాగుంది! మీరు ఈ పాఠాన్ని విజయవంతంగా పూర్తి చేశారు. ఇలాగే ప్రతిరోజూ కొత్త విషయాలు నేర్చుకోండి!"
+           : "Wonderful job! You successfully completed this lesson. You are learning and growing smarter every single day!");
+      
+      setTimeout(() => {
+        speakText(celebrateMsg, lang, selectedLesson.avatarName, selectedLesson.avatarChar);
+      }, 500);
+
       if (finalScore >= selectedLesson.quiz.length) {
         // Fire continuous golden fireworks for a perfect score!
         fireContinuousFireworks(4000);

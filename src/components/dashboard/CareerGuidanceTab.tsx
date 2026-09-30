@@ -1598,8 +1598,8 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
     setAiResult(null);
 
     const speakMsg = lang === 'hi' 
-      ? 'स्वामी एआई आपकी शैक्षणिक पृष्ठभूमि का विश्लेषण कर रहे हैं...' 
-      : 'Swami AI is compiling personalized career paths and college courses for you...';
+      ? 'स्वामी एआई खुशी-खुशी आपके सपनों और रुचियों को समझ रहे हैं! आप बहुत होशियार हैं...' 
+      : 'Swami AI is happily exploring wonderful careers and future dreams for you! You have so much potential!';
     speakText(speakMsg, lang, "Swami AI", "🤖 Swami AI");
 
     try {
@@ -1622,8 +1622,8 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
       if (resData.success && resData.data) {
         setAiResult(resData.data);
         const successMsg = lang === 'hi'
-          ? 'कैरियर और कॉलेज के सुझाव तैयार हैं!'
-          : 'Your personalized careers and college courses recommendation list is ready!';
+          ? 'शाबाश प्यारे बच्चे! आपके सुनहरे भविष्य और पसंदीदा करियर के बेहतरीन सुझाव तैयार हैं! चलिए साथ मिलकर देखते हैं।'
+          : 'Hooray, superstar! Your personalized dream careers and learning pathways are ready! Let\'s explore your bright future together!';
         speakText(successMsg, lang, "Swami AI", "🤖 Swami AI");
       } else {
         setAiError(resData.message || 'An unexpected response structure was received.');

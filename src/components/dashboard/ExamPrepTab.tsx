@@ -1065,16 +1065,27 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
       setIsAudioPlaying(false);
     } else {
       setIsAudioPlaying(true);
-      // Read a friendly high-level audio summary
-      let readText = `Your exam evaluation is complete! `;
+      // Read a friendly, sweet, high-level audio summary for kids
+      let readText = feedbackLang === 'hi' 
+        ? "शाबाश मेरे प्यारे बच्चे! 🌟 आपकी परीक्षा का मूल्यांकन पूरा हो गया है। मुझे आपके प्रयास पर बहुत गर्व है! " 
+        : "Hooray, superstar! 🌟 Great effort on your exam evaluation! Swami AI is so proud of your hard work! ";
       if (parsedReport && parsedReport.isParsed) {
-        readText += `You scored ${parsedReport.totalScore} marks out of ${parsedReport.maxMarks} with a correctness quotient of ${parsedReport.accuracyRate} percent. `;
+        readText += feedbackLang === 'hi'
+          ? `आपने कुल ${parsedReport.maxMarks} में से ${parsedReport.totalScore} अंक प्राप्त किए हैं। `
+          : `You scored ${parsedReport.totalScore} marks out of ${parsedReport.maxMarks} with ${parsedReport.accuracyRate} percent accuracy. `;
         if (parsedReport.strengths && parsedReport.strengths.length > 0) {
-          readText += `Your key strengths are: ${parsedReport.strengths[0]}. `;
+          readText += feedbackLang === 'hi'
+            ? `आपकी सबसे अच्छी खूबी है: ${parsedReport.strengths[0]}। `
+            : `Your wonderful strength is: ${parsedReport.strengths[0]}. `;
         }
         if (parsedReport.areasOfImprovement && parsedReport.areasOfImprovement.length > 0) {
-          readText += `An area to improve is: ${parsedReport.areasOfImprovement[0]}. `;
+          readText += feedbackLang === 'hi'
+            ? `और हम मिलकर इसमें और बेहतर बन सकते हैं: ${parsedReport.areasOfImprovement[0]}। `
+            : `And we can happily grow even better in: ${parsedReport.areasOfImprovement[0]}. `;
         }
+        readText += feedbackLang === 'hi'
+          ? "आप हर दिन नया सीख रहे हैं, ऐसे ही मुस्कुराते हुए आगे बढ़ते रहिए!"
+          : "You are learning and growing smarter every single day. Keep shining bright!";
       } else {
         readText += evaluationReport.substring(0, 200) + "...";
       }
