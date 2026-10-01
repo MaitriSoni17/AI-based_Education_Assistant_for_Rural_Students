@@ -9,7 +9,7 @@ import SpeakButton from '../SpeakButton';
 import SpeechInputButton from '../SpeechInputButton';
 import InteractiveAITeacher from '../InteractiveAITeacher';
 import SlideVisualBoard from './SlideVisualBoard';
-import { speakText, stopSpeaking, cleanTextForTTS, detectLanguageOfText, splitTextIntoTTSChunks } from '../../utils/speech';
+import { speakText, stopSpeaking, pauseSpeaking, resumeSpeaking, isSpeakingPaused, prefetchSpeech, cleanTextForTTS, detectLanguageOfText, splitTextIntoTTSChunks, safeEncodeURIComponent, stripEmotionMarkers } from '../../utils/speech';
 import { 
   Play, BookOpen, Download, CheckCircle2, ChevronRight, Award, 
   HelpCircle, Volume2, Search, Sparkles, Smile, Video, ArrowLeft, RefreshCw,
@@ -1383,6 +1383,10 @@ export default function TutorTab({
   const animationFrameIdRef = React.useRef<number | null>(null);
   const tutorAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const slideSwitchTimeoutRef = React.useRef<any>(null);
+  const exportAudioCtxRef = React.useRef<AudioContext | null>(null);
+  const exportBeatIntervalIdRef = React.useRef<any>(null);
+  const exportBlobUrlsRef = React.useRef<string[]>([]);
+  const exportMediaRecorderRef = React.useRef<MediaRecorder | null>(null);
 
   const playAmbientStudyBeat = (audioContext: AudioContext, destinationNode: AudioNode) => {
     const chordProgression = [
@@ -1537,11 +1541,39 @@ export default function TutorTab({
             audioQueue.push({
               slideIndex: sIdx,
               text: chunk,
-              url: `/api/tts?tl=${detectedLang}&q=${encodeURIComponent(chunk)}`
+              url: `/api/tts?tl=${detectedLang}&q=${safeEncodeURIComponent(chunk)}`
             });
           });
         }
       });
+
+      // Pre-buffer all narration audio chunks in parallel so speech starts instantly at 0.0s!
+      setVideoRecordStatus(
+        lang === 'hi' 
+          ? 'भाषण ऑडियो ट्रैक प्री-लोड हो रहे हैं...' 
+          : 'Preloading AI narration tracks for instant speech...'
+      );
+
+      const blobUrls: string[] = [];
+      await Promise.all(
+        audioQueue.map(async (item) => {
+          if (!item.url) return;
+          try {
+            const resp = await fetch(item.url);
+            if (resp.ok) {
+              const blob = await resp.blob();
+              if (blob && blob.size > 200) {
+                const bUrl = URL.createObjectURL(blob);
+                blobUrls.push(bUrl);
+                item.url = bUrl;
+              }
+            }
+          } catch (e) {
+            console.warn("Could not prebuffer chunk:", e);
+          }
+        })
+      );
+      exportBlobUrlsRef.current = blobUrls;
 
       let audioCtx: AudioContext | null = null;
       let audioDest: MediaStreamAudioDestinationNode | null = null;
@@ -1552,8 +1584,10 @@ export default function TutorTab({
       try {
         const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
         audioCtx = new AudioCtxClass();
+        exportAudioCtxRef.current = audioCtx;
         audioDest = audioCtx.createMediaStreamDestination();
         beatIntervalId = playAmbientStudyBeat(audioCtx, audioDest);
+        exportBeatIntervalIdRef.current = beatIntervalId;
         
         tutorAudio = new Audio();
         tutorAudio.crossOrigin = "anonymous";
@@ -1599,6 +1633,7 @@ export default function TutorTab({
       let mediaRecorder: MediaRecorder;
       try {
         mediaRecorder = new MediaRecorder(stream, { mimeType });
+        exportMediaRecorderRef.current = mediaRecorder;
         mediaRecorder.ondataavailable = (event) => {
           if (event.data && event.data.size > 0) {
             recordedChunks.push(event.data);
@@ -1675,6 +1710,10 @@ export default function TutorTab({
 
               if (beatIntervalId) clearInterval(beatIntervalId);
               if (audioCtx) audioCtx.close();
+              if (exportBlobUrlsRef.current.length > 0) {
+                exportBlobUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
+                exportBlobUrlsRef.current = [];
+              }
 
               setIsRecordingVideoFile(false);
             }, 500);
@@ -1996,6 +2035,7 @@ export default function TutorTab({
     recordingActiveRef.current = false;
     if (animationFrameIdRef.current) {
       cancelAnimationFrame(animationFrameIdRef.current);
+      animationFrameIdRef.current = null;
     }
     if (slideSwitchTimeoutRef.current) {
       clearTimeout(slideSwitchTimeoutRef.current);
@@ -2010,6 +2050,27 @@ export default function TutorTab({
       }
       tutorAudioRef.current = null;
     }
+    if (exportMediaRecorderRef.current && exportMediaRecorderRef.current.state !== 'inactive') {
+      try {
+        exportMediaRecorderRef.current.stop();
+      } catch (e) {}
+      exportMediaRecorderRef.current = null;
+    }
+    if (exportBeatIntervalIdRef.current) {
+      clearInterval(exportBeatIntervalIdRef.current);
+      exportBeatIntervalIdRef.current = null;
+    }
+    if (exportAudioCtxRef.current) {
+      try {
+        exportAudioCtxRef.current.close();
+      } catch (e) {}
+      exportAudioCtxRef.current = null;
+    }
+    if (exportBlobUrlsRef.current.length > 0) {
+      exportBlobUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
+      exportBlobUrlsRef.current = [];
+    }
+    stopSpeaking();
     setIsRecordingVideoFile(false);
   };
 
@@ -2147,6 +2208,25 @@ export default function TutorTab({
   React.useEffect(() => {
     currentSlideIndexRef.current = currentSlideIndex;
   }, [currentSlideIndex]);
+
+  const lectureAutoplayTimeoutRef = React.useRef<any>(null);
+  const isPlayingVideoRef = React.useRef(isPlayingVideo);
+  React.useEffect(() => {
+    isPlayingVideoRef.current = isPlayingVideo;
+  }, [isPlayingVideo]);
+
+  // Master cleanup when switching tabs or unmounting
+  React.useEffect(() => {
+    return () => {
+      isPlayingVideoRef.current = false;
+      stopSpeaking();
+      if (lectureAutoplayTimeoutRef.current) {
+        clearTimeout(lectureAutoplayTimeoutRef.current);
+        lectureAutoplayTimeoutRef.current = null;
+      }
+      cancelVideoExport();
+    };
+  }, []);
 
   // AI Video live generation simulation states
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
@@ -2626,24 +2706,42 @@ case 'ta':
 
   const playSlideVoice = (slideIndex: number) => {
     if (!selectedLesson) return;
+    if (lectureAutoplayTimeoutRef.current) {
+      clearTimeout(lectureAutoplayTimeoutRef.current);
+      lectureAutoplayTimeoutRef.current = null;
+    }
+
     const slides = getSlidesForLesson(selectedLesson, lang);
     const activeSlide = slides[slideIndex] || slides[0];
     if (!activeSlide) return;
 
+    isPlayingVideoRef.current = true;
     setIsPlayingVideo(true);
     setAvatarAction('explaining');
+
+    // Preload next slide audio immediately so speech between slides is instant
+    if (slideIndex + 1 < slides.length && slides[slideIndex + 1]?.content) {
+      prefetchSpeech(slides[slideIndex + 1].content, lang);
+    }
+
     speakText(activeSlide.content, lang, selectedLesson.avatarName, selectedLesson.avatarChar, () => {
+      // If user paused while audio was playing, do not autoplay or advance slides
+      if (!isPlayingVideoRef.current || isSpeakingPaused()) {
+        return;
+      }
+
       setIsPlayingVideo(false);
+      isPlayingVideoRef.current = false;
       setAvatarAction('idle');
 
       if (isAutoplayEnabledRef.current && slideIndex < slides.length - 1) {
-        setTimeout(() => {
-          if (currentSlideIndexRef.current === slideIndex && isAutoplayEnabledRef.current) {
+        lectureAutoplayTimeoutRef.current = setTimeout(() => {
+          if (!isPlayingVideoRef.current && !isSpeakingPaused() && isAutoplayEnabledRef.current && currentSlideIndexRef.current === slideIndex) {
             const nextIdx = slideIndex + 1;
             setCurrentSlideIndex(nextIdx);
             playSlideVoice(nextIdx);
           }
-        }, 1200);
+        }, 800);
       }
     });
   };
@@ -2652,6 +2750,15 @@ case 'ta':
     setIsGeneratingVideo(true);
     setGenerationProgress(0);
     setAvatarAction('wave');
+
+    const slides = getSlidesForLesson(lesson, lang);
+    // Pre-warm speech audio immediately during video generation pack assembly
+    if (slides[0]?.content) {
+      prefetchSpeech(slides[0].content, lang);
+    }
+    if (slides[1]?.content) {
+      prefetchSpeech(slides[1].content, lang);
+    }
 
     const getLocalizationStage = (pct: number, name?: string) => {
       if (pct < 35) {
@@ -2687,7 +2794,7 @@ case 'ta':
           case 'gu': return `✨ ઓફલાઇન વિડીયો પેક કમ્પાઇલ થઈ રહ્યો છે...`;
           case 'mr': return `✨ ऑफलाइन चालणारा पाठ एकत्रित होत आहे...`;
           case 'ta': return `✨ இறுதி எடிட்டிங் செய்யப்படுகிறது...`;
-          case 'te': return `✨ అంతిమ ఇంటరాక్టివ్ పాఠాన్ని సిద్ధం చేస్తోంది...`;
+          case 'te': return `✨ అంతిమ ఇంటராక్టివ్ పాఠాన్ని సిద్ధం చేస్తోంది...`;
           default: return `✨ Bundling interactive offline playable video...`;
         }
       }
@@ -2718,17 +2825,11 @@ case 'ta':
         setSelectedLesson(lesson);
         setCurrentSlideIndex(0);
         if (autoPlay) {
-          setIsPlayingVideo(true);
-          const slides = getSlidesForLesson(lesson, lang);
-          const firstSlide = slides[0] || { content: lesson.explanation };
-          speakText(firstSlide.content, lang, lesson.avatarName, lesson.avatarChar, () => {
-            setIsPlayingVideo(false);
-            setAvatarAction('idle');
-          });
+          playSlideVoice(0);
           setAvatarAction('celebrate');
           setTimeout(() => {
             setAvatarAction((prev) => prev === 'celebrate' ? 'explaining' : prev);
-          }, 2000);
+          }, 1500);
         } else {
           setAvatarAction('wave');
           setTimeout(() => {
@@ -2747,7 +2848,7 @@ case 'ta':
     setIsNewLecture(false);
     setShowHistory(false);
     setShowPlayGesturePrompt(false);
-    simulateVideoGeneration(lesson, false);
+    simulateVideoGeneration(lesson, true);
   };
 
   const handleMoveLessonUp = (lessonId: string, e: React.MouseEvent) => {
@@ -2835,14 +2936,11 @@ case 'ta':
 Your goal is to make learning an enchanting, joyful adventure where every child feels loved, capable, and excited to discover new ideas.
 Your voice and tone MUST be sweet, affectionate, and cheerful, full of wonder and kindness.
 
-Follow these critical speech formatting rules for text-to-speech rendering:
-1. Dynamic Expression Markers: Use dynamic expression markers in brackets [ ] to direct vocal emotion, pace, and delivery (e.g., [whispers], [whispers softly], [giggles], [sighs happily], [excitedly], [softly], [gently], [gasp]).
-2. Sentence Length & Cadence: Keep sentences short and cadence rhythmic to hold a child's attention.
-3. Natural Suspense & Calm Pauses: Pause naturally using ellipses (...) to create moments of suspense or calm.
-4. Adapt Tone Based on Context:
-   - For bedtime/calming stories: Use [whispers softly], [gently], and a slower cadence.
-   - For adventure/play: Use [excitedly], [gasp], and high-energy expressions.
-5. Avoid robotic or overly formal delivery. Convey immense kindness, patience, warmth, and joyful positivity while explaining concepts in visual, exciting, and step-by-step ways. Always encourage the student to keep learning and asking questions!
+CRITICAL PRESENTATION & SPEECH RULES:
+1. Pure Natural Spoken Words: Speak naturally with sweet, warm, cheerful, and encouraging tone. NEVER output bracketed emotion tags (like [whispers], [excitedly], [joyfully], [gasp], [giggles]) as students should never see or read them.
+2. Short, Clear Sentences: Keep sentences short and cadence rhythmic to hold a child's attention and allow text-to-speech to sound melodious.
+3. Natural Breathing Pauses: Use standard commas and periods for clear, friendly pauses. NEVER output raw ellipses (...) or multiple dots.
+4. Warmth & Encouragement: Avoid robotic or overly formal delivery. Convey immense kindness, patience, warmth, and joyful positivity while explaining concepts in visual, exciting, and step-by-step ways. Always encourage the student to keep learning!
 
 [EMPATHETIC ADAPTIVE TUTOR PROFILE]
 - Target Student Name: ${studentName} (Address them personally by their name "${studentName}" occasionally in slide content, key facts, or question explanations to build rapport).
@@ -2950,7 +3048,8 @@ JSON Schema:
         board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
         lang: lang,
         model: "gemini-2.5-flash",
-        temperature: 0.75
+        temperature: 0.2,
+        responseMimeType: "application/json"
       };
 
       if (attachedFile) {
@@ -2969,30 +3068,66 @@ JSON Schema:
       setGenerationProgress(75);
 
       if (data.text || data.success) {
-        let cleanText = data.text.trim();
-        if (cleanText.startsWith('```')) {
-          const lines = cleanText.split('\n');
-          if (lines[0].startsWith('```')) {
-            lines.shift();
+        let rawResponse = (data.text || '').trim();
+        
+        // Robust JSON parser that strips bracketed markers like [excitedly], markdown codeblocks, and conversational wrappers
+        let parsedLesson: any = null;
+        let cleanText = rawResponse.replace(/^\[[a-zA-Z\s,]+\]\s*/, '').trim();
+
+        try {
+          parsedLesson = JSON.parse(cleanText);
+        } catch {
+          const codeBlockMatch = cleanText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (codeBlockMatch && codeBlockMatch[1]) {
+            try {
+              parsedLesson = JSON.parse(codeBlockMatch[1].trim());
+            } catch {}
           }
-          if (lines[lines.length - 1].startsWith('```')) {
-            lines.pop();
+
+          if (!parsedLesson) {
+            const firstBrace = cleanText.indexOf('{');
+            const lastBrace = cleanText.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace > firstBrace) {
+              const candidate = cleanText.substring(firstBrace, lastBrace + 1);
+              try {
+                parsedLesson = JSON.parse(candidate);
+              } catch {}
+            }
           }
-          cleanText = lines.join('\n').trim();
         }
 
-        const parsedLesson = JSON.parse(cleanText);
+        if (!parsedLesson || typeof parsedLesson !== 'object') {
+          throw new Error(`Invalid lesson format returned: ${rawResponse.slice(0, 80)}`);
+        }
+
+        // Clean any expressing words like [excitedly], [whispers], etc. from all slides and quiz questions
+        const sanitizedSlides = (parsedLesson.slides || []).map((s: any, idx: number) => ({
+          ...s,
+          id: s.id || `custom-s${idx + 1}`,
+          title: stripEmotionMarkers(s.title || `Slide ${idx + 1}`),
+          content: stripEmotionMarkers(s.content || ''),
+          bullets: (s.bullets || []).map((b: string) => stripEmotionMarkers(b)),
+          keyFact: s.keyFact ? stripEmotionMarkers(s.keyFact) : undefined
+        }));
+
+        const sanitizedQuiz = (parsedLesson.quiz || []).map((q: any, idx: number) => ({
+          ...q,
+          id: q.id || `custom-q${idx + 1}`,
+          question: stripEmotionMarkers(q.question || ''),
+          options: (q.options || []).map((opt: string) => stripEmotionMarkers(opt)),
+          explanation: stripEmotionMarkers(q.explanation || '')
+        }));
         
         const newLesson: LessonQuery = {
           id: 'custom-' + Math.random().toString(36).substring(2, 5),
-          query: parsedLesson.query || queryText,
-          subject: parsedLesson.subject || "AI Generator ✨",
+          query: stripEmotionMarkers(parsedLesson.query || queryText),
+          subject: stripEmotionMarkers(parsedLesson.subject || "AI Generator ✨"),
           avatarChar: selectedLesson.avatarChar || "🤖 Swami AI",
           avatarName: selectedLesson.avatarName || "Swami AI (Mascot Tutor)",
-          explanation: parsedLesson.slides?.[0]?.content || "Dynamic AI Lesson created!",
+          explanation: sanitizedSlides[0]?.content || "Dynamic AI Lesson created!",
           videoThumbColor: parsedLesson.videoThumbColor || "from-fuchsia-400 to-indigo-600",
-          slides: parsedLesson.slides || [],
-          quiz: parsedLesson.quiz || [
+          slides: sanitizedSlides,
+          quiz: sanitizedQuiz.length > 0 ? sanitizedQuiz : [
             {
               id: 'custom-q1',
               question: `What did we learn about "${queryText}"?`,
@@ -3026,6 +3161,15 @@ JSON Schema:
         setOtpResetQuiz();
         setCustomQuery('');
         setAttachedFile(null);
+
+        // Pre-warm speech audio immediately for slide 0 and 1 of custom lesson
+        const genSlides = newLesson.slides || [];
+        if (genSlides[0]?.content) {
+          prefetchSpeech(genSlides[0].content, lang);
+        }
+        if (genSlides[1]?.content) {
+          prefetchSpeech(genSlides[1].content, lang);
+        }
 
         setShowPlayGesturePrompt(true);
         setIsPlayingVideo(false);
@@ -3089,6 +3233,10 @@ JSON Schema:
         ]
       };
 
+      if (matchesLesson.slides?.[0]?.content) {
+        prefetchSpeech(matchesLesson.slides[0].content, lang);
+      }
+
       setIsGeneratingVideo(false);
       setSelectedLesson(matchesLesson);
       setCurrentSlideIndex(0);
@@ -3103,13 +3251,32 @@ JSON Schema:
   };
 
   const handlePlayVoiceResponse = () => {
+    isPlayingVideoRef.current = true;
+    setIsPlayingVideo(true);
+    setAvatarAction('explaining');
+
+    // If speech was paused at some point mid-sentence/mid-slide, resume smoothly at the exact point!
+    if (isSpeakingPaused()) {
+      const resumed = resumeSpeaking();
+      if (resumed) {
+        return;
+      }
+    }
+
+    // Otherwise play the active slide from the start
     playSlideVoice(currentSlideIndex);
   };
 
   const handleStopVoiceResponse = () => {
+    isPlayingVideoRef.current = false;
     setIsPlayingVideo(false);
     setAvatarAction('idle');
-    stopSpeaking();
+    if (lectureAutoplayTimeoutRef.current) {
+      clearTimeout(lectureAutoplayTimeoutRef.current);
+      lectureAutoplayTimeoutRef.current = null;
+    }
+    // Pause speech at the exact point rather than resetting the slide
+    pauseSpeaking();
   };
 
   const triggerLiveAction = (actionType: 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think') => {
@@ -4162,7 +4329,12 @@ JSON Schema:
                           </div>
                           <div className="space-y-1 text-center px-4">
                             <p className="text-white font-sans font-extrabold text-sm sm:text-base tracking-wide flex items-center justify-center gap-2">
-                              <span>{lang === 'hi' ? 'लेक्चर की आवाज़ शुरू करने के लिए यहाँ क्लिक करें!' : 'Click to Play Voice Lesson!'}</span>
+                              <span>
+                                {isSpeakingPaused()
+                                  ? (lang === 'hi' ? 'लेक्चर को फिर से शुरू करने के लिए यहाँ क्लिक करें!' : 'Click to Resume Voice Lesson!')
+                                  : (lang === 'hi' ? 'लेक्चर की आवाज़ शुरू करने के लिए यहाँ क्लिक करें!' : 'Click to Play Voice Lesson!')
+                                }
+                              </span>
                             </p>
                             <p className="text-gray-300 text-xs font-sans max-w-xs">
                               {lang === 'hi' 
@@ -4203,7 +4375,7 @@ JSON Schema:
                             ) : (
                               <>
                                 <Play className="h-3.5 w-3.5 fill-current text-white ml-0.5" />
-                                <span>PLAY LECTURE</span>
+                                <span>{isSpeakingPaused() ? 'RESUME LECTURE' : 'PLAY LECTURE'}</span>
                               </>
                             )}
                           </button>
@@ -4257,6 +4429,10 @@ JSON Schema:
                                 key={s.id || idx}
                                 onClick={() => {
                                   stopSpeaking();
+                                  if (lectureAutoplayTimeoutRef.current) {
+                                    clearTimeout(lectureAutoplayTimeoutRef.current);
+                                    lectureAutoplayTimeoutRef.current = null;
+                                  }
                                   setCurrentSlideIndex(idx);
                                   playSlideVoice(idx);
                                 }}
@@ -4363,7 +4539,7 @@ JSON Schema:
                     onClick={handleStopVoiceResponse}
                     className="px-4 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-sans font-bold cursor-pointer"
                   >
-                    ⏹️ Stop Speaking
+                    ⏸️ Pause Audio
                   </button>
                 ) : (
                   <button
@@ -4372,7 +4548,7 @@ JSON Schema:
                     className="px-4 py-1.5 bg-[#81B29A]/15 text-[#3D405B] border border-[#81B29A]/20 hover:bg-[#81B29A]/25 rounded-xl text-xs font-sans font-bold cursor-pointer flex items-center gap-1.5"
                   >
                     <Volume2 className="h-4 w-4 text-[#81B29A]" />
-                    <span>Listen Aloud</span>
+                    <span>{isSpeakingPaused() ? 'Resume Audio' : 'Listen Aloud'}</span>
                   </button>
                 )}
               </div>
@@ -4380,6 +4556,7 @@ JSON Schema:
               <button
                 id="classroom-take-quiz-btn"
                 onClick={() => {
+                  stopSpeaking();
                   setShowQuiz(true);
                   setOtpResetQuiz();
                 }}

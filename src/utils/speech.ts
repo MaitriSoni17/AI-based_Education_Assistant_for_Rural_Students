@@ -11,21 +11,173 @@ const LANG_MAP: Record<LanguageCode, string> = {
 
 // Global handles to control overlapping audio/synthesize state cleanly
 let activeAudioQueue: HTMLAudioElement[] = [];
+let currentlyPlayingAudio: HTMLAudioElement | null = null;
 let currentAudioIndex = 0;
 let activeFallbackTimeout: NodeJS.Timeout | null = null;
 let currentSpeechSession = 0;
+let activeSpeechEndCallback: (() => void) | null = null;
+let isSpeechPaused = false;
+let activeSpeechChunks: string[] = [];
+let activePlayNextFn: (() => Promise<void>) | null = null;
+
+// In-memory audio blob cache for ultra-fast instant playback (< 10ms start)
+const clientAudioBlobCache = new Map<string, string>();
+
+/**
+ * Safe wrapper around encodeURIComponent that prevents "URI malformed" URIError
+ * by ensuring unicode surrogate pairs are well-formed before encoding.
+ */
+export function safeEncodeURIComponent(str: string): string {
+  if (!str) return '';
+  try {
+    const wellFormed = typeof (str as any).toWellFormed === 'function'
+      ? (str as any).toWellFormed()
+      : str.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
+    return encodeURIComponent(wellFormed);
+  } catch {
+    try {
+      const sanitized = str.replace(/[\uD800-\uDFFF]/g, '');
+      return encodeURIComponent(sanitized);
+    } catch {
+      return '';
+    }
+  }
+}
+
+/**
+ * Pre-fetches speech audio in the background into memory blobs.
+ * Used during video/slide generation so that when playback starts,
+ * audio is already in memory and starts speaking with zero latency.
+ */
+export function prefetchSpeech(text: string, lang: LanguageCode) {
+  if (typeof window === 'undefined' || !text) return;
+  const cleanedText = cleanTextForTTS(text);
+  if (!cleanedText) return;
+
+  const detectedLang = detectLanguageOfText(text, lang);
+  const chunks = splitTextIntoTTSChunks(cleanedText);
+  if (chunks.length === 0) return;
+
+  // Pre-fetch chunks in parallel
+  chunks.slice(0, 3).forEach(chunk => {
+    const cacheKey = `${detectedLang}_${Array.from(chunk).slice(0, 80).join('')}`;
+    if (clientAudioBlobCache.has(cacheKey)) return;
+
+    const url = `/api/tts?tl=${detectedLang}&q=${safeEncodeURIComponent(chunk)}`;
+    fetch(url)
+      .then(res => (res.ok ? res.blob() : null))
+      .then(blob => {
+        if (blob && blob.size > 200) {
+          const blobUrl = URL.createObjectURL(blob);
+          if (clientAudioBlobCache.size < 80) {
+            clientAudioBlobCache.set(cacheKey, blobUrl);
+          }
+        }
+      })
+      .catch(() => {});
+  });
+}
 
 /**
  * Checks whether speech output is currently active across both Web Speech API
  * and audio stream proxy playback.
  */
 export function isSpeakingNow(): boolean {
-  if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking) {
+  if (isSpeechPaused) return false;
+  if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+    return true;
+  }
+  if (currentlyPlayingAudio && !currentlyPlayingAudio.paused && !currentlyPlayingAudio.ended) {
     return true;
   }
   if (activeAudioQueue.length > 0 && activeAudioQueue.some(a => !a.paused && !a.ended)) {
     return true;
   }
+  return false;
+}
+
+/**
+ * Returns true if speech playback is currently in a paused state.
+ */
+export function isSpeakingPaused(): boolean {
+  return isSpeechPaused;
+}
+
+/**
+ * Pauses currently playing speech immediately at the exact current position.
+ * Keeps audio elements and speech synthesis state intact for seamless resume.
+ */
+export function pauseSpeaking(): boolean {
+  isSpeechPaused = true;
+  let didPause = false;
+
+  // 1. Pause currently playing audio stream element at its exact timestamp
+  if (currentlyPlayingAudio && !currentlyPlayingAudio.paused) {
+    try {
+      currentlyPlayingAudio.pause();
+      didPause = true;
+    } catch (e) {
+      // Safe ignore
+    }
+  }
+
+  // 2. Pause native browser speech synthesis if currently active
+  if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking) {
+    try {
+      window.speechSynthesis.pause();
+      didPause = true;
+    } catch (e) {
+      // Safe ignore
+    }
+  }
+
+  // 3. Clear any simulated fallback timeout so it doesn't fire while paused
+  if (activeFallbackTimeout) {
+    clearTimeout(activeFallbackTimeout);
+    activeFallbackTimeout = null;
+  }
+
+  return didPause;
+}
+
+/**
+ * Resumes speech playback from the exact point where it was stopped.
+ */
+export function resumeSpeaking(): boolean {
+  if (!isSpeechPaused) return false;
+  isSpeechPaused = false;
+
+  // 1. Resume audio element if it was paused mid-stream
+  if (currentlyPlayingAudio && currentlyPlayingAudio.paused && !currentlyPlayingAudio.ended) {
+    try {
+      currentlyPlayingAudio.play().catch(err => {
+        console.warn("Could not resume current audio chunk, playing next chunk:", err);
+        if (activePlayNextFn) {
+          activePlayNextFn();
+        }
+      });
+      return true;
+    } catch (e) {
+      console.warn("Error resuming audio element:", e);
+    }
+  }
+
+  // 2. Resume native speech synthesis if it was paused
+  if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.paused) {
+    try {
+      window.speechSynthesis.resume();
+      return true;
+    } catch (e) {
+      // Safe ignore
+    }
+  }
+
+  // 3. If audio element had completed right when paused or was queued, continue next chunk
+  if (activePlayNextFn && currentAudioIndex < activeSpeechChunks.length) {
+    activePlayNextFn();
+    return true;
+  }
+
   return false;
 }
 
@@ -48,6 +200,10 @@ export function getSavedSpeechRate(): number {
 export function stopSpeaking() {
   // Invalidate any active asynchronous speech sessions immediately
   currentSpeechSession++;
+  activeSpeechEndCallback = null;
+  isSpeechPaused = false;
+  activePlayNextFn = null;
+  activeSpeechChunks = [];
 
   // Clear any simulated fallback timeouts
   if (activeFallbackTimeout) {
@@ -55,17 +211,55 @@ export function stopSpeaking() {
     activeFallbackTimeout = null;
   }
 
-  // Cancel any active Web Speech API utterance
+  // Cancel any active Web Speech API utterance immediately
   if (typeof window !== 'undefined' && window.speechSynthesis) {
-    window.speechSynthesis.cancel();
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      window.speechSynthesis.cancel();
+    } catch (e) {
+      // Safe catch for speech synthesis cancellation
+    }
   }
 
-  // Pause and clear any active Google Translate TTS Audio queues
+  // Immediately pause, cancel and detach handlers for current audio
+  if (currentlyPlayingAudio) {
+    try {
+      (currentlyPlayingAudio as any).__cancelled = true;
+      currentlyPlayingAudio.onended = null;
+      currentlyPlayingAudio.onerror = null;
+      currentlyPlayingAudio.oncanplay = null;
+      currentlyPlayingAudio.onplay = null;
+      currentlyPlayingAudio.onplaying = null;
+      currentlyPlayingAudio.onpause = null;
+      currentlyPlayingAudio.ontimeupdate = null;
+      currentlyPlayingAudio.pause();
+      currentlyPlayingAudio.currentTime = 0;
+      currentlyPlayingAudio.removeAttribute('src');
+      currentlyPlayingAudio.load();
+    } catch (e) {
+      // Safe catch
+    }
+    currentlyPlayingAudio = null;
+  }
+
+  // Pause and clear any active audio queues
   if (activeAudioQueue.length > 0) {
     activeAudioQueue.forEach(audio => {
       try {
+        (audio as any).__cancelled = true;
+        audio.onended = null;
+        audio.onerror = null;
+        audio.oncanplay = null;
+        audio.onplay = null;
+        audio.onplaying = null;
+        audio.onpause = null;
+        audio.ontimeupdate = null;
         audio.pause();
-        audio.src = ''; // Force garbage collection and close streams
+        audio.currentTime = 0;
+        audio.removeAttribute('src');
+        audio.load();
       } catch (e) {
         // Safe catch for pause/stream shutdown
       }
@@ -127,13 +321,15 @@ export function splitTextIntoTTSChunks(text: string): string[] {
               }
               
               if (word.length > 130) {
-                // Squeeze extremely long single words/links
-                let remaining = word;
-                while (remaining.length > 120) {
-                  chunks.push(remaining.slice(0, 120));
-                  remaining = remaining.slice(120);
+                // Squeeze extremely long single words/links cleanly by unicode code points
+                const chars = Array.from(word);
+                let offset = 0;
+                while (offset < chars.length) {
+                  const sliceLen = Math.min(120, chars.length - offset);
+                  chunks.push(chars.slice(offset, offset + sliceLen).join(''));
+                  offset += sliceLen;
                 }
-                currentChunk = remaining;
+                currentChunk = "";
               } else {
                 currentChunk = word;
               }
@@ -240,22 +436,46 @@ export function cleanTextForTTS(text: string): string {
 
   // 11. Handle dynamic expression markers in brackets [ ]
   // (e.g. [whispers], [whispers softly], [giggles], [sighs happily], [excitedly], [softly], [gently], [gasp])
-  // Convert them into a gentle natural pause with ellipses (...) so speech synthesizers don't say the word "bracket",
-  // creating suspense or calm naturally.
-  clean = clean.replace(/\[\s*(?:whispers|whispers softly|softly|gently|giggles|giggle|sighs happily|sighs|excitedly|gasp|laughs|laugh|cheerful|playfully|happily)\s*\]/gi, "... ");
+  // Convert them into a gentle natural acoustic comma pause (, ) instead of ellipses (...).
+  // CRITICAL: NEVER use ellipses (...) or multiple dots because speech engines pronounce them literally as "dot dot dot"!
+  clean = clean.replace(/\[\s*(?:whispers|whispers softly|softly|gently|giggles|giggle|sighs happily|sighs|excitedly|gasp|laughs|laugh|cheerful|playfully|happily)\s*\]/gi, ", ");
   // Clean any remaining bracketed vocal emotion instructions
-  clean = clean.replace(/\[[a-zA-Z\s,]+\]/g, "... ");
+  clean = clean.replace(/\[[a-zA-Z\s,]+\]/g, ", ");
 
-  // 12. Normalize excessive question or exclamation marks
+  // 12. Normalize excessive question or exclamation marks, and ELIMINATE all ellipses and multiple dots
+  // CRITICAL FIX: TTS synthesizers (Google Translate TTS, Chrome Web Speech, Android TTS) pronounce "..." and "…" as "dot dot dot".
+  // Converting all ellipses and dot sequences into natural commas guarantees ZERO "dot dot dot" spoken speech!
   clean = clean.replace(/\?{2,}/g, "?");
   clean = clean.replace(/!{2,}/g, "!");
-  clean = clean.replace(/\.{3,}/g, "...");
+  clean = clean.replace(/…/g, ", ");
+  clean = clean.replace(/\.{2,}/g, ", ");
+  clean = clean.replace(/\s*\.\s*\.\s*\./g, ", ");
+  clean = clean.replace(/\bdot\s+dot\s+dot\b/gi, "");
+  clean = clean.replace(/\bdot\s+dot\b/gi, "");
 
-  // 13. Remove any multiple consecutive newlines or spaces
+  // 13. Clean up duplicate punctuation and commas
+  clean = clean.replace(/\s*,\s*,+/g, ", ");
+  clean = clean.replace(/,\s*\./g, ".");
+  clean = clean.replace(/\.\s*,/g, ".");
+
+  // 14. Remove any multiple consecutive newlines or spaces
   clean = clean.replace(/\n+/g, " ");
   clean = clean.replace(/\s+/g, " ");
 
   return clean.trim();
+}
+
+/**
+ * Strips all bracketed emotion/vocal delivery markers (e.g. [excitedly], [whispers], [giggles], [joyfully])
+ * from text so users never have to see or read them in AI-generated answers and slides.
+ */
+export function stripEmotionMarkers(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\[\s*(?:whispers|whispers softly|softly|gently|giggles|giggle|sighs happily|sighs|excitedly|joyfully|playfully|cheerful|happily|gasp|laughs|laugh)\s*\]\s*/gi, "")
+    .replace(/\[[a-zA-Z\s,]+\]\s*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
@@ -434,95 +654,116 @@ export function speakText(
 
   currentSpeechSession++;
   const session = currentSpeechSession;
+  activeSpeechEndCallback = onEnd || null;
 
-  // If we are online, check whether to use Gemini TTS or Regional TTS Proxy
+  // If we are online, use high-speed TTS Proxy (with instant preloaded blob cache)
   const isOnline = typeof navigator !== 'undefined' && navigator.onLine;
   if (isOnline) {
     try {
-      const isEnglish = detectedLang === 'en';
-      const isGeminiCoolingDown = Date.now() < geminiClientCooldownUntil;
-      const shouldUseGeminiTts = isEnglish && !isGeminiCoolingDown;
-
-      // For Gemini TTS, use smart sentence chunking (up to 400 chars per request) to prevent quota issues;
-      // For regional translate TTS, use splitTextIntoTTSChunks (130 char limit per query).
-      const chunks = shouldUseGeminiTts
-        ? splitTextIntoGeminiChunks(cleanedText)
-        : splitTextIntoTTSChunks(cleanedText);
+      // Use splitTextIntoTTSChunks (safe <= 130 chars) for instant regional voice playback
+      const chunks = splitTextIntoTTSChunks(cleanedText);
 
       if (chunks.length > 0) {
         currentAudioIndex = 0;
         activeAudioQueue = [];
+        activeSpeechChunks = chunks;
 
         const playNext = async () => {
+          activePlayNextFn = playNext;
           if (currentSpeechSession !== session) return;
+          if (isSpeechPaused) return;
 
           if (currentAudioIndex >= chunks.length) {
             activeAudioQueue = [];
             currentAudioIndex = 0;
-            if (onEnd) onEnd();
+            activePlayNextFn = null;
+            if (currentSpeechSession === session && activeSpeechEndCallback) {
+              const cb = activeSpeechEndCallback;
+              activeSpeechEndCallback = null;
+              cb();
+            }
             return;
           }
 
           const chunk = chunks[currentAudioIndex];
-          // Determine best audio URL:
-          // If English and cooldown is clear, use Gemini High-Definition TTS Stream (/api/gemini/tts-stream)
-          // Otherwise, use regional /api/tts proxy for authentic native Indian regional pronunciation
-          let url = `/api/tts?tl=${detectedLang}&q=${encodeURIComponent(chunk)}`;
-          if (shouldUseGeminiTts) {
-            url = `/api/gemini/tts-stream?q=${encodeURIComponent(chunk)}&voice=${storyVoice}&mode=${storyMode}`;
-          }
+          
+          // Check if already in memory blob cache for instant (0ms) audio playback
+          const cacheKey = `${detectedLang}_${Array.from(chunk).slice(0, 80).join('')}`;
+          const cachedBlobUrl = clientAudioBlobCache.get(cacheKey);
+          const url = cachedBlobUrl || `/api/tts?tl=${detectedLang}&q=${safeEncodeURIComponent(chunk)}`;
 
           try {
+            if (currentSpeechSession !== session || isSpeechPaused) return;
+
             const userRate = getSavedSpeechRate();
             const audio = new Audio(url);
+            (audio as any).__sessionId = session;
+            (audio as any).__cancelled = false;
+
             // Calibrate playback speed: bedtime stories slower (~0.84x), active play (~0.92x)
             const baseCadence = storyMode === 'bedtime' ? 0.84 : 0.92;
             audio.playbackRate = Math.max(0.70, Math.min(1.4, baseCadence * userRate));
             activeAudioQueue.push(audio);
+            currentlyPlayingAudio = audio;
+
+            audio.onplay = () => {
+              if (currentSpeechSession !== session || (audio as any).__cancelled) {
+                try {
+                  audio.pause();
+                  audio.currentTime = 0;
+                  audio.src = '';
+                } catch (e) {}
+              }
+            };
+
+            audio.onplaying = () => {
+              if (currentSpeechSession !== session || (audio as any).__cancelled) {
+                try {
+                  audio.pause();
+                  audio.currentTime = 0;
+                  audio.src = '';
+                } catch (e) {}
+              }
+            };
 
             audio.onended = () => {
-              if (currentSpeechSession === session) {
-                currentAudioIndex++;
+              if (currentSpeechSession !== session || (audio as any).__cancelled) return;
+              currentAudioIndex++;
+              if (!isSpeechPaused) {
                 playNext();
               }
             };
 
             audio.onerror = () => {
-              // If Gemini stream fails or returns non-200, engage cooldown and try regional proxy or native fallback
-              if (url.includes('/api/gemini/')) {
-                geminiClientCooldownUntil = Date.now() + 65000;
-                const regionalUrl = `/api/tts?tl=${detectedLang}&q=${encodeURIComponent(chunk)}`;
-                const fallbackAudio = new Audio(regionalUrl);
-                fallbackAudio.playbackRate = Math.max(0.75, Math.min(1.4, 0.90 * userRate));
-                fallbackAudio.onended = () => {
-                  if (currentSpeechSession === session) {
-                    currentAudioIndex++;
-                    playNext();
-                  }
-                };
-                fallbackAudio.onerror = () => {
-                  if (currentSpeechSession === session) {
-                    runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
-                  }
-                };
-                fallbackAudio.play().catch(() => {
-                  if (currentSpeechSession === session) {
-                    runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
-                  }
-                });
-                return;
-              }
+              // Immediately abort if session was cancelled or paused
+              if (currentSpeechSession !== session || (audio as any).__cancelled || isSpeechPaused) return;
 
-              if (currentSpeechSession === session) {
-                runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
-              }
+              runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
             };
 
             await audio.play();
-          } catch {
-            if (currentSpeechSession === session) {
-              runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
+
+            // Guard against pause called while play() promise was resolving
+            if (currentSpeechSession !== session || (audio as any).__cancelled) {
+              try {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.src = '';
+              } catch (e) {}
+              return;
             }
+
+            if (isSpeechPaused) {
+              try {
+                audio.pause();
+              } catch (e) {}
+              return;
+            }
+          } catch {
+            if (currentSpeechSession !== session || (currentlyPlayingAudio as any)?.__cancelled || isSpeechPaused) {
+              return;
+            }
+            runNativeSpeechFallback(cleanedText, detectedLang, avatarName, avatarChar, session, onEnd);
           }
         };
 
@@ -546,6 +787,7 @@ function runNativeSpeechFallback(
   session: number,
   onEnd?: () => void
 ) {
+  if (currentSpeechSession !== session) return;
   if (!window.speechSynthesis) {
     if (onEnd) onEnd();
     return;
@@ -700,9 +942,13 @@ function runNativeSpeechFallback(
       };
 
       utterance.onend = () => {
+        if (currentSpeechSession !== session) return;
         handleEnd('onend');
       };
-      utterance.onerror = () => {
+      utterance.onerror = (e) => {
+        if (currentSpeechSession !== session) return;
+        // Do not simulate speech or fire onEnd if synthesis was canceled or paused by user
+        if ((e as any)?.error === 'canceled' || (e as any)?.error === 'interrupted') return;
         handleEnd('onerror');
       };
     }

@@ -1117,12 +1117,12 @@ const TIME_UP_LABELS: Record<string, string> = {
 };
 
 const TIME_UP_VOICE_FEEDBACK: Record<string, string> = {
-  en: "[softly] Time is up, little star... [whispers softly] Don't worry at all, take a deep breath... Let's learn the answer together!",
-  hi: "[softly] समय समाप्त हो गया, प्यारे बच्चे... [whispers softly] कोई बात नहीं, एक गहरी सांस लो... चलो प्यार से इसका सही उत्तर सीखते हैं!",
-  gu: "[softly] સમય પૂરો થયો, વ્હાલા બાળમિત્ર... [whispers softly] ચિંતા ન કરશો... ચાલો સાથે મળીને સાચો જવાબ શીખીએ!",
-  mr: "[softly] वेळ संपली, बालमित्रा... [whispers softly] काळजी करू नकोस... चल आपण प्रेमाने योग्य उत्तर शिकूया!",
-  ta: "[softly] நேரம் முடிந்தது, செல்லமே... [whispers softly] கவலைப்படாதே... நாம் ஒன்றாக சரியான விடையைக் கற்றுக்கொள்வோம்!",
-  te: "[softly] సమయం ముగిసింది, చిన్ని నేస్తమా... [whispers softly] ఏమీ పర్వాలేదు... మనం చక్కగా సరైన సమాధానం తెలుసుకుందాం!"
+  en: "Time is up, little star, don't worry at all, take a deep breath. Let's learn the answer together!",
+  hi: "समय समाप्त हो गया, प्यारे बच्चे, कोई बात नहीं, एक गहरी सांस लो. चलो प्यार से इसका सही उत्तर सीखते हैं!",
+  gu: "સમય પૂરો થયો, વ્હાલા બાળમિત્ર, ચિંતા ન કરશો. ચાલો સાથે મળીને સાચો જવાબ શીખીએ!",
+  mr: "वेळ संपली, बालमित्रा, काळजी करू नकोस. चल आपण प्रेमाने योग्य उत्तर शिकूया!",
+  ta: "நேரம் முடிந்தது, செல்லமே, கவலைப்படாதே. நாம் ஒன்றாக சரியான விடையைக் கற்றுக்கொள்வோம்!",
+  te: "సమయం ముగిసింది, చిన్ని నేస్తమా, ఏమీ పర్వాలేదు. మనం చక్కగా సరైన సమాధానం తెలుసుకుందాం!"
 };
 
 const REVIEW_ANSWERS_LABELS: Record<string, string> = {
@@ -1846,21 +1846,21 @@ export default function QuizTab({ user, lang, onNavigateToTab, onUpdateUser }: Q
   };
 
   const CORRECT_VOICE_FEEDBACK: Record<string, string> = {
-    en: "[excitedly] Yay! [giggles] Wonderful job, superstar!... You found the correct answer!",
-    hi: "[excitedly] शाबाश! [giggles] बहुत ही बढ़िया प्यारे बच्चे!... आपने बिल्कुल सही उत्तर दिया है!",
-    gu: "[excitedly] શાબાશ! [giggles] ખુબ સરસ વ્હાલા મિત્ર!... તમે એકદમ સાચો જવાબ આપ્યો!",
-    mr: "[excitedly] छान! [giggles] खूप मस्त बालमित्रा!... तू अगदी बरोबर उत्तर दिले आहेस!",
-    ta: "[excitedly] அற்புதம்! [giggles] அருமையான முயற்சி செல்லமே!... நீங்கள் மிகச் சரியான விடையைத் தேர்ந்தெடுத்துள்ளீர்கள்!",
-    te: "[excitedly] శభాష్! [giggles] చాలా బాగా చేసావు నేస్తమా!... నీవు సరైన సమాధానం చెప్పావు!"
+    en: "Yay! Wonderful job, superstar! You found the correct answer!",
+    hi: "शाबाश! बहुत ही बढ़िया प्यारे बच्चे! आपने बिल्कुल सही उत्तर दिया है!",
+    gu: "શાબાશ! ખુબ સરસ વ્હાલા મિત્ર! તમે એકદમ સાચો જવાબ આપ્યો!",
+    mr: "छान! खूप मस्त बालमित्रा! तू अगदी बरोबर उत्तर दिले आहेस!",
+    ta: "அற்புதம்! அருமையான முயற்சி செல்லமே! நீங்கள் மிகச் சரியான விடையைத் தேர்ந்தெடுத்துள்ளீர்கள்!",
+    te: "శభాష్! చాలా బాగా చేసావు నేస్తమా! నీవు సరైన సమాధానం చెప్పావు!"
   };
 
   const INCORRECT_VOICE_FEEDBACK: Record<string, string> = {
-    en: "[softly] Great try, little champion... [sighs happily] Keep that sweet smile on! Let's read the gentle explanation together.",
-    hi: "[softly] बहुत अच्छा प्रयास, प्यारे दोस्त... [sighs happily] कोई बात नहीं, चलो मुस्कुराते हुए इसका आसान हल समझें!",
-    gu: "[softly] સરસ પ્રયાસ, વ્હાલા દોસ્ત... [sighs happily] ચિંતા વિના, ચાલો સાથે મળીને તેની સરળ સમજૂતી જાણીએ!",
-    mr: "[softly] खूप छान प्रयत्न, बालमित्रा... [sighs happily] काही हरकत नाही, चल आपण याचे सोपे उत्तर समजून घेऊया!",
-    ta: "[softly] நல்ல முயற்சி, செல்லமே... [sighs happily] புன்னகையுடன் வாருங்கள், நாம் இதன் எளிய விளக்கத்தைப் பார்ப்போம்!",
-    te: "[softly] చాలా మంచి ప్రయత్నం, చిన్ని నేస్తమా... [sighs happily] రండి, మనం సరదాగా దీని వివరణ చూద్దాం!"
+    en: "Great try, little champion. Keep that sweet smile on! Let's read the gentle explanation together.",
+    hi: "बहुत अच्छा प्रयास, प्यारे दोस्त. कोई बात नहीं, चलो मुस्कुराते हुए इसका आसान हल समझें!",
+    gu: "સરસ પ્રયાસ, વ્હાલા દોસ્ત. ચિંતા વિના, ચાલો સાથે મળીને તેની સરળ સમજૂતી જાણીએ!",
+    mr: "खूप छान प्रयत्न, बालमित्रा. काही हरकत नाही, चल आपण याचे सोपे उत्तर समजून घेऊया!",
+    ta: "நல்ல முயற்சி, செல்லமே. புன்னகையுடன் வாருங்கள், நாம் இதன் எளிய விளக்கத்தைப் பார்ப்போம்!",
+    te: "చాలా మంచి ప్రయత్నం, చిన్ని నేస్తమా. రండి, మనం సరదాగా దీని వివరణ చూద్దాం!"
   };
 
   const translateQuizUsingGemini = async (quiz: any, targetLang: string) => {

@@ -82,21 +82,21 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
     }
 
     const bedtimeSamples: Record<string, string> = {
-      en: '[whispers softly] Close your little eyes... [gently] and listen to the stars twinkling in the calm night sky... [sighs happily] You are safe and loved. Sweet dreams, little star...',
-      hi: '[whispers softly] अपनी नन्हीं आँखें बंद करो... [gently] और रात के शांत आसमान में चमकते तारों को सुनो... [sighs happily] तुम बहुत प्यारे हो। मीठे सपने, नन्हे तारे...',
-      gu: '[whispers softly] તમારી નાની આંખો બંધ કરો... [gently] અને શાંત રાત્રિના આકાશમાં ચમકતા તારાઓને સાંભળો... [sighs happily] મીઠા સપના, વ્હાલા મિત્ર...',
-      mr: '[whispers softly] तुझे छोटे डोळे मिटून घे... [gently] आणि रात्रीच्या शांत आकाशातल्या चांदण्यांचं गाणं ऐक... [sighs happily] छान स्वप्ने पडोत, बालमित्रा...',
-      ta: '[whispers softly] உன் குட்டி கண்களை மூடு... [gently] அமைதியான இரவு வானில் மின்னும் நட்சத்திரங்களைக் கேள்... [sighs happily] இனிய கனவுகள் செல்லமே...',
-      te: '[whispers softly] నీ చిన్ని కళ్ళు మూసుకో... [gently] ప్రశాంతమైన రాత్రి వేళ మెరిసే తారల పాట విను... [sighs happily] తియ్యని కలలు, చిన్ని నేస్తమా...'
+      en: 'Close your little eyes, and listen to the stars twinkling in the calm night sky. You are safe and loved. Sweet dreams, little star.',
+      hi: 'अपनी नन्हीं आँखें बंद करो, और रात के शांत आसमान में चमकते तारों को सुनो. तुम बहुत प्यारे हो. मीठे सपने, नन्हे तारे.',
+      gu: 'તમારી નાની આંખો બંધ કરો, અને શાંત રાત્રિના આકાશમાં ચમકતા તારાઓને સાંભળો. મીઠા સપના, વ્હાલા મિત્ર.',
+      mr: 'तुझे छोटे डोळे मिटून घे, आणि रात्रीच्या शांत आकाशातल्या चांदण्यांचं गाणं ऐक. छान स्वप्ने पडोत, बालमित्रा.',
+      ta: 'உன் குட்டி கண்களை மூடு, அமைதியான இரவு வானில் மின்னும் நட்சத்திரங்களைக் கேள். இனிய கனவுகள் செல்லமே.',
+      te: 'నీ చిన్ని కళ్ళు మూసుకో, ప్రశాంతమైన రాత్రి వేళ మెరిసే తారల పాట విను. తియ్యని కలలు, చిన్ని నేస్తమా.'
     };
 
     const playSamples: Record<string, string> = {
-      en: '[excitedly] Wow, look at that! [gasp] A hidden treasure in the jungle... [giggles] Come on, little explorer, let\'s jump right in!',
-      hi: '[excitedly] अरे वाह, उधर देखो! [gasp] जंगल में एक छिपा हुआ खज़ाना... [giggles] चलो नन्हे खोजी, मिलकर कूद पड़ते हैं!',
-      gu: '[excitedly] અરે વાહ, ત્યાં જુઓ! [gasp] જંગલમાં એક છુપાયેલો ખજાનો... [giggles] ચાલો નાનકડા દોસ્ત, સાથે મળીને સાહસ કરીએ!',
-      mr: '[excitedly] अरे वा, तिकडे बघ! [gasp] जंगलात एक लपलेला खजिना... [giggles] चल छोट्या दोस्ता, आपण मिळून शोधूया!',
-      ta: '[excitedly] ஆஹா, அங்கே பார்! [gasp] காட்டில் ஒரு மறைந்த புதையல்... [giggles] வா குட்டி நண்பா, குதித்து மகிழ்வோம்!',
-      te: '[excitedly] అరెరే, అటు చూడండి! [gasp] అడవిలో దాగి ఉన్న నిధి... [giggles] రా చిన్ని నేస్తమా, కలిసి దూకుదాం!'
+      en: 'Wow, look at that! A hidden treasure in the jungle. Come on, little explorer, let\'s jump right in!',
+      hi: 'अरे वाह, उधर देखो! जंगल में एक छिपा हुआ खज़ाना. चलो नन्हे खोजी, मिलकर कूद पड़ते हैं!',
+      gu: 'અરે વાહ, ત્યાં જુઓ! જંગલમાં એક છુપાયેલો ખજાનો. ચાલો નાનકડા દોસ્ત, સાથે મળીને સાહસ કરીએ!',
+      mr: 'अरे वा, तिकडे बघ! जंगलात एक लपलेला खजिना. चल छोट्या दोस्ता, आपण मिळून शोधूया!',
+      ta: 'ஆஹா, அங்கே பார்! காட்டில் ஒரு மறைந்த புதையல். வா குட்டி நண்பா, குதித்து மகிழ்வோம்!',
+      te: 'అరెరే, అటు చూడండి! అడవిలో దాగి ఉన్న నిధి. రా చిన్ని నేస్తమా, కలిసి దూకుదాం!'
     };
 
     const sample = testType === 'bedtime'

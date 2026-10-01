@@ -1371,7 +1371,12 @@ You are an expert Math and Science Problem-Solving Assistant.
         ? `\n[2G LOW-BANDWIDTH PAYLOAD COMPRESSION ACTIVE]: Keep explanations concise, direct, high-density, and structured to minimize network payload usage on rural 2G/3G cellular networks.\n`
         : '';
 
-      const kidsEducationalVoiceDirective = `
+      const isJsonRequested = 
+        req.body?.responseMimeType === 'application/json' ||
+        (typeof adjustedSystemInstruction === 'string' && /raw\s+JSON|valid\s+JSON|JSON\s+schema/i.test(adjustedSystemInstruction)) ||
+        (typeof message === 'string' && /raw\s+JSON|valid\s+JSON|JSON\s+schema/i.test(message));
+
+      const kidsEducationalVoiceDirective = isJsonRequested ? '' : `
 [SWEET, ENCOURAGING CHILDREN'S COMPANION & TEXT-TO-SPEECH DELIVERY DIRECTIVE]
 You are an extraordinarily sweet, affectionate, warm, and encouraging educational companion designed specifically to inspire and motivate children (ages 3–14) to love learning.
 Your goal is to make every child feel deeply valued, smart, and excited to explore and use this learning platform.
@@ -1382,14 +1387,11 @@ CORE PERSONALITY & TONE RULES:
 3. Inspire Kids to Keep Using the Project: Consistently encourage them to explore more, ask another question, try a fun quiz, solve equations, or learn something new today.
 4. Gentle & Compassionate Guidance: If a concept is tricky or a mistake is made, reassure them with immense warmth: learning takes practice and every try makes their brain stronger. Never use harsh, dry, or critical words.
 
-CRITICAL SPEECH FORMATTING RULES FOR TEXT-TO-SPEECH RENDERING:
-1. Dynamic Expression Markers: Use dynamic expression markers in brackets [ ] to direct vocal emotion, pace, and delivery (e.g., [whispers], [whispers softly], [giggles], [sighs happily], [excitedly], [softly], [gently], [gasp]).
+CRITICAL FORMATTING & SPEECH RULES:
+1. Pure Natural Spoken Words: Speak naturally with sweet, warm, cheerful, and encouraging tone. NEVER output bracketed expression tags (like [whispers], [excitedly], [joyfully], [gasp], [giggles]) because students should never have to read them and they break JSON parsers.
 2. Sentence Length & Cadence: Keep sentences short and cadence rhythmic to hold a child's attention and allow text-to-speech to sound melodious and sweet.
-3. Natural Suspense & Calm Pauses: Pause naturally using ellipses (...) to create moments of suspense, wonder, anticipation, or calm.
-4. Context-Adapted Tone:
-   - For bedtime/calming stories: Use [whispers softly], [gently], and a slower cadence with soothing, comforting delivery.
-   - For adventure/play/science: Use [excitedly], [gasp], and high-energy joyful expressions with wonder.
-5. Soft, Warm & Playful Delivery: Avoid robotic, stiff, or overly formal phrasing. Ensure your voice conveys immense kindness, patience, warmth, and joyful positivity.
+3. Natural Suspense & Calm Pauses: Pause naturally using standard commas and short clauses to create wonder and calm. Never write raw ellipses (...) or multiple dots, as text-to-speech engines pronounce them out loud as 'dot dot dot'.
+4. Soft, Warm & Playful Delivery: Avoid robotic, stiff, or overly formal phrasing. Ensure your voice conveys immense kindness, patience, warmth, and joyful positivity.
 `;
 
       adjustedSystemInstruction = `${adjustedSystemInstruction}\n${kidsEducationalVoiceDirective}\n${syllabusGuideline}\n${lowBandwidthDirective}\n${mathAndScienceLatexRules}`;
@@ -1541,7 +1543,8 @@ CRITICAL SPEECH FORMATTING RULES FOR TEXT-TO-SPEECH RENDERING:
             contents: contents,
             config: {
               systemInstruction: adjustedSystemInstruction,
-              temperature: 0.75,
+              temperature: isJsonRequested ? 0.2 : 0.75,
+              ...(isJsonRequested ? { responseMimeType: "application/json" } : {})
             }
           });
           success = true;
@@ -1563,7 +1566,10 @@ CRITICAL SPEECH FORMATTING RULES FOR TEXT-TO-SPEECH RENDERING:
         });
       }
 
-      const responseText = response?.text || "I was unable to process that query.";
+      let responseText = response?.text || "I was unable to process that query.";
+      
+      // Clean bracketed expressing words like [excitedly], [whispers], [giggles], [joyfully], [gasp] from responses everywhere
+      responseText = responseText.replace(/\[\s*(?:whispers|whispers softly|softly|gently|giggles|giggle|sighs happily|sighs|excitedly|joyfully|playfully|cheerful|happily|gasp|laughs|laugh)\s*\]\s*/gi, "");
 
       return res.json({
         success: true,
@@ -2070,16 +2076,22 @@ Guidelines for formatting the JSON fields:
     return "en";
   }
 
-  // HELPER: Strip markdown, emojis, bracket vocal expressions for clean speech synthesis
+  // HELPER: Strip markdown, emojis, bracket vocal expressions, ellipses for clean speech synthesis
   function cleanSpeechText(text: string): string {
     if (!text || typeof text !== "string") return "";
     return text
       .replace(/^#+\s+/gm, "")
       .replace(/[*_`~#]/g, "")
       .replace(/\[([^\]]+)\]\([^\)]*\)/g, "$1")
-      .replace(/\[\s*(?:whispers|whispers softly|softly|gently|giggles|sighs|excitedly|gasp|laughs|cheerful|playfully|happily)\s*\]/gi, " ")
-      .replace(/\[[^\]]+\]/g, " ")
+      .replace(/\[\s*(?:whispers|whispers softly|softly|gently|giggles|sighs|excitedly|gasp|laughs|cheerful|playfully|happily)\s*\]/gi, ", ")
+      .replace(/\[[^\]]+\]/g, ", ")
+      .replace(/…/g, ", ")
+      .replace(/\.{2,}/g, ", ")
+      .replace(/\s*\.\s*\.\s*\./g, ", ")
+      .replace(/\bdot\s+dot\s+dot\b/gi, "")
+      .replace(/\bdot\s+dot\b/gi, "")
       .replace(/[\u{1F300}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, "")
+      .replace(/\s*,\s*,+/g, ", ")
       .replace(/\s+/g, " ")
       .trim();
   }
@@ -2133,12 +2145,28 @@ Guidelines for formatting the JSON fields:
     return chunks.filter(c => c.trim().length > 0);
   }
 
+  function safeServerEncode(str: string): string {
+    if (!str) return '';
+    try {
+      const wellFormed = typeof (str as any).toWellFormed === 'function'
+        ? (str as any).toWellFormed()
+        : str.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '');
+      return encodeURIComponent(wellFormed);
+    } catch {
+      try {
+        return encodeURIComponent(str.replace(/[\uD800-\uDFFF]/g, ''));
+      } catch {
+        return '';
+      }
+    }
+  }
+
   // HELPER: Fetch a single small chunk (< 130 chars) from Google Translate TTS
   async function fetchGoogleTtsRawChunk(textChunk: string, lang: string): Promise<Buffer | null> {
     try {
-      const safeChunk = textChunk.slice(0, 130).trim();
+      const safeChunk = Array.from(textChunk).slice(0, 130).join('').trim();
       if (!safeChunk) return null;
-      const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(lang)}&q=${encodeURIComponent(safeChunk)}`;
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${safeServerEncode(lang)}&q=${safeServerEncode(safeChunk)}`;
       const resp = await fetch(url, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
