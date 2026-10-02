@@ -10,6 +10,7 @@ import SpeechInputButton from '../SpeechInputButton';
 import InteractiveAITeacher from '../InteractiveAITeacher';
 import SlideVisualBoard from './SlideVisualBoard';
 import { speakText, stopSpeaking, pauseSpeaking, resumeSpeaking, isSpeakingPaused, prefetchSpeech, cleanTextForTTS, detectLanguageOfText, splitTextIntoTTSChunks, safeEncodeURIComponent, stripEmotionMarkers } from '../../utils/speech';
+import { compressImageToDataUrl } from '../../utils/imageCompressor';
 import { 
   Play, BookOpen, Download, CheckCircle2, ChevronRight, Award, 
   HelpCircle, Volume2, Search, Sparkles, Smile, Video, ArrowLeft, RefreshCw,
@@ -452,6 +453,45 @@ const BOARD_MASCOT_ROSTER: BoardSubjectMascot[] = [
       hi: [{ id: 'chq1', question: "संविधान प्रारूप समिति के अध्यक्ष कौन थे?", options: ["महात्मा गांधी", "डॉ. बी.आर. आंबेडकर", "जवाहरलाल नेहरू", "सरदार पटेल"], answerIndex: 1, explanation: "डॉ. बी.आर. आंबेडकर संविधान प्रारूप समिति के अध्यक्ष थे!" }]
     }
   },
+  {
+    id: 'cbse-comp',
+    boardKey: 'CBSE',
+    boardName: 'CBSE (National Board)',
+    subjectTitle: {
+      en: "Computer Studies & IT 💻",
+      gu: "કમ્પ્યુટર અને આઈટી 💻",
+      hi: "कंप्यूटर और आईटी 💻"
+    },
+    avatarChar: "💻 Turing AI",
+    avatarName: "Turing AI (Cyber Panther)",
+    tagline: {
+      en: "Excel, Python, Internet & Cyber Security",
+      gu: "એક્સેલ, પાયથોન, ઇન્ટરનેટ અને સાયબર સુરક્ષા",
+      hi: "एक्सेल, पायथन, इंटरनेट और साइबर सुरक्षा"
+    },
+    badge: "CBSE IT Core",
+    themeGradient: "from-violet-600 to-indigo-900",
+    sampleQuery: {
+      en: "What is MS Excel and how are spreadsheets used?",
+      gu: "એમએસ એક્સેલ શું છે અને સ્પ્રેડશીટનો ઉપયોગ કેવી રીતે થાય છે?",
+      hi: "एमएस एक्सेल क्या है और स्प्रेडशीट का उपयोग कैसे किया जाता है?"
+    },
+    explanation: {
+      en: "Turing AI explains that Microsoft Excel is a digital spreadsheet software that organizes information into rows and columns to perform formulas, calculations, and data visualization!",
+      gu: "ટ્યુરિંગ AI સમજાવે છે કે એમએસ એક્સેલ એ રો અને કૉલમ ધરાવતી ડિજિટલ સ્પ્રેડશીટ છે, જે ગણતરીઓ અને ડેટા વિશ્લેષણ માટે વપરાય છે!",
+      hi: "ट्यूरिंग AI बताते हैं कि एमएस एक्सेल एक डिजिटल स्प्रेडशीट सॉफ्टवेयर है जो पंक्तियों और स्तंभों में डेटा व्यवस्थित करके गणना और विश्लेषण करता है!"
+    },
+    slides: {
+      en: [{ title: "MS Excel & Spreadsheets 101", content: "Rows, columns, cells, and formulas for managing data.", keyPoints: ["Rows & Columns grid", "Formulas & Functions (SUM, AVG)", "Data charts & tables"] }],
+      gu: [{ title: "એમએસ એક્સેલ અને સ્પ્રેડશીટ ૧૦૧", content: "ડેટા સાચવવા માટે રો, કૉલમ, સેલ અને ગણતરી ફોર્મ્યુલા.", keyPoints: ["રો અને કૉલમ ગ્રીડ", "ફોર્મ્યુલા અને ફંક્શન્સ", "ડેટા ચાર્ટ અને ટેબલ"] }],
+      hi: [{ title: "एमएस एक्सेल और स्प्रेडशीट १०१", content: "डेटा प्रबंधन के लिए पंक्तियां, स्तंभ, सेल और फॉर्मूला।", keyPoints: ["रो और कॉलम ग्रिड", "फॉर्मूला और गणना", "डेटा चार्ट और टेबल"] }]
+    },
+    quiz: {
+      en: [{ id: 'ccq1', question: "What is the intersection of a row and a column in Excel called?", options: ["Block", "Cell", "Pixel", "Folder"], answerIndex: 1, explanation: "The intersection of a row and column in Excel is called a Cell!" }],
+      gu: [{ id: 'ccq1', question: "એક્સેલમાં રો અને કૉલમ જ્યાં મળે તે ખાનાને શું કહેવાય?", options: ["બ્લોક", "સેલ (Cell)", "પિક્સેલ", "ફોલ્ડર"], answerIndex: 1, explanation: "રો અને કૉલમ જ્યાં ભેગા થાય તેને સેલ (Cell) કહેવાય!" }],
+      hi: [{ id: 'ccq1', question: "एक्सेल में पंक्ति (Row) और स्तंभ (Column) के मिलन को क्या कहते हैं?", options: ["ब्लॉक", "सेल (Cell)", "पिक्सेल", "फ़ोल्डर"], answerIndex: 1, explanation: "रो और कॉलम जहां मिलते हैं उस बॉक्स को सेल (Cell) कहते हैं!" }]
+    }
+  },
 
   // --- 3. ICSE (Council for the Indian School Certificate Examinations) ---
   {
@@ -846,7 +886,9 @@ export default function TutorTab({
     const lessonTitle = lesson.query;
     const subject = lesson.subject;
     const avatarName = lesson.avatarName || "Swami AI";
-    const avatarChar = lesson.avatarChar || "🤖";
+    const rawAvatarChar = lesson.avatarChar || "🤖";
+    const avatarEmoji = rawAvatarChar.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|👵|🤖|🦊|🚀|📜|🛡️|🦅|🧪|📐|🦚|🌿|🌾|🍎|💻|✍️|🎓|🔢/u)?.[0] || '🤖';
+    const avatarChar = avatarEmoji;
     const quizzes = lesson.quiz || [];
     
     // Build JSON strings safely
@@ -1279,67 +1321,107 @@ export default function TutorTab({
   // --- SMART MASCOT AUTO-MATCHER FOR UNSELECTED QUERIES ---
   const detectMascotForQuery = (query: string, boardKey: string): BoardSubjectMascot => {
     const boardMascots = BOARD_MASCOT_ROSTER.filter(m => m.boardKey === boardKey);
-    const fallback = boardMascots[0] || BOARD_MASCOT_ROSTER[0];
-    if (!query || !query.trim()) return fallback;
+    // Prefer Science/Universal AI robot as general fallback rather than narrow math
+    const universalScienceFallback = boardMascots.find(m => (m.id || '').includes('sci') || (m.avatarChar || '').includes('🤖')) 
+      || BOARD_MASCOT_ROSTER.find(m => (m.id || '').includes('sci') || (m.avatarChar || '').includes('🤖')) 
+      || boardMascots[0] 
+      || BOARD_MASCOT_ROSTER[0];
 
-    const q = query.toLowerCase();
+    if (!query || !query.trim()) return universalScienceFallback;
 
-    // 1. Math / Algebra / Geometry / Equations
-    if (/math|algebra|geometry|pythagoras|trigonometry|equation|square|fraction|calculus|number|arithmetic|ગણિત|બીજગણિત|ભૂમિતિ|સમીકરણ|સંખ્યા|गणित|बीजगणित|ज्यामिति|समीकरण|संख्या/.test(q)) {
-      const match = boardMascots.find(m => (m.id || '').includes('math') || (m.avatarChar || '').includes('📐') || (m.avatarChar || '').includes('🦊'));
+    const q = query.toLowerCase().trim();
+
+    const findMatch = (predicate: (m: BoardSubjectMascot) => boolean): BoardSubjectMascot | undefined => {
+      return boardMascots.find(predicate) || BOARD_MASCOT_ROSTER.find(predicate);
+    };
+
+    // 1. Computer Studies / Excel / Information Technology / Software / Coding / Office / Web / AI
+    if (/\b(excel|spreadsheets?|sheets?|workbook|worksheet|vlookup|hlookup|formula|formulas|calc|cell|cells|rows?|columns?|csv|word|ms\s*office|powerpoint|ppt|presentation|microsoft|computer|computers|pc|laptop|desktop|mac|windows|linux|operating\s*system|os|keyboard|mouse|monitor|cpu|gpu|ram|rom|hard\s*disk|ssd|pen\s*drive|usb|printer|software|hardware|binary|bit|bits|bytes?|algorithm|program|programs|programming|programmer|coding|code|coder|python|java|javascript|js|html|css|sql|database|db|network|networking|internet|browser|chrome|web|website|webpage|cyber|cybersecurity|hacker|firewall|virus|cloud|server|data|ai|artificial\s*intelligence|machine\s*learning|chatgpt|gemini|robotics?|tech|technology|it)\b|કમ્પ્યુટર|કોડિંગ|વેબસાઇટ|સૉફ્ટવેર|એક્સેલ|ઇન્ટરનેટ|માઇક્રોસોફ્ટ|ડેટા|સ્પ્રેડશીટ|कंप्यूटर|कोडिंग|वेबसाइट|सॉफ्टवेयर|एक्सेल|इंटरनेट|माइक्रोसॉफ्ट|डेटा|स्प्रेडशीट/i.test(q)) {
+      const match = findMatch(m => (m.id || '').includes('comp') || (m.avatarChar || '').includes('💻') || (m.avatarName || '').toLowerCase().includes('turing'));
       if (match) return match;
     }
 
-    // 2. Physics / Space / Gravity / Motion / Rocket / Optics / Energy
-    if (/physics|space|gravity|rocket|planet|orbit|motion|force|optics|light|energy|atom|speed|ભૌતિક|સ્પેસ|રોકેટ|ગુરુત્વાકર્ષણ|અવકાશ|પ્રકાશ|ઉર્જા|भौतिक|अंतरिक्ष|रॉकेट|गुरुत्वाकर्षण|प्रकाश|ऊर्जा|गति/.test(q)) {
-      const match = boardMascots.find(m => (m.id || '').includes('phy') || (m.avatarChar || '').includes('🚀') || (m.avatarChar || '').includes('🍎') || (m.avatarChar || '').includes('🤖'));
+    // 2. Biology / Medicine / Health / Human Body / Organs / Cells / Plants / Doctor
+    if (/\b(biology|bio|cells?|cellular|blood|hemoglobin|oxygen|heart|cardiac|lungs?|respiratory|brain|neural|kidney|kidneys|liver|stomach|intestine|skeleton|bone|bones|muscle|muscles|dna|rna|gene|genes|genetic|genetics|photosynthesis|plant|plants|leaf|leaves|root|roots|stem|flower|flowers|seed|seeds|chlorophyll|health|healthy|disease|diseases|infection|medicine|medical|doctor|hospital|virus|viruses|bacteria|immune|immunity|digestion|digestive|nutrition|nutrients?|vitamins?|organ|organs|human\s*body|respiration|circulation|reproduction|zoology|botany|animals?|mammals?|birds?|reptiles?|insects?)\b|જીવવિજ્ઞાન|કોષ|ઓક્સિજન|હિમોગ્લોબિન|હૃદય|ફેફસાં|મગજ|આરોગ્ય|દવા|ખોરાક|પાચન|શ્વસન|શરીર|વનસ્પતિ|પાંદડાં|રોગ|વિટામિન|પ્રાણી|પક્ષી|जीवविज्ञान|कोशिका|ऑक्सीजन|हीमोग्लोबिन|हृदय|फेफड़े|दिमाग|स्वास्थ्य|दवा|भोजन|पाचन|श्वसन|शरीर|पौधे|पत्तियां|रोग|विटामिन|पशु|पक्षी/i.test(q)) {
+      const match = findMatch(m => (m.id || '').includes('bio') || (m.avatarChar || '').includes('🧪') || (m.avatarName || '').toLowerCase().includes('anandi'));
       if (match) return match;
     }
 
-    // 3. Biology / Health / Human Body / Blood / Cell / Plant / Organ / Photosynthesis
-    if (/biology|bio|cell|blood|organ|heart|plant|photosynthesis|health|disease|doctor|medicine|જીવવિજ્ઞાન|કોષ|ઓક્સિજન|હૃદય|વનસ્પતિ|આરોગ્ય|દવા|जीवविज्ञान|कोशिका|रक्त|ऑक्सीजन|हृदय|पौधे|स्वास्थ्य/.test(q)) {
-      const match = boardMascots.find(m => (m.id || '').includes('bio') || (m.avatarChar || '').includes('🧪') || (m.avatarChar || '').includes('🤖'));
+    // 3. Physics / Astronomy / Space / Gravity / Energy / Optics / Motion
+    if (/\b(physics|space|universe|cosmos|cosmic|gravity|gravitation|gravitational|rocket|rockets|satellite|satellites|planet|planets|orbit|orbital|solar\s*system|sun|moon|earth|mars|jupiter|saturn|venus|mercury|uranus|neptune|galaxy|galaxies|stars?|black\s*hole|telescope|astronaut|nasa|isro|motion|speed|velocity|acceleration|force|forces|friction|momentum|optics|light|reflection|refraction|lens|lenses|mirror|prism|energy|electricity|electric|magnet|magnets|magnetism|magnetic|circuit|current|voltage|ampere|watt|atom|atomic|nuclear|sound|wave|waves|acoustic|frequency|heat|thermodynamics|newton|einstein|kalam|airplane|flight|aerodynamics|engine)\b|ભૌતિક|સ્પેસ|રોકેટ|ગુરુત્વાકર્ષણ|અવકાશ|પ્રકાશ|ઊર્જા|ચુંબક|વીજળી|ગતિ|બળ|તરંગ|પરમાણુ|તારા|ગ્રહ|સૂર્યમંડળ|ઇસરો|भौतिक|अंतरिक्ष|रॉकेट|गुरुत्वाकर्षण|प्रकाश|ऊर्जा|चुंबक|बिजली|गति|बल|तरंग|परमाणु|तारे|ग्रह|सौरमंडल|इसरो/i.test(q)) {
+      const match = findMatch(m => (m.id || '').includes('phy') || (m.avatarChar || '').includes('🚀') || (m.avatarChar || '').includes('🍎') || (m.avatarName || '').toLowerCase().includes('rocket') || (m.avatarName || '').toLowerCase().includes('newton'));
       if (match) return match;
     }
 
-    // 4. Science / Chemistry / Experiment
-    if (/science|chemistry|acid|base|reaction|element|વિજ્ઞાન|રસાયણ|પ્રયોગ|તત્વ|તત્વો|विज्ञान|रसायन|प्रयोग|तत्व/.test(q)) {
-      const match = boardMascots.find(m => (m.id || '').includes('sci') || (m.avatarChar || '').includes('🤖') || (m.avatarChar || '').includes('🧪'));
+    // 4. Mathematics / Algebra / Geometry / Numbers / Arithmetic / Equations
+    if (/\b(math|mathematics|algebra|geometry|geometric|trigonometry|calculus|equation|equations|number|numbers|digit|digits|fraction|fractions|decimal|decimals|arithmetic|addition|add|subtraction|subtract|multiplication|multiply|division|divide|percentage|percent|ratio|proportion|circle|triangle|square|rectangle|polygon|cube|cylinder|cone|sphere|perimeter|area|volume|angles?|degrees?|lcm|hcf|prime|factors?|matrices|matrix|integral|derivative|theorem|pythagoras|ramanujan|chanda|vedic|odd|even|integer|integers|polynomial)\b|ગણિત|બીજગણિત|ભૂમિતિ|સમીકરણ|સંખ્યા|પાયથાગોરસ|સરવાળો|બાદબાકી|ગુણાકાર|ભાગાકાર|અપૂર્ણાંક|ટકાવારી|ક્ષેત્રફળ|પરિમિતિ|गणित|बीजगणित|ज्यामिति|समीकरण|संख्या|पाइथागोरस|जोड़|घटाव|गुणा|भाग|भिन्न|प्रतिशत|क्षेत्रफल|परिमाप/i.test(q)) {
+      const match = findMatch(m => (m.id || '').includes('math') || (m.avatarChar || '').includes('📐') || (m.avatarChar || '').includes('🦊') || (m.avatarName || '').toLowerCase().includes('chanda') || (m.avatarName || '').toLowerCase().includes('ramanujan'));
       if (match) return match;
     }
 
-    // 5. History / Civics / Social Science / Freedom / Constitution / Democracy
-    if (/history|civics|constitution|democracy|freedom|ambedkar|laxmi|gandhi|war|dynasty|government|rights|ઇતિહાસ|નાગરિક|બંધારણ|લોકશાહી|સ્વાતંત્ર્ય|ઇતિહાસ|इतिहास|नागरिक|संविधान|लोकतंत्र|स्वतंत्रता/.test(q)) {
-      const match = boardMascots.find(m => (m.id || '').includes('hist') || (m.avatarChar || '').includes('👵') || (m.avatarChar || '').includes('🛡️'));
+    // 5. Agriculture / Farming / Soil / Irrigation / Crops / Rural Tech
+    if (/\b(agri|agriculture|crop|crops|farm|farming|farmer|farmers|soil|soils|kisan|irrigation|drip|sprinkler|fertilizer|fertilizers|manure|compost|npk|pest|pests|pesticide|pesticides|harvest|harvesting|monsoon\s*farming|plow|tractor|seeds?|dairy|cattle|cow|cows|buffalo|livestock|horticulture|organic\s*farming|yield)\b|ખેતી|પાક|જમીન|કૃષિ|ખાતર|સિંચાઈ|ટપક|બિયારણ|ખેડૂત|ગાય|પશુપાલન|ખેતર|खेती|फसल|मिट्टी|कृषि|खाद|सिंचाई|टपक|बीज|किसान|पशुपालन|खेत/i.test(q)) {
+      const match = findMatch(m => (m.id || '').includes('agri') || (m.avatarChar || '').includes('🌾') || (m.avatarName || '').toLowerCase().includes('kisan'));
       if (match) return match;
     }
 
-    // 6. Gujarati / Literature / Poetry / Sahitya / Grammar / Vyakaran
-    if (/gujarati|sahitya|vyakaran|kavita|grammar|narmad|કવિતા|સાહિત્ય|વ્યાકરણ|ગુજરાતી|કવિ|સાહિત્યકાર/.test(q)) {
-      const match = boardMascots.find(m => (m.id || '').includes('guj') || (m.avatarChar || '').includes('📜'));
+    // 6. History / Civics / Constitution / Freedom / Heritage / Leaders
+    if (/\b(history|historical|civics|constitution|constitutional|democracy|democratic|freedom|independence|republic|ambedkar|gandhi|nehru|sardar|patel|laxmi|rani\s*laxmi|shivaji|ashoka|mughal|british|war|wars|battle|battles|dynasty|empire|emperor|king|kings|queen|queens|monument|monuments|heritage|culture|cultural|rights|fundamental\s*rights|duties|parliament|government|court|courts|law|laws|justice|vote|voting|election|elections|citizen|citizens|citizenship|social\s*science|social\s*studies|civilization|harappa|indus|ancient)\b|ઇતિહાસ|નાગરિક|બંધારણ|લોકશાહી|સ્વાતંત્ર્ય|ગાંધી|સરદાર|આંબેડકર|રાણી લક્ષ્મી|શિવાજી|સામાજિક|સંસ્કૃતિ|ન્યાય|ચૂંટણી|ઇમારત|રાજા|ઇતિહાસકાર|इतिहास|नागरिक|संविधान|लोकतंत्र|स्वतंत्रता|गांधी|सरदार|आंबेडकर|रानी लक्ष्मी|शिवाजी|सामाजिक|संस्कृति|न्याय|चुनाव|इमारत|राजा|इतिहासकार/i.test(q)) {
+      const match = findMatch(m => (m.id || '').includes('hist') || (m.avatarChar || '').includes('🛡️') || (m.avatarName || '').toLowerCase().includes('laxmi'));
       if (match) return match;
     }
 
-    // 7. English / Vocabulary / Tense / Essay / Grammar
-    if (/english|grammar|vocabulary|tense|essay|poem|english|અંગ્રેજી|વ્યાકરણ|શબ્દો|अंग्रेजी|व्याकरण|शब्द/.test(q)) {
-      const match = boardMascots.find(m => (m.id || '').includes('eng') || (m.avatarChar || '').includes('🦅'));
+    // 7. Geography / Weather / Rain / Nature / Grandparent Stories
+    if (/\b(geography|weather|climate|monsoon|rain|rains|rainfall|clouds?|water\s*cycle|river|rivers|ocean|oceans|sea|seas|mountain|mountains|hills?|volcano|earthquake|continents?|map|maps|globe|nature|environment|environmental|story|stories|moral|fable|fables|tales?|grandmother|dadi|kahani|varta|village|tradition)\b|ભૂગોળ|વરસાદ|વાદળ|નદી|સમુદ્ર|પર્વત|પૃથ્વી|નકશો|જળચક્ર|વાર્તા|વાર્તાઓ|દાદી|પર્યાવરણ|भूगोल|बारिश|बादल|नदी|समुद्र|पहाड़|पृथ्वी|नक्शा|जलचक्र|कहानी|कहानियां|दादी|कथा|पर्यावरण/i.test(q)) {
+      const match = findMatch(m => (m.id || '').includes('ss') || (m.avatarChar || '').includes('👵') || (m.avatarName || '').toLowerCase().includes('dadi'));
       if (match) return match;
     }
 
-    // 8. Computer Science / Coding / Python / Binary / AI / Tech
-    if (/computer|code|coding|binary|bit|byte|python|algorithm|software|tech|ai|કમ્પ્યુટર|કોડિંગ|બાઈનરી|સૉફ્ટવેર|कंप्यूटर|कोडिंग|बाइनरी|सॉफ्टवेयर/.test(q)) {
-      const match = boardMascots.find(m => (m.id || '').includes('cs') || (m.avatarChar || '').includes('💻'));
+    // 8. English Language & Grammar
+    if (/\b(english|grammar|grammatical|vocabulary|words?|tense|tenses|verb|verbs|noun|nouns|pronoun|adjective|adverbs?|preposition|essay|essays|poem|poems|poetry|speech|comprehension|idiom|idioms|phonics|spelling|spellings|active\s*voice|passive\s*voice|direct\s*speech|william|shakespeare|sentence|sentences|letter\s*writing)\b|અંગ્રેજી|વ્યાકરણ|શબ્દો|કાવ્ય|વાક્ય|કાળ|अंग्रेजी|व्याकरण|शब्द|काव्य|वाक्य|काल/i.test(q)) {
+      const match = findMatch(m => (m.id || '').includes('eng') || (m.avatarChar || '').includes('🦅') || (m.avatarName || '').toLowerCase().includes('william'));
       if (match) return match;
     }
 
-    // 9. Agriculture / Farming / Crop / Soil / Drip
-    if (/agri|agriculture|crop|farm|soil|kisan|drip|fertilizer|ખેતી|પાક|જમીન|કૃષિ|ખાતર|खेती|फसल|मिट्टी|कृषि|खाद/.test(q)) {
-      const match = boardMascots.find(m => (m.id || '').includes('agri') || (m.avatarChar || '').includes('🌾'));
+    // 9. Gujarati Literature & Poetry
+    if (/\b(gujarati|sahitya|kavita|kavi|narmad|meghani|dalpatram|chhand|alankar|matrubhasha|garvi\s*gujarat)\b|કવિતા|સાહિત્ય|વ્યાકરણ|ગુજરાતી|કવિ|સાહિત્યકાર|ગરવી ગુજરાત|માતૃભાષા/i.test(q)) {
+      const match = findMatch(m => (m.id || '').includes('guj') || (m.avatarChar || '').includes('📜') || (m.avatarName || '').toLowerCase().includes('narmad'));
       if (match) return match;
     }
 
-    return fallback;
+    // 10. General Science / Chemistry / Experiments / Inventions / How Things Work
+    if (/\b(science|scientific|scientist|chemistry|chemical|chemicals|acid|acids|base|bases|salt|salts|reaction|reactions|element|elements|compound|compounds|periodic\s*table|molecule|molecules|experiment|experiments|laboratory|lab|microscope|metal|metals|non-metal|alloy|plastic|synthetic|battery|bulb|invention|inventions|how\s*it\s*works|machine|machines)\b|વિજ્ઞાન|રસાયણ|પ્રયોગ|તત્વ|અણુ|પરમાણુ|લેબ|ધાતુ|બેટરી|યંત્ર|विज्ञान|रसायन|प्रयोग|तत्व|अणु|परमाणु|लैब|धातु|बैटरी|यंत्र/i.test(q)) {
+      const match = findMatch(m => (m.id || '').includes('sci') || (m.avatarChar || '').includes('🤖') || (m.avatarName || '').toLowerCase().includes('swami'));
+      if (match) return match;
+    }
+
+    // 11. HEURISTIC INQUIRY FALLBACK (When no exact keywords matched)
+    // Check if query contains arithmetic calculation signs or math words
+    if (/[\d\+\-\*\/\=\%]|calculate|solve|how many|how much|ગણતરી|गणना/.test(q)) {
+      const mathMatch = findMatch(m => (m.id || '').includes('math') || (m.avatarChar || '').includes('📐') || (m.avatarChar || '').includes('🦊'));
+      if (mathMatch) return mathMatch;
+    }
+
+    // Check if query is about history/leaders
+    if (/\b(who\s*is|who\s*was|when\s*was|who\s*founded|leader|freedom|king)\b|કોણ|ક્યારે|कौन|कब/.test(q)) {
+      const histMatch = findMatch(m => (m.id || '').includes('hist') || (m.avatarChar || '').includes('🛡️'));
+      if (histMatch) return histMatch;
+    }
+
+    // Check if query is about locations/geography
+    if (/\b(where\s*is|which\s*country|which\s*state|ocean|river)\b|ક્યાં|कहाँ/.test(q)) {
+      const geoMatch = findMatch(m => (m.id || '').includes('ss') || (m.avatarChar || '').includes('👵'));
+      if (geoMatch) return geoMatch;
+    }
+
+    // General curious inquiry: Return friendly universal science robot tutor
+    return universalScienceFallback;
   };
+
+  const autoMatchedMascot = detectMascotForQuery(customQuery, selectedBoard);
+  const effectiveMascot = selectedMascotId
+    ? (BOARD_MASCOT_ROSTER.find(m => m.id === selectedMascotId) || autoMatchedMascot)
+    : (customQuery.trim() ? autoMatchedMascot : null);
 
   const handleSelectMascotCharacter = (mascot: BoardSubjectMascot) => {
     // TOGGLE DESELECT: If clicking already selected mascot, unselect it!
@@ -2092,12 +2174,37 @@ export default function TutorTab({
     }
     
     try {
+      if (file.type.startsWith('image/')) {
+        compressImageToDataUrl(file).then((compressed) => {
+          setAttachedFile({
+            file,
+            previewUrl: URL.createObjectURL(file),
+            base64Data: compressed,
+            mimeType: file.type
+          });
+        }).catch((err) => {
+          console.warn("Failed to compress image in TutorTab:", err);
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64Data = reader.result as string;
+            setAttachedFile({
+              file,
+              previewUrl: URL.createObjectURL(file),
+              base64Data,
+              mimeType: file.type
+            });
+          };
+          reader.readAsDataURL(file);
+        });
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = () => {
         const base64Data = reader.result as string;
         setAttachedFile({
           file,
-          previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
+          previewUrl: '',
           base64Data,
           mimeType: file.type
         });
@@ -2144,7 +2251,9 @@ export default function TutorTab({
   // Synchronize local storage and Firebase database when customHistory changes
   useEffect(() => {
     try {
-      const serialized = JSON.stringify(customHistory);
+      // Keep at most 8 recent lessons in Firebase history to stay safely under Firestore limits
+      const boundedHistory = customHistory.slice(0, 8);
+      const serialized = JSON.stringify(boundedHistory);
       localStorage.setItem(`${user.mobile}_mascot_lessons_history`, serialized);
       if (onUpdateUser && user.mascotLessonsHistory !== serialized) {
         onUpdateUser({ mascotLessonsHistory: serialized });
@@ -2911,7 +3020,26 @@ case 'ta':
     setIsGeneratingVideo(true);
     setGenerationProgress(10);
     
-    const mascotName = selectedLesson.avatarName || "Swami AI";
+    // 1. Determine active mascot:
+    // If student explicitly selected a mascot card, use that mascot.
+    // If NO mascot was selected, dynamically auto-detect the best matching mascot based on the topic/question!
+    const activeMascot: BoardSubjectMascot = selectedMascotId
+      ? (BOARD_MASCOT_ROSTER.find(m => m.id === selectedMascotId) || detectMascotForQuery(queryText, selectedBoard))
+      : detectMascotForQuery(queryText, selectedBoard);
+
+    // Visually highlight the auto-matched tutor
+    setSelectedMascotId(activeMascot.id);
+    setSelectedLesson(prev => ({
+      ...prev,
+      avatarChar: activeMascot.avatarChar,
+      avatarName: activeMascot.avatarName,
+      subject: activeMascot.subjectTitle[lang] || activeMascot.subjectTitle['en'] || prev.subject
+    }));
+
+    const mascotName = activeMascot.avatarName;
+    const mascotChar = activeMascot.avatarChar;
+    const mascotTheme = activeMascot.themeGradient;
+    const mascotSubject = activeMascot.subjectTitle[lang] || activeMascot.subjectTitle['en'] || "AI Subject ✨";
     const targetLangName = LANGUAGE_NAMES[lang] || "English";
 
     // Retrieve customized student context
@@ -3121,11 +3249,11 @@ JSON Schema:
         const newLesson: LessonQuery = {
           id: 'custom-' + Math.random().toString(36).substring(2, 5),
           query: stripEmotionMarkers(parsedLesson.query || queryText),
-          subject: stripEmotionMarkers(parsedLesson.subject || "AI Generator ✨"),
-          avatarChar: selectedLesson.avatarChar || "🤖 Swami AI",
-          avatarName: selectedLesson.avatarName || "Swami AI (Mascot Tutor)",
+          subject: stripEmotionMarkers(parsedLesson.subject || activeMascot.subjectTitle[lang] || activeMascot.subjectTitle['en'] || "AI Subject ✨"),
+          avatarChar: activeMascot.avatarChar,
+          avatarName: activeMascot.avatarName,
           explanation: sanitizedSlides[0]?.content || "Dynamic AI Lesson created!",
-          videoThumbColor: parsedLesson.videoThumbColor || "from-fuchsia-400 to-indigo-600",
+          videoThumbColor: parsedLesson.videoThumbColor || activeMascot.themeGradient || "from-fuchsia-400 to-indigo-600",
           slides: sanitizedSlides,
           quiz: sanitizedQuiz.length > 0 ? sanitizedQuiz : [
             {
@@ -3185,28 +3313,28 @@ JSON Schema:
       let quizQuestion = "";
       let quizOptions: string[] = [];
       let quizExplanation = "";
-      let avatarName = selectedLesson.avatarName || "Swami AI";
-      let avatarChar = selectedLesson.avatarChar || "🤖 Swami";
+      let avatarName = activeMascot.avatarName;
+      let avatarChar = activeMascot.avatarChar;
 
       switch (lang) {
         case 'hi':
-          explanation = `अद्भुत जिज्ञासा! आपने "${queryText}" के बारे में पूछा। प्रकृति में सब कुछ एक दूसरे से जुड़ा हुआ है। हम अपने मस्तिष्क में सुपर लॉजिक बनाने के लिए इन विषयों का चरण-दर-चरण अध्ययन करते हैं! सीखने के लिए नीचे खेल खेलें।`;
+          explanation = `अद्भुत जिज्ञासा! आपने "${queryText}" के बारे में पूछा। प्रकृति और विज्ञान में सब कुछ एक दूसरे से जुड़ा हुआ है। ${avatarName} आपको चरण-दर-चरण समझाएंगे! सीखने के लिए नीचे खेल खेलें।`;
           quizQuestion = `आज आपको "${queryText}" के बारे में कौन सा एआई शिक्षक पढ़ा रहा है?`;
-          quizOptions = ["दादी एआई", "स्वामी एआई", "कोई नहीं", "एक डरावना कंप्यूटर"];
-          quizExplanation = "स्वामी एआई आपका बुद्धिमान एआई साथी है!";
+          quizOptions = [avatarName, "कोई नहीं", "एक अज्ञात बॉट", "कोई गलत विकल्प"];
+          quizExplanation = `${avatarName} आपका बुद्धिमान और स्नेही एआई साथी है!`;
           break;
         default:
-          explanation = `Excellent curiosity! You asked about "${queryText}". Everything in nature is connected. We study these topics step by step to build super logic inside our brains! Try completing the special conceptual games that follow.`;
+          explanation = `Excellent curiosity! You asked about "${queryText}". Everything in this subject is connected. ${avatarName} will guide you step by step to build super clarity! Try completing the special conceptual games that follow.`;
           quizQuestion = `Which AI character is teaching you about "${queryText}" today?`;
-          quizOptions = ["Dadi AI", "Swami AI", "No one", "A scary computer"];
-          quizExplanation = "Swami AI is your smart cartoon companion!";
+          quizOptions = [avatarName, "No one", "An unknown bot", "Incorrect choice"];
+          quizExplanation = `${avatarName} is your dedicated subject companion!`;
           break;
       }
 
       const matchesLesson: LessonQuery = {
         id: 'custom-' + Math.random().toString(36).substring(2, 5),
         query: queryText,
-        subject: "AI Generator ✨",
+        subject: activeMascot.subjectTitle[lang] || activeMascot.subjectTitle['en'] || "AI Subject ✨",
         avatarChar,
         avatarName,
         explanation,
@@ -3511,6 +3639,7 @@ JSON Schema:
         >
           {filteredMascots.map((mascot) => {
             const isSelected = selectedMascotId === mascot.id;
+            const isAutoMatched = !selectedMascotId && effectiveMascot?.id === mascot.id;
             const currentSubjectName = mascot.subjectTitle[lang] || mascot.subjectTitle['en'];
             const currentTagline = mascot.tagline[lang] || mascot.tagline['en'];
 
@@ -3522,24 +3651,37 @@ JSON Schema:
                 className={`w-56 shrink-0 snap-start p-3.5 rounded-xl border text-left flex flex-col justify-between gap-3 transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-[#3D405B] text-white border-[#3D405B] shadow-sm'
+                    : isAutoMatched
+                    ? 'border-[#E07A5F] bg-orange-50/70 ring-2 ring-[#E07A5F]/40 shadow-xs'
                     : 'bg-white hover:bg-slate-50/80 border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden border ${
-                      isSelected ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200/80'
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 overflow-hidden border-2 shadow-xs transition-transform ${
+                      isSelected 
+                        ? 'border-amber-400 bg-slate-900 ring-2 ring-amber-400/50 scale-105' 
+                        : isAutoMatched
+                        ? 'border-[#E07A5F] bg-slate-900 ring-2 ring-[#E07A5F]/60 animate-pulse'
+                        : 'border-slate-200 bg-slate-900'
                     }`}>
                       <InteractiveAITeacher
                         avatarChar={mascot.avatarChar}
                         avatarName={mascot.avatarName}
                         minimal={true}
-                        className="w-9 h-9"
+                        className="w-full h-full"
                       />
                     </div>
-                    <span className={`text-[11px] font-medium leading-tight truncate ${isSelected ? 'text-slate-300' : 'text-gray-500'}`}>
-                      {mascot.avatarName}
-                    </span>
+                    <div className="flex flex-col min-w-0">
+                      <span className={`text-[11px] font-bold leading-tight truncate ${isSelected ? 'text-amber-300' : 'text-slate-800'}`}>
+                        {mascot.avatarName}
+                      </span>
+                      {isAutoMatched && (
+                        <span className="text-[9px] font-mono text-[#E07A5F] font-black uppercase">
+                          MATCHED ✨
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <h3 className={`font-bold text-xs sm:text-sm leading-snug break-words ${isSelected ? 'text-white' : 'text-gray-900'}`}>
@@ -3548,13 +3690,15 @@ JSON Schema:
                 </div>
 
                 <div className={`border-t pt-2 ${isSelected ? 'border-slate-700' : 'border-gray-100'}`}>
-                  <p className={`text-[10.5px] line-clamp-2 leading-tight ${isSelected ? 'text-slate-300' : 'text-gray-400'}`}>
+                  <p className={`text-[10.5px] line-clamp-2 leading-tight ${isSelected ? 'text-slate-300' : 'text-gray-500'}`}>
                     {currentTagline}
                   </p>
                   <div className="flex items-center justify-between text-[11px] font-medium mt-2">
-                    <span className={isSelected ? 'text-emerald-400 font-bold' : 'text-[#E07A5F] font-semibold'}>
+                    <span className={isSelected ? 'text-emerald-400 font-bold' : isAutoMatched ? 'text-[#E07A5F] font-bold' : 'text-[#E07A5F] font-semibold'}>
                       {isSelected
                         ? (lang === 'hi' ? 'चयनित ✓' : lang === 'gu' ? 'પસંદ કરેલ ✓' : 'Selected ✓')
+                        : isAutoMatched
+                        ? (lang === 'hi' ? 'ऑटो-मैच ✨' : lang === 'gu' ? 'ઓટો-મેચ ✨' : 'Auto-Match ✨')
                         : (lang === 'hi' ? 'ट्यूटर चुनें →' : lang === 'gu' ? 'ટ્યુટર પસંદ કરો →' : 'Select Tutor →')}
                     </span>
                   </div>
@@ -3568,6 +3712,7 @@ JSON Schema:
         <div className="hidden md:grid md:grid-cols-3 xl:grid-cols-6 gap-3.5">
           {filteredMascots.map((mascot) => {
             const isSelected = selectedMascotId === mascot.id;
+            const isAutoMatched = !selectedMascotId && effectiveMascot?.id === mascot.id;
             const currentSubjectName = mascot.subjectTitle[lang] || mascot.subjectTitle['en'];
             const currentTagline = mascot.tagline[lang] || mascot.tagline['en'];
 
@@ -3579,24 +3724,37 @@ JSON Schema:
                 className={`p-3.5 rounded-xl border text-left flex flex-col justify-between gap-3 transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-[#3D405B] text-white border-[#3D405B] shadow-sm'
+                    : isAutoMatched
+                    ? 'border-[#E07A5F] bg-orange-50/70 ring-2 ring-[#E07A5F]/40 shadow-xs'
                     : 'bg-white hover:bg-slate-50/80 border-gray-200 hover:border-gray-300'
                 }`}
               >
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 overflow-hidden border ${
-                      isSelected ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200/80'
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 overflow-hidden border-2 shadow-xs transition-transform ${
+                      isSelected 
+                        ? 'border-amber-400 bg-slate-900 ring-2 ring-amber-400/50 scale-105' 
+                        : isAutoMatched
+                        ? 'border-[#E07A5F] bg-slate-900 ring-2 ring-[#E07A5F]/60 animate-pulse'
+                        : 'border-slate-200 bg-slate-900'
                     }`}>
                       <InteractiveAITeacher
                         avatarChar={mascot.avatarChar}
                         avatarName={mascot.avatarName}
                         minimal={true}
-                        className="w-9 h-9"
+                        className="w-full h-full"
                       />
                     </div>
-                    <span className={`text-[11px] font-medium leading-tight truncate ${isSelected ? 'text-slate-300' : 'text-gray-500'}`}>
-                      {mascot.avatarName}
-                    </span>
+                    <div className="flex flex-col min-w-0">
+                      <span className={`text-[11px] font-bold leading-tight truncate ${isSelected ? 'text-amber-300' : 'text-slate-800'}`}>
+                        {mascot.avatarName}
+                      </span>
+                      {isAutoMatched && (
+                        <span className="text-[9px] font-mono text-[#E07A5F] font-black uppercase">
+                          MATCHED ✨
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <h3 className={`font-bold text-xs sm:text-sm leading-snug break-words ${isSelected ? 'text-white' : 'text-gray-900'}`}>
@@ -3605,13 +3763,15 @@ JSON Schema:
                 </div>
 
                 <div className={`border-t pt-2 ${isSelected ? 'border-slate-700' : 'border-gray-100'}`}>
-                  <p className={`text-[10.5px] line-clamp-2 leading-tight ${isSelected ? 'text-slate-300' : 'text-gray-400'}`}>
+                  <p className={`text-[10.5px] line-clamp-2 leading-tight ${isSelected ? 'text-slate-300' : 'text-gray-500'}`}>
                     {currentTagline}
                   </p>
                   <div className="flex items-center justify-between text-[11px] font-medium mt-2">
-                    <span className={isSelected ? 'text-emerald-400 font-bold' : 'text-[#E07A5F] font-semibold'}>
+                    <span className={isSelected ? 'text-emerald-400 font-bold' : isAutoMatched ? 'text-[#E07A5F] font-bold' : 'text-[#E07A5F] font-semibold'}>
                       {isSelected
                         ? (lang === 'hi' ? 'चयनित ✓' : lang === 'gu' ? 'પસંદ કરેલ ✓' : 'Selected ✓')
+                        : isAutoMatched
+                        ? (lang === 'hi' ? 'ऑटो-मैच ✨' : lang === 'gu' ? 'ઓટો-મેચ ✨' : 'Auto-Match ✨')
                         : (lang === 'hi' ? 'ट्यूटर चुनें →' : lang === 'gu' ? 'ટ્યુટર પસંદ કરો →' : 'Select Tutor →')}
                     </span>
                   </div>
@@ -3623,41 +3783,87 @@ JSON Schema:
       </div>
 
       {/* Active Selection / AI Auto-Match Status Banner */}
-      {/*<div className="w-full">
+      {/*<div className="w-full animate-fadeIn">
         {selectedMascotId ? (
-          <div className="flex items-center justify-between bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs shadow-2xs">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="font-semibold text-slate-100">
-                {lang === 'hi' ? 'चयनित ट्यूटर:' : lang === 'gu' ? 'પસંદ કરેલ ટ્યુટર:' : 'Active Tutor:'}{' '}
-                <span className="text-white font-bold">{filteredMascots.find(m => m.id === selectedMascotId)?.avatarName}</span>
-                <span className="text-slate-300 ml-1">
-                  ({filteredMascots.find(m => m.id === selectedMascotId)?.subjectTitle[lang] || filteredMascots.find(m => m.id === selectedMascotId)?.subjectTitle['en']})
+          <div className="flex items-center justify-between bg-slate-900 text-white px-4 py-3 rounded-2xl text-xs shadow-md border border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-amber-400 bg-slate-950 shrink-0 shadow-xs">
+                <InteractiveAITeacher
+                  avatarChar={filteredMascots.find(m => m.id === selectedMascotId)?.avatarChar}
+                  avatarName={filteredMascots.find(m => m.id === selectedMascotId)?.avatarName}
+                  minimal={true}
+                  className="w-full h-full"
+                />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[10px] font-mono text-amber-300 font-bold uppercase tracking-wider">
+                    {lang === 'hi' ? 'चयनित शिक्षक:' : lang === 'gu' ? 'પસંદ કરેલ ટ્યુટર:' : 'Active Selected Tutor:'}
+                  </span>
+                </div>
+                <span className="text-white font-bold text-xs sm:text-sm">
+                  {filteredMascots.find(m => m.id === selectedMascotId)?.avatarName}
+                  <span className="text-slate-400 font-normal ml-1.5 text-xs">
+                    ({filteredMascots.find(m => m.id === selectedMascotId)?.subjectTitle[lang] || filteredMascots.find(m => m.id === selectedMascotId)?.subjectTitle['en']})
+                  </span>
                 </span>
-              </span>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => setSelectedMascotId(null)}
-              className="text-[11px] font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+              className="text-[11px] font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-xs"
+              title="Switch back to dynamic AI auto-match"
             >
-              {lang === 'hi' ? 'हटाएं (ऑटो AI)' : lang === 'gu' ? 'દૂર કરો (ઓટો AI)' : 'Deselect (Use Auto AI)'} ✕
+              <span>{lang === 'hi' ? 'हटाएं (ऑटो AI)' : lang === 'gu' ? 'દૂર કરો (ઓટો AI)' : 'Deselect (Use Auto AI)'}</span>
+              <span className="text-rose-400 font-bold">✕</span>
             </button>
+          </div>
+        ) : effectiveMascot ? (
+          <div className="flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300/80 px-4 py-3 rounded-2xl text-xs text-amber-950 shadow-xs animate-fadeIn">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#E07A5F] bg-slate-900 shrink-0 shadow-xs">
+                <InteractiveAITeacher
+                  avatarChar={effectiveMascot.avatarChar}
+                  avatarName={effectiveMascot.avatarName}
+                  minimal={true}
+                  className="w-full h-full"
+                />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  <span className="text-[10px] font-mono text-amber-800 font-extrabold uppercase tracking-wider">
+                    {lang === 'hi' ? '✨ प्रश्न के अनुसार चुना गया ट्यूटर:' : lang === 'gu' ? '✨ પ્રશ્ન મુજબ શોધાયેલ ટ્યુટર:' : '✨ Dynamically Matched Tutor for your question:'}
+                  </span>
+                </div>
+                <span className="font-bold text-xs sm:text-sm text-gray-900">
+                  {effectiveMascot.avatarName}
+                  <span className="text-amber-800 font-medium ml-1.5 text-xs">
+                    ({effectiveMascot.subjectTitle[lang] || effectiveMascot.subjectTitle['en']})
+                  </span>
+                </span>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/60 border border-amber-300 px-2.5 py-1 rounded-full shrink-0 font-mono">
+              Auto-Matched ✨
+            </span>
           </div>
         ) : (
           <div className="flex items-center justify-between bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-xl text-xs text-slate-700 shadow-2xs">
             <div className="flex items-center gap-2">
               <span className="text-slate-500 font-bold">✨</span>
-              <span className="font-medium">
+              <span className="font-medium text-[11px] sm:text-xs">
                 {lang === 'hi'
                   ? "स्मार्ट AI मोड: कोई भी प्रश्न पूछें — AI विषय समझकर उपयुक्त मस्कट शिक्षक चुनेगा"
                   : lang === 'gu'
                   ? "સ્માર્ટ AI મોડ: કોઈપણ પ્રશ્ન પૂછો — AI વિષય સમજીને યોગ્ય ટ્યુટર પસંદ કરશે"
-                  : "Smart Auto-Match: Ask any question — AI will detect subject & assign the best tutor"}
+                  : "Smart Auto-Match: Type any topic or question — AI will auto-detect the subject and assign the right tutor!"}
               </span>
             </div>
-            <span className="text-[10px] font-semibold text-slate-600 bg-slate-200/60 border border-slate-300/60 px-2 py-0.5 rounded-md shrink-0">
-              Auto-Select
+            <span className="text-[10px] font-semibold text-slate-600 bg-slate-200/60 border border-slate-300/60 px-2 py-0.5 rounded-md shrink-0 font-mono">
+              Auto-Detect
             </span>
           </div>
         )}
@@ -3691,7 +3897,18 @@ JSON Schema:
 
         <div className="md:flex gap-2 w-full items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-3.5 h-4 w-4 text-[#81B29A]" />
+            {effectiveMascot ? (
+              <div className="absolute left-3 top-2.5 w-7 h-7 rounded-full overflow-hidden border border-amber-400 bg-slate-900 z-10 shrink-0 shadow-xs" title={effectiveMascot.avatarName}>
+                <InteractiveAITeacher
+                  avatarChar={effectiveMascot.avatarChar}
+                  avatarName={effectiveMascot.avatarName}
+                  minimal={true}
+                  className="w-full h-full"
+                />
+              </div>
+            ) : (
+              <Search className="absolute left-3 top-3.5 h-4 w-4 text-[#81B29A]" />
+            )}
             <input
               type="text"
               id="custom-classroom-query"
@@ -3700,9 +3917,9 @@ JSON Schema:
               placeholder={
                 selectedMascotId
                   ? (lang === 'hi' ? `${filteredMascots.find(m => m.id === selectedMascotId)?.avatarName} से सवाल पूछें...` : `Ask ${filteredMascots.find(m => m.id === selectedMascotId)?.avatarName} anything...`)
-                  : (lang === 'hi' ? "कोई भी प्रश्न पूछें — AI स्वचालित रूप से सही मस्कट शिक्षक चुनेगा... (जैसे, पाइथागोरस प्रमेय क्या है?)" : "Ask any question — AI will auto-detect subject & match the right Mascot Tutor...")
+                  : (lang === 'hi' ? "कोई भी प्रश्न पूछें — AI स्वचालित रूप से सही मस्कट शिक्षक चुनेगा... (जैसे, प्रकाश संश्लेषण क्या है?)" : "Ask any question — AI will auto-detect subject & match the right Mascot Tutor...")
               }
-              className="w-full pl-9 pr-24 py-3 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]"
+              className={`w-full ${effectiveMascot ? 'pl-11' : 'pl-9'} pr-24 py-3 bg-gray-50/50 rounded-xl border border-gray-200 text-xs sm:text-sm font-sans placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#E07A5F]`}
             />
             
             <input
@@ -3836,9 +4053,21 @@ JSON Schema:
                   <span>{lang === 'hi' ? "नया लेक्चर ＋" : "New Lecture ＋"}</span>
                 </button>
               )}
-              <span className="text-[10px] bg-white/15 text-white/90 border border-white/20 font-mono px-2 py-0.5 rounded uppercase">
-                {isNewLecture ? (lang === 'hi' ? "नया स्लॉट" : "NEW SLOT") : selectedLesson.avatarName}
-              </span>
+              <div className="flex items-center gap-2 bg-white/10 text-white/90 border border-white/20 px-2.5 py-1 rounded-xl shadow-xs">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border-2 border-amber-400 bg-slate-900 shrink-0 shadow-xs">
+                  <InteractiveAITeacher
+                    avatarChar={isNewLecture ? (effectiveMascot ? effectiveMascot.avatarChar : selectedLesson.avatarChar) : selectedLesson.avatarChar}
+                    avatarName={isNewLecture ? (effectiveMascot ? effectiveMascot.avatarName : selectedLesson.avatarName) : selectedLesson.avatarName}
+                    minimal={true}
+                    className="w-full h-full"
+                  />
+                </div>
+                <span className="text-[11px] font-mono font-bold tracking-tight uppercase text-amber-300">
+                  {isNewLecture 
+                    ? (effectiveMascot ? effectiveMascot.avatarName : (lang === 'hi' ? "नया स्लॉट" : "NEW SLOT")) 
+                    : selectedLesson.avatarName}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -4251,10 +4480,18 @@ JSON Schema:
               </div>
             ) : isNewLecture ? (
               <div className="relative w-full flex flex-col items-center justify-center py-10 px-4 text-center">
-                <div className="relative mb-4">
-                  <div className="w-16 h-16 rounded-full border-2 border-[#F2CC8F] bg-slate-900 flex items-center justify-center overflow-hidden shadow-xl animate-pulse">
-                    <span className="text-3xl">🎓</span>
+                <div className="relative mb-4 flex flex-col items-center">
+                  <div className="w-20 h-20 rounded-full border-2 border-[#F2CC8F] bg-slate-900 flex items-center justify-center overflow-hidden shadow-xl p-1">
+                    <InteractiveAITeacher
+                      avatarChar={effectiveMascot ? effectiveMascot.avatarChar : (selectedLesson.avatarChar || "🤖 Swami AI")}
+                      avatarName={effectiveMascot ? effectiveMascot.avatarName : (selectedLesson.avatarName || "Swami AI")}
+                      minimal={true}
+                      className="w-full h-full"
+                    />
                   </div>
+                  <span className="mt-2 text-[10px] font-mono font-bold bg-[#E07A5F]/20 text-[#F2CC8F] border border-[#E07A5F]/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                    {effectiveMascot ? effectiveMascot.avatarName : (selectedLesson.avatarName || "AI Tutor")}
+                  </span>
                 </div>
 
                 <h4 className="text-[#F2CC8F] font-display font-bold text-sm sm:text-base mb-1.5">
@@ -4322,24 +4559,42 @@ JSON Schema:
                             setShowPlayGesturePrompt(false);
                             handlePlayVoiceResponse();
                           }}
-                          className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center gap-3.5 z-10 cursor-pointer animate-fadeIn rounded-2xl border-2 border-[#E07A5F]/40"
+                          className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4 z-40 cursor-pointer animate-fadeIn rounded-2xl border-2 border-[#E07A5F]/50 p-4"
                         >
-                          <div className="w-16 h-16 rounded-full bg-[#E07A5F] hover:bg-[#D56B4E] text-white flex items-center justify-center shadow-lg transform hover:scale-105 active:scale-95 transition-all">
-                            <Play className="h-8 w-8 fill-current ml-1" />
+                          {/* Prominent AI Tutor Avatar */}
+                          <div className="relative flex flex-col items-center group">
+                            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-amber-400 bg-slate-900 overflow-hidden shadow-2xl p-1 flex items-center justify-center transform group-hover:scale-105 transition-transform ring-4 ring-[#E07A5F]/40">
+                              <InteractiveAITeacher
+                                avatarChar={selectedLesson.avatarChar}
+                                avatarName={selectedLesson.avatarName}
+                                action="wave"
+                                minimal={true}
+                                className="w-full h-full"
+                              />
+                            </div>
+                            <div className="absolute -bottom-2 -right-1 w-10 h-10 rounded-full bg-[#E07A5F] hover:bg-[#D56B4E] text-white flex items-center justify-center shadow-lg border-2 border-slate-950 animate-bounce">
+                              <Play className="h-5 w-5 fill-current ml-0.5" />
+                            </div>
                           </div>
-                          <div className="space-y-1 text-center px-4">
+
+                          <div className="space-y-1.5 text-center px-4 max-w-sm">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-mono font-bold uppercase tracking-wider">
+                              <span>✨</span>
+                              <span>{selectedLesson.avatarName}</span>
+                            </div>
+
                             <p className="text-white font-sans font-extrabold text-sm sm:text-base tracking-wide flex items-center justify-center gap-2">
                               <span>
                                 {isSpeakingPaused()
                                   ? (lang === 'hi' ? 'लेक्चर को फिर से शुरू करने के लिए यहाँ क्लिक करें!' : 'Click to Resume Voice Lesson!')
-                                  : (lang === 'hi' ? 'लेक्चर की आवाज़ शुरू करने के लिए यहाँ क्लिक करें!' : 'Click to Play Voice Lesson!')
+                                  : (lang === 'hi' ? 'लेक्चर शुरू करने के लिए यहाँ क्लिक करें!' : 'Click to Start Voice Lesson!')
                                 }
                               </span>
                             </p>
-                            <p className="text-gray-300 text-xs font-sans max-w-xs">
+                            <p className="text-gray-300 text-xs font-sans">
                               {lang === 'hi' 
-                                ? `${selectedLesson.avatarName} आपको कहानी और सुंदर चित्रों के साथ समझाना शुरू करेंगे।` 
-                                : `${selectedLesson.avatarName} will explain everything with sound and beautiful slides.`}
+                                ? `${selectedLesson.avatarName} आपको इंटरएक्टिव चित्रों और आवाज़ के साथ सिखाएंगे।` 
+                                : `${selectedLesson.avatarName} will guide you with voice narration and animated slides.`}
                             </p>
                           </div>
                         </div>

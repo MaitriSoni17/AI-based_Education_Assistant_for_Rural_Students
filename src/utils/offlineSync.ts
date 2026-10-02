@@ -157,7 +157,20 @@ class OfflineSyncManager {
   public saveChatHistory(characterId: string, history: ChatMessage[], userMobile: string) {
     if (typeof localStorage === 'undefined' || !userMobile) return;
     try {
-      localStorage.setItem(`gramin_chat_history_${userMobile}_${characterId}`, JSON.stringify(history));
+      const pruned = (history || []).slice(-30).map(m => {
+        if (m.image && (m.image.mimeType === 'application/pdf' || (m.image.data && m.image.data.length > 50000))) {
+          return {
+            ...m,
+            image: {
+              name: m.image.name || 'document',
+              mimeType: m.image.mimeType || 'application/octet-stream',
+              data: ''
+            }
+          };
+        }
+        return m;
+      });
+      localStorage.setItem(`gramin_chat_history_${userMobile}_${characterId}`, JSON.stringify(pruned));
     } catch (e) {
       console.warn("Failed to save chat history to localStorage:", e);
     }

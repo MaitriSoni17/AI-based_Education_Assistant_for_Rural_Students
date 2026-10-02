@@ -18,6 +18,7 @@ import 'katex/dist/katex.min.css';
 import SpeechInputButton from '../SpeechInputButton';
 import SpeakButton from '../SpeakButton';
 import MathRenderer, { normalizeFractions } from '../common/MathRenderer';
+import { compressImageToDataUrl } from '../../utils/imageCompressor';
 
 interface EquationsTabProps {
   user: User;
@@ -2386,7 +2387,20 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
   // Sync state to parent user profile whenever solverSessions array updates
   useEffect(() => {
-    const serialized = JSON.stringify(solverSessions);
+    // Keep max 15 sessions, max 25 messages, and strip oversized attachmentUrls
+    const prunedSessions = solverSessions.slice(0, 15).map(s => ({
+      ...s,
+      messages: (s.messages || []).slice(-25).map(m => {
+        if (m.attachmentUrl && m.attachmentUrl.length > 50000) {
+          return {
+            ...m,
+            attachmentUrl: ''
+          };
+        }
+        return m;
+      })
+    }));
+    const serialized = JSON.stringify(prunedSessions);
     if (user.solverSessions !== serialized) {
       onUpdateUser({ solverSessions: serialized });
     }
@@ -2438,6 +2452,28 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     // Check size limit (max 8MB for Gemini safety)
     if (file.size > 8 * 1024 * 1024) {
       alert(lang === 'hi' ? "फ़ाइल का आकार 8MB से कम होना चाहिए।" : "File size must be under 8MB.");
+      return;
+    }
+
+    if (file.type.startsWith('image/')) {
+      compressImageToDataUrl(file).then((compressed) => {
+        setSelectedFile({
+          data: compressed,
+          mimeType: 'image/jpeg',
+          name: file.name
+        });
+      }).catch((err) => {
+        console.warn("Failed to compress image in EquationsTab:", err);
+        const reader = new FileReader();
+        reader.onload = () => {
+          setSelectedFile({
+            data: reader.result as string,
+            mimeType: file.type,
+            name: file.name
+          });
+        };
+        reader.readAsDataURL(file);
+      });
       return;
     }
 

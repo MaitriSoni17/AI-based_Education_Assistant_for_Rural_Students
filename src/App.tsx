@@ -16,6 +16,7 @@ import { offlineSyncManager } from './utils/offlineSync';
 import { fireContinuousFireworks } from './utils/confetti';
 import { getSafeDateString, getDaysDifference } from './utils/dateUtils';
 import { executeBackHandlers, EXIT_TOAST_MESSAGES } from './utils/backNavigation';
+import { sanitizeUserSession } from './utils/imageCompressor';
 import { AnimatePresence, motion } from 'motion/react';
 
 function safeSetLocalStorage(key: string, value: string): void {
@@ -177,9 +178,14 @@ export default function App() {
       if (stored) {
         try {
           const parsed = JSON.parse(stored) as User;
-          if (parsed.studyMins === undefined) parsed.studyMins = 30;
-          if (parsed.todayMins === undefined) parsed.todayMins = 0;
-          return parsed;
+          const cleaned = sanitizeUserSession(parsed);
+          if (cleaned.studyMins === undefined) cleaned.studyMins = 30;
+          if (cleaned.todayMins === undefined) cleaned.todayMins = 0;
+          // If the cached session was bloated, immediately clean it up in localStorage
+          if (stored.length > 500000) {
+            safeSetLocalStorage('gramin_student_session', JSON.stringify(cleaned));
+          }
+          return cleaned;
         } catch (e) {
           return null;
         }
@@ -644,7 +650,7 @@ export default function App() {
 
     // Attach high-precision timestamp for Last-Write-Wins (LWW) conflict resolution
     const currentTimestamp = Date.now();
-    const updatedUser = { ...user, ...fields, updatedAt: currentTimestamp };
+    const updatedUser = sanitizeUserSession({ ...user, ...fields, updatedAt: currentTimestamp });
     setUser(updatedUser);
     safeSetLocalStorage('gramin_student_session', JSON.stringify(updatedUser));
 

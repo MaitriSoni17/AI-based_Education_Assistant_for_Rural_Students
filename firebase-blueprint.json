@@ -206,6 +206,25 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "name"]
+    },
+    "EducationalChunk": {
+      "title": "EducationalChunk",
+      "description": "RAG document chunk containing textbook excerpts, syllabus concepts, and verified facts for grounded AI retrieval.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "subject": { "type": "string" },
+        "board": { "type": "string" },
+        "standard": { "type": "string" },
+        "topic": { "type": "string" },
+        "content": { "type": "string" },
+        "keywords": { "type": "string" },
+        "source": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "content"]
     }
   },
   "firestore": {
@@ -227,6 +246,10 @@
     },
     "/curriculum_files/{fileId}/chunks/{chunkId}": {
       "description": "Base64 data chunks for large curriculum files."
+    },
+    "/educational_chunks/{chunkId}": {
+      "schema": "EducationalChunk",
+      "description": "RAG educational document chunks stored for context retrieval and factual grounding."
     }
   }
 }

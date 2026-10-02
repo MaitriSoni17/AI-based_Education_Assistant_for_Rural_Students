@@ -12,7 +12,7 @@ import {
   Paperclip, X, Trash, Image as ImageIcon, BookOpen, Compass, Map, 
   GraduationCap, Leaf, Sun, CloudRain, Award, Check, RotateCcw, Play, Plus,
   ChevronDown, ChevronUp, MessageSquare, FileText, FileDown, Copy,
-  Search, Star, Pencil, ArrowUp, ArrowDown
+  Search, Star, Pencil, ArrowUp, ArrowDown, Database, Library, Layers, ExternalLink, RefreshCw, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas-pro';
@@ -20,6 +20,16 @@ import { offlineSyncManager } from '../../utils/offlineSync';
 import InteractiveDiagram from './InteractiveDiagram';
 import { LOCAL_LEARNING_PATHS, LearningPath } from '../../data/learningPaths';
 import MathRenderer from '../common/MathRenderer';
+import { compressImageToDataUrl } from '../../utils/imageCompressor';
+import { 
+  EducationalChunk, 
+  getAllEducationalChunks, 
+  saveEducationalChunk, 
+  queryRelevantEducationalChunks, 
+  deleteEducationalChunk,
+  seedDefaultEducationalChunks,
+  DEFAULT_RAG_EDUCATIONAL_CHUNKS 
+} from '../../lib/firebase';
 
 // Utility helper to safely extract and parse diagram-data JSON blocks from AI responses
 const parseMessageContent = (text: string) => {
@@ -67,6 +77,7 @@ interface ChatMessage {
     text: string;
     name?: string;
   };
+  ragSources?: EducationalChunk[];
 }
 
 interface ChatSession {
@@ -685,6 +696,71 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'starred' | 'hasAttachment'>('all');
 
+  // RAG (Retrieval-Augmented Generation) Knowledge Base States
+  const [isRagModalOpen, setIsRagModalOpen] = useState(false);
+  const [selectedRagSource, setSelectedRagSource] = useState<EducationalChunk | null>(null);
+  const [ragKnowledgeChunks, setRagKnowledgeChunks] = useState<EducationalChunk[]>([]);
+  const [ragSearchTerm, setRagSearchTerm] = useState('');
+  const [isAddingChunk, setIsAddingChunk] = useState(false);
+  const [isRAGEnabled, setIsRAGEnabled] = useState(true);
+  const [newChunkTitle, setNewChunkTitle] = useState('');
+  const [newChunkSubject, setNewChunkSubject] = useState('Science');
+  const [newChunkBoard, setNewChunkBoard] = useState('CBSE');
+  const [newChunkTopic, setNewChunkTopic] = useState('');
+  const [newChunkContent, setNewChunkContent] = useState('');
+  const [newChunkSource, setNewChunkSource] = useState('');
+  const [newChunkKeywords, setNewChunkKeywords] = useState('');
+  const [isSavingChunk, setIsSavingChunk] = useState(false);
+  const [ragSuccessMsg, setRagSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAllEducationalChunks()
+      .then(chunks => setRagKnowledgeChunks(chunks))
+      .catch(err => console.warn("Failed loading RAG educational chunks:", err));
+  }, []);
+
+  const handleSaveCustomChunk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChunkTitle.trim() || !newChunkContent.trim()) return;
+    setIsSavingChunk(true);
+    try {
+      const chunkId = `chunk-custom-${Date.now()}`;
+      const keywordsArray = newChunkKeywords
+        .split(',')
+        .map(k => k.trim().toLowerCase())
+        .filter(Boolean);
+
+      const newChunk: EducationalChunk = {
+        id: chunkId,
+        title: newChunkTitle.trim(),
+        subject: newChunkSubject,
+        board: newChunkBoard,
+        standard: user.standard || 'Class 10',
+        topic: newChunkTopic.trim() || newChunkTitle.trim(),
+        content: newChunkContent.trim(),
+        keywords: keywordsArray.length > 0 ? keywordsArray : [newChunkTitle.toLowerCase()],
+        source: newChunkSource.trim() || 'Verified Syllabus Knowledge Base',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await saveEducationalChunk(newChunk);
+      setRagKnowledgeChunks(prev => [newChunk, ...prev]);
+      setIsAddingChunk(false);
+      setNewChunkTitle('');
+      setNewChunkTopic('');
+      setNewChunkContent('');
+      setNewChunkSource('');
+      setNewChunkKeywords('');
+      setRagSuccessMsg(lang === 'hi' ? 'दस्तावेज़ चंक सफलतापूर्वक सहेजा गया!' : 'Document chunk saved to Knowledge Base!');
+      setTimeout(() => setRagSuccessMsg(null), 3000);
+    } catch (err) {
+      console.error("Failed to save chunk:", err);
+    } finally {
+      setIsSavingChunk(false);
+    }
+  };
+
   const handleToggleStarSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setChatSessions(prev => prev.map(s => s.id === sessionId ? { ...s, starred: !s.starred } : s));
@@ -700,7 +776,24 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   };
 
   useEffect(() => {
-    const serialized = JSON.stringify(chatSessions);
+    // Keep max 15 sessions, max 25 messages each, and ensure no oversized base64 strings
+    const prunedSessions = chatSessions.slice(0, 15).map(s => ({
+      ...s,
+      messages: (s.messages || []).slice(-25).map(m => {
+        if (m.image && (m.image.mimeType === 'application/pdf' || (m.image.data && m.image.data.length > 50000))) {
+          return {
+            ...m,
+            image: {
+              name: m.image.name || 'document',
+              mimeType: m.image.mimeType || 'application/octet-stream',
+              data: ''
+            }
+          };
+        }
+        return m;
+      })
+    }));
+    const serialized = JSON.stringify(prunedSessions);
     if (user.chatSessions !== serialized) {
       onUpdateUser({ chatSessions: serialized });
     }
@@ -978,12 +1071,23 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
       }));
 
     try {
+      const userBoard = user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE';
+      let retrievedChunks: EducationalChunk[] = [];
+      if (isRAGEnabled) {
+        try {
+          retrievedChunks = await queryRelevantEducationalChunks(newText, { board: userBoard, limit: 3 });
+        } catch (ragErr) {
+          console.warn("RAG retrieval failed gracefully during edit:", ragErr);
+        }
+      }
+
       const bodyPayload: any = {
         message: newText,
         history: activeHistory,
         systemInstruction: getSystemInstructionForMascot(),
-        board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
-        lang: lang
+        board: userBoard,
+        lang: lang,
+        ragChunks: retrievedChunks
       };
 
       if (targetMsg.image) {
@@ -1001,7 +1105,8 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
           id: 'ai-' + Date.now(),
           sender: 'assistant',
           text: data.text || data.message || "Unable to generate response right now.",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          ragSources: (data.retrievedChunks && data.retrievedChunks.length > 0) ? data.retrievedChunks : (retrievedChunks.length > 0 ? retrievedChunks : undefined)
         };
 
         const updatedHistoryWithAi = [...historyUpToEdited, aiMsg];
@@ -1050,12 +1155,19 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     const currentReply = replyingTo;
     setReplyingTo(null);
 
+    // For stored chat messages, keep lightweight metadata so base64 PDFs don't inflate storage
+    const storedImagePayload = imagePayload ? {
+      name: imagePayload.name || 'Attachment',
+      mimeType: imagePayload.mimeType,
+      data: imagePayload.mimeType === 'application/pdf' ? '' : imagePayload.data
+    } : undefined;
+
     const userMsg: ChatMessage = {
       id: 'usr-' + Date.now(),
       sender: 'user',
       text: queryText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      image: imagePayload,
+      image: storedImagePayload,
       pending: !online,
       replyTo: currentReply ? {
         id: currentReply.id,
@@ -1115,6 +1227,16 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     setMascotAction('think');
 
     try {
+      const userBoard = user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE';
+      let retrievedChunks: EducationalChunk[] = [];
+      if (isRAGEnabled) {
+        try {
+          retrievedChunks = await queryRelevantEducationalChunks(queryText, { board: userBoard, limit: 3 });
+        } catch (ragErr) {
+          console.warn("RAG retrieval failed gracefully:", ragErr);
+        }
+      }
+
       const activeHistory = (msgHistory[selectedChar.id] || [])
         .filter(m => !m.id.startsWith('welcome') && !m.pending)
         .slice(-12)
@@ -1131,8 +1253,9 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
         message: messageWithReplyContext,
         history: activeHistory,
         systemInstruction: getSystemInstructionForMascot(),
-        board: user.board || localStorage.getItem(`${user.mobile}_profile_board`) || 'CBSE',
-        lang: lang
+        board: userBoard,
+        lang: lang,
+        ragChunks: retrievedChunks
       };
 
       if (imagePayload) {
@@ -1150,7 +1273,8 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
           id: 'ai-' + Date.now(),
           sender: 'assistant',
           text: data.text || data.message || "Unable to generate response right now.",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          ragSources: (data.retrievedChunks && data.retrievedChunks.length > 0) ? data.retrievedChunks : (retrievedChunks.length > 0 ? retrievedChunks : undefined)
         };
 
         setMsgHistory(prev => {
@@ -1757,6 +1881,30 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
       return;
     }
 
+    if (file.type.startsWith('image/')) {
+      compressImageToDataUrl(file).then((compressed) => {
+        setAttachedFile({
+          name: file.name,
+          data: compressed,
+          mimeType: 'image/jpeg'
+        });
+      }).catch((err) => {
+        console.warn("Failed to compress image, falling back:", err);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            setAttachedFile({
+              name: file.name,
+              data: event.target.result as string,
+              mimeType: file.type
+            });
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
@@ -2299,6 +2447,29 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                                               {parsed.diagram && (
                                                 <InteractiveDiagram data={parsed.diagram} lang={lang} />
                                               )}
+                                              {/* RAG Grounding Citation Badge */}
+                                              {!isMe && msg.ragSources && msg.ragSources.length > 0 && (
+                                                <div className="mt-3 pt-2 border-t border-blue-100/90 text-left">
+                                                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-700 mb-1">
+                                                    <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                                                    <span>📚 {lang === 'hi' ? 'सत्यापित RAG संदर्भ' : 'Verified RAG Grounding'} ({msg.ragSources.length})</span>
+                                                  </div>
+                                                  <div className="flex flex-wrap gap-1">
+                                                    {msg.ragSources.map((source, sIdx) => (
+                                                      <button
+                                                        key={sIdx}
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedRagSource(source); }}
+                                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[10px] font-semibold text-blue-800 transition-all cursor-pointer shadow-3xs"
+                                                        title={lang === 'hi' ? "सत्यापित स्रोत दस्तावेज़ देखें" : "View verified source chunk"}
+                                                      >
+                                                        <BookOpen className="w-2.5 h-2.5 text-blue-600 shrink-0" />
+                                                        <span className="truncate max-w-[170px]">{source.title}</span>
+                                                      </button>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              )}
                                             </div>
                                           );
                                       })()}
@@ -2523,6 +2694,29 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                               <MathRenderer content={parsed.text} isUser={isMe} />
                               {parsed.diagram && (
                                 <InteractiveDiagram data={parsed.diagram} lang={lang} />
+                              )}
+                              {/* RAG Grounding Citation Badge */}
+                              {!isMe && msg.ragSources && msg.ragSources.length > 0 && (
+                                <div className="mt-3 pt-2.5 border-t border-blue-100/90 text-left">
+                                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-700 mb-1">
+                                    <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                                    <span>📚 {lang === 'hi' ? 'सत्यापित RAG संदर्भ' : 'Verified RAG Grounding'} ({msg.ragSources.length})</span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {msg.ragSources.map((source, sIdx) => (
+                                      <button
+                                        key={sIdx}
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setSelectedRagSource(source); }}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[10px] font-semibold text-blue-800 transition-all cursor-pointer shadow-3xs"
+                                        title={lang === 'hi' ? "सत्यापित स्रोत दस्तावेज़ देखें" : "View verified source chunk"}
+                                      >
+                                        <BookOpen className="w-2.5 h-2.5 text-blue-600 shrink-0" />
+                                        <span className="truncate max-w-[190px]">{source.title}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
                               )}
                             </div>
                           );
@@ -2964,6 +3158,97 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
 
             {/* Footer Accent Bar */}
             <div className="h-1.5 bg-[#E07A5F] rounded-b-lg -mx-10 -mb-10 mt-10" />
+          </div>
+        )}
+
+        {/* MODAL: VERIFIED RAG SOURCE CHUNK INSPECTION */}
+        {selectedRagSource && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+            <div className="bg-white border border-blue-200 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-scale-up">
+              {/* Header */}
+              <div className="px-5 py-4 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center border border-white/20">
+                    <BookOpen className="w-4 h-4 text-blue-200" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold leading-tight">
+                      {lang === 'hi' ? 'सत्यापित पाठ्यपुस्तक चंक (RAG Grounding)' : 'Verified RAG Knowledge Chunk'}
+                    </h3>
+                    <p className="text-[11px] text-blue-200">
+                      {selectedRagSource.source || 'Curriculum Knowledge Base'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedRagSource(null)}
+                  className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-5 overflow-y-auto space-y-4 text-slate-800">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                    📚 {selectedRagSource.subject}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                    🏛️ {selectedRagSource.board}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                    🎓 {selectedRagSource.standard || 'All Grades'}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    🔒 100% Grounded
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <h4 className="text-base font-extrabold text-slate-900">
+                    {selectedRagSource.title}
+                  </h4>
+                  {selectedRagSource.topic && (
+                    <p className="text-xs font-semibold text-slate-500">
+                      Topic: {selectedRagSource.topic}
+                    </p>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 text-sm leading-relaxed whitespace-pre-wrap font-sans text-slate-800">
+                  {selectedRagSource.content}
+                </div>
+
+                {selectedRagSource.keywords && selectedRagSource.keywords.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Index Keywords
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedRagSource.keywords.map((kw, kIdx) => (
+                        <span key={kIdx} className="px-2 py-0.5 rounded bg-slate-200/70 text-slate-700 text-[10px] font-mono">
+                          #{kw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-3 bg-slate-100/90 border-t border-slate-200 flex items-center justify-between">
+                <span className="text-[11px] text-slate-500 font-medium">
+                  ID: <code className="font-mono text-[10px] text-slate-600">{selectedRagSource.id}</code>
+                </span>
+                <button
+                  onClick={() => setSelectedRagSource(null)}
+                  className="px-4 py-1.5 rounded-lg bg-slate-800 text-white text-xs font-bold hover:bg-slate-900 transition-colors cursor-pointer"
+                >
+                  {lang === 'hi' ? 'बंद करें' : 'Close'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

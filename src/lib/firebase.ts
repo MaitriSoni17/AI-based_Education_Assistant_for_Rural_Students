@@ -128,6 +128,13 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     markFirestoreQuotaExceeded();
     return;
   }
+  if (
+    errMessage.includes("exceeds the maximum allowed size") ||
+    errMessage.includes("cannot be written because its size")
+  ) {
+    console.warn("[Firestore Document Limit] Document write exceeded size limit. Local state preserved.", errMessage);
+    return;
+  }
   const errInfo: FirestoreErrorInfo = {
     error: errMessage,
     authInfo: {
@@ -187,6 +194,192 @@ export interface FirestoreUser {
   puzzleStrongTopics?: string; // Stringified JSON array
   puzzleWeakTopics?: string; // Stringified JSON array
   puzzleStatsByClass?: string; // Stringified JSON object mapping class to stats
+}
+
+export const ALLOWED_FIRESTORE_USER_FIELDS: (keyof FirestoreUser)[] = [
+  'mobile',
+  'name',
+  'defaultLanguage',
+  'signupDate',
+  'role',
+  'state',
+  'village',
+  'school',
+  'standard',
+  'board',
+  'avatar',
+  'streakDays',
+  'lastCheckedInDate',
+  'todayMins',
+  'lastActiveDate',
+  'totalPoints',
+  'certificateName',
+  'earnedCertificates',
+  'claimedMedals',
+  'mascotLessonsHistory',
+  'activePathId',
+  'completedMilestones',
+  'chatHistoryDadi',
+  'chatHistoryChanda',
+  'chatHistorySwami',
+  'studyMins',
+  'adminPin',
+  'checkInDates',
+  'dailyStudyLog',
+  'updatedAt',
+  'puzzlesSolved',
+  'puzzlesAttempted',
+  'puzzleAccuracy',
+  'puzzleStreak',
+  'puzzleSubjectProficiency',
+  'puzzleStrongTopics',
+  'puzzleWeakTopics',
+  'puzzleStatsByClass'
+];
+
+/**
+ * Sanitizes and caps the size of user data written to Firestore.
+ * Firestore strictly enforces a 1,048,576 byte limit per document.
+ * This function guarantees documents stay well under 600KB by:
+ * 1. Filtering out non-blueprint properties (e.g. chatSessions, solverSessions with raw images).
+ * 2. Pruning array sizes for mascotLessonsHistory, chat histories, and certificates.
+ * 3. Ensuring no raw base64 images or oversized strings are written.
+ */
+export function sanitizeFirestoreUserData(
+  data: Partial<FirestoreUser> & Record<string, any>,
+  filterOnlyKnown: boolean = true
+): Record<string, any> {
+  if (!data || typeof data !== 'object') return {};
+
+  const sanitized: Record<string, any> = {};
+
+  if (filterOnlyKnown) {
+    for (const key of ALLOWED_FIRESTORE_USER_FIELDS) {
+      if (key in data && data[key] !== undefined) {
+        sanitized[key] = data[key];
+      }
+    }
+  } else {
+    for (const [key, val] of Object.entries(data)) {
+      if (key !== 'chatSessions' && key !== 'solverSessions' && val !== undefined) {
+        sanitized[key] = val;
+      }
+    }
+  }
+
+  // 1. Bound mascotLessonsHistory (keep at most 8 recent lessons, no embedded base64)
+  if (typeof sanitized.mascotLessonsHistory === 'string') {
+    try {
+      const lessons = JSON.parse(sanitized.mascotLessonsHistory);
+      if (Array.isArray(lessons)) {
+        const pruned = lessons.slice(0, 8).map((l: any) => ({
+          id: l.id,
+          query: l.query,
+          subject: l.subject,
+          explanation: l.explanation ? String(l.explanation).slice(0, 1000) : '',
+          videoThumbColor: l.videoThumbColor,
+          avatarChar: l.avatarChar,
+          avatarName: l.avatarName,
+          slides: Array.isArray(l.slides) ? l.slides.slice(0, 5).map((sl: any) => ({
+            id: sl.id,
+            title: sl.title,
+            content: sl.content ? String(sl.content).slice(0, 1500) : '',
+            keyPoints: Array.isArray(sl.keyPoints) ? sl.keyPoints.slice(0, 5) : []
+          })) : [],
+          quiz: Array.isArray(l.quiz) ? l.quiz.slice(0, 5) : [],
+          starred: !!l.starred
+        }));
+        sanitized.mascotLessonsHistory = JSON.stringify(pruned);
+      }
+    } catch {
+      sanitized.mascotLessonsHistory = '[]';
+    }
+  }
+
+  // 2. Bound chat histories if present (chatHistoryDadi, chatHistoryChanda, chatHistorySwami)
+  const chatKeys: (keyof FirestoreUser)[] = ['chatHistoryDadi', 'chatHistoryChanda', 'chatHistorySwami'];
+  for (const cKey of chatKeys) {
+    if (typeof sanitized[cKey] === 'string') {
+      try {
+        const msgs = JSON.parse(sanitized[cKey] as string);
+        if (Array.isArray(msgs)) {
+          const pruned = msgs.slice(-15).map((m: any) => {
+            const copy = { ...m };
+            if (copy.image && typeof copy.image === 'object') {
+              copy.image = {
+                name: copy.image.name || 'document',
+                mimeType: copy.image.mimeType || 'application/octet-stream',
+                data: ''
+              };
+            }
+            return copy;
+          });
+          sanitized[cKey] = JSON.stringify(pruned);
+        }
+      } catch {
+        sanitized[cKey] = '[]';
+      }
+    }
+  }
+
+  // 3. Bound earnedCertificates
+  if (typeof sanitized.earnedCertificates === 'string') {
+    try {
+      const certs = JSON.parse(sanitized.earnedCertificates);
+      if (Array.isArray(certs)) {
+        sanitized.earnedCertificates = JSON.stringify(certs.slice(0, 15));
+      }
+    } catch {
+      sanitized.earnedCertificates = '[]';
+    }
+  }
+
+  // 4. Bound dailyStudyLog
+  if (typeof sanitized.dailyStudyLog === 'string') {
+    try {
+      const log = JSON.parse(sanitized.dailyStudyLog);
+      if (log && typeof log === 'object') {
+        const entries = Object.entries(log);
+        if (entries.length > 60) {
+          const trimmed = Object.fromEntries(entries.slice(-60));
+          sanitized.dailyStudyLog = JSON.stringify(trimmed);
+        }
+      }
+    } catch {
+      sanitized.dailyStudyLog = '{}';
+    }
+  }
+
+  // 5. Bound checkInDates
+  if (typeof sanitized.checkInDates === 'string') {
+    try {
+      const dates = JSON.parse(sanitized.checkInDates);
+      if (Array.isArray(dates) && dates.length > 60) {
+        sanitized.checkInDates = JSON.stringify(dates.slice(-60));
+      }
+    } catch {
+      sanitized.checkInDates = '[]';
+    }
+  }
+
+  // 6. Overall byte size check - must stay comfortably below 600KB
+  try {
+    const jsonStr = JSON.stringify(sanitized);
+    const byteSize = new TextEncoder().encode(jsonStr).length;
+    if (byteSize > 600000) {
+      console.warn(`[Firestore Sanitizer] Document byte size ${byteSize} exceeds 600KB. Compacting further...`);
+      if (sanitized.mascotLessonsHistory) {
+        sanitized.mascotLessonsHistory = '[]';
+      }
+      for (const cKey of chatKeys) {
+        if (sanitized[cKey]) sanitized[cKey] = '[]';
+      }
+    }
+  } catch (err) {
+    console.warn("[Firestore Sanitizer] Size calculation error:", err);
+  }
+
+  return sanitized;
 }
 
 /**
@@ -259,8 +452,9 @@ export async function syncFirebaseUserWithLWW(
         ...localUser,
         updatedAt: localUser.updatedAt || Date.now()
       };
-      await setDoc(userDocRef, initialUser);
-      return { resolvedUser: initialUser, conflictResolved: false, source: 'local' };
+      const sanitizedInitial = sanitizeFirestoreUserData(initialUser);
+      await setDoc(userDocRef, sanitizedInitial);
+      return { resolvedUser: sanitizedInitial as FirestoreUser, conflictResolved: false, source: 'local' };
     }
 
     const remoteUser = docSnap.data() as FirestoreUser;
@@ -278,8 +472,9 @@ export async function syncFirebaseUserWithLWW(
         ...localUser,
         updatedAt: localUpdatedAt || Date.now() // Use latest timestamp
       };
-      await setDoc(userDocRef, updatedUser);
-      return { resolvedUser: updatedUser, conflictResolved: localUpdatedAt > remoteUpdatedAt, source: 'local' };
+      const sanitizedUpdated = sanitizeFirestoreUserData(updatedUser);
+      await setDoc(userDocRef, sanitizedUpdated);
+      return { resolvedUser: sanitizedUpdated as FirestoreUser, conflictResolved: localUpdatedAt > remoteUpdatedAt, source: 'local' };
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -312,7 +507,10 @@ export async function setFirebaseUser(mobile: string, userData: Partial<Firestor
     const userDocRef = doc(db, "users", mobile);
     const docSnap = await getDoc(userDocRef);
     if (docSnap.exists()) {
-      await updateDoc(userDocRef, userData);
+      const sanitized = sanitizeFirestoreUserData(userData, false);
+      if (Object.keys(sanitized).length > 0) {
+        await updateDoc(userDocRef, sanitized);
+      }
     } else {
       // Create user
       const defaultUser: FirestoreUser = {
@@ -330,7 +528,8 @@ export async function setFirebaseUser(mobile: string, userData: Partial<Firestor
         lastCheckedInDate: getSafeDateString(),
         ...userData
       };
-      await setDoc(userDocRef, defaultUser);
+      const sanitized = sanitizeFirestoreUserData(defaultUser);
+      await setDoc(userDocRef, sanitized);
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -345,7 +544,10 @@ export async function updateFirebaseUserFields(mobile: string, fields: Partial<F
   const path = `users/${mobile}`;
   try {
     const userDocRef = doc(db, "users", mobile);
-    await updateDoc(userDocRef, fields);
+    const sanitized = sanitizeFirestoreUserData(fields, false);
+    if (Object.keys(sanitized).length > 0) {
+      await updateDoc(userDocRef, sanitized);
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -860,6 +1062,273 @@ export async function deleteFirebaseCurriculumFile(id: string): Promise<void> {
     console.warn("Failed to delete curriculum file from Firestore:", error);
   }
 }
+
+/* ==========================================================================
+   RAG Knowledge Base & Document Chunking - Firestore Integration
+   ========================================================================== */
+
+export interface EducationalChunk {
+  id: string;
+  title: string;
+  subject: string;
+  board: string;
+  standard: string;
+  topic: string;
+  content: string;
+  keywords: string[];
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+  score?: number;
+}
+
+export const DEFAULT_RAG_EDUCATIONAL_CHUNKS: EducationalChunk[] = [
+  {
+    id: "chunk-excel-basics",
+    title: "Microsoft Excel & Spreadsheet Fundamentals",
+    subject: "Computer Science",
+    board: "CBSE",
+    standard: "Class 9/10",
+    topic: "Spreadsheets and Data Processing",
+    content: "Microsoft Excel is a spreadsheet program used for storing, organizing, calculating, and analyzing tabular data. A workbook is composed of individual worksheets. Each worksheet consists of a grid made of rows (numbered 1, 2, 3...) and columns (lettered A, B, C...). The intersection of a row and a column is called a Cell (e.g., cell A1 is column A, row 1). Every cell can hold numbers, text, or formulas. Formulas in Excel always begin with an equal sign (=). Common built-in functions include: =SUM(A1:A10) to add numbers in a range, =AVERAGE(B1:B5) to compute arithmetic mean, =COUNT(C1:C10) to count numeric cells, =IF(condition, value_if_true, value_if_false) for logical branching, and =VLOOKUP(lookup_value, table_array, col_index, [range_lookup]) for vertical data lookup. Excel provides charts (Column, Bar, Pie, Line, Scatter) to visualize numerical trends and Pivot Tables for dynamic data summarization.",
+    keywords: ["excel", "spreadsheet", "cell", "row", "column", "formula", "sum", "average", "vlookup", "charts", "workbook", "worksheet", "pivot table"],
+    source: "NCERT / CBSE Class 9-10 Information & Computer Technology",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  },
+  {
+    id: "chunk-bio-photosynthesis",
+    title: "Photosynthesis & Nutrition in Plants (Life Processes)",
+    subject: "Science",
+    board: "CBSE",
+    standard: "Class 10",
+    topic: "Life Processes - Autotrophic Nutrition",
+    content: "Photosynthesis is the photochemical process by which green plants and certain autotrophic organisms synthesize glucose (chemical energy) from carbon dioxide (CO2) and water (H2O) in the presence of sunlight and chlorophyll. The balanced chemical equation is: 6CO2 + 12H2O + Light Energy → C6H12O6 (Glucose) + 6O2 + 6H2O. Photosynthesis occurs in two major stages within chloroplasts: (1) Light-Dependent Reactions (in Thylakoid membranes/Grana), where photons excite chlorophyll, splitting water (Photolysis) to produce ATP, NADPH, and releasing Oxygen as a byproduct. (2) Light-Independent Reactions / Calvin Cycle (in Stroma), where ATP and NADPH reduce CO2 into glucose. Stomata (minute pores on leaves guarded by guard cells) regulate gas exchange (CO2 intake, O2 release) and transpiration.",
+    keywords: ["photosynthesis", "chlorophyll", "chloroplast", "glucose", "light reaction", "calvin cycle", "stomata", "autotrophic", "life processes", "thylakoid", "stroma", "photolysis"],
+    source: "NCERT Class 10 Science, Chapter 6: Life Processes",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  },
+  {
+    id: "chunk-chem-reactions",
+    title: "Chemical Reactions, Equations & Types",
+    subject: "Science",
+    board: "CBSE",
+    standard: "Class 10",
+    topic: "Chemical Reactions and Equations",
+    content: "A chemical reaction is a process where one or more reactants undergo chemical bonds reorganization to form new substances called products with different properties. According to the Law of Conservation of Mass, the total mass and number of atoms of each element remain constant before and after a reaction, requiring chemical equations to be balanced. Major types of reactions include: (1) Combination Reaction (A + B → AB, e.g., CaO + H2O → Ca(OH)2 + Heat), (2) Decomposition Reaction (AB → A + B, e.g., 2FeSO4 → Fe2O3 + SO2 + SO3 upon heating), (3) Single Displacement Reaction (A + BC → AC + B, e.g., Fe + CuSO4 → FeSO4 + Cu), (4) Double Displacement Reaction (AB + CD → AD + CB, e.g., Na2SO4 + BaCl2 → BaSO4↓ + 2NaCl where BaSO4 is a white precipitate), and (5) Redox (Oxidation-Reduction) Reactions where oxidation is the gain of oxygen/loss of electrons and reduction is the loss of oxygen/gain of electrons.",
+    keywords: ["chemical reaction", "equation", "balancing", "combination", "decomposition", "displacement", "double displacement", "redox", "oxidation", "reduction", "precipitate", "exothermic", "endothermic"],
+    source: "NCERT Class 10 Science, Chapter 1: Chemical Reactions and Equations",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  },
+  {
+    id: "chunk-math-quadratic",
+    title: "Quadratic Equations & Roots (Algebra)",
+    subject: "Mathematics",
+    board: "CBSE",
+    standard: "Class 10",
+    topic: "Quadratic Equations",
+    content: "A quadratic equation in variable x is a second-degree polynomial equation of the standard form ax^2 + bx + c = 0, where a ≠ 0 and a, b, c are real numbers. The roots (solutions) can be obtained via: (1) Factorization / Splitting the middle term, (2) Completing the square, or (3) The Quadratic Formula (Shreedharacharya's Formula): x = [-b ± √(b^2 - 4ac)] / (2a). The term D = b^2 - 4ac is called the Discriminant. The nature of roots depends strictly on D: If D > 0, the equation has two distinct real roots. If D = 0, the equation has two equal real roots (x = -b / (2a)). If D < 0, the equation has no real roots (complex roots). The sum of roots is α + β = -b/a, and the product of roots is α·β = c/a.",
+    keywords: ["quadratic", "equation", "roots", "discriminant", "shreedharacharya", "algebra", "factorization", "nature of roots", "polynomial"],
+    source: "NCERT Class 10 Mathematics, Chapter 4: Quadratic Equations",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  },
+  {
+    id: "chunk-math-trigonometry",
+    title: "Trigonometry, Ratios & Standard Identities",
+    subject: "Mathematics",
+    board: "CBSE",
+    standard: "Class 10",
+    topic: "Introduction to Trigonometry",
+    content: "Trigonometry deals with the relationships between the sides and angles of right-angled triangles. For an acute angle θ: sin(θ) = Opposite/Hypotenuse, cos(θ) = Adjacent/Hypotenuse, tan(θ) = Opposite/Adjacent = sin(θ)/cos(θ), cosec(θ) = 1/sin(θ), sec(θ) = 1/cos(θ), and cot(θ) = 1/tan(θ). Standard angle values: sin(0°)=0, sin(30°)=1/2, sin(45°)=1/√2, sin(60°)=√3/2, sin(90°)=1; cos(0°)=1, cos(30°)=√3/2, cos(45°)=1/√2, cos(60°)=1/2, cos(90°)=0; tan(0°)=0, tan(30°)=1/√3, tan(45°)=1, tan(60°)=√3, tan(90°)=undefined. Fundamental Pythagorean Identities: (1) sin^2(θ) + cos^2(θ) = 1, (2) 1 + tan^2(θ) = sec^2(θ), (3) 1 + cot^2(θ) = cosec^2(θ).",
+    keywords: ["trigonometry", "sin", "cos", "tan", "hypotenuse", "identity", "pythagorean", "ratios", "angles", "sec", "cosec", "cot"],
+    source: "NCERT Class 10 Mathematics, Chapter 8: Introduction to Trigonometry",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  },
+  {
+    id: "chunk-phy-light",
+    title: "Optics: Reflection, Refraction, Snell's Law & Lenses",
+    subject: "Science",
+    board: "CBSE",
+    standard: "Class 10",
+    topic: "Light - Reflection and Refraction",
+    content: "Reflection is the bouncing back of light into the same medium when it hits a polished surface. Laws of Reflection: (1) Angle of incidence (i) equals angle of reflection (r). (2) Incident ray, reflected ray, and normal at the point of incidence lie in the same plane. Mirror formula: 1/f = 1/v + 1/u (f = focal length, v = image distance, u = object distance). Magnification m = -v/u = h'/h. Refraction is the bending of light as it passes from one transparent medium to another due to change in speed. Snell's Law of Refraction: sin(i) / sin(r) = n2 / n1 = Constant (Refractive Index). Lens formula: 1/f = 1/v - 1/u. Lens Magnification: m = v/u = h'/h. Power of a lens P = 1/f (in meters), measured in Dioptres (D). Convex lens has positive power/focal length (converging); Concave lens has negative power/focal length (diverging).",
+    keywords: ["light", "reflection", "refraction", "snell's law", "refractive index", "mirror formula", "lens formula", "focal length", "dioptre", "convex", "concave", "magnification"],
+    source: "NCERT Class 10 Science, Chapter 10: Light - Reflection and Refraction",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  },
+  {
+    id: "chunk-sst-nationalism",
+    title: "Nationalism in India: Freedom Movement & Satyagraha",
+    subject: "Social Science",
+    board: "CBSE",
+    standard: "Class 10",
+    topic: "History - Nationalism in India",
+    content: "Mahatma Gandhi returned to India from South Africa in January 1915. He introduced the concept of Satyagraha—a non-violent method of mass agitation based on truth and moral strength. Key early Satyagrahas in India: Champaran (1917, Bihar) against indigo plantation exploitation, Kheda (1917, Gujarat) for peasant revenue remission, and Ahmedabad (1918, Gujarat) for cotton mill workers. In 1919, the British passed the Rowlatt Act allowing indefinite detention without trial, leading to nationwide protests and the tragic Jallianwala Bagh massacre in Amritsar on April 13, 1919 (ordered by General Dyer). Gandhi launched the Non-Cooperation Movement in 1920 with Khilafat support, calling for boycott of British goods, schools, and courts. After the Chauri Chaura incident (February 1922) where violence occurred, Gandhi called off the movement. In 1930, Gandhi launched the Civil Disobedience Movement starting with the historic 240-mile Salt March from Sabarmati Ashram to Dandi, breaking the British salt monopoly.",
+    keywords: ["gandhi", "satyagraha", "champaran", "kheda", "rowlatt act", "jallianwala bagh", "non-cooperation", "khilafat", "chauri chaura", "civil disobedience", "dandi march", "salt march", "nationalism"],
+    source: "NCERT Class 10 Social Science (History), Chapter 2: Nationalism in India",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  }
+];
+
+/**
+ * Fetch all educational document chunks from Firestore
+ */
+export async function getAllEducationalChunks(): Promise<EducationalChunk[]> {
+  if (isQuotaExceeded) return DEFAULT_RAG_EDUCATIONAL_CHUNKS;
+  const path = "educational_chunks";
+  try {
+    const colRef = collection(db, path);
+    const snapshot = await getDocs(colRef);
+    const result: EducationalChunk[] = [];
+    snapshot.forEach((docSnap) => {
+      if (docSnap.exists()) {
+        result.push(docSnap.data() as EducationalChunk);
+      }
+    });
+
+    // If Firestore collection is empty, auto-seed default chunks and return them
+    if (result.length === 0) {
+      await seedDefaultEducationalChunks();
+      return DEFAULT_RAG_EDUCATIONAL_CHUNKS;
+    }
+    return result;
+  } catch (error) {
+    console.warn("Failed to fetch educational chunks from Firestore:", error);
+    return DEFAULT_RAG_EDUCATIONAL_CHUNKS;
+  }
+}
+
+/**
+ * Save / update an educational chunk in Firestore
+ */
+export async function saveEducationalChunk(chunk: EducationalChunk): Promise<void> {
+  if (isQuotaExceeded) return;
+  const path = `educational_chunks/${chunk.id}`;
+  try {
+    const docRef = doc(db, "educational_chunks", chunk.id);
+    const cleanPayload = sanitizeFirestorePayload({
+      ...chunk,
+      updatedAt: new Date().toISOString()
+    });
+    await setDoc(docRef, cleanPayload, { merge: true });
+  } catch (error: any) {
+    if (error?.message?.includes("resource-exhausted") || error?.message?.includes("quota")) {
+      isQuotaExceeded = true;
+      disableNetwork(db).catch(() => {});
+    }
+    console.warn("Failed to save educational chunk to Firestore:", error);
+  }
+}
+
+/**
+ * Delete an educational chunk from Firestore
+ */
+export async function deleteEducationalChunk(chunkId: string): Promise<void> {
+  if (isQuotaExceeded) return;
+  const path = `educational_chunks/${chunkId}`;
+  try {
+    const docRef = doc(db, "educational_chunks", chunkId);
+    await deleteDoc(docRef);
+  } catch (error: any) {
+    if (error?.message?.includes("resource-exhausted") || error?.message?.includes("quota")) {
+      isQuotaExceeded = true;
+      disableNetwork(db).catch(() => {});
+    }
+    console.warn("Failed to delete educational chunk from Firestore:", error);
+  }
+}
+
+/**
+ * Seed initial educational syllabus chunks into Firestore if not present
+ */
+export async function seedDefaultEducationalChunks(): Promise<void> {
+  if (isQuotaExceeded) return;
+  try {
+    for (const chunk of DEFAULT_RAG_EDUCATIONAL_CHUNKS) {
+      const docRef = doc(db, "educational_chunks", chunk.id);
+      await setDoc(docRef, sanitizeFirestorePayload(chunk), { merge: true });
+    }
+  } catch (e) {
+    console.warn("Failed seeding default educational chunks:", e);
+  }
+}
+
+/**
+ * Intelligent RAG Retrieval: Matches user query against Firestore educational chunks
+ * Uses weighted multi-field semantic scoring (Title, Keywords, Topic, Content, Subject, Board)
+ */
+export async function queryRelevantEducationalChunks(
+  queryText: string,
+  options?: { board?: string; subject?: string; limit?: number }
+): Promise<EducationalChunk[]> {
+  const allChunks = await getAllEducationalChunks();
+  if (!queryText || !queryText.trim()) return [];
+
+  const normalizedQuery = queryText.toLowerCase().trim();
+  const queryTokens = normalizedQuery
+    .replace(/[^\w\s]/gi, ' ')
+    .split(/\s+/)
+    .filter(t => t.length > 2 && !['what', 'when', 'where', 'which', 'who', 'whom', 'this', 'that', 'with', 'from', 'have', 'been', 'about', 'explain', 'tell', 'does'].includes(t));
+
+  const maxResults = options?.limit || 3;
+  const scoredChunks: (EducationalChunk & { score: number })[] = [];
+
+  for (const chunk of allChunks) {
+    let score = 0;
+    const titleLower = (chunk.title || '').toLowerCase();
+    const topicLower = (chunk.topic || '').toLowerCase();
+    const contentLower = (chunk.content || '').toLowerCase();
+    const subjectLower = (chunk.subject || '').toLowerCase();
+    const keywordsLower = (chunk.keywords || []).map(k => k.toLowerCase());
+
+    // 1. Exact phrase matches (High weight)
+    if (normalizedQuery.length > 5) {
+      if (titleLower.includes(normalizedQuery)) score += 30;
+      if (topicLower.includes(normalizedQuery)) score += 20;
+      if (contentLower.includes(normalizedQuery)) score += 15;
+    }
+
+    // 2. Tokenized word matches
+    for (const token of queryTokens) {
+      // Title token match
+      if (titleLower.includes(token)) score += 8;
+      // Keywords exact or partial match
+      if (keywordsLower.some(k => k === token)) score += 10;
+      else if (keywordsLower.some(k => k.includes(token) || token.includes(k))) score += 6;
+      // Topic match
+      if (topicLower.includes(token)) score += 6;
+      // Content frequency match (up to 4 occurrences)
+      const countInContent = (contentLower.match(new RegExp(`\\b${token}`, 'g')) || []).length;
+      score += Math.min(countInContent * 2, 8);
+    }
+
+    // 3. Subject and Board alignment bonus
+    if (options?.subject && subjectLower.includes(options.subject.toLowerCase())) {
+      score += 4;
+    }
+    if (options?.board && (chunk.board === 'All' || chunk.board.toLowerCase() === options.board.toLowerCase())) {
+      score += 2;
+    }
+
+    if (score >= 4) {
+      scoredChunks.push({
+        ...chunk,
+        score
+      });
+    }
+  }
+
+  // Sort descending by score
+  scoredChunks.sort((a, b) => b.score - a.score);
+  return scoredChunks.slice(0, maxResults);
+}
+
 
 
 

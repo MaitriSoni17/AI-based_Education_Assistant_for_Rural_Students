@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Lightbulb } from 'lucide-react';
 
-interface InteractiveAITeacherProps {
+export interface InteractiveAITeacherProps {
   avatarChar?: string;
   avatarName?: string;
   action?: 'idle' | 'explaining' | 'wave' | 'idea' | 'thumbsup' | 'celebrate' | 'think';
@@ -28,44 +27,53 @@ export default function InteractiveAITeacher({
   const [earTwitch, setEarTwitch] = useState(false);
 
   // Parse teacher type
-  let teacherType: 'dadi' | 'swami' | 'chanda' | 'scholar' | 'eagle' | 'panther' | 'rocket' | 'legend' | 'poet' | 'nature' | 'generic' = 'generic';
+  let teacherType: 'dadi' | 'swami' | 'chanda' | 'ramanujan' | 'rocket' | 'anandi' | 'laxmi' | 'newton' | 'scholar' | 'eagle' | 'panther' | 'kisan' | 'nature' | 'generic' = 'generic';
   const charLower = (safeChar + " " + safeName).toLowerCase();
-  if (safeChar.includes('👵') || charLower.includes('dadi')) {
+  
+  if (safeChar.includes('👵') || charLower.includes('dadi') || charLower.includes('दादी') || charLower.includes('દાદી') || charLower.includes('பாட்டி')) {
     teacherType = 'dadi';
-  } else if (safeChar.includes('🤖') || (charLower.includes('swami') && !charLower.includes('panther')) || (charLower.includes('robot'))) {
-    teacherType = 'swami';
-  } else if (safeChar.includes('🦊') || charLower.includes('chanda')) {
-    teacherType = 'chanda';
-  } else if (charLower.includes('panther') || charLower.includes('turing')) {
+  } else if (safeChar.includes('💻') || charLower.includes('panther') || charLower.includes('turing') || charLower.includes('excel') || charLower.includes('computer') || charLower.includes('coding') || charLower.includes('tech')) {
     teacherType = 'panther';
+  } else if (safeChar.includes('🤖') || (charLower.includes('swami') && !charLower.includes('panther')) || charLower.includes('robot')) {
+    teacherType = 'swami';
+  } else if (safeChar.includes('🦊') || charLower.includes('chanda') || charLower.includes('fox')) {
+    teacherType = 'chanda';
+  } else if (safeChar.includes('📐') || charLower.includes('ramanujan') || charLower.includes('math')) {
+    teacherType = 'ramanujan';
+  } else if (safeChar.includes('🚀') || charLower.includes('apj') || charLower.includes('rocket') || charLower.includes('kalam')) {
+    teacherType = 'rocket';
+  } else if (safeChar.includes('🧪') || charLower.includes('anandi') || charLower.includes('doctor') || charLower.includes('bio')) {
+    teacherType = 'anandi';
+  } else if (safeChar.includes('🛡️') || charLower.includes('laxmi') || charLower.includes('rani') || charLower.includes('shivaji') || charLower.includes('ashoka')) {
+    teacherType = 'laxmi';
+  } else if (safeChar.includes('🍎') || charLower.includes('newton')) {
+    teacherType = 'newton';
   } else if (safeChar.includes('🦅') || charLower.includes('william') || charLower.includes('eagle')) {
     teacherType = 'eagle';
-  } else if (safeChar.includes('📜') || safeChar.includes('📖') || safeChar.includes('✍️') || charLower.includes('narmad') || charLower.includes('premchand') || charLower.includes('tulsi') || charLower.includes('kavi') || charLower.includes('scholar')) {
-    teacherType = 'scholar';
-  } else if (safeChar.includes('🛡️') || charLower.includes('laxmi') || charLower.includes('shivaji') || charLower.includes('ashoka')) {
-    teacherType = 'legend';
-  } else if (safeChar.includes('🦚') || charLower.includes('shakespeare') || charLower.includes('poet') || charLower.includes('wordsworth')) {
-    teacherType = 'poet';
-  } else if (safeChar.includes('🌿') || safeChar.includes('🦌') || charLower.includes('prakriti') || charLower.includes('flora')) {
+  } else if (safeChar.includes('🌾') || charLower.includes('kisan') || charLower.includes('farmer') || charLower.includes('agri')) {
+    teacherType = 'kisan';
+  } else if (safeChar.includes('🌿') || charLower.includes('prakriti') || charLower.includes('flora')) {
     teacherType = 'nature';
+  } else if (safeChar.includes('📜') || safeChar.includes('✍️') || safeChar.includes('📖') || charLower.includes('narmad') || charLower.includes('premchand') || charLower.includes('kalidas') || charLower.includes('kavi') || charLower.includes('scholar')) {
+    teacherType = 'scholar';
   }
 
   // Periodic Blink cycle
   useEffect(() => {
     const blinkInterval = setInterval(() => {
       setBlink(true);
-      setTimeout(() => setBlink(false), 180);
-    }, 4500);
+      setTimeout(() => setBlink(false), 160);
+    }, 3800);
     return () => clearInterval(blinkInterval);
   }, []);
 
-  // Ear twitching for Chanda Fox 🦊
+  // Ear twitching for Chanda Fox
   useEffect(() => {
     if (teacherType !== 'chanda') return;
     const twitchInterval = setInterval(() => {
       setEarTwitch(true);
-      setTimeout(() => setEarTwitch(false), 300);
-    }, 6000);
+      setTimeout(() => setEarTwitch(false), 250);
+    }, 4500);
     return () => clearInterval(twitchInterval);
   }, [teacherType]);
 
@@ -84,11 +92,11 @@ export default function InteractiveAITeacher({
       const looks: ('center' | 'left' | 'right')[] = ['center', 'center', 'left', 'right'];
       const randomLook = looks[Math.floor(Math.random() * looks.length)];
       setEyeLook(randomLook);
-    }, 3800);
+    }, 3200);
     return () => clearInterval(lookInterval);
   }, [action]);
 
-  // Lip Sync animation cycle with realistic variable-tempo phonetic timing
+  // Lip Sync animation cycle with variable phonetic cadence
   useEffect(() => {
     if (!isPlaying) {
       setMouthStep(0);
@@ -99,786 +107,727 @@ export default function InteractiveAITeacher({
 
     const tick = () => {
       setMouthStep((prev) => {
-        // Organically transition to a different mouth shape to simulate natural phoneme variance
         const choices = [0, 1, 2, 3];
-        let next = prev;
-        // High probability of shifting to another mouth shape rather than repeating standard frame
-        if (Math.random() > 0.15) {
-          const alternateChoices = choices.filter(c => c !== prev);
-          next = alternateChoices[Math.floor(Math.random() * alternateChoices.length)];
-        } else {
-          next = prev;
-        }
-        return next;
+        const alternateChoices = choices.filter(c => c !== prev);
+        return alternateChoices[Math.floor(Math.random() * alternateChoices.length)];
       });
 
-      // Assign organic speech cadence timings depending on the mouth shape simulation:
-      // - Step 0 (Closed/Consonant Stops like P, B, M): Short snappy holds (40ms - 90ms) or micro word pauses
-      // - Step 1 (Wide Open 'Ah' Vowels): Longer resonant emphasis holds (150ms - 240ms)
-      // - Step 2 & 3 (Fluent Transition vowels 'Eh', 'Oo'): Medium organic cadences (100ms - 170ms)
-      let nextDuration = 130;
-      const currentStepRoll = Math.random();
-
-      if (currentStepRoll < 0.25) {
-        // Snappy transition / stop consonant
-        nextDuration = Math.floor(Math.random() * 50) + 40; // 40ms - 90ms
-      } else if (currentStepRoll < 0.65) {
-        // Dwell resonance vowel timing
-        nextDuration = Math.floor(Math.random() * 90) + 150; // 150ms - 240ms
-      } else {
-        // Standard conversational pacing
-        nextDuration = Math.floor(Math.random() * 70) + 100; // 100ms - 170ms
-      }
-
+      const nextDuration = Math.floor(Math.random() * 80) + 110;
       timeoutId = setTimeout(tick, nextDuration);
     };
 
-    // Kickstart recursive organic speaker schedule
-    timeoutId = setTimeout(tick, 100);
-
+    timeoutId = setTimeout(tick, 80);
     return () => clearTimeout(timeoutId);
   }, [isPlaying]);
 
-  // Determine mouth scale based on talking state & step - with realistic pink tongue and teeth drawings
-  const renderInteractiveMouth = () => {
+  // Pupil offsets for gaze
+  const pupilDx = eyeLook === 'left' ? -2.2 : eyeLook === 'right' ? 2.2 : 0;
+  const pupilDy = eyeLook === 'up' ? -2 : 0;
+
+  // Extract avatar emoji fallback
+  const avatarEmoji = safeChar.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|👵|🤖|🦊|🚀|📜|🛡️|🦅|🧪|📐|🦚|🌿|🌾|🍎|💻|✍️|🎓|🔢/u)?.[0] || '🎓';
+
+  // --- MOUTH RENDERER HELPER (Coordinates 0..120) ---
+  const renderMouth = (cx = 60, cy = 82) => {
     if (!isPlaying) {
       return (
-        <div className="absolute bottom-6 flex flex-col items-center justify-center z-20">
-          {/* A sweet, subtle smiling curve lips */}
-          <svg width="40" height="12" viewBox="0 0 40 12" fill="none" className="transition-all duration-300">
-            <path d="M4 2C12 9 28 9 36 2" stroke="#4A1E1E" strokeWidth="3" strokeLinecap="round" />
-          </svg>
-        </div>
+        <path
+          d={`M ${cx - 7} ${cy - 1} Q ${cx} ${cy + 4} ${cx + 7} ${cy - 1}`}
+          stroke="#4A1E1E"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          fill="none"
+        />
       );
     }
 
-    // Interactive speaking lip movements containing inner mouth detail (realistic teeth/pink tongue tongue!)
     switch (mouthStep) {
       case 1: // Open Wide 'Ah'
         return (
-          <div className="absolute bottom-4.5 w-8 h-6.5 bg-[#4A1E1E] rounded-b-2xl rounded-t-lg border-2 border-[#E07A5F] flex flex-col justify-between overflow-hidden shadow-inner z-20 transition-all duration-100">
-            {/* White upper teeth curve */}
-            <div className="w-full h-1.5 bg-white rounded-b-md" />
-            {/* Pink glowing tongue */}
-            <div className="w-6 h-3 bg-rose-400 rounded-t-full self-center" />
-          </div>
+          <g>
+            <ellipse cx={cx} cy={cy + 1} rx="7" ry="5.5" fill="#4A1E1E" />
+            <path d={`M ${cx - 5} ${cy - 1} Q ${cx} ${cy + 1} ${cx + 5} ${cy - 1}`} fill="#FFFFFF" />
+            <ellipse cx={cx} cy={cy + 4.5} rx="4" ry="2" fill="#FB7185" />
+          </g>
         );
-      case 2: // Semi closed 'Eh'
+      case 2: // Medium 'Eh'
         return (
-          <div className="absolute bottom-5.5 w-7.5 h-3.5 bg-[#4A1E1E] rounded-b-lg rounded-t-xs border border-[#E07A5F] flex flex-col justify-between overflow-hidden shadow-inner z-20 transition-all duration-100">
-            <div className="w-full h-1 bg-white" />
-            <div className="w-5 h-2 bg-rose-400 rounded-t-full self-center" />
-          </div>
+          <g>
+            <ellipse cx={cx} cy={cy} rx="6" ry="3.5" fill="#4A1E1E" />
+            <rect x={cx - 4.5} y={cy - 2} width="9" height="1.5" rx="0.5" fill="#FFFFFF" />
+            <ellipse cx={cx} cy={cy + 2} rx="3" ry="1.2" fill="#FB7185" />
+          </g>
         );
-      case 3: // 'Oo' circular shape
+      case 3: // Round 'Oo'
         return (
-          <div className="absolute bottom-5 w-5 h-5 bg-[#4A1E1E] rounded-full border-2 border-[#E07A5F] flex items-center justify-center overflow-hidden shadow-inner z-20 transition-all duration-100">
-            <div className="w-2.5 h-2.5 bg-rose-400 rounded-full mt-2" />
-          </div>
+          <g>
+            <circle cx={cx} cy={cy} r="4.2" fill="#4A1E1E" />
+            <circle cx={cx} cy={cy + 1.2} r="2" fill="#FB7185" />
+          </g>
         );
-      default: // Normal speaking aperture
+      default: // Speaking slit
         return (
-          <div className="absolute bottom-5 w-8 h-4.5 bg-[#4A1E1E] rounded-b-xl border border-[#E07A5F] flex flex-col justify-between overflow-hidden shadow-inner z-20 transition-all duration-100">
-            <div className="w-full h-0.5 bg-white" />
-            <div className="w-5 h-2 bg-rose-400 rounded-t-md self-center" />
-          </div>
+          <path
+            d={`M ${cx - 6} ${cy} Q ${cx} ${cy + 3} ${cx + 6} ${cy}`}
+            stroke="#4A1E1E"
+            strokeWidth="2.8"
+            strokeLinecap="round"
+            fill="none"
+          />
         );
     }
   };
 
-  // Robot futuristic LED sound response matrix
-  const renderRobotMouth = () => {
-    if (!isPlaying) {
-      return (
-        <div className="h-1.5 w-10 bg-cyan-400 rounded-sm shadow-[0_0_10px_rgba(34,211,238,0.9)] transition-all duration-300 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-pulse" />
-        </div>
-      );
-    }
-
-    switch (mouthStep) {
-      case 1: // Max aperture spectrum
-        return (
-          <div className="flex items-center gap-0.5 h-4 w-12 transition-all">
-            <div className="h-2 w-1.5 bg-cyan-400 rounded-xs shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
-            <div className="h-4 w-1.5 bg-cyan-300 rounded-xs shadow-[0_0_10px_rgba(34,211,238,1)] animate-pulse" />
-            <div className="h-3 w-1.5 bg-cyan-400 rounded-xs shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-            <div className="h-4 w-1.5 bg-cyan-300 rounded-xs shadow-[0_0_10px_rgba(34,211,238,1)]" />
-            <div className="h-2 w-1.5 bg-cyan-400 rounded-xs shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
-          </div>
-        );
-      case 2: // Minimal buzz
-        return (
-          <div className="flex items-center gap-0.5 h-1 w-12 justify-center">
-            <div className="h-1 w-10 bg-cyan-400 rounded-full shadow-[0_0_5px_rgba(34,211,238,0.7)]" />
-          </div>
-        );
-      case 3: // Round frequency pulse
-        return (
-          <div className="flex items-center gap-0.5 h-3 w-12 justify-center">
-            <div className="h-2 w-2 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-            <div className="h-3 w-3 bg-cyan-300 rounded-full shadow-[0_0_12px_rgba(34,211,238,1)]" />
-            <div className="h-2 w-2 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-          </div>
-        );
-      default: // Normal sound bar response
-        return (
-          <div className="flex items-center gap-0.5 h-2.5 w-12 justify-center">
-            <div className="h-1 text-cyan-400 font-bold tracking-widest text-[8px] animate-pulse">🔊</div>
-            <div className="h-2 w-8 bg-cyan-400 rounded-xs shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
-          </div>
-        );
-    }
-  };
-
-  // Convert looks coordinates for eyes
-  const getEyeBallOffset = () => {
-    switch (eyeLook) {
-      case 'left': return '-translate-x-1 translate-y-0';
-      case 'right': return 'translate-x-1 translate-y-0';
-      case 'up': return 'translate-x-0 -translate-y-1';
-      default: return 'translate-x-0 translate-y-0';
-    }
-  };
-
-  // 1. Render Dadi AI details 👵
-  const renderDadiFace = () => {
+  // --- SWAMI ROBOT SVG FACE (Cyber Robot 🤖) ---
+  const renderSwamiVector = () => {
     return (
-      <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
-        {/* Grey Bun Hair on top with multi-layer shading */}
-        <div className="absolute top-1 w-11 h-11 rounded-full bg-gradient-to-b from-gray-100 via-gray-300 to-gray-400 border border-gray-400 shadow-xs z-0" />
-        {/* Bun hair clasp pin details */}
-        <div className="absolute top-2 w-6 h-1.5 bg-amber-500 rounded-full z-0 rotate-15" />
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Ambient Back Glow */}
+        <circle cx="60" cy="60" r="54" fill="#0EA5E9" fillOpacity="0.15" />
 
-        {/* Head Canvas with 3D gradient skin depth */}
-        <div className="relative w-28 h-28 rounded-full bg-gradient-to-br from-[#FCE1D4] via-[#F5D6C6] to-[#E9BEA8] border-3 border-white shadow-lg flex flex-col items-center overflow-visible z-10 transition-transform duration-300 select-none">
-          
-          {/* Grey Front parted hair overlay with realistic combed lines */}
-          <div className="absolute top-0 inset-x-0 h-9 bg-gradient-to-b from-gray-200 to-gray-300 rounded-t-full border-b border-gray-400/50 overflow-hidden flex">
-            <div className="w-1/2 h-full bg-gradient-to-br from-gray-100 to-gray-300 border-r border-gray-400/40 rounded-br-2xl" />
-            <div className="w-1/2 h-full bg-gradient-to-bl from-gray-100 to-gray-300 rounded-bl-2xl" />
-          </div>
+        {/* Antennae */}
+        <line x1="48" y1="28" x2="44" y2="15" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round" />
+        <circle cx="43" cy="14" r="4.5" fill="#38BDF8" className={isPlaying ? "animate-pulse" : ""} />
+        <line x1="72" y1="28" x2="76" y2="15" stroke="#94A3B8" strokeWidth="2.5" strokeLinecap="round" />
+        <circle cx="77" cy="14" r="4.5" fill="#F59E0B" />
 
-          {/* Red and Gold Kundan Bindi */}
-          <div className="absolute top-9.5 w-3 h-3 bg-rose-600 rounded-full shadow-xs border border-amber-400 flex items-center justify-center">
-            <div className="w-1 h-1 bg-amber-200 rounded-full" />
-          </div>
-
-          {/* Eyebrows (animated and expressive) */}
-          <div className="flex justify-between w-18 absolute top-12">
-            <div className={`h-1.5 w-5 bg-gray-500/80 rounded-full transition-transform duration-300 ${action === 'think' ? 'rotate-15 translate-y-0.5' : '-rotate-3'}`} />
-            <div className={`h-1.5 w-5 bg-gray-500/80 rounded-full transition-transform duration-300 ${action === 'think' ? '-rotate-15 translate-y-0.5' : 'rotate-3'}`} />
-          </div>
-
-          {/* Golden Grandma Glasses 👓 - Extremely detailed and 3D */}
-          <div className="absolute top-12.5 flex justify-between w-21 z-20">
-            {/* Left rim */}
-            <div className="w-9 h-9 rounded-full border-2.5 border-amber-400 bg-white/20 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center relative">
-              {/* Eye Pupils inside detailed brown iris */}
-              {blink ? (
-                <div className="h-0.5 w-5 bg-[#3B2314] rounded-full" />
-              ) : (
-                <div className={`w-4 h-4 rounded-full bg-amber-950 border border-amber-800 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  {/* Iris highlighting */}
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#523A28] flex items-center justify-center">
-                    {/* Pupil reflex sparkle */}
-                    <div className="w-1 h-1 bg-white rounded-full absolute top-1 left-1" />
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* Glasses bridge */}
-            <div className="w-2 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 h-1 mt-4 shadow-xs" />
-            
-            {/* Right rim */}
-            <div className="w-9 h-9 rounded-full border-2.5 border-amber-400 bg-white/20 shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center relative">
-              {/* Eye Pupils */}
-              {blink ? (
-                <div className="h-0.5 w-5 bg-[#3B2314] rounded-full" />
-              ) : (
-                <div className={`w-4 h-4 rounded-full bg-amber-950 border border-amber-800 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  {/* Iris highlighting */}
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#523A28] flex items-center justify-center">
-                    {/* Pupil reflex sparkle */}
-                    <div className="w-1 h-1 bg-white rounded-full absolute top-1 left-1" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Realistic Nose ridge with subtle drop shadow */}
-          <div className="absolute top-20.5 w-2 h-3.5 bg-gradient-to-b from-[#E9BEA8] to-[#D5A790] rounded-full border-b border-white/20 shadow-2xs z-10" />
-
-          {/* Rosy blush cheeks & soft wrinkles */}
-          <div className="flex justify-between w-22 absolute top-20 px-0.5 opacity-60">
-            <div className="w-4 h-2.5 bg-rose-300 rounded-full blur-[1px]" />
-            <div className="w-4 h-2.5 bg-rose-300 rounded-full blur-[1px]" />
-          </div>
-
-          {/* Lip synced Mouth */}
-          {renderInteractiveMouth()}
-
-          {/* Wrinkle creases mapping */}
-          <div className="absolute bottom-6.5 left-3.5 w-1 h-2 border-l border-[#A77B65]/40 rounded-full" />
-          <div className="absolute bottom-6.5 right-3.5 w-1 h-2 border-r border-[#A77B65]/40 rounded-full" />
-        </div>
-
-        {/* 3D Coordinated shoulders for Dadi (Warm Embroidered traditional Red Saree drape) */}
-        <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-red-800 via-rose-700 to-red-800 rounded-t-3xl border-t-2 border-amber-300/40 shadow-md overflow-hidden flex justify-center z-5 select-none font-sans font-extrabold text-[8px] text-white">
-          {/* Beautiful golden embroidery patterns (Zari work mockup) */}
-          <div className="w-full h-2 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 flex justify-around px-2 items-center text-[7px] font-mono shrink-0 select-none">
-            <span>✨</span><span>💠</span><span>✨</span><span>💠</span><span>✨</span>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // 2. Render Swami AI Robot (Science/Tech Expert) 🤖 - High Fidelity Cyber-Engine
-  const renderSwamiFace = () => {
-    return (
-      <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
-        {/* Industrial detailed double-antenna */}
-        <div className="absolute top-2 flex justify-between w-8 h-8">
-          <div className="relative w-1.5 h-6 bg-gradient-to-b from-slate-400 to-slate-600 flex flex-col items-center">
-            <div className={`w-3.5 h-3.5 rounded-full bg-cyan-400 border border-white absolute -top-3 shadow-[0_0_10px_rgba(34,211,238,0.9)] ${isPlaying ? 'animate-pulse' : ''}`} />
-          </div>
-          <div className="relative w-1.5 h-6 bg-gradient-to-b from-slate-400 to-slate-600 flex flex-col items-center">
-            <div className={`w-3.5 h-3.5 rounded-full bg-amber-400 border border-white absolute -top-3 shadow-[0_0_10px_rgba(245,158,11,0.9)]`} />
-          </div>
-        </div>
-
-        {/* Deep Steel Chamfered Head Canvas */}
-        <div className="relative w-28 h-27 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 rounded-3xl border-3 border-slate-300/90 shadow-2xl flex flex-col items-center justify-center overflow-visible z-10 mt-6 shrink-0">
-          
-          {/* Metallic Side bolts with realistic screw slots */}
-          <div className="absolute -left-2.5 top-9 w-2.5 h-5 bg-gradient-to-b from-slate-300 to-slate-500 border border-slate-600 rounded-l flex items-center justify-center">
-            <div className="w-0.5 h-3 bg-slate-800" />
-          </div>
-          <div className="absolute -right-2.5 top-9 w-2.5 h-5 bg-gradient-to-b from-slate-300 to-slate-500 border border-slate-600 rounded-r flex items-center justify-center">
-            <div className="w-0.5 h-3 bg-slate-800" />
-          </div>
-
-          {/* Status diagnostics center badge with glowing LEDs */}
-          <div className="absolute top-2 w-14 h-3 bg-slate-950 rounded-md border border-slate-700 flex justify-between items-center px-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <div className="h-1 w-6 bg-cyan-500/20 rounded-full overflow-hidden">
-              <div className="w-1/2 h-full bg-cyan-400 animate-shimmer" />
-            </div>
-          </div>
-
-          {/* Panoramic Cyberspace Visor Display Glass */}
-          <div className="w-23 h-11 bg-slate-950 rounded-xl border-1.5 border-slate-700 flex justify-between items-center px-2 shadow-[inset_0_2px_8px_rgba(0,0,0,0.8)] relative overflow-hidden my-1">
-            {/* Holographic grid scanner overlay */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.06)_1px,transparent_1px)] bg-[size:100%_4px] pointer-events-none" />
-
-            {/* Glowing Scanline */}
-            <div className="absolute top-0 inset-x-0 h-1/3 bg-cyan-400/10 blur-xs animate-bounce" />
-
-            {/* Visor Left Eye */}
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center relative z-10">
-              {blink ? (
-                <div className="h-0.5 w-6 bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.9)] rounded" />
-              ) : action === 'think' ? (
-                <span className="text-sm text-cyan-400 font-mono font-black scale-y-75 animate-bounce">?</span>
-              ) : action === 'celebrate' || action === 'idea' ? (
-                <span className="text-sm text-cyan-300 font-mono font-extrabold animate-pulse">^</span>
-              ) : (
-                <div className={`w-5.5 h-5.5 rounded-full bg-[#1e293b] border border-cyan-800 flex items-center justify-center relative transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  <div className="w-3.5 h-3.5 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,1)] flex items-center justify-center">
-                    {/* Concentric aperture circles */}
-                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Visor Right Eye */}
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center relative z-10">
-              {blink ? (
-                <div className="h-0.5 w-6 bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.9)] rounded" />
-              ) : action === 'think' ? (
-                <span className="text-sm text-cyan-400 font-mono font-black scale-y-75 animate-bounce">?</span>
-              ) : action === 'celebrate' || action === 'idea' ? (
-                <span className="text-sm text-cyan-300 font-mono font-extrabold animate-pulse">^</span>
-              ) : (
-                <div className={`w-5.5 h-5.5 rounded-full bg-[#1e293b] border border-cyan-800 flex items-center justify-center relative transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  <div className="w-3.5 h-3.5 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,1)] flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Sound wave LED talking mouth bar */}
-          <div className="absolute bottom-5 flex items-center justify-center h-6 w-16">
-            {renderRobotMouth()}
-          </div>
-        </div>
-
-        {/* Chrome Metallic cybernetic shoulders with glowing power core */}
-        <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 rounded-t-3xl border-t-2 border-slate-500 shadow-md overflow-hidden flex flex-col items-center justify-end z-5 select-none">
-          {/* Glowing neon fusion battery band */}
-          <div className="w-14 h-2.5 bg-slate-950 rounded-t-lg border-x border-t border-cyan-500/20 p-0.5">
-            <div className="h-full bg-cyan-400 rounded-xs shadow-[0_0_6px_rgba(34,211,238,0.8)] animate-pulse" />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // 3. Render Chanda AI Smart Fox 🦊 with Smart Glasses - Organic fur structures & organic twitch wiggles
-  const renderChandaFace = () => {
-    return (
-      <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
-        {/* Detailed twitching pointy left fox ear */}
-        <div className={`absolute -top-1 left-3 w-10.5 h-16 bg-gradient-to-b from-[#EA580C] to-[#C2410C] rounded-t-3xl border-2.5 border-white ${earTwitch ? 'animate-[bounce_0.25s_twice] rotate-[-16deg]' : '-rotate-12'} flex items-center justify-center overflow-hidden transition-transform z-0 shadow-smOrigin`}>
-          <div className="w-5.5 h-11 bg-rose-150 rounded-t-2xl mt-3.5" />
-        </div>
-
-        {/* Detailed twitching pointy right fox ear */}
-        <div className={`absolute -top-1 right-3 w-10.5 h-16 bg-gradient-to-b from-[#EA580C] to-[#C2410C] rounded-t-3xl border-2.5 border-white ${earTwitch ? 'animate-[bounce_0.25s_twice] rotate-[16deg]' : 'rotate-12'} flex items-center justify-center overflow-hidden transition-transform z-0 shadow-smOrigin`}>
-          <div className="w-5.5 h-11 bg-rose-150 rounded-t-2xl mt-3.5" />
-        </div>
-
-        {/* Gorgeous Fox Face Canvas with complex cheeks fur projections */}
-        <div className="relative w-28 h-28 bg-[#EA580C] rounded-full border-3 border-white shadow-xl flex flex-col items-center overflow-visible z-10 transition-transform duration-300 select-none">
-          
-          {/* Organic white fluffy inner cheek fur overlays projecting outwards */}
-          <div className="absolute bottom-0 inset-x-0 h-13 flex justify-between z-0">
-            <div className="w-12 h-13 bg-gradient-to-tr from-white via-white to-orange-50 rounded-t-3xl rounded-bl-3xl border-r border-[#EA580C]/20 shadow-xs" />
-            <div className="w-12 h-13 bg-gradient-to-tl from-white via-white to-orange-50 rounded-t-3xl rounded-br-3xl border-l border-[#EA580C]/20 shadow-xs" />
-          </div>
-
-          {/* Expressive Arching Fox Eyebrows */}
-          <div className="flex justify-between w-15 absolute top-10.5 z-10">
-            <div className={`h-1.5 w-4.5 bg-amber-950 rounded-full transition-transform duration-300 ${action === 'think' ? 'rotate-12 translate-y-0.5' : '-rotate-6'}`} />
-            <div className={`h-1.5 w-4.5 bg-amber-950 rounded-full transition-transform duration-300 ${action === 'think' ? '-rotate-12 translate-y-0.5' : 'rotate-6'}`} />
-          </div>
-
-          {/* Smart Glasses for Chanda AI Fox 👓 */}
-          <div className="absolute top-11.5 flex justify-between w-21 z-20">
-            <div className="w-8 h-8 rounded-full border-2 border-amber-300 bg-white/20 flex items-center justify-center relative">
-              {blink ? (
-                <div className="h-0.5 w-4 bg-[#3B2314] rounded-full" />
-              ) : (
-                <div className={`w-5 h-5 rounded-full bg-gradient-to-br from-[#065F46] via-[#10B981] to-[#34D399] p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  <div className="w-3 h-3 rounded-full bg-[#111827] flex items-center justify-center relative">
-                    <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="w-2 bg-amber-300 h-1 mt-3.5" />
-            <div className="w-8 h-8 rounded-full border-2 border-amber-300 bg-white/20 flex items-center justify-center relative">
-              {blink ? (
-                <div className="h-0.5 w-4 bg-[#3B2314] rounded-full" />
-              ) : (
-                <div className={`w-5 h-5 rounded-full bg-gradient-to-br from-[#065F46] via-[#10B981] to-[#34D399] p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  <div className="w-3 h-3 rounded-full bg-[#111827] flex items-center justify-center relative">
-                    <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Cute wet snout and black shiny button nose */}
-          <div className="absolute bottom-9 w-6 h-5 flex flex-col items-center justify-center z-20">
-            <div className="w-4 h-3 bg-gradient-to-b from-slate-800 to-black rounded-full shadow-md relative">
-              <div className="w-1 h-0.5 bg-white rounded-full absolute top-0.5 left-1" />
-            </div>
-          </div>
-
-          {/* Lip synced Voice aligned Mouth */}
-          {renderInteractiveMouth()}
-        </div>
-
-        {/* High-quality furry neck collar shoulders overlay for Chanda */}
-        <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-[#EA580C] via-orange-500 to-[#EA580C] rounded-t-3xl border-t-2 border-white/40 shadow-sm flex items-start justify-center overflow-visible z-5 select-none">
-          <div className="w-18 h-7 bg-white rounded-b-2xl border-x border-b border-orange-200 shadow-md shadow-orange-950/10 flex flex-col justify-end p-1 select-none">
-            <div className="w-full flex justify-around text-orange-200 font-black text-[6px]">
-              <span>▼</span><span>▼</span><span>▼</span><span>▼</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // 4. Render Kavi Narmad AI (Sahitya Scholar) 📜 - Classic portrait-style scholar with traditional white pheta/cap and stole
-  const renderScholarFace = () => {
-    return (
-      <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
-        {/* Traditional Gujarati Scholar Cap / White Pheta / Turban */}
-        <div className="absolute top-1 w-26 h-10 bg-gradient-to-b from-slate-100 via-white to-amber-50 rounded-t-3xl border-2 border-amber-200 shadow-md z-20 flex items-center justify-center">
-          <div className="w-16 h-1.5 bg-amber-400 rounded-full shadow-xs" />
-        </div>
-
-        {/* Head Canvas with wise scholar aesthetic */}
-        <div className="relative w-28 h-28 bg-[#FDF0D5] rounded-full border-3 border-white shadow-xl flex flex-col items-center overflow-visible z-10 transition-transform duration-300 mt-3">
-          
-          {/* Traditional red Kumkum Chandlo on forehead */}
-          <div className="absolute top-6 w-2.5 h-3 bg-red-600 rounded-full shadow-xs border border-amber-300 z-20" />
-
-          {/* Wise scholarly eyebrows */}
-          <div className="flex justify-between w-15 absolute top-10.5 z-10">
-            <div className="h-1.5 w-4.5 bg-[#4A3B32] rounded-full" />
-            <div className="h-1.5 w-4.5 bg-[#4A3B32] rounded-full" />
-          </div>
-
-          {/* Expressive wise eyes */}
-          <div className="flex justify-between w-18 absolute top-12.5 z-10">
-            <div className="w-6.5 h-6.5 flex items-center justify-center relative">
-              {blink ? (
-                <div className="h-0.5 w-5 bg-slate-800 rounded-full" />
-              ) : (
-                <div className={`w-5 h-5 rounded-full bg-gradient-to-br from-amber-800 to-amber-950 p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  <div className="w-3 h-3 rounded-full bg-slate-900 flex items-center justify-center relative">
-                    <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="w-6.5 h-6.5 flex items-center justify-center relative">
-              {blink ? (
-                <div className="h-0.5 w-5 bg-slate-800 rounded-full" />
-              ) : (
-                <div className={`w-5 h-5 rounded-full bg-gradient-to-br from-amber-800 to-amber-950 p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  <div className="w-3 h-3 rounded-full bg-slate-900 flex items-center justify-center relative">
-                    <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Classic thin mustache and gentle smile */}
-          <div className="absolute top-19 w-6 h-1 bg-amber-900 rounded-full z-20" />
-
-          {/* Talking Mouth */}
-          {renderInteractiveMouth()}
-        </div>
-
-        {/* Traditional Gujarati Kediyu / Scholar Stole (Uparna) shoulders */}
-        <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-amber-700 via-amber-600 to-amber-800 rounded-t-3xl border-t-2 border-amber-300 shadow-md flex items-start justify-center z-5 overflow-hidden">
-          {/* Traditional white Khadi stole drape */}
-          <div className="w-14 h-full bg-gradient-to-b from-white to-amber-100 border-x border-amber-200 flex flex-col items-center justify-around py-1">
-            <div className="w-8 h-1 bg-amber-600 rounded-full" />
-            <div className="w-8 h-1 bg-amber-600 rounded-full" />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // 5. Render William AI (Grammar Eagle) 🦅 - Flat vector majestic eagle face icon
-  const renderEagleFace = () => {
-    return (
-      <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
-        {/* Majestic Eagle white crown feathers */}
-        <div className="absolute -top-1 w-24 h-12 bg-gradient-to-b from-white via-slate-100 to-amber-50 rounded-t-full border-2 border-amber-200 shadow-md z-10 flex justify-around pt-1">
-          <span className="text-amber-400 text-[10px]">▼</span>
-          <span className="text-amber-400 text-[12px]">▼</span>
-          <span className="text-amber-400 text-[10px]">▼</span>
-        </div>
-
-        {/* Golden-brown head base with feathered contour */}
-        <div className="relative w-28 h-28 bg-gradient-to-br from-amber-700 via-amber-800 to-amber-900 rounded-full border-3 border-amber-300 shadow-xl flex flex-col items-center overflow-visible z-10 transition-transform duration-300">
-          
-          {/* Sharp, piercing predatory golden-amber eagle eyes */}
-          <div className="flex justify-between w-20 absolute top-12 z-10">
-            <div className="w-7 h-7 bg-amber-400 rounded-full border-2 border-amber-600 flex items-center justify-center relative shadow-inner">
-              {blink ? (
-                <div className="h-0.5 w-5 bg-amber-950 rounded-full" />
-              ) : (
-                <div className="w-3.5 h-3.5 bg-amber-950 rounded-full flex items-center justify-center relative">
-                  <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
-                </div>
-              )}
-            </div>
-
-            <div className="w-7 h-7 bg-amber-400 rounded-full border-2 border-amber-600 flex items-center justify-center relative shadow-inner">
-              {blink ? (
-                <div className="h-0.5 w-5 bg-amber-950 rounded-full" />
-              ) : (
-                <div className="w-3.5 h-3.5 bg-amber-950 rounded-full flex items-center justify-center relative">
-                  <div className="w-1 h-1 bg-white rounded-full absolute top-0.5 left-0.5" />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Majestic Curved Golden Beak */}
-          <div className="absolute top-18 w-10 h-7 bg-gradient-to-b from-amber-400 via-yellow-400 to-amber-500 rounded-b-2xl border-2 border-amber-600 shadow-md z-20 flex flex-col items-center justify-center">
-            <div className="w-3 h-2 bg-amber-700 rounded-full" />
-          </div>
-
-          {/* Talking Mouth below beak */}
-          <div className="absolute bottom-5 z-25">
-            {renderInteractiveMouth()}
-          </div>
-        </div>
-
-        {/* Majestic feathered eagle shoulders */}
-        <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-amber-900 via-amber-800 to-amber-900 rounded-t-3xl border-t-2 border-amber-400 shadow-md flex items-center justify-center z-5">
-          <div className="w-20 h-4 bg-white/90 rounded-t-2xl border-t border-amber-200 flex justify-around text-amber-600 text-[8px] font-bold">
-            <span>W</span><span>I</span><span>L</span><span>L</span><span>I</span><span>A</span><span>M</span>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // 6. Render Turing AI (Cyber Panther) 🤖🐈 - Futuristic dark cyber-panther head with glowing metallic details
-  const renderPantherFace = () => {
-    return (
-      <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
-        {/* Cybernetic pointed panther ears with glowing neon edges */}
-        <div className="absolute -top-2 left-4 w-9 h-14 bg-gradient-to-b from-violet-900 via-slate-900 to-black rounded-t-2xl border-2 border-cyan-400/80 -rotate-12 flex items-center justify-center shadow-[0_0_8px_rgba(34,211,238,0.5)] z-0">
-          <div className="w-3 h-8 bg-cyan-400/40 rounded-t-xl" />
-        </div>
-        <div className="absolute -top-2 right-4 w-9 h-14 bg-gradient-to-b from-violet-900 via-slate-900 to-black rounded-t-2xl border-2 border-cyan-400/80 rotate-12 flex items-center justify-center shadow-[0_0_8px_rgba(34,211,238,0.5)] z-0">
-          <div className="w-3 h-8 bg-cyan-400/40 rounded-t-xl" />
-        </div>
-
-        {/* Obsidian matte black cyber-panther head canvas */}
-        <div className="relative w-28 h-28 bg-gradient-to-br from-slate-900 via-indigo-950 to-black rounded-3xl border-3 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)] flex flex-col items-center overflow-visible z-10 transition-transform duration-300">
-          
-          {/* Glowing neon visor line across forehead */}
-          <div className="absolute top-3 w-20 h-1 bg-cyan-400 rounded-full shadow-[0_0_10px_rgba(34,211,238,1)] animate-pulse" />
-
-          {/* Glowing Neon Cyan Feline Eyes */}
-          <div className="flex justify-between w-20 absolute top-12 z-10">
-            <div className="w-7 h-5 bg-cyan-950 rounded-md border border-cyan-400 flex items-center justify-center relative shadow-[0_0_8px_rgba(34,211,238,0.8)]">
-              {blink ? (
-                <div className="h-0.5 w-5 bg-cyan-400 rounded-full" />
-              ) : (
-                <div className="w-3.5 h-1.5 bg-cyan-300 rounded-full shadow-[0_0_6px_rgba(34,211,238,1)]" />
-              )}
-            </div>
-
-            <div className="w-7 h-5 bg-cyan-950 rounded-md border border-cyan-400 flex items-center justify-center relative shadow-[0_0_8px_rgba(34,211,238,0.8)]">
-              {blink ? (
-                <div className="h-0.5 w-5 bg-cyan-400 rounded-full" />
-              ) : (
-                <div className="w-3.5 h-1.5 bg-cyan-300 rounded-full shadow-[0_0_6px_rgba(34,211,238,1)]" />
-              )}
-            </div>
-          </div>
-
-          {/* Cyber whiskers matrix */}
-          <div className="absolute inset-y-18 inset-x-2 flex justify-between z-15 w-24 opacity-60">
-            <div className="space-y-1">
-              <div className="w-4 h-0.5 bg-cyan-400 -rotate-12 rounded-full shadow-[0_0_4px_rgba(34,211,238,0.8)]" />
-              <div className="w-5 h-0.5 bg-cyan-400 rounded-full shadow-[0_0_4px_rgba(34,211,238,0.8)]" />
-            </div>
-            <div className="space-y-1">
-              <div className="w-4 h-0.5 bg-cyan-400 rotate-12 rounded-full shadow-[0_0_4px_rgba(34,211,238,0.8)]" />
-              <div className="w-5 h-0.5 bg-cyan-400 rounded-full shadow-[0_0_4px_rgba(34,211,238,0.8)]" />
-            </div>
-          </div>
-
-          {/* Metallic cyber nose */}
-          <div className="absolute top-20 w-4 h-2.5 bg-slate-700 rounded-full border border-cyan-400 flex items-center justify-center">
-            <div className="w-1.5 h-1 bg-cyan-300 rounded-full" />
-          </div>
-
-          {/* Talking Mouth */}
-          <div className="absolute bottom-5">
-            {renderInteractiveMouth()}
-          </div>
-        </div>
-
-        {/* Futuristic glowing cyber-armor shoulders */}
-        <div className="absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 rounded-t-3xl border-t-2 border-cyan-500 shadow-md flex items-center justify-center z-5">
-          <div className="w-20 h-3 bg-cyan-950 rounded-t-lg border-x border-t border-cyan-400 flex items-center justify-center">
-            <div className="w-8 h-1.5 bg-cyan-400 rounded-xs shadow-[0_0_6px_rgba(34,211,238,1)] animate-pulse" />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // 4. Render Generic/Specialized AI Teacher Face - High quality Human avatar with dynamic mascot badge pin
-  const renderGenericFace = () => {
-    const avatarEmoji = safeChar.match(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|👵|🤖|🦊|🚀|📜|🛡️|🦅|🧪|📐|🦚|🌿|📈|💻|🕉️|✍️|🎓|🔢|🍎|🦁|🗺️/u)?.[0] || '🎓';
-    
-    // Choose dynamic shirt gradient based on character safeChar or safeName
-    let shirtBg = "from-indigo-600 via-indigo-700 to-indigo-600";
-    if (safeChar.includes('🚀') || safeChar.includes('🔬') || safeChar.includes('🍎')) shirtBg = "from-sky-600 via-blue-700 to-sky-600";
-    if (safeChar.includes('📜') || safeChar.includes('📖') || safeChar.includes('✍️')) shirtBg = "from-amber-600 via-amber-700 to-amber-600";
-    if (safeChar.includes('🛡️') || safeChar.includes('🏛️')) shirtBg = "from-rose-600 via-red-700 to-rose-600";
-    if (safeChar.includes('🌿') || safeChar.includes('🍃')) shirtBg = "from-emerald-600 via-teal-700 to-emerald-600";
-    if (safeChar.includes('🦚') || safeChar.includes('🦅')) shirtBg = "from-purple-600 via-violet-700 to-purple-600";
-    if (safeChar.includes('📐') || safeChar.includes('🔢')) shirtBg = "from-orange-600 via-amber-600 to-orange-600";
-    if (safeChar.includes('📈') || safeChar.includes('💻')) shirtBg = "from-cyan-600 via-[#3D405B] to-cyan-600";
-
-    return (
-      <div className="relative w-36 h-36 flex flex-col items-center justify-center scale-95 origin-center">
-        {/* Mascot Emoji Badge Pin Floating above Head */}
-        <div className="absolute top-0 z-20 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded-full shadow-md border border-amber-300 text-xs flex items-center gap-1 animate-bounce">
-          <span>{avatarEmoji}</span>
-          <span className="text-[8px] font-mono font-bold text-slate-800 uppercase tracking-tighter truncate max-w-16">{safeName.split(' ')[0]}</span>
-        </div>
-
-        {/* Slick neat stylized top hairstyle with gradients */}
-        <div className="absolute top-2.5 w-24 h-11 bg-gradient-to-b from-amber-950 via-[#332211] to-amber-950 rounded-b-2xl rounded-t-3xl z-0" />
-
-        {/* Head Canvas with elegant shading */}
-        <div className="relative w-28 h-28 bg-[#FDF0D5] rounded-full border-3 border-white shadow-xl flex flex-col items-center overflow-visible z-10 transition-transform duration-300">
-          
-          {/* Expressive eyebrows */}
-          <div className="flex justify-between w-15 absolute top-11 z-10">
-            <div className="h-1 w-4.5 bg-[#4A3B32] rounded-full" />
-            <div className="h-1 w-4.5 bg-[#4A3B32] rounded-full" />
-          </div>
-
-          {/* High-fidelity large anime eyes with gorgeous pupils */}
-          <div className="flex justify-between w-18 absolute top-12.5 z-10">
-            <div className="w-6.5 h-6.5 flex items-center justify-center relative">
-              {blink ? (
-                <div className="h-0.5 w-5 bg-slate-800 rounded-full" />
-              ) : (
-                <div className={`w-5.5 h-5.5 rounded-full bg-gradient-to-br from-amber-900 to-amber-950 p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  <div className="w-3.5 h-3.5 rounded-full bg-slate-900 flex items-center justify-center relative">
-                    <div className="w-1.5 h-1.5 bg-white rounded-full absolute top-0.5 left-0.5" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="w-6.5 h-6.5 flex items-center justify-center relative">
-              {blink ? (
-                <div className="h-0.5 w-5 bg-slate-800 rounded-full" />
-              ) : (
-                <div className={`w-5.5 h-5.5 rounded-full bg-gradient-to-br from-amber-900 to-amber-950 p-0.5 flex items-center justify-center transition-transform duration-300 ${getEyeBallOffset()}`}>
-                  <div className="w-3.5 h-3.5 rounded-full bg-slate-900 flex items-center justify-center relative">
-                    <div className="w-1.5 h-1.5 bg-white rounded-full absolute top-0.5 left-0.5" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Rounded cute cartoon nose with shading */}
-          <div className="absolute top-20 w-1.5 h-2.5 bg-[#E6D4B9] rounded-full" />
-
-          {/* Talking Mouth */}
-          {renderInteractiveMouth()}
-        </div>
-
-        {/* Polished shoulders with subject themed polo shirt */}
-        <div className={`absolute bottom-[-18px] w-28 h-12 bg-gradient-to-r ${shirtBg} rounded-t-3xl border-t-2 border-white shadow-md flex items-start justify-center z-5`}>
-          {/* Collar shirt flap overlay */}
-          <div className="w-12 h-4.5 bg-white rounded-b-xl flex justify-between px-1 shadow-xs border-x border-slate-150">
-            <div className="w-4 h-full bg-white border-r border-gray-150 rotate-15 cursor-pointer" />
-            <div className="w-4 h-full bg-white border-l border-gray-150 -rotate-15 cursor-pointer" />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Render hands connected via virtual visual sleeves extending inside the canvas
-  const renderHands = () => {
-    return null;
-  };
-
-  if (minimal) {
-    const renderFaceForType = () => {
-      switch (teacherType) {
-        case 'dadi':
-          return renderDadiFace();
-        case 'swami':
-          return renderSwamiFace();
-        case 'chanda':
-          return renderChandaFace();
-        case 'scholar':
-          return renderScholarFace();
-        case 'eagle':
-          return renderEagleFace();
-        case 'panther':
-          return renderPantherFace();
-        default:
-          return renderGenericFace();
-      }
-    };
-
-    return (
-      <div className={`relative flex items-center justify-center select-none overflow-hidden rounded-full ${className}`}>
-        {/* Dynamic Keyframes injected into DOM for subtle breathing rhythm */}
-        <style>{`
-          @keyframes natural-breathe {
-            0%, 100% { transform: translateY(0px) scale(1); }
-            50% { transform: translateY(-2px) scale(1.015); }
-          }
-          .ai-breath-cycle {
-            animation: natural-breathe 4.5s ease-in-out infinite;
-          }
-        `}</style>
+        {/* Head Chassis */}
+        <rect x="22" y="26" width="76" height="66" rx="20" fill="#1E293B" stroke="#64748B" strokeWidth="2.5" />
         
-        {/* Minimal rounded container with scaled face centered cleanly */}
-        <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-transparent">
-          <div className="absolute inset-0 flex items-center justify-center scale-[0.25] pointer-events-none ai-breath-cycle">
-            {renderFaceForType()}
-          </div>
+        {/* Ear Bolts */}
+        <rect x="17" y="52" width="6" height="14" rx="2" fill="#475569" stroke="#94A3B8" strokeWidth="1" />
+        <rect x="97" y="52" width="6" height="14" rx="2" fill="#475569" stroke="#94A3B8" strokeWidth="1" />
+
+        {/* Visor Area */}
+        <rect x="28" y="40" width="64" height="28" rx="10" fill="#090D16" stroke="#38BDF8" strokeWidth="1.8" />
+
+        {/* Futuristic Glowing Eyes inside Visor */}
+        {blink ? (
+          <>
+            <line x1="39" y1="54" x2="51" y2="54" stroke="#38BDF8" strokeWidth="3" strokeLinecap="round" />
+            <line x1="69" y1="54" x2="81" y2="54" stroke="#38BDF8" strokeWidth="3" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            {/* Left Eye */}
+            <circle cx={45 + pupilDx} cy={54 + pupilDy} r="7" fill="#0284C7" stroke="#38BDF8" strokeWidth="1.5" />
+            <circle cx={45 + pupilDx} cy={54 + pupilDy} r="3" fill="#BAE6FD" />
+            <circle cx={43 + pupilDx} cy={52 + pupilDy} r="1.2" fill="#FFFFFF" />
+
+            {/* Right Eye */}
+            <circle cx={75 + pupilDx} cy={54 + pupilDy} r="7" fill="#0284C7" stroke="#38BDF8" strokeWidth="1.5" />
+            <circle cx={75 + pupilDx} cy={54 + pupilDy} r="3" fill="#BAE6FD" />
+            <circle cx={73 + pupilDx} cy={52 + pupilDy} r="1.2" fill="#FFFFFF" />
+          </>
+        )}
+
+        {/* LED Equalizer Mouth */}
+        {!isPlaying ? (
+          <rect x="46" y="77" width="28" height="3" rx="1.5" fill="#38BDF8" />
+        ) : mouthStep === 1 ? (
+          <g>
+            <rect x="44" y="74" width="4" height="8" rx="1" fill="#38BDF8" />
+            <rect x="50" y="72" width="4" height="12" rx="1" fill="#7DD3FC" />
+            <rect x="56" y="70" width="8" height="16" rx="1" fill="#38BDF8" />
+            <rect x="66" y="72" width="4" height="12" rx="1" fill="#7DD3FC" />
+            <rect x="72" y="74" width="4" height="8" rx="1" fill="#38BDF8" />
+          </g>
+        ) : (
+          <g>
+            <rect x="46" y="75" width="5" height="6" rx="1" fill="#38BDF8" />
+            <rect x="53" y="73" width="14" height="10" rx="2" fill="#7DD3FC" />
+            <rect x="69" y="75" width="5" height="6" rx="1" fill="#38BDF8" />
+          </g>
+        )}
+
+        {/* Chest Base */}
+        <path d="M 38 92 L 82 92 L 92 110 L 28 110 Z" fill="#0F172A" stroke="#475569" strokeWidth="2" />
+        <rect x="48" y="98" width="24" height="4" rx="2" fill="#0EA5E9" className={isPlaying ? "animate-pulse" : ""} />
+      </svg>
+    );
+  };
+
+  // --- DADI AI SVG FACE (Grandmother 👵) ---
+  const renderDadiVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Silver Bun on top */}
+        <circle cx="60" cy="18" r="14" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="1.5" />
+        <line x1="50" y1="18" x2="70" y2="15" stroke="#D97706" strokeWidth="2.5" strokeLinecap="round" />
+
+        {/* Head Base */}
+        <circle cx="60" cy="58" r="34" fill="#FED7AA" stroke="#F97316" strokeWidth="1.5" />
+
+        {/* Parted Silver Hair */}
+        <path d="M 28 50 C 35 30, 85 30, 92 50 C 85 34, 60 36, 60 42 C 60 36, 35 34, 28 50 Z" fill="#E2E8F0" />
+
+        {/* Red & Gold Bindi */}
+        <circle cx="60" cy="44" r="3.2" fill="#DC2626" />
+        <circle cx="60" cy="44" r="1.2" fill="#FDE047" />
+
+        {/* Eyebrows */}
+        <path d="M 40 48 Q 48 45 54 48" stroke="#64748B" strokeWidth="2" strokeLinecap="round" fill="none" />
+        <path d="M 66 48 Q 72 45 80 48" stroke="#64748B" strokeWidth="2" strokeLinecap="round" fill="none" />
+
+        {/* Golden Grandmother Spectacles 👓 */}
+        <circle cx="47" cy="57" r="9" stroke="#D97706" strokeWidth="2" fill="#FFFFFF" fillOpacity="0.3" />
+        <circle cx="73" cy="57" r="9" stroke="#D97706" strokeWidth="2" fill="#FFFFFF" fillOpacity="0.3" />
+        <path d="M 56 57 Q 60 55 64 57" stroke="#D97706" strokeWidth="2" fill="none" />
+
+        {/* Eyes inside glasses */}
+        {blink ? (
+          <>
+            <line x1="42" y1="57" x2="52" y2="57" stroke="#451A03" strokeWidth="2" strokeLinecap="round" />
+            <line x1="68" y1="57" x2="78" y2="57" stroke="#451A03" strokeWidth="2" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <circle cx={47 + pupilDx} cy={57 + pupilDy} r="4.2" fill="#451A03" />
+            <circle cx={46 + pupilDx} cy={55.5 + pupilDy} r="1.3" fill="#FFFFFF" />
+            <circle cx={73 + pupilDx} cy={57 + pupilDy} r="4.2" fill="#451A03" />
+            <circle cx={72 + pupilDx} cy={55.5 + pupilDy} r="1.3" fill="#FFFFFF" />
+          </>
+        )}
+
+        {/* Rosy Cheeks */}
+        <circle cx="38" cy="65" r="4.5" fill="#FDA4AF" fillOpacity="0.6" />
+        <circle cx="82" cy="65" r="4.5" fill="#FDA4AF" fillOpacity="0.6" />
+
+        {/* Cute Nose */}
+        <path d="M 60 62 Q 62 67 58 68" stroke="#C2410C" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+
+        {/* Lip Sync Mouth */}
+        {renderMouth(60, 77)}
+
+        {/* Traditional Red Embroidered Saree Neck */}
+        <path d="M 28 88 C 40 82, 80 82, 92 88 L 102 118 L 18 118 Z" fill="#991B1B" />
+        <path d="M 24 95 Q 60 92 96 95" stroke="#FBBF24" strokeWidth="3" fill="none" />
+      </svg>
+    );
+  };
+
+  // --- CHANDA FOX SVG FACE (Smart Fox 🦊) ---
+  const renderChandaVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Pointy Fox Ears with Twitch animation */}
+        <g className={earTwitch ? "animate-pulse" : ""}>
+          {/* Left Ear */}
+          <polygon points="26,45 36,12 55,38" fill="#EA580C" stroke="#FFFFFF" strokeWidth="1.5" />
+          <polygon points="32,40 37,18 49,36" fill="#FECDD3" />
+          {/* Right Ear */}
+          <polygon points="94,45 84,12 65,38" fill="#EA580C" stroke="#FFFFFF" strokeWidth="1.5" />
+          <polygon points="88,40 83,18 71,36" fill="#FECDD3" />
+        </g>
+
+        {/* Fox Head Oval */}
+        <ellipse cx="60" cy="60" rx="36" ry="32" fill="#F97316" stroke="#FFFFFF" strokeWidth="2" />
+
+        {/* White Cheek Fur */}
+        <path d="M 26 64 C 36 60, 48 72, 60 82 C 72 72, 84 60, 94 64 C 92 84, 60 94, 26 64 Z" fill="#FFFFFF" />
+
+        {/* Smart Student Glasses 👓 */}
+        <rect x="36" y="47" width="20" height="15" rx="5" stroke="#0284C7" strokeWidth="2" fill="#E0F2FE" fillOpacity="0.4" />
+        <rect x="64" y="47" width="20" height="15" rx="5" stroke="#0284C7" strokeWidth="2" fill="#E0F2FE" fillOpacity="0.4" />
+        <line x1="56" y1="54" x2="64" y2="54" stroke="#0284C7" strokeWidth="2" />
+
+        {/* Bright Fox Eyes inside glasses */}
+        {blink ? (
+          <>
+            <line x1="41" y1="54" x2="51" y2="54" stroke="#451A03" strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="69" y1="54" x2="79" y2="54" stroke="#451A03" strokeWidth="2.5" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <ellipse cx={46 + pupilDx} cy={54 + pupilDy} rx="4" ry="4.5" fill="#451A03" />
+            <circle cx={44.5 + pupilDx} cy={52.5 + pupilDy} r="1.5" fill="#FFFFFF" />
+            <ellipse cx={74 + pupilDx} cy={54 + pupilDy} rx="4" ry="4.5" fill="#451A03" />
+            <circle cx={72.5 + pupilDx} cy={52.5 + pupilDy} r="1.5" fill="#FFFFFF" />
+          </>
+        )}
+
+        {/* Fox Nose Tip */}
+        <polygon points="56,73 64,73 60,78" fill="#1C1917" />
+
+        {/* Mouth */}
+        {renderMouth(60, 83)}
+
+        {/* Math Wizard Collar */}
+        <path d="M 38 88 L 60 98 L 82 88 L 92 115 L 28 115 Z" fill="#1E293B" stroke="#F59E0B" strokeWidth="2" />
+        <text x="60" y="108" textAnchor="middle" fill="#FCD34D" fontSize="8" fontWeight="bold" fontFamily="monospace">∑</text>
+      </svg>
+    );
+  };
+
+  // --- RAMANUJAN / MATH EXPERT SVG (📐) ---
+  const renderRamanujanVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="60" r="54" fill="#3B82F6" fillOpacity="0.08" />
+        {/* Head */}
+        <circle cx="60" cy="56" r="33" fill="#FED7AA" stroke="#F97316" strokeWidth="1.5" />
+        {/* Parted Dark Hair */}
+        <path d="M 28 46 C 36 24, 84 24, 92 46 C 84 32, 60 30, 28 46 Z" fill="#1E293B" />
+        {/* Sacred Vermilion Tilak */}
+        <line x1="60" y1="36" x2="60" y2="48" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" />
+        <circle cx="60" cy="50" r="1.5" fill="#EAB308" />
+        {/* Eyebrows */}
+        <path d="M 40 47 Q 48 44 54 47" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" fill="none" />
+        <path d="M 66 47 Q 72 44 80 47" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" fill="none" />
+        {/* Deep Intelligent Eyes */}
+        {blink ? (
+          <>
+            <line x1="41" y1="55" x2="52" y2="55" stroke="#1E293B" strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="68" y1="55" x2="79" y2="55" stroke="#1E293B" strokeWidth="2.5" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <circle cx={47 + pupilDx} cy={55 + pupilDy} r="5" fill="#1E293B" />
+            <circle cx={45.5 + pupilDx} cy={53 + pupilDy} r="1.5" fill="#FFFFFF" />
+            <circle cx={73 + pupilDx} cy={55 + pupilDy} r="5" fill="#1E293B" />
+            <circle cx={71.5 + pupilDx} cy={53 + pupilDy} r="1.5" fill="#FFFFFF" />
+          </>
+        )}
+        {/* Nose & Mouth */}
+        <path d="M 60 58 Q 62 65 58 67" stroke="#C2410C" strokeWidth="1.5" fill="none" />
+        {renderMouth(60, 76)}
+        {/* Traditional Kurta with Gold Stole */}
+        <path d="M 28 86 Q 60 84 92 86 L 102 118 L 18 118 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="1.5" />
+        <path d="M 42 86 L 50 118" stroke="#D97706" strokeWidth="4" />
+        <path d="M 78 86 L 70 118" stroke="#D97706" strokeWidth="4" />
+      </svg>
+    );
+  };
+
+  // --- DR. APJ ROCKET / SPACE EXPERT SVG (🚀) ---
+  const renderRocketVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="60" r="54" fill="#6366F1" fillOpacity="0.12" />
+        {/* Astronaut Helmet Bubble */}
+        <circle cx="60" cy="56" r="42" fill="#0F172A" stroke="#38BDF8" strokeWidth="2.5" />
+        {/* Helmet Visor Reflection */}
+        <path d="M 32 40 Q 60 26 88 40" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" opacity="0.6" fill="none" />
+        {/* Friendly Face inside Visor */}
+        <circle cx="60" cy="58" r="28" fill="#FED7AA" />
+        {/* Famous Waved Hair Parting */}
+        <path d="M 34 50 C 40 32, 80 32, 86 50 C 76 36, 60 38, 34 50 Z" fill="#475569" />
+        {/* Kind Eyes */}
+        {blink ? (
+          <>
+            <line x1="43" y1="57" x2="51" y2="57" stroke="#1E293B" strokeWidth="2.2" strokeLinecap="round" />
+            <line x1="69" y1="57" x2="77" y2="57" stroke="#1E293B" strokeWidth="2.2" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <circle cx={47 + pupilDx} cy={57 + pupilDy} r="4.2" fill="#1E293B" />
+            <circle cx={45.5 + pupilDx} cy={55.5 + pupilDy} r="1.3" fill="#FFFFFF" />
+            <circle cx={73 + pupilDx} cy={57 + pupilDy} r="4.2" fill="#1E293B" />
+            <circle cx={71.5 + pupilDx} cy={55.5 + pupilDy} r="1.3" fill="#FFFFFF" />
+          </>
+        )}
+        {renderMouth(60, 75)}
+        {/* ISRO Space Suit Collar */}
+        <path d="M 28 92 C 40 86, 80 86, 92 92 L 104 118 L 16 118 Z" fill="#F8FAFC" stroke="#0284C7" strokeWidth="2" />
+        <rect x="52" y="98" width="16" height="8" rx="2" fill="#EA580C" />
+        <text x="60" y="104" textAnchor="middle" fill="#FFFFFF" fontSize="5" fontWeight="bold">ISRO</text>
+      </svg>
+    );
+  };
+
+  // --- DR. ANANDI / BIO-MED EXPERT SVG (🧪) ---
+  const renderAnandiVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="60" r="54" fill="#10B981" fillOpacity="0.1" />
+        {/* Head */}
+        <circle cx="60" cy="56" r="32" fill="#FED7AA" stroke="#F97316" strokeWidth="1.5" />
+        {/* Dark Braided Updo Hair */}
+        <path d="M 28 48 C 36 26, 84 26, 92 48 C 84 34, 60 32, 28 48 Z" fill="#0F172A" />
+        <circle cx="60" cy="24" r="10" fill="#0F172A" />
+        {/* Red Bindi */}
+        <circle cx="60" cy="44" r="2.5" fill="#E11D48" />
+        {/* Smart Medical Wire Glasses 👓 */}
+        <circle cx="47" cy="55" r="8" stroke="#0D9488" strokeWidth="1.8" fill="#ECFDF5" fillOpacity="0.4" />
+        <circle cx="73" cy="55" r="8" stroke="#0D9488" strokeWidth="1.8" fill="#ECFDF5" fillOpacity="0.4" />
+        <line x1="55" y1="55" x2="65" y2="55" stroke="#0D9488" strokeWidth="1.8" />
+        {/* Eyes inside glasses */}
+        {blink ? (
+          <>
+            <line x1="43" y1="55" x2="51" y2="55" stroke="#1E293B" strokeWidth="2.2" strokeLinecap="round" />
+            <line x1="69" y1="55" x2="77" y2="55" stroke="#1E293B" strokeWidth="2.2" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <circle cx={47 + pupilDx} cy={55 + pupilDy} r="4" fill="#1E293B" />
+            <circle cx={45.5 + pupilDx} cy={53.5 + pupilDy} r="1.3" fill="#FFFFFF" />
+            <circle cx={73 + pupilDx} cy={55 + pupilDy} r="4" fill="#1E293B" />
+            <circle cx={71.5 + pupilDx} cy={53.5 + pupilDy} r="1.3" fill="#FFFFFF" />
+          </>
+        )}
+        {renderMouth(60, 75)}
+        {/* White Doctor Coat with Stethoscope */}
+        <path d="M 28 86 Q 60 84 92 86 L 102 118 L 18 118 Z" fill="#FFFFFF" stroke="#0D9488" strokeWidth="2" />
+        <path d="M 44 86 Q 60 102 76 86" stroke="#475569" strokeWidth="2" fill="none" />
+        <circle cx="60" cy="104" r="3" fill="#0D9488" />
+      </svg>
+    );
+  };
+
+  // --- RANI LAXMI / HISTORY HERO SVG (🛡️) ---
+  const renderLaxmiVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="60" r="54" fill="#E11D48" fillOpacity="0.1" />
+        {/* Royal Warrior Pagri (Turban) with Gold Crest */}
+        <path d="M 26 44 C 30 20, 90 20, 94 44 Z" fill="#BE123C" stroke="#F59E0B" strokeWidth="2" />
+        <circle cx="60" cy="24" r="5" fill="#FBBF24" />
+        <path d="M 60 19 L 60 10" stroke="#FBBF24" strokeWidth="2.5" strokeLinecap="round" />
+        {/* Face */}
+        <circle cx="60" cy="58" r="31" fill="#FED7AA" stroke="#F97316" strokeWidth="1.5" />
+        <circle cx="60" cy="46" r="3" fill="#E11D48" />
+        {/* Brave, Radiant Eyes */}
+        {blink ? (
+          <>
+            <line x1="41" y1="56" x2="52" y2="56" stroke="#1E293B" strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="68" y1="56" x2="79" y2="56" stroke="#1E293B" strokeWidth="2.5" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <circle cx={47 + pupilDx} cy={56 + pupilDy} r="4.8" fill="#1E293B" />
+            <circle cx={45.5 + pupilDx} cy={54 + pupilDy} r="1.5" fill="#FFFFFF" />
+            <circle cx={73 + pupilDx} cy={56 + pupilDy} r="4.8" fill="#1E293B" />
+            <circle cx={71.5 + pupilDx} cy={54 + pupilDy} r="1.5" fill="#FFFFFF" />
+          </>
+        )}
+        {renderMouth(60, 76)}
+        {/* Royal Armor & Stole */}
+        <path d="M 28 86 Q 60 84 92 86 L 102 118 L 18 118 Z" fill="#991B1B" stroke="#F59E0B" strokeWidth="2" />
+        <circle cx="60" cy="100" r="6" fill="#F59E0B" />
+      </svg>
+    );
+  };
+
+  // --- NEWTON / PHYSICS SAGE SVG (🍎) ---
+  const renderNewtonVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="60" r="54" fill="#EA580C" fillOpacity="0.1" />
+        {/* Curly White/Grey Scholar Hair */}
+        <circle cx="34" cy="48" r="14" fill="#E2E8F0" />
+        <circle cx="86" cy="48" r="14" fill="#E2E8F0" />
+        <circle cx="30" cy="64" r="12" fill="#E2E8F0" />
+        <circle cx="90" cy="64" r="12" fill="#E2E8F0" />
+        <circle cx="60" cy="30" r="16" fill="#E2E8F0" />
+        {/* Face */}
+        <circle cx="60" cy="58" r="30" fill="#FED7AA" stroke="#E2E8F0" strokeWidth="1.5" />
+        {blink ? (
+          <>
+            <line x1="43" y1="57" x2="52" y2="57" stroke="#1E293B" strokeWidth="2.2" strokeLinecap="round" />
+            <line x1="68" y1="57" x2="77" y2="57" stroke="#1E293B" strokeWidth="2.2" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <circle cx={47 + pupilDx} cy={57 + pupilDy} r="4.2" fill="#1E293B" />
+            <circle cx={45.5 + pupilDx} cy={55.5 + pupilDy} r="1.3" fill="#FFFFFF" />
+            <circle cx={73 + pupilDx} cy={57 + pupilDy} r="4.2" fill="#1E293B" />
+            <circle cx={71.5 + pupilDx} cy={55.5 + pupilDy} r="1.3" fill="#FFFFFF" />
+          </>
+        )}
+        {renderMouth(60, 76)}
+        {/* Jacket with Apple Pin */}
+        <path d="M 28 86 Q 60 84 92 86 L 102 118 L 18 118 Z" fill="#1E293B" stroke="#94A3B8" strokeWidth="1.5" />
+        <circle cx="70" cy="98" r="4.5" fill="#EF4444" />
+        <line x1="70" y1="94" x2="72" y2="91" stroke="#15803D" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    );
+  };
+
+  // --- TURING CYBER PANTHER / COMPUTER & EXCEL AI (💻) ---
+  const renderPantherVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Glow halo */}
+        <circle cx="60" cy="60" r="54" fill="#06B6D4" fillOpacity="0.12" />
+
+        {/* Pointy Cyber Ears */}
+        <polygon points="26,45 34,14 54,36" fill="#0F172A" stroke="#22D3EE" strokeWidth="2" />
+        <polygon points="32,40 36,20 48,34" fill="#06B6D4" opacity="0.8" />
+        <polygon points="94,45 86,14 66,36" fill="#0F172A" stroke="#22D3EE" strokeWidth="2" />
+        <polygon points="88,40 84,20 72,34" fill="#06B6D4" opacity="0.8" />
+
+        {/* Obsidian Head */}
+        <rect x="26" y="32" width="68" height="60" rx="22" fill="#0F172A" stroke="#06B6D4" strokeWidth="2.5" />
+
+        {/* Cyan Neon Forehead Line */}
+        <line x1="42" y1="42" x2="78" y2="42" stroke="#22D3EE" strokeWidth="2.5" strokeLinecap="round" className="animate-pulse" />
+
+        {/* Neon Feline Eyes */}
+        {blink ? (
+          <>
+            <line x1="38" y1="56" x2="52" y2="56" stroke="#22D3EE" strokeWidth="3.5" strokeLinecap="round" />
+            <line x1="68" y1="56" x2="82" y2="56" stroke="#22D3EE" strokeWidth="3.5" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <ellipse cx={45 + pupilDx} cy={56 + pupilDy} rx="6" ry="4.5" fill="#0891B2" stroke="#22D3EE" strokeWidth="1.8" />
+            <ellipse cx={45 + pupilDx} cy={56 + pupilDy} rx="2" ry="4" fill="#ECFEFF" />
+            <ellipse cx={75 + pupilDx} cy={56 + pupilDy} rx="6" ry="4.5" fill="#0891B2" stroke="#22D3EE" strokeWidth="1.8" />
+            <ellipse cx={75 + pupilDx} cy={56 + pupilDy} rx="2" ry="4" fill="#ECFEFF" />
+          </>
+        )}
+
+        {/* Cyber Whiskers */}
+        <line x1="22" y1="68" x2="38" y2="70" stroke="#22D3EE" strokeWidth="1.8" strokeLinecap="round" />
+        <line x1="22" y1="75" x2="38" y2="74" stroke="#22D3EE" strokeWidth="1.8" strokeLinecap="round" />
+        <line x1="98" y1="68" x2="82" y2="70" stroke="#22D3EE" strokeWidth="1.8" strokeLinecap="round" />
+        <line x1="98" y1="75" x2="82" y2="74" stroke="#22D3EE" strokeWidth="1.8" strokeLinecap="round" />
+
+        {/* Nose & Mouth */}
+        <polygon points="57,72 63,72 60,76" fill="#22D3EE" />
+        {renderMouth(60, 82)}
+
+        {/* Cyber Neck Base */}
+        <path d="M 36 90 L 84 90 L 96 116 L 24 116 Z" fill="#020617" stroke="#0891B2" strokeWidth="2" />
+        <text x="60" y="106" textAnchor="middle" fill="#22D3EE" fontSize="7" fontWeight="bold" fontFamily="monospace">&lt;/&gt;</text>
+      </svg>
+    );
+  };
+
+  // --- WILLIAM AI (GRAMMAR EAGLE 🦅) ---
+  const renderEagleVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Crown White Feathers */}
+        <path d="M 28 46 C 36 18, 84 18, 92 46 Z" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1.5" />
+        {/* Golden-Brown Head Base */}
+        <circle cx="60" cy="58" r="32" fill="#78350F" stroke="#D97706" strokeWidth="1.5" />
+        <path d="M 32 50 C 44 46, 76 46, 88 50 C 80 62, 40 62, 32 50 Z" fill="#F8FAFC" />
+        {/* Piercing Eagle Eyes */}
+        {blink ? (
+          <>
+            <line x1="40" y1="52" x2="52" y2="52" stroke="#451A03" strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="68" y1="52" x2="80" y2="52" stroke="#451A03" strokeWidth="2.5" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <circle cx={46 + pupilDx} cy={52 + pupilDy} r="5.5" fill="#F59E0B" stroke="#B45309" strokeWidth="1.5" />
+            <circle cx={46 + pupilDx} cy={52 + pupilDy} r="2.8" fill="#1C1917" />
+            <circle cx={44.5 + pupilDx} cy={50.5 + pupilDy} r="1" fill="#FFFFFF" />
+            <circle cx={74 + pupilDx} cy={52 + pupilDy} r="5.5" fill="#F59E0B" stroke="#B45309" strokeWidth="1.5" />
+            <circle cx={74 + pupilDx} cy={52 + pupilDy} r="2.8" fill="#1C1917" />
+            <circle cx={72.5 + pupilDx} cy={50.5 + pupilDy} r="1" fill="#FFFFFF" />
+          </>
+        )}
+        {/* Curved Golden Beak */}
+        <path d="M 52 64 C 52 60, 68 60, 68 64 C 68 76, 60 84, 60 84 C 60 84, 52 76, 52 64 Z" fill="#F59E0B" stroke="#B45309" strokeWidth="1.5" />
+        {renderMouth(60, 88)}
+      </svg>
+    );
+  };
+
+  // --- KISAN TECH AI (FARMER GUIDE 🌾) ---
+  const renderKisanVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="60" r="54" fill="#10B981" fillOpacity="0.1" />
+        {/* Green Pagri / Gamcha (Farmer Turban) */}
+        <path d="M 24 44 C 30 18, 90 18, 96 44 Z" fill="#15803D" stroke="#166534" strokeWidth="2" />
+        <path d="M 32 38 Q 60 30 88 38" stroke="#FACC15" strokeWidth="2.5" fill="none" />
+        <path d="M 22 42 Q 18 55 24 64" stroke="#15803D" strokeWidth="3" fill="none" strokeLinecap="round" />
+        {/* Smiling Warm Face */}
+        <circle cx="60" cy="58" r="32" fill="#FED7AA" stroke="#F97316" strokeWidth="1.5" />
+        {/* Kind Farmer Eyes */}
+        {blink ? (
+          <>
+            <line x1="41" y1="56" x2="52" y2="56" stroke="#451A03" strokeWidth="2.4" strokeLinecap="round" />
+            <line x1="68" y1="56" x2="79" y2="56" stroke="#451A03" strokeWidth="2.4" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <circle cx={47 + pupilDx} cy={56 + pupilDy} r="4.8" fill="#451A03" />
+            <circle cx={45.5 + pupilDx} cy={54 + pupilDy} r="1.5" fill="#FFFFFF" />
+            <circle cx={73 + pupilDx} cy={56 + pupilDy} r="4.8" fill="#451A03" />
+            <circle cx={71.5 + pupilDx} cy={54 + pupilDy} r="1.5" fill="#FFFFFF" />
+          </>
+        )}
+        {/* Gentle Moustache */}
+        <path d="M 46 72 Q 54 74 60 70 Q 66 74 74 72" stroke="#451A03" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+        {renderMouth(60, 78)}
+        {/* White Kurta with Golden Wheat Emblem */}
+        <path d="M 28 88 Q 60 84 92 88 L 102 118 L 18 118 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="1.5" />
+        <circle cx="60" cy="100" r="6" fill="#F59E0B" />
+        <text x="60" y="103" textAnchor="middle" fontSize="7">🌾</text>
+      </svg>
+    );
+  };
+
+  // --- KAVI NARMAD / GUJARATI SCHOLAR (📜) ---
+  const renderScholarVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="60" r="54" fill="#D97706" fillOpacity="0.1" />
+        {/* Traditional Gujarati Pagri (Turban) */}
+        <path d="M 24 44 C 30 16, 90 16, 96 44 Z" fill="#D97706" stroke="#B45309" strokeWidth="2" />
+        <circle cx="60" cy="22" r="6" fill="#FBBF24" />
+        {/* Face */}
+        <circle cx="60" cy="58" r="32" fill="#FED7AA" stroke="#F97316" strokeWidth="1.5" />
+        {/* Tilak */}
+        <line x1="60" y1="42" x2="60" y2="52" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" />
+        {/* Literary Eyes */}
+        {blink ? (
+          <>
+            <line x1="41" y1="56" x2="52" y2="56" stroke="#451A03" strokeWidth="2.2" strokeLinecap="round" />
+            <line x1="68" y1="56" x2="79" y2="56" stroke="#451A03" strokeWidth="2.2" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <circle cx={47 + pupilDx} cy={56 + pupilDy} r="4.5" fill="#451A03" />
+            <circle cx={45.5 + pupilDx} cy={54.5 + pupilDy} r="1.3" fill="#FFFFFF" />
+            <circle cx={73 + pupilDx} cy={56 + pupilDy} r="4.5" fill="#451A03" />
+            <circle cx={71.5 + pupilDx} cy={54.5 + pupilDy} r="1.3" fill="#FFFFFF" />
+          </>
+        )}
+        {renderMouth(60, 77)}
+        {/* Kurta with Golden Stole & Quill */}
+        <path d="M 28 88 Q 60 84 92 88 L 102 118 L 18 118 Z" fill="#FEF3C7" stroke="#D97706" strokeWidth="1.5" />
+        <circle cx="60" cy="100" r="6" fill="#D97706" />
+        <text x="60" y="103" textAnchor="middle" fontSize="7">📜</text>
+      </svg>
+    );
+  };
+
+  // --- UNIVERSAL CHARMING AI TEACHER (Generic / Fallback) ---
+  const renderGenericVector = () => {
+    return (
+      <svg viewBox="0 0 120 120" width="100%" height="100%" className="w-full h-full select-none" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {/* Ambient Ring */}
+        <circle cx="60" cy="60" r="54" fill="#3D405B" fillOpacity="0.12" />
+
+        {/* Head */}
+        <circle cx="60" cy="56" r="32" fill="#FED7AA" stroke="#F97316" strokeWidth="1.5" />
+
+        {/* Stylized Modern Hairstyle */}
+        <path d="M 30 46 C 36 24, 84 24, 90 46 C 82 30, 60 30, 30 46 Z" fill="#332211" />
+
+        {/* Eyebrows */}
+        <path d="M 40 46 Q 48 43 54 46" stroke="#332211" strokeWidth="2" strokeLinecap="round" fill="none" />
+        <path d="M 66 46 Q 72 43 80 46" stroke="#332211" strokeWidth="2" strokeLinecap="round" fill="none" />
+
+        {/* Big Expressive Anime Eyes */}
+        {blink ? (
+          <>
+            <line x1="41" y1="54" x2="52" y2="54" stroke="#1E293B" strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="68" y1="54" x2="79" y2="54" stroke="#1E293B" strokeWidth="2.5" strokeLinecap="round" />
+          </>
+        ) : (
+          <>
+            <circle cx={47 + pupilDx} cy={54 + pupilDy} r="5.2" fill="#1E293B" />
+            <circle cx={45.5 + pupilDx} cy={52 + pupilDy} r="1.8" fill="#FFFFFF" />
+            <circle cx={73 + pupilDx} cy={54 + pupilDy} r="5.2" fill="#1E293B" />
+            <circle cx={71.5 + pupilDx} cy={52 + pupilDy} r="1.8" fill="#FFFFFF" />
+          </>
+        )}
+
+        {/* Rosy Cheeks */}
+        <circle cx="37" cy="64" r="4.5" fill="#FDA4AF" fillOpacity="0.6" />
+        <circle cx="83" cy="64" r="4.5" fill="#FDA4AF" fillOpacity="0.6" />
+
+        {/* Nose */}
+        <circle cx="60" cy="64" r="1.8" fill="#E6D4B9" />
+
+        {/* Talking Mouth */}
+        {renderMouth(60, 76)}
+
+        {/* Mascot Emoji Badge Pin on Chest */}
+        <path d="M 30 86 Q 60 84 90 86 L 100 118 L 20 118 Z" fill="#3D405B" stroke="#64748B" strokeWidth="1.5" />
+        <circle cx="60" cy="98" r="9" fill="#FFFFFF" stroke="#F59E0B" strokeWidth="1.5" />
+        <text x="60" y="102" textAnchor="middle" fontSize="11">{avatarEmoji}</text>
+      </svg>
+    );
+  };
+
+  // Selector for vector render
+  const renderVectorFace = () => {
+    switch (teacherType) {
+      case 'swami':
+        return renderSwamiVector();
+      case 'dadi':
+        return renderDadiVector();
+      case 'chanda':
+        return renderChandaVector();
+      case 'ramanujan':
+        return renderRamanujanVector();
+      case 'rocket':
+        return renderRocketVector();
+      case 'anandi':
+        return renderAnandiVector();
+      case 'laxmi':
+        return renderLaxmiVector();
+      case 'newton':
+        return renderNewtonVector();
+      case 'panther':
+        return renderPantherVector();
+      case 'eagle':
+        return renderEagleVector();
+      case 'kisan':
+        return renderKisanVector();
+      case 'scholar':
+        return renderScholarVector();
+      case 'nature':
+      case 'generic':
+      default:
+        return renderGenericVector();
+    }
+  };
+
+  // When minimal={true} (e.g. inside small cards or PiP corners)
+  if (minimal) {
+    return (
+      <div 
+        className={`relative w-full h-full flex items-center justify-center select-none overflow-hidden rounded-full bg-slate-900 shadow-inner ${className}`}
+        title={safeName}
+      >
+        <div className="w-full h-full p-0.5 flex items-center justify-center">
+          {renderVectorFace()}
         </div>
+
+        {/* Live vocal vibration ripple */}
+        {isPlaying && (
+          <span className="absolute inset-0 rounded-full border-2 border-emerald-400/80 animate-ping pointer-events-none" />
+        )}
       </div>
     );
   }
 
+  // Full-featured portrait mode
   return (
     <div className={`relative flex flex-col items-center justify-center select-none ${className}`}>
-      
-      {/* Dynamic Keyframes injected into DOM for gorgeous breathing rhythm & twitches */}
       <style>{`
         @keyframes natural-breathe {
           0%, 100% { transform: translateY(0px) scale(1); }
-          50% { transform: translateY(-4px) scale(1.015); }
-        }
-        @keyframes subtle-shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
+          50% { transform: translateY(-3px) scale(1.018); }
         }
         .ai-breath-cycle {
-          animation: natural-breathe 4.5s ease-in-out infinite;
-        }
-        .animate-shimmer {
-          animation: subtle-shimmer 2s linear infinite;
+          animation: natural-breathe 4s ease-in-out infinite;
         }
       `}</style>
-      
-      {/* Background card/ambient circle wrapper equipped with warm dynamic breathing cycle */}
-      <div className="relative w-44 h-44 rounded-full bg-slate-900/40 backdrop-blur-xs flex items-center justify-center border-4 border-dashed border-white/20 transition-transform duration-500 scale-100 hover:scale-105 ai-breath-cycle">
-        
-        {/* Render Specific Real Character Face built with pristine overlapping vector shapes */}
-        {teacherType === 'dadi' && renderDadiFace()}
-        {teacherType === 'swami' && renderSwamiFace()}
-        {teacherType === 'chanda' && renderChandaFace()}
-        {teacherType === 'scholar' && renderScholarFace()}
-        {teacherType === 'eagle' && renderEagleFace()}
-        {teacherType === 'panther' && renderPantherFace()}
-        {teacherType === 'generic' && renderGenericFace()}
 
-        {/* Floating Hands & Gestures sleeve overlay */}
-        {renderHands()}
+      {/* Main Avatar Bubble */}
+      <div className="relative w-40 h-40 sm:w-44 sm:h-44 rounded-full bg-slate-900 shadow-2xl border-4 border-[#F2CC8F] p-2 flex items-center justify-center ai-breath-cycle overflow-hidden">
+        {renderVectorFace()}
 
-        {/* Ambient glow soundwaves pulsing on vocalization */}
+        {/* Active Speech Glow */}
         {isPlaying && (
-          <div className="absolute inset-0 rounded-full border-4 border-[#E07A5F]/30 animate-pulse [animation-duration:1.2s] pointer-events-none" />
+          <div className="absolute inset-0 rounded-full border-4 border-[#E07A5F] animate-pulse pointer-events-none" />
         )}
       </div>
 
-      {/* Name Title label card */}
-      <div className="mt-2 text-center">
-        <span className="bg-[#E07A5F] text-white text-[10px] font-sans font-black uppercase tracking-wider px-3.5 py-1 rounded-full shadow-md select-none border border-white">
-          {safeName}
+      {/* Name Title Label Card */}
+      <div className="mt-2.5 text-center flex flex-col items-center gap-1">
+        <span className="bg-[#E07A5F] text-white text-xs font-sans font-black tracking-wide px-3.5 py-1 rounded-full shadow-md select-none border border-white/60 flex items-center gap-1.5">
+          <span>{avatarEmoji}</span>
+          <span>{safeName}</span>
         </span>
       </div>
     </div>

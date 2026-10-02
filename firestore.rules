@@ -16,5 +16,8 @@ service cloud.firestore {
         allow read, write: if true;
       }
     }
+    match /educational_chunks/{chunkId} {
+      allow read, write: if true;
+    }
   }
 }
