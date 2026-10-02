@@ -317,7 +317,14 @@ export default function DashboardView({ user, lang, onUpdateUser, activeTab: pro
         setLocalUser((prev) => {
           const prevTs = prev?.updatedAt || 0;
           if (remoteTs < prevTs) return prev;
-          const merged = { ...prev, ...data };
+          const merged: User = { 
+            ...prev, 
+            ...data,
+            studyMins: Math.max(prev?.studyMins || 0, data?.studyMins || 0),
+            todayMins: Math.max(prev?.todayMins || 0, data?.todayMins || 0),
+            totalPoints: Math.max(prev?.totalPoints || 0, data?.totalPoints || 0),
+            streakDays: Math.max(prev?.streakDays || 0, data?.streakDays || 0)
+          };
           return merged;
         });
 
@@ -401,7 +408,7 @@ export default function DashboardView({ user, lang, onUpdateUser, activeTab: pro
             </div>
             <div className="text-left font-mono min-w-0 flex-1">
               <span className="text-[9px] text-emerald-800 font-bold uppercase tracking-wider block truncate">XP</span>
-              <span className="text-xs font-black text-gray-900 truncate block">{localUser.totalPoints ?? 15} pts</span>
+              <span className="text-xs font-black text-gray-900 truncate block">{localUser.totalPoints ?? 0} pts</span>
             </div>
           </div>
 
@@ -412,7 +419,7 @@ export default function DashboardView({ user, lang, onUpdateUser, activeTab: pro
             </div>
             <div className="text-left font-mono min-w-0 flex-1">
               <span className="text-[9px] text-orange-800 font-bold uppercase tracking-wider block truncate">{commonI18n.studyStreak}</span>
-              <span className="text-xs font-black text-gray-900 truncate block">{localUser.streakDays ?? 1} {commonI18n.days}</span>
+              <span className="text-xs font-black text-gray-900 truncate block">{localUser.streakDays ?? (localUser.lastCheckedInDate ? 1 : 0)} {commonI18n.days}</span>
             </div>
           </div>
 
@@ -423,7 +430,7 @@ export default function DashboardView({ user, lang, onUpdateUser, activeTab: pro
             </div>
             <div className="text-left font-mono min-w-0 flex-1">
               <span className="text-[9px] text-indigo-800 font-bold uppercase tracking-wider block truncate">{commonI18n.timeStudied}</span>
-              <span className="text-xs font-black text-gray-900 truncate block">{formatStudyTime(localUser.studyMins ?? 30, lang)}</span>
+              <span className="text-xs font-black text-gray-900 truncate block">{formatStudyTime(localUser.studyMins ?? 0, lang)}</span>
             </div>
           </div>
 

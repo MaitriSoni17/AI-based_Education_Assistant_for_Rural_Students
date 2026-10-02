@@ -3276,17 +3276,13 @@ startxref
       if (remoteUsers && remoteUsers.length > 0) {
         setUsersList(remoteUsers);
       } else {
-        // Mock fallback list if offline or empty
-        const fallbackUsers: User[] = ([
-          { mobile: adminUser.mobile, name: adminUser.name, defaultLanguage: 'en', role: 'admin', signupDate: '2026-01-01', village: 'HQ', streakDays: 99, totalPoints: 5000, studyMins: 1200 },
-          { mobile: '9876543210', name: 'Aarav Patel', defaultLanguage: 'hi' as LanguageCode, role: 'student', signupDate: '2026-06-15', village: 'Anand', school: 'Govt School Anand', standard: 'Std 8', streakDays: 14, totalPoints: 420, studyMins: 380 },
-          { mobile: '9812345678', name: 'Priya Sharma', defaultLanguage: 'gu' as LanguageCode, role: 'student', signupDate: '2026-07-02', village: 'Mehsana', school: 'Adarsh Primary School', standard: 'Std 9', streakDays: 8, totalPoints: 310, studyMins: 290 },
-          { mobile: '9765432109', name: 'Ramesh Patel', defaultLanguage: 'gu' as LanguageCode, role: 'teacher', signupDate: '2026-05-10', village: 'Mehsana', school: 'Adarsh Primary School', standard: 'Teacher', streakDays: 25, totalPoints: 890, studyMins: 950 }
-        ] as User[]).filter((u) => !deletedMobiles.includes(u.mobile));
-        setUsersList(fallbackUsers as any);
+        // Real authenticated admin fallback if no students registered yet
+        const realAdminList: User[] = [adminUser].filter((u) => !deletedMobiles.includes(u.mobile));
+        setUsersList(realAdminList as any);
       }
     } catch (e) {
-      console.error("Failed to load users for admin:", e);
+      console.error("Failed to load users for admin from Firestore:", e);
+      setUsersList([adminUser] as any);
     } finally {
       setIsLoadingUsers(false);
     }
@@ -3504,7 +3500,7 @@ startxref
   });
 
   // Calculate high-level analytics
-  const totalStudents = usersList.filter((u) => (u.role || 'student') === 'student').length || usersList.length;
+  const totalStudents = usersList.filter((u) => (u.role || 'student') === 'student').length;
   const totalTeachers = usersList.filter((u) => u.role === 'teacher').length;
   const totalStudyMinsAll = usersList.reduce((acc, u) => acc + (u.studyMins || 0), 0);
   const totalPointsAll = usersList.reduce((acc, u) => acc + (u.totalPoints || 0), 0);

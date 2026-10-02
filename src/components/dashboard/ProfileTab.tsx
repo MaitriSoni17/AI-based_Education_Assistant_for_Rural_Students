@@ -373,8 +373,8 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
   const [isStandardOpen, setIsStandardOpen] = useState(false);
 
   // Gamified statistics from user prop
-  const [userPoints, setUserPoints] = useState(() => user.totalPoints ?? 15);
-  const [streakDays, setStreakDays] = useState(() => user.streakDays ?? 1);
+  const [userPoints, setUserPoints] = useState(() => user.totalPoints ?? 0);
+  const [streakDays, setStreakDays] = useState(() => user.streakDays ?? (user.lastCheckedInDate ? 1 : 0));
   const [hasCheckedInToday, setHasCheckedInToday] = useState(() => user.lastCheckedInDate === getSafeDateString());
   const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
   const [badgeFilter, setBadgeFilter] = useState<'all' | 'unlocked' | 'locked' | 'general' | 'streak' | 'offline'>('all');
@@ -402,8 +402,8 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
     setSchool(user.school || '');
     setStandard(user.standard || '');
     setSelectedAvatar(user.avatar || getDeterministicAvatar(user.name, user.mobile));
-    setUserPoints(user.totalPoints ?? 15);
-    setStreakDays(user.streakDays ?? 1);
+    setUserPoints(user.totalPoints ?? 0);
+    setStreakDays(user.streakDays ?? (user.lastCheckedInDate ? 1 : 0));
     setHasCheckedInToday(user.lastCheckedInDate === getSafeDateString());
   }, [user]);
 
@@ -433,10 +433,10 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
 
     // Actual recorded study minutes from database log or active session today
     let mins = 0;
-    if (dailyStudyLogMap[dateStr] !== undefined) {
+    if (info.isToday) {
+      mins = Math.max(loggedMinutesToday(), dailyStudyLogMap[dateStr] ?? 0);
+    } else if (dailyStudyLogMap[dateStr] !== undefined) {
       mins = dailyStudyLogMap[dateStr];
-    } else if (info.isToday) {
-      mins = loggedMinutesToday();
     } else {
       mins = 0; // Strictly 0 for unstudied past/future dates
     }
@@ -874,7 +874,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
           </div>
           <div>
             <span className="text-[10px] font-mono text-gray-400 block font-bold uppercase tracking-wider">{pText.timeStudied}</span>
-            <span className="text-xl font-black text-[#3D405B]">{formatStudyTime(Math.max(user.studyMins ?? 30, totalWeeklyMins), lang === 'hi')}</span>
+            <span className="text-xl font-black text-[#3D405B]">{formatStudyTime(user.studyMins ?? totalWeeklyMins, lang === 'hi')}</span>
           </div>
         </div>
 

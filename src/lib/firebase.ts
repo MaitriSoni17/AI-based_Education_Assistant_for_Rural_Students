@@ -415,13 +415,14 @@ export async function syncFirebaseUserWithLWW(
     defaultLanguage: localUser.defaultLanguage || "en",
     signupDate: localUser.signupDate || getSafeDateString(),
     avatar: getDeterministicAvatar(localUser.name || "Student", mobile),
-    streakDays: localUser.streakDays || 1,
-    totalPoints: localUser.totalPoints || 15,
-    studyMins: localUser.studyMins || 30,
+    streakDays: localUser.streakDays ?? 0,
+    totalPoints: localUser.totalPoints ?? 0,
+    studyMins: localUser.studyMins ?? 0,
+    todayMins: localUser.todayMins ?? 0,
     village: localUser.village || "",
     school: localUser.school || "",
     standard: localUser.standard || "",
-    lastCheckedInDate: localUser.lastCheckedInDate || getSafeDateString(),
+    lastCheckedInDate: localUser.lastCheckedInDate || "",
     ...localUser
   };
 
@@ -442,13 +443,14 @@ export async function syncFirebaseUserWithLWW(
         defaultLanguage: localUser.defaultLanguage || "en",
         signupDate: localUser.signupDate || getSafeDateString(),
         avatar: getDeterministicAvatar(localUser.name || "Student", mobile),
-        streakDays: 1,
-        totalPoints: 15,
-        studyMins: 30,
+        streakDays: localUser.streakDays ?? 0,
+        totalPoints: localUser.totalPoints ?? 0,
+        studyMins: localUser.studyMins ?? 0,
+        todayMins: localUser.todayMins ?? 0,
         village: "",
         school: "",
         standard: "",
-        lastCheckedInDate: getSafeDateString(),
+        lastCheckedInDate: localUser.lastCheckedInDate || "",
         ...localUser,
         updatedAt: localUser.updatedAt || Date.now()
       };
@@ -484,13 +486,14 @@ export async function syncFirebaseUserWithLWW(
       defaultLanguage: localUser.defaultLanguage || "en",
       signupDate: localUser.signupDate || getSafeDateString(),
       avatar: getDeterministicAvatar(localUser.name || "Student", mobile),
-      streakDays: localUser.streakDays || 1,
-      totalPoints: localUser.totalPoints || 15,
-      studyMins: localUser.studyMins || 30,
+      streakDays: localUser.streakDays ?? 0,
+      totalPoints: localUser.totalPoints ?? 0,
+      studyMins: localUser.studyMins ?? 0,
+      todayMins: localUser.todayMins ?? 0,
       village: localUser.village || "",
       school: localUser.school || "",
       standard: localUser.standard || "",
-      lastCheckedInDate: localUser.lastCheckedInDate || getSafeDateString(),
+      lastCheckedInDate: localUser.lastCheckedInDate || "",
       ...localUser
     };
     return { resolvedUser: fallbackUser, conflictResolved: false, source: 'local' };
@@ -519,13 +522,14 @@ export async function setFirebaseUser(mobile: string, userData: Partial<Firestor
         defaultLanguage: userData.defaultLanguage || "en",
         signupDate: userData.signupDate || getSafeDateString(),
         avatar: getDeterministicAvatar(userData.name || "Student", mobile),
-        streakDays: 1,
-        totalPoints: 15,
-        studyMins: 30,
+        streakDays: userData.streakDays ?? 0,
+        totalPoints: userData.totalPoints ?? 0,
+        studyMins: userData.studyMins ?? 0,
+        todayMins: userData.todayMins ?? 0,
         village: "",
         school: "",
         standard: "",
-        lastCheckedInDate: getSafeDateString(),
+        lastCheckedInDate: "",
         ...userData
       };
       const sanitized = sanitizeFirestoreUserData(defaultUser);

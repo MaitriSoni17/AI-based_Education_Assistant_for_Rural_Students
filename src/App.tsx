@@ -179,8 +179,10 @@ export default function App() {
         try {
           const parsed = JSON.parse(stored) as User;
           const cleaned = sanitizeUserSession(parsed);
-          if (cleaned.studyMins === undefined) cleaned.studyMins = 30;
+          if (cleaned.studyMins === undefined) cleaned.studyMins = 0;
           if (cleaned.todayMins === undefined) cleaned.todayMins = 0;
+          if (cleaned.totalPoints === undefined) cleaned.totalPoints = 0;
+          if (cleaned.streakDays === undefined) cleaned.streakDays = 0;
           // If the cached session was bloated, immediately clean it up in localStorage
           if (stored.length > 500000) {
             safeSetLocalStorage('gramin_student_session', JSON.stringify(cleaned));
@@ -449,7 +451,7 @@ export default function App() {
           const localUpdatedAt = user.updatedAt || 0;
           
           // Merge based on newest updated timestamp
-          if (remoteUpdatedAt >= localUpdatedAt || (remoteUser.streakDays ?? 0) > (user.streakDays ?? 0) || (remoteUser.studyMins ?? 30) > (user.studyMins ?? 30)) {
+          if (remoteUpdatedAt >= localUpdatedAt || (remoteUser.streakDays ?? 0) > (user.streakDays ?? 0) || (remoteUser.studyMins ?? 0) > (user.studyMins ?? 0)) {
             finalUser = { ...user, ...remoteUser };
           } else {
             finalUser = { ...remoteUser, ...user };
@@ -484,13 +486,13 @@ export default function App() {
       });
   }, [user?.mobile]);
 
-  // Ensure any existing user session with stale defaults is automatically migrated
+  // Ensure any existing user session with stale defaults is automatically normalized
   useEffect(() => {
     if (user) {
       let needsUpdate = false;
       const updated = { ...user };
       if (user.studyMins === undefined) {
-        updated.studyMins = 30;
+        updated.studyMins = 0;
         needsUpdate = true;
       }
       if (user.todayMins === undefined) {
@@ -530,14 +532,14 @@ export default function App() {
           
           const todayStr = getSafeDateString();
           
-          const currentMins = current.studyMins ?? 30;
+          const currentMins = current.studyMins ?? 0;
           const updatedMins = currentMins + 1;
           
           const currentTodayMins = current.todayMins ?? 0;
           const updatedTodayMins = currentTodayMins + 1;
           
-          let nextStreak = current.streakDays ?? 0;
-          let nextPoints = current.totalPoints ?? 15;
+          let nextStreak = current.streakDays ?? (current.lastCheckedInDate ? 1 : 0);
+          let nextPoints = current.totalPoints ?? 0;
           let nextLastCheckedIn = current.lastCheckedInDate;
           let earnedTodayStreak = false;
           
@@ -576,6 +578,7 @@ export default function App() {
 
           const updatedCheckInDatesStr = JSON.stringify(checkInList);
           const updatedDailyStudyLogStr = JSON.stringify(logMap);
+          const currentTimestamp = Date.now();
           
           const updatedUser: User = { 
             ...current, 
@@ -586,7 +589,8 @@ export default function App() {
             lastCheckedInDate: nextLastCheckedIn,
             lastActiveDate: todayStr,
             checkInDates: updatedCheckInDatesStr,
-            dailyStudyLog: updatedDailyStudyLogStr
+            dailyStudyLog: updatedDailyStudyLogStr,
+            updatedAt: currentTimestamp
           };
 
           // Persist to local storage
@@ -601,7 +605,8 @@ export default function App() {
             lastCheckedInDate: nextLastCheckedIn,
             lastActiveDate: todayStr,
             checkInDates: updatedCheckInDatesStr,
-            dailyStudyLog: updatedDailyStudyLogStr
+            dailyStudyLog: updatedDailyStudyLogStr,
+            updatedAt: currentTimestamp
           })
           .then(() => {
             if (earnedTodayStreak) {

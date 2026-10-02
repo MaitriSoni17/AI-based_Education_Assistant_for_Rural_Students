@@ -1512,7 +1512,7 @@ const getFilteredQuizQuestions = (
 export default function QuizTab({ user, lang, onNavigateToTab, onUpdateUser }: QuizTabProps) {
   // Global cumulative states
   const [totalQuizPoints, setTotalQuizPoints] = useState(() => {
-    return user.totalPoints ?? 15;
+    return user.totalPoints ?? 0;
   });
 
   // Current active quiz states
@@ -1542,7 +1542,7 @@ export default function QuizTab({ user, lang, onNavigateToTab, onUpdateUser }: Q
 
   // Update state when user changes
   useEffect(() => {
-    setTotalQuizPoints(user.totalPoints ?? 15);
+    setTotalQuizPoints(user.totalPoints ?? 0);
     setCertificateName(user.certificateName || user.name || '');
   }, [user]);
 

@@ -3047,7 +3047,7 @@ case 'ta':
     const gradeLevel = user.standard || localStorage.getItem(`${user.mobile}_profile_standard`) || 'Grade 6 Science';
     const studentVillage = user.village || localStorage.getItem(`${user.mobile}_profile_village`) || 'Rampur Vilas';
     const studentSchool = user.school || localStorage.getItem(`${user.mobile}_profile_school`) || 'Rampur Primary Public School';
-    const studentPoints = user.totalPoints ?? Number(localStorage.getItem(`${user.mobile}_quizzes_total_points`)) ?? 15;
+    const studentPoints = user.totalPoints ?? Number(localStorage.getItem(`${user.mobile}_quizzes_total_points`)) ?? 0;
     const currentProgress = studentPoints < 100 ? "Beginner" : studentPoints < 300 ? "Intermediate" : "Reviewing & Advanced";
     
     setGenerationStage(
