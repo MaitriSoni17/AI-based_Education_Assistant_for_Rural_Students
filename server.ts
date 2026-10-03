@@ -1414,7 +1414,17 @@ CRITICAL FORMATTING & SPEECH RULES:
 4. Soft, Warm & Playful Delivery: Avoid robotic, stiff, or overly formal phrasing. Ensure your voice conveys immense kindness, patience, warmth, and joyful positivity.
 `;
 
-      adjustedSystemInstruction = `${adjustedSystemInstruction}\n${kidsEducationalVoiceDirective}\n${syllabusGuideline}\n${lowBandwidthDirective}\n${mathAndScienceLatexRules}`;
+      if (isJsonRequested) {
+        adjustedSystemInstruction = `${adjustedSystemInstruction}\n${syllabusGuideline}\n${lowBandwidthDirective}\n[CRITICAL STRICT RFC 8259 JSON FORMATTING RULES]:
+You are generating a pure JSON response.
+1. The response must be 100% valid JSON parseable by JSON.parse().
+2. Do NOT output markdown code fences (\`\`\`json or \`\`\`).
+3. For mathematical equations or formulas inside JSON string values, use clean Unicode representations (e.g., a² + b² = c², √, ÷, ×, ±, °, θ, π) or if using LaTeX backslashes, every backslash MUST be double-escaped (\\\\) so it does not create invalid JSON escape sequences like \\s in \\sqrt.
+4. Never include raw unescaped double quotes or unescaped newlines inside JSON string values.
+5. Do not include trailing commas in JSON objects or arrays.`;
+      } else {
+        adjustedSystemInstruction = `${adjustedSystemInstruction}\n${kidsEducationalVoiceDirective}\n${syllabusGuideline}\n${lowBandwidthDirective}\n${mathAndScienceLatexRules}`;
+      }
 
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
@@ -1579,7 +1589,64 @@ CRITICAL FORMATTING & SPEECH RULES:
 
       if (!success) {
         console.warn("[/api/gemini/chat] AI request quota reached or busy. Providing educational fallback.");
-        const userQuery = message || prompt || "your question";
+        const userQuery = message || "your question";
+        if (isJsonRequested) {
+          return res.json({
+            success: true,
+            text: JSON.stringify({
+              query: userQuery,
+              subject: "Interactive AI Lesson 🔬",
+              videoThumbColor: "from-purple-500 to-indigo-600",
+              slides: [
+                {
+                  id: "custom-s1",
+                  title: `Core Concept: ${userQuery}`,
+                  content: `Let us explore the foundations of ${userQuery}. In science and mathematics, every concept connects clearly to fundamental rules and simple patterns.`,
+                  bullets: ["Core principle identification", "Step-by-step structural logic", "Conceptual understanding"],
+                  keyFact: "Mastering fundamental theorems unlocks powerful real-world problem-solving skills.",
+                  visualLayout: "geometry-pythagoras",
+                  visualAttributes: { stepNumber: 1, totalSteps: 3, stepTitle: "Fundamentals", keywords: ["Theorem", "Principles"], accentColor: "#F2CC8F" }
+                },
+                {
+                  id: "custom-s2",
+                  title: `Formulas & Proof: ${userQuery}`,
+                  content: `For any right-angled triangle with legs a and b and hypotenuse c, the relationship is given by: a² + b² = c². The area of the square on the hypotenuse equals the sum of the areas of the squares on the other two sides.`,
+                  bullets: ["Side relationship: a² + b² = c²", "Calculates diagonal distances directly", "Universal across 2D & 3D space"],
+                  keyFact: "Known historically in Indian mathematics through the Sulba Sutras of Baudhāyana.",
+                  visualLayout: "geometry-pythagoras",
+                  visualAttributes: { stepNumber: 2, totalSteps: 3, stepTitle: "Mathematical Law", keywords: ["a² + b² = c²", "Hypotenuse"], accentColor: "#E07A5F" }
+                },
+                {
+                  id: "custom-s3",
+                  title: `Real-World Power: ${userQuery}`,
+                  content: `This principle powers modern GPS navigation, civil engineering, computer graphics, and construction by enabling exact spatial distance calculations.`,
+                  bullets: ["Architectural engineering", "GPS & Navigation calculations", "3D Computer Graphics"],
+                  keyFact: "Engineers rely on this formula every day to build structurally sound bridges and buildings.",
+                  visualLayout: "geometry-pythagoras",
+                  visualAttributes: { stepNumber: 3, totalSteps: 3, stepTitle: "Applications", keywords: ["Architecture", "Engineering"], accentColor: "#81B29A" }
+                }
+              ],
+              quiz: [
+                {
+                  id: "custom-q1",
+                  question: `In a right-angled triangle with side lengths 3 and 4, what is the length of the hypotenuse?`,
+                  options: ["5", "7", "6", "8"],
+                  answerIndex: 0,
+                  explanation: `Using the formula: 3² + 4² = 9 + 16 = 25. The square root of 25 is 5!`
+                },
+                {
+                  id: "custom-q2",
+                  question: `Which side is opposite the 90° right angle in a right triangle?`,
+                  options: ["Hypotenuse", "Base", "Perpendicular", "Adjacent"],
+                  answerIndex: 0,
+                  explanation: `The hypotenuse is opposite the 90° angle and is always the longest side.`
+                }
+              ]
+            }),
+            retrievedChunks: []
+          });
+        }
+
         return res.json({
           success: true,
           text: `**💡 AI Tutor Note:**\n\nI am currently operating with offline study assistance while live AI request quotas refresh.\n\n### 📖 Learning Guidance for: "${userQuery.slice(0, 80)}"\n* **Conceptual Approach:** Break down the concept into core definitions, key principles, and real-world examples.\n* **Recommended Next Steps:**\n  1. Review the relevant chapter notes in the **Study Material / PDFs** tab.\n  2. Test your understanding using the **Quiz & Practice** section.\n  3. Verify mathematical steps in the **Equations Tab**.\n\n*Full real-time AI responses will resume automatically when quota refreshes shortly.*`
@@ -1591,6 +1658,18 @@ CRITICAL FORMATTING & SPEECH RULES:
       // Clean bracketed expressing words like [excitedly], [whispers], [giggles], [joyfully], [gasp] from responses everywhere
       responseText = responseText.replace(/\[\s*(?:whispers|whispers softly|softly|gently|giggles|giggle|sighs happily|sighs|excitedly|joyfully|playfully|cheerful|happily|gasp|laughs|laugh)\s*\]\s*/gi, "");
 
+      if (isJsonRequested) {
+        // Strip markdown code fences if model wrapped response in ```json ... ```
+        const codeBlockMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        if (codeBlockMatch && codeBlockMatch[1]) {
+          responseText = codeBlockMatch[1].trim();
+        }
+        // Fix LaTeX escape sequences that break JSON.parse (e.g. \sqrt -> \\sqrt, \( -> \\(, etc.)
+        responseText = responseText.replace(/\\(?:[^"\\/bfnrtu]|u(?![\da-fA-F]{4}))/g, (match) => {
+          return '\\' + match;
+        });
+      }
+
       return res.json({
         success: true,
         text: responseText,
@@ -1599,6 +1678,37 @@ CRITICAL FORMATTING & SPEECH RULES:
 
     } catch (error: any) {
       console.warn("[/api/gemini/chat warning]:", error?.message || error);
+      if (req.body?.responseMimeType === 'application/json' || req.body?.isJsonRequested) {
+        return res.json({
+          success: true,
+          text: JSON.stringify({
+            query: req.body?.message || "Interactive Lesson",
+            subject: "Science & Mathematics 🔬",
+            videoThumbColor: "from-purple-500 to-indigo-600",
+            slides: [
+              {
+                id: "custom-s1",
+                title: `Lesson: ${req.body?.message || "Topic"}`,
+                content: `Let's break down this concept step-by-step with clear definitions and core principles.`,
+                bullets: ["Core ideas", "Fundamental principles", "Step-by-step logic"],
+                keyFact: "Practicing regularly strengthens conceptual memory.",
+                visualLayout: "conceptual-flow",
+                visualAttributes: { stepNumber: 1, totalSteps: 3, stepTitle: "Introduction", keywords: ["Concept", "Learning"], accentColor: "#81B29A" }
+              }
+            ],
+            quiz: [
+              {
+                id: "custom-q1",
+                question: `What is the best way to understand complex concepts?`,
+                options: ["Break them down step by step", "Skip the basics", "Memorize without understanding", "Give up"],
+                answerIndex: 0,
+                explanation: "Breaking concepts into simple building blocks leads to deep mastery!"
+              }
+            ]
+          }),
+          retrievedChunks: []
+        });
+      }
       return res.json({
         success: true,
         text: "I am currently providing study guidance while live AI requests refresh. You can explore saved notes, practice quizzes, or solve puzzles in the meantime!",

@@ -3875,7 +3875,7 @@ Follow these speech and formatting rules:
               </div>
 
               {/* Header Controls: Fully visible in both Compact and Wide modes */}
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1 shrink-0 me-5">
                 {/* New Chat Button */}
                 <button
                   type="button"
@@ -4036,7 +4036,7 @@ Follow these speech and formatting rules:
                 <button
                   type="button"
                   onClick={() => setShowQuickAiTools((prev) => !prev)}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-semibold text-slate-400 hover:text-white hover:bg-slate-800/80 flex items-center gap-1 cursor-pointer transition-all select-none shrink-0"
+                  className="me-5 px-2 py-0.5 rounded-md text-[10px] font-semibold text-slate-400 hover:text-white hover:bg-slate-800/80 flex items-center gap-1 cursor-pointer transition-all select-none shrink-0"
                   title={showQuickAiTools ? 'Hide Quick Actions' : 'Show Quick Actions'}
                 >
                   <span>{showQuickAiTools ? 'Hide' : 'Show'}</span>

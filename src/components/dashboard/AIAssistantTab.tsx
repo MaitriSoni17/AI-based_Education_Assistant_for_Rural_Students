@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { safeFetchJson } from '../../utils/safeFetch';
+import { safeParseJson } from '../../lib/jsonRepair';
 import { LanguageCode, User } from '../../types';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
@@ -38,14 +39,12 @@ const parseMessageContent = (text: string) => {
   if (match) {
     const rawJson = match[1].trim();
     const cleanText = text.replace(regex, '').trim();
-    try {
-      const parsedData = JSON.parse(rawJson);
+    const parsedData = safeParseJson(rawJson);
+    if (parsedData) {
       return {
         text: cleanText,
         diagram: parsedData
       };
-    } catch (e) {
-      console.error("Failed to parse diagram JSON", e);
     }
   }
   return {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LanguageCode, User } from '../../types';
 import { safeFetchJson } from '../../utils/safeFetch';
+import { safeParseJson } from '../../lib/jsonRepair';
 import { TRANSLATIONS } from '../../data/translations';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { Award, HelpCircle, BookOpen, Brain, Sparkles, AlertTriangle, CheckCircle, Flame, RefreshCw, Timer, ShieldCheck, Download, Printer, X } from 'lucide-react';
@@ -1908,28 +1909,32 @@ CRITICAL REQUIREMENTS:
       }
 
       try {
-        const parsed = JSON.parse(cleanText);
-        const translatedQuiz = {
-          ...quiz,
-          title: parsed.title || quiz.title,
-          subject: parsed.subject || quiz.subject,
-          questions: quiz.questions.map((q: any, qIdx: number) => {
-            const parsedQ = parsed.questions?.[qIdx] || {};
-            return {
-              ...q,
-              question: parsedQ.question || q.question,
-              options: parsedQ.options || q.options,
-              explanation: parsedQ.explanation || q.explanation
-            };
-          })
-        };
+        const parsed: any = safeParseJson(cleanText);
+        if (parsed) {
+          const translatedQuiz = {
+            ...quiz,
+            title: parsed.title || quiz.title,
+            subject: parsed.subject || quiz.subject,
+            questions: quiz.questions.map((q: any, qIdx: number) => {
+              const parsedQ = parsed.questions?.[qIdx] || {};
+              return {
+                ...q,
+                question: parsedQ.question || q.question,
+                options: parsedQ.options || q.options,
+                explanation: parsedQ.explanation || q.explanation
+              };
+            })
+          };
 
-        setTranslatedQuizzesCache(prev => ({
-          ...prev,
-          [cacheKey]: translatedQuiz
-        }));
+          setTranslatedQuizzesCache(prev => ({
+            ...prev,
+            [cacheKey]: translatedQuiz
+          }));
 
-        return translatedQuiz;
+          return translatedQuiz;
+        }
+
+        return quiz;
       } catch (err) {
         console.error("Failed to parse translated quiz JSON:", err, cleanText);
       }
@@ -2008,8 +2013,8 @@ JSON Schema:
         cleanText = lines.join('\n').trim();
       }
 
-      const parsed = JSON.parse(cleanText);
-      if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
+      const parsed: any = safeParseJson(cleanText);
+      if (parsed && parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
         return {
           id: 'cust-' + Math.random().toString(36).substring(2, 5),
           title: parsed.title || `${topic} Genius Pack 🧠`,

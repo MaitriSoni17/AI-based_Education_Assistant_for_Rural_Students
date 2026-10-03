@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { 
   Sun, Cloud, Leaf, Sparkles,
   Microscope, Globe, BookOpen, Binary, Atom, Activity, Zap,
-  Table, Rocket, Droplets, Compass, Shield
+  Table, Rocket, Droplets, Compass, Shield, Heart, Battery, Eye,
+  ArrowRight, CheckCircle2, Waves, Layers, Moon, Flame, Cpu, Radio
 } from 'lucide-react';
 import { LanguageCode } from '../../types';
 import InteractiveAITeacher from '../InteractiveAITeacher';
@@ -15,6 +16,7 @@ interface SlideVisualBoardProps {
     bullets: string[];
     keyFact?: string;
     visualLayout?: string;
+    svgVisual?: string;
     visualAttributes?: {
       stepNumber?: number;
       totalSteps?: number;
@@ -22,6 +24,7 @@ interface SlideVisualBoardProps {
       keywords?: string[];
       accentColor?: string;
       stage?: string;
+      [key: string]: any;
     };
   };
   currentSlideIndex: number;
@@ -34,6 +37,7 @@ interface SlideVisualBoardProps {
 
 export default function SlideVisualBoard({
   slide,
+  currentSlideIndex = 0,
   isPlaying,
   lang,
   avatarChar,
@@ -46,25 +50,75 @@ export default function SlideVisualBoard({
 
   // Smart layout resolution: matches explicit layout or infers from slide content
   let layout = 'conceptual-flow';
-  if (rawLayout.includes('spreadsheet') || rawLayout.includes('excel') || titleText.includes('excel') || titleText.includes('spreadsheet') || titleText.includes('cell') && (titleText.includes('row') || titleText.includes('formula'))) {
+  if (slide.svgVisual && slide.svgVisual.trim().startsWith('<svg')) {
+    layout = 'dynamic-svg';
+  } else if (
+    rawLayout.includes('eclipse') || rawLayout.includes('solar-eclipse') || rawLayout.includes('lunar-eclipse') ||
+    titleText.includes('eclipse') || titleText.includes('moon block') || titleText.includes('sun block') ||
+    (titleText.includes('moon') && (titleText.includes('sun') || titleText.includes('shadow') || titleText.includes('earth'))) ||
+    titleText.includes('umbra') || titleText.includes('penumbra') || titleText.includes('syzygy')
+  ) {
+    layout = 'solar-eclipse';
+  } else if (
+    rawLayout.includes('optics') || rawLayout.includes('prism') || rawLayout.includes('refraction') ||
+    titleText.includes('prism') || titleText.includes('refraction') || titleText.includes('reflection') || titleText.includes('rainbow') ||
+    titleText.includes('spectrum') || titleText.includes('lens') || titleText.includes('optics') || (titleText.includes('light') && (titleText.includes('ray') || titleText.includes('color') || titleText.includes('travel') || titleText.includes('speed of light')))
+  ) {
+    layout = 'optics-light';
+  } else if (
+    rawLayout.includes('heart') || rawLayout.includes('circulation') || rawLayout.includes('cardio') ||
+    titleText.includes('heart') || titleText.includes('circulation') || titleText.includes('blood flow') || titleText.includes('pulse') || titleText.includes('cardio') || titleText.includes('artery') || titleText.includes('vein')
+  ) {
+    layout = 'human-heart';
+  } else if (
+    rawLayout.includes('circuit') || rawLayout.includes('electricity') || rawLayout.includes('battery') ||
+    titleText.includes('circuit') || titleText.includes('electricity') || titleText.includes('current') || titleText.includes('voltage') || titleText.includes('battery') || titleText.includes('electric')
+  ) {
+    layout = 'electric-circuit';
+  } else if (
+    rawLayout.includes('magnet') || rawLayout.includes('magnetic') ||
+    titleText.includes('magnet') || titleText.includes('magnetic') || titleText.includes('compass') || titleText.includes('poles')
+  ) {
+    layout = 'magnetism';
+  } else if (
+    rawLayout.includes('spreadsheet') || rawLayout.includes('excel') || titleText.includes('excel') || titleText.includes('spreadsheet') || (titleText.includes('cell') && (titleText.includes('row') || titleText.includes('formula')))
+  ) {
     layout = 'spreadsheet-excel';
-  } else if (rawLayout.includes('space') || rawLayout.includes('orbit') || rawLayout.includes('rocket') || titleText.includes('rocket') || titleText.includes('gravity') || titleText.includes('space') || titleText.includes('planet') || titleText.includes('solar system')) {
+  } else if (
+    rawLayout.includes('space') || rawLayout.includes('orbit') || rawLayout.includes('rocket') || titleText.includes('rocket') || titleText.includes('gravity') || titleText.includes('space') || titleText.includes('planet') || titleText.includes('solar system')
+  ) {
     layout = 'space-orbit';
-  } else if (rawLayout.includes('cell') || rawLayout.includes('anatomy') || rawLayout.includes('bio') || titleText.includes('cell') || titleText.includes('blood') || titleText.includes('organ') || titleText.includes('hemoglobin') || titleText.includes('dna')) {
+  } else if (
+    rawLayout.includes('cell') || rawLayout.includes('anatomy') || rawLayout.includes('bio') || titleText.includes('cell') || titleText.includes('blood') || titleText.includes('organ') || titleText.includes('hemoglobin') || titleText.includes('dna')
+  ) {
     layout = 'cell-anatomy';
-  } else if (rawLayout.includes('chem') || rawLayout.includes('atom') || titleText.includes('chemistry') || titleText.includes('reaction') || titleText.includes('molecule') || titleText.includes('atom') || titleText.includes('acid')) {
+  } else if (
+    rawLayout.includes('chem') || rawLayout.includes('atom') || titleText.includes('chemistry') || titleText.includes('reaction') || titleText.includes('molecule') || titleText.includes('atom') || titleText.includes('acid')
+  ) {
     layout = 'chemistry-lab';
-  } else if (rawLayout.includes('geometry') || rawLayout.includes('pythagoras') || titleText.includes('pythagoras') || titleText.includes('triangle') || titleText.includes('geometry') || titleText.includes('algebra')) {
+  } else if (
+    rawLayout.includes('geometry') || rawLayout.includes('pythagoras') || titleText.includes('pythagoras') || titleText.includes('triangle') || titleText.includes('geometry') || titleText.includes('algebra')
+  ) {
     layout = 'geometry-pythagoras';
-  } else if (rawLayout.includes('history') || rawLayout.includes('timeline') || rawLayout.includes('civics') || titleText.includes('constitution') || titleText.includes('freedom') || titleText.includes('history') || titleText.includes('ambedkar') || titleText.includes('gandhi')) {
+  } else if (
+    rawLayout.includes('history') || rawLayout.includes('timeline') || rawLayout.includes('civics') || titleText.includes('constitution') || titleText.includes('freedom') || titleText.includes('history') || titleText.includes('ambedkar') || titleText.includes('gandhi')
+  ) {
     layout = 'history-timeline';
-  } else if (rawLayout.includes('agri') || rawLayout.includes('farm') || titleText.includes('farming') || titleText.includes('irrigation') || titleText.includes('soil') || titleText.includes('crop')) {
+  } else if (
+    rawLayout.includes('agri') || rawLayout.includes('farm') || titleText.includes('farming') || titleText.includes('irrigation') || titleText.includes('soil') || titleText.includes('crop')
+  ) {
     layout = 'agri-drone';
-  } else if (rawLayout.includes('water') || rawLayout.includes('rain') || titleText.includes('water cycle') || titleText.includes('rain') || titleText.includes('cloud')) {
+  } else if (
+    rawLayout.includes('water') || rawLayout.includes('rain') || titleText.includes('water cycle') || titleText.includes('rain') || titleText.includes('cloud')
+  ) {
     layout = 'water-cycle';
-  } else if (rawLayout.includes('photo') || titleText.includes('photosynthesis') || titleText.includes('chlorophyll')) {
+  } else if (
+    rawLayout.includes('photo') || titleText.includes('photosynthesis') || titleText.includes('chlorophyll')
+  ) {
     layout = 'photosynthesis';
-  } else if (rawLayout.includes('math') || rawLayout.includes('multiplication') || titleText.includes('multiply') || titleText.includes('multiplication')) {
+  } else if (
+    rawLayout.includes('math') || rawLayout.includes('multiplication') || titleText.includes('multiply') || titleText.includes('multiplication')
+  ) {
     layout = 'multiplication';
   }
 
@@ -331,7 +385,7 @@ export default function SlideVisualBoard({
           </div>
         )}
 
-        {/* 5. GEOMETRY & MATHEMATICAL PROOFS */}
+        {/* 5. GEOMETRY & MATHEMATICAL PROOFS (Stage-Aware) */}
         {layout === 'geometry-pythagoras' && (
           <div className="w-full h-full flex flex-col justify-between relative z-10 p-1 select-none">
             <div className="flex justify-between items-center w-full px-2">
@@ -340,28 +394,90 @@ export default function SlideVisualBoard({
                 Pythagoras Principle (a² + b² = c²)
               </span>
               <span className="text-[9px] font-mono bg-amber-950 text-amber-200 px-2 py-0.5 rounded-full border border-amber-500/40">
-                Right Triangle 90°
+                {currentSlideIndex === 0 ? "Phase 1: 90° Triangle" : currentSlideIndex === 1 ? "Phase 2: Area Squares" : "Phase 3: Real Apps"}
               </span>
             </div>
 
-            <div className="flex-1 flex items-center justify-center gap-4 relative my-2">
-              <svg viewBox="0 0 160 120" className="w-40 h-28 select-none">
-                {/* Right Triangle */}
-                <polygon points="20,100 120,100 120,30" fill="rgba(245, 158, 11, 0.15)" stroke="#F59E0B" strokeWidth="2.5" />
-                {/* 90 degree corner */}
-                <polyline points="110,100 110,90 120,90" fill="none" stroke="#F59E0B" strokeWidth="1.5" />
-                {/* Labels */}
-                <text x="65" y="114" fill="#94A3B8" fontSize="9" fontWeight="bold" textAnchor="middle">Base (b = 4)</text>
-                <text x="138" y="70" fill="#94A3B8" fontSize="9" fontWeight="bold">Height (a = 3)</text>
-                <text x="56" y="55" fill="#38BDF8" fontSize="10" fontWeight="bold" transform="rotate(-35, 56, 55)">Hypotenuse (c = 5)</text>
-              </svg>
+            {currentSlideIndex === 1 ? (
+              /* Phase 2: Geometric Squares Proof on sides */
+              <div className="flex-1 flex items-center justify-center gap-3 relative my-2">
+                <svg viewBox="0 0 200 160" className="w-44 h-32 select-none">
+                  {/* Base Square (4x4 = 16) */}
+                  <rect x="70" y="80" width="70" height="50" fill="rgba(16, 185, 129, 0.25)" stroke="#10B981" strokeWidth="1.5" />
+                  <text x="105" y="110" fill="#6EE7B7" fontSize="8" fontWeight="bold" textAnchor="middle">b² = 16</text>
+                  
+                  {/* Height Square (3x3 = 9) */}
+                  <rect x="140" y="30" width="50" height="50" fill="rgba(245, 158, 11, 0.25)" stroke="#F59E0B" strokeWidth="1.5" />
+                  <text x="165" y="60" fill="#FCD34D" fontSize="8" fontWeight="bold" textAnchor="middle">a² = 9</text>
 
-              <div className="flex flex-col gap-1.5 bg-slate-900/90 p-2.5 rounded-xl border border-slate-700">
-                <span className="text-[10px] font-mono text-amber-400 font-bold">3² + 4² = 5²</span>
-                <span className="text-[10px] font-mono text-cyan-300 font-bold">9 + 16 = 25</span>
-                <span className="text-[9px] font-mono text-emerald-400 font-extrabold bg-emerald-950/80 px-1.5 py-0.5 rounded">√25 = 5 (Hypotenuse)</span>
+                  {/* Main Triangle */}
+                  <polygon points="70,80 140,80 140,30" fill="rgba(245, 158, 11, 0.2)" stroke="#F59E0B" strokeWidth="2" />
+                  <polyline points="132,80 132,72 140,72" fill="none" stroke="#F59E0B" strokeWidth="1" />
+                  
+                  {/* Hypotenuse label */}
+                  <text x="95" y="50" fill="#38BDF8" fontSize="8" fontWeight="bold" transform="rotate(-35, 95, 50)">c² = 25</text>
+                </svg>
+
+                <div className="flex flex-col gap-1.5 bg-slate-900/90 p-2.5 rounded-xl border border-slate-700">
+                  <span className="text-[9px] font-mono text-cyan-300 font-bold">GEOMETRIC PROOF</span>
+                  <span className="text-[10px] font-mono text-amber-400 font-bold">a² + b² = c²</span>
+                  <span className="text-[10px] font-mono text-cyan-300 font-bold">9 + 16 = 25</span>
+                  <span className="text-[9px] font-mono text-emerald-400 font-extrabold bg-emerald-950/80 px-1.5 py-0.5 rounded">c = √25 = 5</span>
+                </div>
               </div>
-            </div>
+            ) : currentSlideIndex >= 2 ? (
+              /* Phase 3: Real-World Applications (Navigation, Engineering, Height & Distance) */
+              <div className="flex-1 flex items-center justify-center gap-3 relative my-2">
+                <div className="flex flex-col items-center">
+                  <svg viewBox="0 0 120 100" className="w-32 h-24 select-none">
+                    {/* Building */}
+                    <rect x="70" y="20" width="35" height="75" fill="#1E293B" stroke="#64748B" strokeWidth="1.5" />
+                    <rect x="75" y="28" width="8" height="10" fill="#38BDF8" />
+                    <rect x="90" y="28" width="8" height="10" fill="#38BDF8" />
+                    <rect x="75" y="46" width="8" height="10" fill="#38BDF8" />
+                    <rect x="90" y="46" width="8" height="10" fill="#38BDF8" />
+                    {/* Ground */}
+                    <line x1="10" y1="95" x2="115" y2="95" stroke="#475569" strokeWidth="2" />
+                    {/* Ladder / Slope */}
+                    <line x1="25" y1="95" x2="70" y2="28" stroke="#F59E0B" strokeWidth="2.5" />
+                    <text x="35" y="55" fill="#F59E0B" fontSize="8" fontWeight="bold">Dist (c)</text>
+                    <text x="45" y="102" fill="#94A3B8" fontSize="7">Base (b)</text>
+                  </svg>
+                </div>
+
+                <div className="flex flex-col gap-1 bg-slate-900/90 p-2 rounded-xl border border-slate-700 text-left">
+                  <span className="text-[9px] font-mono text-amber-300 font-bold flex items-center gap-1">
+                    <span>🛰️</span> GPS Triangulation
+                  </span>
+                  <span className="text-[9px] font-mono text-cyan-300 font-bold flex items-center gap-1">
+                    <span>🏗️</span> Civil Engineering
+                  </span>
+                  <span className="text-[9px] font-mono text-emerald-400 font-bold flex items-center gap-1">
+                    <span>🎮</span> 3D Graphics & CGI
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* Phase 1: 90° Triangle Fundamentals */
+              <div className="flex-1 flex items-center justify-center gap-4 relative my-2">
+                <svg viewBox="0 0 160 120" className="w-40 h-28 select-none">
+                  {/* Right Triangle */}
+                  <polygon points="20,100 120,100 120,30" fill="rgba(245, 158, 11, 0.15)" stroke="#F59E0B" strokeWidth="2.5" />
+                  {/* 90 degree corner */}
+                  <polyline points="110,100 110,90 120,90" fill="none" stroke="#F59E0B" strokeWidth="1.5" />
+                  {/* Labels */}
+                  <text x="65" y="114" fill="#94A3B8" fontSize="9" fontWeight="bold" textAnchor="middle">Base (b = 4)</text>
+                  <text x="138" y="70" fill="#94A3B8" fontSize="9" fontWeight="bold">Height (a = 3)</text>
+                  <text x="56" y="55" fill="#38BDF8" fontSize="10" fontWeight="bold" transform="rotate(-35, 56, 55)">Hypotenuse (c = 5)</text>
+                </svg>
+
+                <div className="flex flex-col gap-1.5 bg-slate-900/90 p-2.5 rounded-xl border border-slate-700">
+                  <span className="text-[10px] font-mono text-amber-400 font-bold">3² + 4² = 5²</span>
+                  <span className="text-[10px] font-mono text-cyan-300 font-bold">9 + 16 = 25</span>
+                  <span className="text-[9px] font-mono text-emerald-400 font-extrabold bg-emerald-950/80 px-1.5 py-0.5 rounded">√25 = 5 (Hypotenuse)</span>
+                </div>
+              </div>
+            )}
 
             <div className="text-center text-[10px] font-mono text-slate-300 bg-slate-900/80 py-1 px-2 rounded border border-white/5">
               Essential for GPS navigation, construction engineering, and distance calculations!
@@ -533,50 +649,405 @@ export default function SlideVisualBoard({
           </div>
         )}
 
-        {/* 11. UNIVERSAL CONCEPTUAL FLOW */}
-        {layout === 'conceptual-flow' && (
-          <div className="w-full h-full flex flex-col justify-between relative z-10 p-2">
-            <div className="flex justify-between items-center w-full pb-1 border-b border-white/10 mb-2">
-              <span className="text-[10px] font-mono text-gray-400 font-bold uppercase tracking-widest truncate max-w-[200px]">
-                {slide.visualAttributes?.stepTitle || slide.title}
+        {/* 11. SOLAR & LUNAR ECLIPSE / PLANETARY SHADOW OPTICS */}
+        {layout === 'solar-eclipse' && (
+          <div className="w-full h-full flex flex-col justify-between relative z-10 p-1.5 select-none">
+            <div className="flex justify-between items-center w-full px-2">
+              <span className="text-[10px] font-mono text-amber-300 font-bold tracking-wider uppercase flex items-center gap-1.5">
+                <Sun className="h-3.5 w-3.5 text-yellow-400 animate-spin" style={{ animationDuration: '24s' }} />
+                {titleText.includes('lunar') ? 'Lunar Eclipse (Earth Blocks Sun)' : 'Solar Eclipse (Moon Blocks Sun)'}
               </span>
-              <span className="text-[10px] bg-[#3D405B] text-[#F2CC8F] font-mono font-black px-2.5 py-0.5 rounded border border-white/10 uppercase tracking-wider flex items-center gap-1 shrink-0">
-                <span className="w-1.5 h-1.5 bg-[#E07A5F] rounded-full animate-ping" />
-                Live Flow
+              <span className="text-[9px] font-mono bg-amber-950/90 text-amber-200 px-2 py-0.5 rounded-full border border-amber-500/40 animate-pulse">
+                {isPlaying ? '☀️ Umbra & Penumbra Active' : 'Alignment Track'}
               </span>
             </div>
 
-            <div className="flex-1 flex items-center justify-center relative min-h-[110px] my-2">
-              <div className="relative z-10 flex flex-col items-center">
-                <div 
-                  className="w-16 h-16 rounded-full flex items-center justify-center border-4 shadow-2xl relative transition-all duration-500 bg-[#1E2235]"
-                  style={{ borderColor: accentColor }}
-                >
-                  <Sparkles className="h-8 w-8 text-amber-400 animate-pulse" />
+            {/* Eclipse Ray Optics Simulation */}
+            <div className="flex-1 flex items-center justify-between relative min-h-[145px] px-2 sm:px-4 my-1">
+              {/* 1. The Sun (Radiant Light Source) */}
+              <div className="relative flex flex-col items-center shrink-0 z-20">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-yellow-300 shadow-[0_0_35px_rgba(251,191,36,0.9)] flex items-center justify-center relative animate-pulse">
+                  <span className="text-2xl sm:text-3xl select-none">☀️</span>
+                  <div className="absolute inset-0 rounded-full border-2 border-yellow-300/60 animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />
                 </div>
-                <span className="text-[10px] font-mono font-black text-gray-300 mt-2 tracking-wide uppercase px-2 py-0.5 bg-slate-900/85 rounded border border-white/5 max-w-[140px] truncate text-center">
-                  {keywords[0] || 'Core Subject'}
+                <span className="text-[9px] font-mono font-black text-amber-300 mt-1 uppercase tracking-wider">
+                  The Sun
+                </span>
+                <span className="text-[7.5px] font-mono text-amber-200/80 bg-amber-950/60 px-1 rounded">
+                  Light Source
                 </span>
               </div>
 
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col gap-1 items-center">
-                <div className="px-2 py-0.5 bg-slate-900/90 border border-white/10 rounded text-[9px] font-bold text-slate-300 flex items-center gap-1">
-                  <Activity className="h-3 w-3 text-sky-400" />
-                  <span>Analyze</span>
+              {/* SVG Ray Tracing & Umbra/Penumbra Shadow Cone */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+                <svg viewBox="0 0 360 140" className="w-full h-full" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="umbraCone" x1="0%" y1="50%" x2="100%" y2="50%">
+                      <stop offset="0%" stopColor="rgba(0,0,0,0.9)" />
+                      <stop offset="100%" stopColor="rgba(0,0,0,0.98)" />
+                    </linearGradient>
+                    <linearGradient id="penumbraCone" x1="0%" y1="50%" x2="100%" y2="50%">
+                      <stop offset="0%" stopColor="rgba(245,158,11,0.25)" />
+                      <stop offset="100%" stopColor="rgba(15,23,42,0.4)" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Ray Lines from Sun to Moon to Earth */}
+                  <line x1="50" y1="40" x2="180" y2="60" stroke="rgba(251,191,36,0.7)" strokeWidth="1.5" strokeDasharray="3 3" />
+                  <line x1="50" y1="100" x2="180" y2="80" stroke="rgba(251,191,36,0.7)" strokeWidth="1.5" strokeDasharray="3 3" />
+                  
+                  {/* Outer Penumbra Cone */}
+                  <polygon points="180,55 310,32 310,108 180,85" fill="url(#penumbraCone)" />
+                  
+                  {/* Inner Dark Umbra Cone */}
+                  <polygon points="180,62 310,66 310,74 180,78" fill="url(#umbraCone)" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+                  
+                  {/* Crossed Light Rays creating Penumbra */}
+                  <line x1="50" y1="40" x2="310" y2="108" stroke="rgba(251,191,36,0.35)" strokeWidth="1" strokeDasharray="4 2" />
+                  <line x1="50" y1="100" x2="310" y2="32" stroke="rgba(251,191,36,0.35)" strokeWidth="1" strokeDasharray="4 2" />
+                </svg>
+              </div>
+
+              {/* 2. The Moon (The Intersecting Celestial Body) */}
+              <div className="relative flex flex-col items-center shrink-0 z-20">
+                <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-slate-950 via-slate-700 to-slate-400 border border-slate-300 shadow-[0_0_15px_rgba(255,255,255,0.4)] flex items-center justify-center transition-all duration-700 ${isPlaying ? 'scale-110 shadow-[0_0_20px_#fde047]' : ''}`}>
+                  <span className="text-base sm:text-lg select-none">🌑</span>
+                </div>
+                <span className="text-[9px] font-mono font-black text-slate-200 mt-1 uppercase tracking-wider">
+                  Moon
+                </span>
+                <span className="text-[7.5px] font-mono text-cyan-300 bg-slate-900/90 px-1 rounded border border-cyan-500/30">
+                  Blocks Sun
+                </span>
+              </div>
+
+              {/* 3. The Earth (Observer with Cast Shadow) */}
+              <div className="relative flex flex-col items-center shrink-0 z-20">
+                <div className="w-13 h-13 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-blue-600 via-sky-500 to-emerald-500 shadow-[0_0_22px_rgba(56,189,248,0.7)] flex items-center justify-center relative overflow-hidden border border-sky-300/50">
+                  <span className="text-xl sm:text-2xl select-none">🌍</span>
+                  {/* Umbra Zone Spot on Earth Surface */}
+                  <div className="absolute top-1/2 left-2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-black border border-white/60 shadow-[0_0_8px_black] animate-pulse">
+                    <span className="absolute -top-3.5 -left-3 text-[7px] font-mono text-yellow-300 font-black whitespace-nowrap bg-black/90 px-1 rounded border border-yellow-300/40">
+                      Totality!
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[9px] font-mono font-black text-sky-200 mt-1 uppercase tracking-wider">
+                  Earth
+                </span>
+                <span className="text-[7.5px] font-mono text-emerald-300 bg-slate-900/90 px-1 rounded border border-emerald-500/30">
+                  Observer
+                </span>
+              </div>
+            </div>
+
+            {/* Educational Optical Legend Bar */}
+            <div className="flex justify-between items-center bg-slate-900/95 px-3 py-1.5 rounded-xl border border-white/10 text-[9.5px] font-mono text-slate-200">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-black border border-white" />
+                <span className="text-slate-300"><strong>Umbra:</strong> 100% Sun Blocked (Total Dark)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400/50 border border-amber-300" />
+                <span className="text-amber-200"><strong>Penumbra:</strong> Partial Shadow</span>
+              </div>
+              <span className="text-yellow-300 font-bold hidden sm:inline">
+                Syzygy Straight Line Alignment ✨
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* 12. OPTICS, PRISM & LIGHT REFRACTION */}
+        {layout === 'optics-light' && (
+          <div className="w-full h-full flex flex-col justify-between relative z-10 p-1.5 select-none">
+            <div className="flex justify-between items-center w-full px-2">
+              <span className="text-[10px] font-mono text-cyan-300 font-bold tracking-wider uppercase flex items-center gap-1.5">
+                <Eye className="h-3.5 w-3.5 text-cyan-400" />
+                Optics: Dispersion of White Light through Prism
+              </span>
+              <span className="text-[9px] font-mono bg-cyan-950 text-cyan-200 px-2 py-0.5 rounded-full border border-cyan-400/40">
+                VIBGYOR Spectrum
+              </span>
+            </div>
+
+            {/* SVG Prism & Rainbow Refraction Ray Diagram */}
+            <div className="flex-1 flex items-center justify-center relative min-h-[140px] my-1">
+              <svg viewBox="0 0 340 130" className="w-full h-full">
+                {/* Incident White Ray */}
+                <line x1="20" y1="75" x2="120" y2="65" stroke="#FFFFFF" strokeWidth="3" />
+                <text x="35" y="60" fill="#FFFFFF" fontSize="9" fontWeight="bold" fontFamily="monospace">White Light Beam</text>
+
+                {/* Glass Triangular Prism */}
+                <polygon points="150,20 110,110 190,110" fill="rgba(56,189,248,0.2)" stroke="#38BDF8" strokeWidth="2" />
+                <text x="150" y="105" fill="#38BDF8" fontSize="8" textAnchor="middle" fontWeight="bold">Glass Prism</text>
+
+                {/* Internal Refraction rays */}
+                <line x1="120" y1="65" x2="160" y2="55" stroke="#E2E8F0" strokeWidth="1.5" />
+                <line x1="120" y1="65" x2="165" y2="75" stroke="#E2E8F0" strokeWidth="1.5" />
+
+                {/* Refracted Spectrum Rays (VIBGYOR) */}
+                <line x1="160" y1="55" x2="310" y2="30" stroke="#EF4444" strokeWidth="2.5" /> {/* Red */}
+                <line x1="161" y1="58" x2="310" y2="44" stroke="#F97316" strokeWidth="2" />   {/* Orange */}
+                <line x1="162" y1="62" x2="310" y2="58" stroke="#EAB308" strokeWidth="2" />   {/* Yellow */}
+                <line x1="163" y1="66" x2="310" y2="72" stroke="#22C55E" strokeWidth="2" />   {/* Green */}
+                <line x1="164" y1="70" x2="310" y2="86" stroke="#06B6D4" strokeWidth="2" />   {/* Blue */}
+                <line x1="165" y1="73" x2="310" y2="100" stroke="#6366F1" strokeWidth="2" />  {/* Indigo */}
+                <line x1="165" y1="75" x2="310" y2="114" stroke="#A855F7" strokeWidth="2.5" />{/* Violet */}
+
+                {/* Spectrum Screen Receiver */}
+                <rect x="312" y="25" width="4" height="95" fill="#FFFFFF" rx="2" />
+                <text x="320" y="34" fill="#EF4444" fontSize="8" fontWeight="bold">R (700nm)</text>
+                <text x="320" y="74" fill="#22C55E" fontSize="8" fontWeight="bold">G (530nm)</text>
+                <text x="320" y="118" fill="#A855F7" fontSize="8" fontWeight="bold">V (400nm)</text>
+              </svg>
+            </div>
+
+            <div className="text-center text-[10px] font-mono text-cyan-200 bg-slate-900/90 py-1 px-3 rounded-lg border border-white/5">
+              Refraction Angle is Inversely Proportional to Wavelength: Violet bends most, Red bends least!
+            </div>
+          </div>
+        )}
+
+        {/* 13. HUMAN HEART & BLOOD CIRCULATION */}
+        {layout === 'human-heart' && (
+          <div className="w-full h-full flex flex-col justify-between relative z-10 p-1.5 select-none">
+            <div className="flex justify-between items-center w-full px-2">
+              <span className="text-[10px] font-mono text-rose-300 font-bold tracking-wider uppercase flex items-center gap-1.5">
+                <Heart className={`h-3.5 w-3.5 text-rose-500 ${isPlaying ? 'animate-bounce' : ''}`} />
+                Cardiac System: Double Circulation & 4 Chambers
+              </span>
+              <span className="text-[9px] font-mono bg-rose-950 text-rose-200 px-2 py-0.5 rounded-full border border-rose-500/40 animate-pulse">
+                Pulse: 72 BPM 💓
+              </span>
+            </div>
+
+            {/* Heart 4-Chamber Anatomical Visual */}
+            <div className="flex-1 flex items-center justify-center gap-4 relative min-h-[140px] my-1">
+              {/* Heart Chambers Card */}
+              <div className="relative w-48 h-32 rounded-3xl bg-slate-900/90 border-2 border-rose-500/40 p-2 grid grid-cols-2 gap-1.5 shadow-xl">
+                {/* Right Atrium (Deoxygenated) */}
+                <div className="bg-blue-950/80 border border-blue-500/40 rounded-xl p-1.5 flex flex-col justify-between text-left">
+                  <span className="text-[8px] font-mono font-bold text-blue-300 uppercase">Right Atrium</span>
+                  <span className="text-[7.5px] font-mono text-blue-400">Receives Deox Blood ⬇️</span>
+                </div>
+                {/* Left Atrium (Oxygenated) */}
+                <div className="bg-rose-950/80 border border-rose-500/40 rounded-xl p-1.5 flex flex-col justify-between text-left">
+                  <span className="text-[8px] font-mono font-bold text-rose-300 uppercase">Left Atrium</span>
+                  <span className="text-[7.5px] font-mono text-rose-400">Oxygen-Rich from Lungs 🫁</span>
+                </div>
+                {/* Right Ventricle */}
+                <div className="bg-blue-900/80 border border-blue-500/40 rounded-xl p-1.5 flex flex-col justify-between text-left">
+                  <span className="text-[8px] font-mono font-bold text-blue-200 uppercase">Right Ventricle</span>
+                  <span className="text-[7.5px] font-mono text-blue-300">Pumps to Lungs ➔</span>
+                </div>
+                {/* Left Ventricle (Strongest Muscle) */}
+                <div className="bg-rose-900/80 border border-rose-500/40 rounded-xl p-1.5 flex flex-col justify-between text-left">
+                  <span className="text-[8px] font-mono font-bold text-rose-200 uppercase">Left Ventricle</span>
+                  <span className="text-[7.5px] font-mono text-rose-300">Pumps to Entire Body (Aorta) 🚀</span>
                 </div>
               </div>
 
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1 items-center">
-                <div className="px-2 py-0.5 bg-slate-900/90 border border-white/10 rounded text-[9px] font-bold text-slate-300 flex items-center gap-1">
-                  <Zap className="h-3 w-3 text-amber-400" />
-                  <span>Execute</span>
+              {/* Circulation Legend */}
+              <div className="flex flex-col gap-2 bg-slate-900/90 p-2.5 rounded-xl border border-white/10 text-left font-mono">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-blue-500" />
+                  <span className="text-[9px] text-blue-300">Deoxygenated (CO₂)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-rose-500 animate-pulse" />
+                  <span className="text-[9px] text-rose-300">Oxygenated (O₂)</span>
+                </div>
+                <span className="text-[8px] text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/30">
+                  Valves Prevent Backflow 🔒
+                </span>
+              </div>
+            </div>
+
+            <div className="text-center text-[10px] font-mono text-slate-300 bg-slate-900/80 py-1 px-3 rounded-lg border border-white/5">
+              Pulmonary Circuit (To Lungs) + Systemic Circuit (To Body) = Perpetual Vital Life Engine!
+            </div>
+          </div>
+        )}
+
+        {/* 14. ELECTRIC CIRCUIT & CURRENT FLOW */}
+        {layout === 'electric-circuit' && (
+          <div className="w-full h-full flex flex-col justify-between relative z-10 p-1.5 select-none">
+            <div className="flex justify-between items-center w-full px-2">
+              <span className="text-[10px] font-mono text-amber-300 font-bold tracking-wider uppercase flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-amber-400" />
+                Electric Circuit: Potential Difference & Electron Flow
+              </span>
+              <span className="text-[9px] font-mono bg-amber-950 text-amber-200 px-2 py-0.5 rounded-full border border-amber-400/40">
+                V = I × R (Ohm's Law)
+              </span>
+            </div>
+
+            {/* Circuit Diagram */}
+            <div className="flex-1 flex items-center justify-center relative min-h-[140px] my-1">
+              <svg viewBox="0 0 320 130" className="w-full h-full">
+                {/* Circuit Wires */}
+                <rect x="40" y="25" width="240" height="80" rx="8" fill="none" stroke="#64748B" strokeWidth="3" />
+
+                {/* Battery on Left */}
+                <rect x="34" y="50" width="12" height="30" fill="#F59E0B" rx="2" />
+                <line x1="30" y1="60" x2="30" y2="70" stroke="#EF4444" strokeWidth="3" />
+                <text x="24" y="68" fill="#EF4444" fontSize="10" fontWeight="bold">+</text>
+                <text x="24" y="88" fill="#38BDF8" fontSize="10" fontWeight="bold">-</text>
+                <text x="40" y="98" fill="#FCD34D" fontSize="8" fontWeight="bold" fontFamily="monospace">9V DC</text>
+
+                {/* Switch on Top Wire */}
+                <circle cx="130" cy="25" r="4" fill="#38BDF8" />
+                <circle cx="170" cy="25" r="4" fill="#38BDF8" />
+                <line x1="130" y1="25" x2="168" y2="25" stroke="#22C55E" strokeWidth="2.5" />
+                <text x="150" y="16" fill="#4ADE80" fontSize="8" textAnchor="middle" fontWeight="bold">Switch (Closed)</text>
+
+                {/* Resistor / Load on Right */}
+                <g transform="translate(280, 50)">
+                  <path d="M0,0 L-6,6 L6,12 L-6,18 L6,24 L-6,30 L0,36" fill="none" stroke="#F97316" strokeWidth="2" />
+                  <text x="12" y="22" fill="#FDBA74" fontSize="8" fontWeight="bold">R = 10Ω</text>
+                </g>
+
+                {/* Glowing Light Bulb on Bottom Wire */}
+                <g transform="translate(160, 105)">
+                  {/* Glowing Aura */}
+                  <circle cx="0" cy="0" r="16" fill="rgba(251,191,36,0.25)" className="animate-pulse" />
+                  <circle cx="0" cy="0" r="10" fill="#FDE047" stroke="#F59E0B" strokeWidth="1.5" />
+                  <line x1="-12" y1="-12" x2="-8" y2="-8" stroke="#FDE047" strokeWidth="1.5" />
+                  <line x1="12" y1="-12" x2="8" y2="-8" stroke="#FDE047" strokeWidth="1.5" />
+                  <line x1="0" y1="-14" x2="0" y2="-10" stroke="#FDE047" strokeWidth="1.5" />
+                  <text x="0" y="20" fill="#FDE047" fontSize="8" textAnchor="middle" fontWeight="bold">Glowing Bulb 💡</text>
+                </g>
+
+                {/* Electron Flow Moving Dots */}
+                <circle cx="80" cy="25" r="2.5" fill="#38BDF8" className="animate-ping" />
+                <circle cx="230" cy="25" r="2.5" fill="#38BDF8" className="animate-ping" style={{ animationDelay: '0.4s' }} />
+                <circle cx="280" cy="85" r="2.5" fill="#38BDF8" className="animate-ping" style={{ animationDelay: '0.8s' }} />
+                <circle cx="80" cy="105" r="2.5" fill="#38BDF8" className="animate-ping" style={{ animationDelay: '1.2s' }} />
+              </svg>
+            </div>
+
+            <div className="text-center text-[10px] font-mono text-slate-300 bg-slate-900/80 py-1 px-3 rounded-lg border border-white/5">
+              Electrons flow from Negative (-) to Positive (+) terminal, creating steady electric current!
+            </div>
+          </div>
+        )}
+
+        {/* 15. DYNAMIC CUSTOM SVG INJECTION (Gemini Native SVG Generator) */}
+        {layout === 'dynamic-svg' && slide.svgVisual && (
+          <div className="w-full h-full flex flex-col justify-between relative z-10 p-1.5 select-none">
+            <div className="flex justify-between items-center w-full px-2 mb-1">
+              <span className="text-[10px] font-mono text-emerald-300 font-bold tracking-wider uppercase flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                {slide.visualAttributes?.stepTitle || slide.title}
+              </span>
+              <span className="text-[8px] font-mono bg-emerald-950 text-emerald-200 px-2 py-0.5 rounded-full border border-emerald-500/40">
+                Vector Precision
+              </span>
+            </div>
+
+            <div 
+              className="flex-1 flex items-center justify-center relative min-h-[140px] overflow-hidden rounded-xl bg-slate-950/90 border border-white/5 p-2 [&>svg]:w-full [&>svg]:h-full [&>svg]:max-h-[150px]"
+              dangerouslySetInnerHTML={{ __html: slide.svgVisual }}
+            />
+
+            <div className="flex flex-wrap gap-1 justify-center mt-1">
+              {keywords.map((kw, idx) => (
+                <span key={idx} className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] font-mono text-[#F2CC8F]">
+                  #{kw}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 16. REVAMPED UNIVERSAL CONCEPT ARCHITECTURE FLOW (Eliminates the basic empty circles!) */}
+        {layout === 'conceptual-flow' && (
+          <div className="w-full h-full flex flex-col justify-between relative z-10 p-2">
+            <div className="flex justify-between items-center w-full pb-1 border-b border-white/10 mb-2">
+              <span className="text-[10px] font-mono text-[#F2CC8F] font-bold uppercase tracking-widest truncate max-w-[240px]">
+                {slide.visualAttributes?.stepTitle || slide.title}
+              </span>
+              <span className="text-[9px] bg-slate-900 text-emerald-300 font-mono font-black px-2.5 py-0.5 rounded-full border border-emerald-500/30 uppercase tracking-wider flex items-center gap-1 shrink-0">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
+                Step-by-Step Flow
+              </span>
+            </div>
+
+            {/* 3-Stage Connected Concept Architecture Cards */}
+            <div className="flex-1 flex items-center justify-between gap-1.5 sm:gap-2 relative min-h-[135px] my-1">
+              {/* Stage 1: Observation / Cause */}
+              <div className="flex-1 bg-slate-900/90 border border-amber-500/30 rounded-xl p-2 flex flex-col justify-between h-full relative overflow-hidden shadow-md">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[8px] font-mono font-bold text-amber-400 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/30">
+                    Phase 1
+                  </span>
+                  <span className="text-xs">💡</span>
+                </div>
+                <h5 className="text-[10px] sm:text-[11px] font-bold text-white line-clamp-2 leading-tight">
+                  {keywords[0] ? keywords[0].toUpperCase() : 'ORIGIN & CAUSE'}
+                </h5>
+                <p className="text-[8.5px] text-slate-300 line-clamp-2 font-sans mt-0.5">
+                  {slide.bullets[0] || 'Initial concept conditions and background factors'}
+                </p>
+                <div className="h-1 w-full bg-amber-500/30 rounded-full mt-1.5 overflow-hidden">
+                  <div className="h-full bg-amber-400 w-full animate-pulse" />
+                </div>
+              </div>
+
+              {/* Connecting Glow Arrow 1 ➔ 2 */}
+              <div className="flex flex-col items-center shrink-0">
+                <ArrowRight className="h-4 w-4 text-[#F2CC8F] animate-pulse" />
+              </div>
+
+              {/* Stage 2: Active Working Mechanism */}
+              <div className="flex-1 bg-slate-900/95 border-2 border-emerald-400/50 rounded-xl p-2 flex flex-col justify-between h-full relative overflow-hidden shadow-lg scale-102">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[8px] font-mono font-bold text-emerald-300 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-500/40">
+                    Mechanism
+                  </span>
+                  <span className="text-xs animate-spin" style={{ animationDuration: '6s' }}>⚙️</span>
+                </div>
+                <h5 className="text-[10px] sm:text-[11px] font-black text-emerald-300 line-clamp-2 leading-tight">
+                  {keywords[1] ? keywords[1].toUpperCase() : 'ACTIVE PROCESS'}
+                </h5>
+                <p className="text-[8.5px] text-slate-200 line-clamp-2 font-sans mt-0.5">
+                  {slide.bullets[1] || 'Core scientific reaction, rule, or mechanism'}
+                </p>
+                <div className="h-1 w-full bg-emerald-500/30 rounded-full mt-1.5 overflow-hidden">
+                  <div className="h-full bg-emerald-400 w-full animate-pulse" />
+                </div>
+              </div>
+
+              {/* Connecting Glow Arrow 2 ➔ 3 */}
+              <div className="flex flex-col items-center shrink-0">
+                <ArrowRight className="h-4 w-4 text-emerald-400 animate-pulse" />
+              </div>
+
+              {/* Stage 3: Result & Outcome */}
+              <div className="flex-1 bg-slate-900/90 border border-sky-500/30 rounded-xl p-2 flex flex-col justify-between h-full relative overflow-hidden shadow-md">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[8px] font-mono font-bold text-sky-400 bg-sky-950/80 px-1.5 py-0.5 rounded border border-sky-500/30">
+                    Result
+                  </span>
+                  <span className="text-xs">🎯</span>
+                </div>
+                <h5 className="text-[10px] sm:text-[11px] font-bold text-white line-clamp-2 leading-tight">
+                  {keywords[2] ? keywords[2].toUpperCase() : 'APPLICATION'}
+                </h5>
+                <p className="text-[8.5px] text-slate-300 line-clamp-2 font-sans mt-0.5">
+                  {slide.bullets[2] || 'Final impact, observation, or practical application'}
+                </p>
+                <div className="h-1 w-full bg-sky-500/30 rounded-full mt-1.5 overflow-hidden">
+                  <div className="h-full bg-sky-400 w-full animate-pulse" />
                 </div>
               </div>
             </div>
 
+            {/* Bottom Tag Bar */}
             <div className="flex flex-wrap gap-1.5 justify-center mt-1">
               {keywords.map((kw, idx) => (
-                <span key={idx} className="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-[9px] font-mono text-[#F2CC8F]">
+                <span key={idx} className="px-2 py-0.5 bg-slate-900/80 border border-white/10 rounded-md text-[9px] font-mono text-[#F2CC8F]">
                   #{kw}
                 </span>
               ))}
