@@ -1458,10 +1458,46 @@ export default function TutorTab({
   };
 
   // --- VIDEO EXPORT GENERATOR STATES ---
-  const [showDownloadSelectionModal, setShowDownloadSelectionModal] = useState(false);
+  const [selectedVideoFormat, setSelectedVideoFormat] = useState<'mp4' | 'webm'>('mp4');
+  const [actualGeneratedFormat, setActualGeneratedFormat] = useState<'mp4' | 'webm'>('webm');
   const [isRecordingVideoFile, setIsRecordingVideoFile] = useState(false);
+  const [isVideoExportReady, setIsVideoExportReady] = useState(false);
+  const [generatedVideoBlobUrl, setGeneratedVideoBlobUrl] = useState<string | null>(null);
+  const [generatedVideoFileName, setGeneratedVideoFileName] = useState<string>('');
+  const [generatedVideoSize, setGeneratedVideoSize] = useState<string>('');
+  const [videoExportError, setVideoExportError] = useState<string | null>(null);
   const [videoRecordProgress, setVideoRecordProgress] = useState(0);
   const [videoRecordStatus, setVideoRecordStatus] = useState('');
+  const [stagedStreamUrl, setStagedStreamUrl] = useState<string | null>(null);
+  const [serverMp4Url, setServerMp4Url] = useState<string | null>(null);
+  const [serverMp4Size, setServerMp4Size] = useState<string | null>(null);
+  const [generationId, setGenerationId] = useState<string>('');
+  const [downloadFeedbackMsg, setDownloadFeedbackMsg] = useState<string | null>(null);
+  
+  // Resumable Chunked Download Tracker
+  const [activeDownloadProgress, setActiveDownloadProgress] = useState<{
+    isDownloading: boolean;
+    isPaused: boolean;
+    percent: number;
+    transferredBytes: number;
+    totalBytes: number;
+    speedKbps: number;
+    error: string | null;
+    success: boolean;
+  }>({
+    isDownloading: false,
+    isPaused: false,
+    percent: 0,
+    transferredBytes: 0,
+    totalBytes: 0,
+    speedKbps: 0,
+    error: null,
+    success: false
+  });
+
+  const cachedVideoBlobRef = React.useRef<Blob | null>(null);
+  const downloadAbortControllerRef = React.useRef<AbortController | null>(null);
+  const downloadChunksRef = React.useRef<Uint8Array[]>([]);
   const exportCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const recordingActiveRef = React.useRef(false);
   const animationFrameIdRef = React.useRef<number | null>(null);
@@ -1471,6 +1507,312 @@ export default function TutorTab({
   const exportBeatIntervalIdRef = React.useRef<any>(null);
   const exportBlobUrlsRef = React.useRef<string[]>([]);
   const exportMediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+
+  // Bind the download directly to the exact generated video Blob and file URL
+  const downloadExactGeneratedVideo = (preferServerMp4: boolean = false) => {
+    // If user explicitly requested server-transcoded MP4 and it is ready:
+    if (preferServerMp4 && serverMp4Url) {
+      try {
+        const a = document.createElement('a');
+        a.href = serverMp4Url;
+        const mp4FileName = (generatedVideoFileName || `mascot_lecture_${Date.now()}`).replace(/\.(webm|mp4)$/i, '') + '.mp4';
+        a.download = mp4FileName;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          try { document.body.removeChild(a); } catch (e) {}
+        }, 1000);
+        setDownloadFeedbackMsg(
+          lang === 'hi'
+            ? `✅ यूनिवर्सल MP4 वीडियो डाउनलोड शुरू हुआ: ${mp4FileName}`
+            : `✅ Universal MP4 download started: ${mp4FileName}`
+        );
+        setTimeout(() => setDownloadFeedbackMsg(null), 4000);
+        return;
+      } catch (e) {
+        console.warn("Server MP4 download error, falling back to direct Blob:", e);
+      }
+    }
+
+    // 1. Error handling if video source is missing or invalid
+    const sourceBlob = cachedVideoBlobRef.current;
+    if (!generatedVideoBlobUrl && !sourceBlob) {
+      setVideoExportError(
+        lang === 'hi'
+          ? 'त्रुटि: वीडियो स्रोत नहीं मिला। कृपया व्याख्यान वीडियो को पुनः जनरेट करें।'
+          : 'Error: Video source is missing or invalid. Please re-generate the lecture video.'
+      );
+      return;
+    }
+
+    if (sourceBlob && sourceBlob.size < 500) {
+      setVideoExportError(
+        lang === 'hi'
+          ? 'त्रुटि: उत्पन्न वीडियो फ़ाइल शून्य या अमान्य आकार (0 बाइट) की है। कृपया पुनः जनरेट करें।'
+          : 'Error: The generated video file is empty or corrupt (<500 bytes). Please re-generate the lecture.'
+      );
+      return;
+    }
+
+    // 2. MIME type verification strictly matching the exact Blob output
+    const mime = (sourceBlob?.type || '').toLowerCase();
+    const isMp4 = mime.includes('mp4') || actualGeneratedFormat === 'mp4';
+    const extension = isMp4 ? 'mp4' : 'webm';
+
+    // 3. Exact matching file name ensuring container & extension parity
+    const rawName = generatedVideoFileName || `mascot_lecture_${Date.now()}.${extension}`;
+    const baseName = rawName.replace(/\.(mp4|webm)$/i, '');
+    const finalFileName = `${baseName}.${extension}`;
+
+    // 4. Source URL strictly from exact Blob or generated URL
+    let downloadUrl = generatedVideoBlobUrl;
+    let temporaryUrlCreated = false;
+
+    if (!downloadUrl && sourceBlob) {
+      downloadUrl = URL.createObjectURL(sourceBlob);
+      temporaryUrlCreated = true;
+    }
+
+    if (!downloadUrl) {
+      setVideoExportError(
+        lang === 'hi'
+          ? 'त्रुटि: वीडियो स्रोत URL प्राप्त नहीं हो सका।'
+          : 'Error: Failed to access generated video source URL.'
+      );
+      return;
+    }
+
+    try {
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = finalFileName;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(() => {
+        try {
+          document.body.removeChild(a);
+        } catch (e) {}
+        if (temporaryUrlCreated) {
+          URL.revokeObjectURL(downloadUrl!);
+        }
+      }, 1500);
+
+      setDownloadFeedbackMsg(
+        lang === 'hi'
+          ? `✅ डाउनलोड शुरू हुआ: ${finalFileName}`
+          : `✅ Download started: ${finalFileName}`
+      );
+      setTimeout(() => setDownloadFeedbackMsg(null), 4000);
+
+      setActiveDownloadProgress({
+        isDownloading: false,
+        isPaused: false,
+        percent: 100,
+        transferredBytes: sourceBlob?.size || 0,
+        totalBytes: sourceBlob?.size || 0,
+        speedKbps: 0,
+        error: null,
+        success: true
+      });
+    } catch (err: any) {
+      console.warn("Direct video download error:", err);
+      try {
+        window.open(downloadUrl, '_blank');
+      } catch (fallbackErr) {
+        setVideoExportError(
+          lang === 'hi'
+            ? 'ब्राउज़र ने स्वचालित डाउनलोड अवरुद्ध किया। कृपया नीचे दिए गए सीधे लिंक का उपयोग करें।'
+            : 'Browser blocked automatic download. Please use the direct link below.'
+        );
+      }
+    }
+  };
+
+  const triggerManualVideoDownload = downloadExactGeneratedVideo;
+
+  // Chunked, Resumable Downloader with Pause & Resume support and Speed Tracking
+  const startResumableChunkedDownload = async (resumeFromByte = 0) => {
+    const blob = cachedVideoBlobRef.current;
+    if (!blob) {
+      triggerManualVideoDownload();
+      return;
+    }
+
+    const totalBytes = blob.size;
+    const isMp4 = (blob.type || '').toLowerCase().includes('mp4') || actualGeneratedFormat === 'mp4';
+    const extension = isMp4 ? 'mp4' : 'webm';
+    const fileName = generatedVideoFileName || `mascot_lecture_${Date.now()}.${extension}`;
+
+    setActiveDownloadProgress(prev => ({
+      ...prev,
+      isDownloading: true,
+      isPaused: false,
+      totalBytes,
+      error: null,
+      success: false
+    }));
+
+    const abortController = new AbortController();
+    downloadAbortControllerRef.current = abortController;
+
+    const CHUNK_SIZE = 512 * 1024; // 512 KB chunks for smooth, corruption-free streaming
+    let offset = resumeFromByte;
+    let downloadedBytes = resumeFromByte;
+    let startTime = Date.now();
+    let lastBytes = downloadedBytes;
+
+    try {
+      if (resumeFromByte === 0) {
+        downloadChunksRef.current = [];
+      }
+
+      while (offset < totalBytes) {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        const end = Math.min(offset + CHUNK_SIZE, totalBytes);
+        let chunkData: Uint8Array;
+
+        // Try streaming via genuine HTTP 206 Range request if server staging is available
+        if (stagedStreamUrl) {
+          let retryCount = 0;
+          let success = false;
+          while (!success && retryCount < 3) {
+            try {
+              const resp = await fetch(stagedStreamUrl, {
+                headers: { Range: `bytes=${offset}-${end - 1}` },
+                signal: abortController.signal
+              });
+              if (resp.status === 206 || resp.status === 200) {
+                const arrayBuf = await resp.arrayBuffer();
+                chunkData = new Uint8Array(arrayBuf);
+                success = true;
+              } else {
+                throw new Error(`HTTP ${resp.status}`);
+              }
+            } catch (fetchErr: any) {
+              if (abortController.signal.aborted) return;
+              retryCount++;
+              if (retryCount >= 3) {
+                // Fallback to local memory slice
+                const slice = blob.slice(offset, end);
+                const arrayBuf = await slice.arrayBuffer();
+                chunkData = new Uint8Array(arrayBuf);
+                success = true;
+              } else {
+                await new Promise(r => setTimeout(r, 400 * retryCount));
+              }
+            }
+          }
+        } else {
+          // In-memory smooth chunked stream to avoid main-thread freeze
+          const slice = blob.slice(offset, end);
+          const arrayBuf = await slice.arrayBuffer();
+          chunkData = new Uint8Array(arrayBuf);
+          await new Promise(r => setTimeout(r, 25));
+        }
+
+        if (abortController.signal.aborted) return;
+
+        downloadChunksRef.current.push(chunkData!);
+        downloadedBytes += chunkData!.length;
+        offset = end;
+
+        const now = Date.now();
+        const timeDelta = (now - startTime) / 1000;
+        let speedKbps = 0;
+        if (timeDelta > 0.25) {
+          speedKbps = Math.round(((downloadedBytes - lastBytes) / 1024) / timeDelta);
+          startTime = now;
+          lastBytes = downloadedBytes;
+        }
+
+        const percent = Math.min(Math.round((downloadedBytes / totalBytes) * 100), 100);
+        setActiveDownloadProgress(prev => ({
+          ...prev,
+          percent,
+          transferredBytes: downloadedBytes,
+          speedKbps: speedKbps || prev.speedKbps,
+          totalBytes
+        }));
+      }
+
+      // Assemble final byte chunks with strictly verified MIME type
+      const assembledBlob = new Blob(downloadChunksRef.current, { type: blob.type || (isMp4 ? 'video/mp4' : 'video/webm') });
+      const saveUrl = URL.createObjectURL(assembledBlob);
+
+      const a = document.createElement('a');
+      a.href = saveUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(() => {
+        try { document.body.removeChild(a); } catch (e) {}
+        setTimeout(() => URL.revokeObjectURL(saveUrl), 180000);
+      }, 1000);
+
+      setActiveDownloadProgress(prev => ({
+        ...prev,
+        isDownloading: false,
+        isPaused: false,
+        percent: 100,
+        transferredBytes: totalBytes,
+        success: true,
+        error: null
+      }));
+
+    } catch (err: any) {
+      if (abortController.signal.aborted) return;
+      console.error("Resumable download error:", err);
+      setActiveDownloadProgress(prev => ({
+        ...prev,
+        isDownloading: false,
+        error: lang === 'hi'
+          ? 'डाउनलोड बाधित हुआ। कृपया "पुनः शुरू करें" पर क्लिक करें।'
+          : 'Download interrupted. Click Resume to continue.',
+        isPaused: true
+      }));
+    }
+  };
+
+  const pauseActiveDownload = () => {
+    if (downloadAbortControllerRef.current) {
+      downloadAbortControllerRef.current.abort();
+      downloadAbortControllerRef.current = null;
+    }
+    setActiveDownloadProgress(prev => ({
+      ...prev,
+      isDownloading: false,
+      isPaused: true
+    }));
+  };
+
+  const resumeActiveDownload = () => {
+    const currentBytes = activeDownloadProgress.transferredBytes;
+    startResumableChunkedDownload(currentBytes);
+  };
+
+  const cancelActiveDownload = () => {
+    if (downloadAbortControllerRef.current) {
+      downloadAbortControllerRef.current.abort();
+      downloadAbortControllerRef.current = null;
+    }
+    downloadChunksRef.current = [];
+    setActiveDownloadProgress({
+      isDownloading: false,
+      isPaused: false,
+      percent: 0,
+      transferredBytes: 0,
+      totalBytes: 0,
+      speedKbps: 0,
+      error: null,
+      success: false
+    });
+  };
 
   const playAmbientStudyBeat = (audioContext: AudioContext, destinationNode: AudioNode) => {
     const chordProgression = [
@@ -1573,394 +1915,537 @@ export default function TutorTab({
     return currentY + lineHeight;
   };
 
-  const startVideoExport = async (lesson: LessonQuery, singleSlideIndex?: number) => {
+  const startVideoExport = async (lesson: LessonQuery, singleSlideIndex?: number, formatPreference: 'mp4' | 'webm' = selectedVideoFormat) => {
     if (!lesson) return;
-    setShowDownloadSelectionModal(false);
     setIsRecordingVideoFile(true);
+    setIsVideoExportReady(false);
+    setVideoExportError(null);
+    if (generatedVideoBlobUrl) {
+      try { URL.revokeObjectURL(generatedVideoBlobUrl); } catch (e) {}
+    }
+    setGeneratedVideoBlobUrl(null);
+    setGeneratedVideoFileName('');
+    setGeneratedVideoSize('');
+    setStagedStreamUrl(null);
+    setServerMp4Url(null);
+    setServerMp4Size(null);
+    setGenerationId('');
+    setDownloadFeedbackMsg(null);
+    setActiveDownloadProgress({
+      isDownloading: false,
+      isPaused: false,
+      percent: 0,
+      transferredBytes: 0,
+      totalBytes: 0,
+      speedKbps: 0,
+      error: null,
+      success: false
+    });
     setVideoRecordProgress(0);
-    setVideoRecordStatus(lang === 'hi' ? 'ऑडियो और वीडियो इंजन शुरू किया जा रहा है...' : 'Initializing audio and video render engines...');
+    setVideoRecordStatus(lang === 'hi' ? 'एचडी वीडियो इंजन शुरू किया जा रहा है...' : 'Initializing HD Video Engine...');
     recordingActiveRef.current = true;
 
-    setTimeout(async () => {
-      const canvas = exportCanvasRef.current;
-      if (!canvas) {
-        console.error("Recording canvas not found");
-        setIsRecordingVideoFile(false);
-        return;
-      }
+    // 1. Create dedicated offscreen 1280x720 recording canvas immediately (no DOM dependency)
+    const recCanvas = document.createElement('canvas');
+    recCanvas.width = 1280;
+    recCanvas.height = 720;
+    const recCtx = recCanvas.getContext('2d', { alpha: false });
+    if (!recCtx) {
+      setVideoExportError('HTML5 Canvas 2D is not supported on this device.');
+      return;
+    }
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        console.error("Canvas context not supported");
-        setIsRecordingVideoFile(false);
-        return;
-      }
+    const allSlides = getSlidesForLesson(lesson, lang);
+    const isSingleSlide = singleSlideIndex !== undefined && singleSlideIndex >= 0 && singleSlideIndex < allSlides.length;
+    const slides = isSingleSlide ? [allSlides[singleSlideIndex]] : allSlides;
+    const avatarChar = lesson.avatarChar || "🤖";
+    const avatarName = lesson.avatarName || "Swami AI";
+    const subject = lesson.subject || "General 📚";
+    const query = lesson.query;
 
-      const allSlides = getSlidesForLesson(lesson, lang);
-      const isSingleSlide = singleSlideIndex !== undefined && singleSlideIndex >= 0 && singleSlideIndex < allSlides.length;
-      const slides = isSingleSlide ? [allSlides[singleSlideIndex]] : allSlides;
-      const avatarChar = lesson.avatarChar || "🤖";
-      const avatarName = lesson.avatarName || "Swami AI";
-      const subject = lesson.subject || "General 📚";
-      const query = lesson.query;
+    const bubbles = Array.from({ length: 15 }, () => ({
+      x: Math.random() * 1280,
+      y: Math.random() * 720,
+      r: Math.random() * 40 + 10,
+      alpha: Math.random() * 0.15 + 0.05,
+      dx: (Math.random() - 0.5) * 1.5,
+      dy: (Math.random() - 0.5) * 1.5
+    }));
 
-      // 1. Build speech audio queue for all slides
-      interface AudioQueueItem {
-        slideIndex: number;
-        text: string;
-        url: string;
+    // Draw initial frame immediately so stream never starts black or blank
+    drawCompleteSlideFrame(recCtx, {
+      query,
+      subject,
+      avatarChar,
+      avatarName,
+      currentSlide: slides[0],
+      currentSlideIndex: 0,
+      totalSlides: slides.length,
+      isAudioPlaying: false,
+      now: Date.now(),
+      elapsedMs: 0,
+      totalEstimatedSecs: Math.max(slides.length * 6, 15),
+      progressPercent: 0,
+      lang,
+      bubbles
+    });
+
+    // Mirror to preview canvas if available
+    const mirrorToPreview = () => {
+      const previewCanvas = exportCanvasRef.current;
+      if (previewCanvas) {
+        const pCtx = previewCanvas.getContext('2d');
+        if (pCtx) {
+          pCtx.drawImage(recCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
+        }
       }
-      
-      const audioQueue: AudioQueueItem[] = [];
-      slides.forEach((slide, sIdx) => {
-        const cleanText = cleanTextForTTS(slide.content || '');
-        const detectedLang = detectLanguageOfText(slide.content || '', lang);
-        const chunks = splitTextIntoTTSChunks(cleanText);
-        if (chunks.length === 0) {
+    };
+    mirrorToPreview();
+
+    // 2. Build speech audio queue for all slides
+    interface AudioQueueItem {
+      slideIndex: number;
+      text: string;
+      url: string;
+    }
+
+    const audioQueue: AudioQueueItem[] = [];
+    slides.forEach((slide, sIdx) => {
+      const cleanText = cleanTextForTTS(slide.content || '');
+      const detectedLang = detectLanguageOfText(slide.content || '', lang);
+      const chunks = splitTextIntoTTSChunks(cleanText);
+      if (chunks.length === 0) {
+        audioQueue.push({
+          slideIndex: sIdx,
+          text: '',
+          url: ''
+        });
+      } else {
+        chunks.forEach(chunk => {
           audioQueue.push({
             slideIndex: sIdx,
-            text: '',
-            url: ''
+            text: chunk,
+            url: `/api/tts?tl=${detectedLang}&q=${safeEncodeURIComponent(chunk)}`
           });
-        } else {
-          chunks.forEach(chunk => {
-            audioQueue.push({
-              slideIndex: sIdx,
-              text: chunk,
-              url: `/api/tts?tl=${detectedLang}&q=${safeEncodeURIComponent(chunk)}`
-            });
-          });
-        }
-      });
+        });
+      }
+    });
 
-      // Pre-buffer all narration audio chunks in parallel so speech starts instantly at 0.0s!
-      setVideoRecordStatus(
-        lang === 'hi' 
-          ? 'भाषण ऑडियो ट्रैक प्री-लोड हो रहे हैं...' 
-          : 'Preloading AI narration tracks for instant speech...'
-      );
+    setVideoRecordStatus(
+      lang === 'hi'
+        ? 'भाषण ऑडियो ट्रैक लोड हो रहे हैं...'
+        : 'Loading AI narration tracks...'
+    );
 
-      const blobUrls: string[] = [];
-      await Promise.all(
-        audioQueue.map(async (item) => {
-          if (!item.url) return;
-          try {
-            const resp = await fetch(item.url);
-            if (resp.ok) {
-              const blob = await resp.blob();
-              if (blob && blob.size > 200) {
-                const bUrl = URL.createObjectURL(blob);
-                blobUrls.push(bUrl);
-                item.url = bUrl;
-              }
+    // Pre-buffer narration audio chunks with strict 3.5s timeout per chunk
+    const blobUrls: string[] = [];
+    await Promise.all(
+      audioQueue.map(async (item) => {
+        if (!item.url) return;
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 3500);
+          const resp = await fetch(item.url, { signal: controller.signal });
+          clearTimeout(timer);
+          if (resp.ok) {
+            const blob = await resp.blob();
+            if (blob && blob.size > 200) {
+              const bUrl = URL.createObjectURL(blob);
+              blobUrls.push(bUrl);
+              item.url = bUrl;
             }
-          } catch (e) {
-            console.warn("Could not prebuffer chunk:", e);
           }
-        })
-      );
-      exportBlobUrlsRef.current = blobUrls;
+        } catch (e) {
+          // Graceful fallback to timed slide display
+        }
+      })
+    );
+    exportBlobUrlsRef.current = blobUrls;
 
-      let audioCtx: AudioContext | null = null;
-      let audioDest: MediaStreamAudioDestinationNode | null = null;
-      let beatIntervalId: any = null;
-      let tutorAudio: HTMLAudioElement | null = null;
-      let tutorSource: MediaElementAudioSourceNode | null = null;
+    // 3. Audio & Stream capture
+    let stream: MediaStream;
+    try {
+      stream = recCanvas.captureStream(30);
+    } catch (e) {
+      console.error("captureStream not supported:", e);
+      setVideoExportError('HTML5 Canvas captureStream is not supported in this browser.');
+      return;
+    }
 
-      try {
-        const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+    let audioCtx: AudioContext | null = null;
+    let audioDest: MediaStreamAudioDestinationNode | null = null;
+    let beatIntervalId: any = null;
+    let tutorAudio: HTMLAudioElement | null = null;
+
+    try {
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtxClass) {
         audioCtx = new AudioCtxClass();
         exportAudioCtxRef.current = audioCtx;
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
         audioDest = audioCtx.createMediaStreamDestination();
         beatIntervalId = playAmbientStudyBeat(audioCtx, audioDest);
         exportBeatIntervalIdRef.current = beatIntervalId;
-        
+
+        if (audioDest && audioDest.stream && audioDest.stream.getAudioTracks().length > 0) {
+          const audioTrack = audioDest.stream.getAudioTracks()[0];
+          stream.addTrack(audioTrack);
+        }
+
         tutorAudio = new Audio();
         tutorAudio.crossOrigin = "anonymous";
         tutorAudioRef.current = tutorAudio;
 
-        tutorSource = audioCtx.createMediaElementSource(tutorAudio);
-        tutorSource.connect(audioDest);
-        tutorSource.connect(audioCtx.destination); // Let user hear the narration during encoding
-
-        if (audioCtx.state === 'suspended') {
-          await audioCtx.resume();
+        try {
+          const tutorSource = audioCtx.createMediaElementSource(tutorAudio);
+          tutorSource.connect(audioDest);
+          tutorSource.connect(audioCtx.destination);
+        } catch (e) {
+          console.warn("Could not connect audio to destination:", e);
         }
-      } catch (err) {
-        console.warn("Could not start Web Audio:", err);
+      }
+    } catch (err) {
+      console.warn("Web Audio not supported or restricted, proceeding with video-only track:", err);
+    }
+
+    // 4. Determine best supported MIME type according to user format preference
+    const targetFormat = formatPreference || selectedVideoFormat || 'mp4';
+    const preferredTypes = targetFormat === 'mp4'
+      ? [
+          'video/mp4;codecs=avc1,mp4a',
+          'video/mp4',
+          'video/webm;codecs=vp9,opus',
+          'video/webm;codecs=vp8,opus',
+          'video/webm'
+        ]
+      : [
+          'video/webm;codecs=vp9,opus',
+          'video/webm;codecs=vp8,opus',
+          'video/webm;codecs=h264,opus',
+          'video/webm',
+          'video/mp4'
+        ];
+
+    let selectedMimeType = '';
+    for (const type of preferredTypes) {
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
+        selectedMimeType = type;
+        break;
+      }
+    }
+
+    let recordedChunks: Blob[] = [];
+    let mediaRecorder: MediaRecorder;
+    try {
+      const options = selectedMimeType ? { mimeType: selectedMimeType } : undefined;
+      mediaRecorder = new MediaRecorder(stream, options);
+      exportMediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+      };
+      mediaRecorder.start(200);
+    } catch (err) {
+      console.error("Failed to create MediaRecorder:", err);
+      setVideoExportError('Failed to initialize video recording engine on this device.');
+      return;
+    }
+
+    const startTime = Date.now();
+    let lastTime = Date.now();
+
+    let currentQueueIdx = 0;
+    let isAudioPlaying = false;
+    let currentSlideIdx = 0;
+    let exportCompleted = false;
+    let currentSlideStartTime = Date.now();
+    const MIN_SLIDE_DISPLAY_MS = 5500; // 5.5s minimum per slide so user can read everything
+
+    const finishRecording = () => {
+      if (exportCompleted) return;
+      exportCompleted = true;
+      recordingActiveRef.current = false;
+
+      setVideoRecordProgress(100);
+      setVideoRecordStatus(lang === 'hi' ? 'एचडी वीडियो फ़ाइल तैयार हो रही है...' : 'Finalizing high-definition video lecture...');
+
+      if (slideSwitchTimeoutRef.current) {
+        clearTimeout(slideSwitchTimeoutRef.current);
+        slideSwitchTimeoutRef.current = null;
+      }
+      if (tutorAudioRef.current) {
+        try {
+          tutorAudioRef.current.pause();
+          tutorAudioRef.current.src = '';
+        } catch (e) {}
+        tutorAudioRef.current = null;
       }
 
-      let stream: MediaStream;
-      try {
-        stream = canvas.captureStream(30);
-      } catch (e) {
-        console.error("captureStream not supported:", e);
-        setIsRecordingVideoFile(false);
-        return;
-      }
+      mediaRecorder.onstop = () => {
+        try {
+          const actualMime = (mediaRecorder.mimeType || selectedMimeType || '').toLowerCase();
+          const isTrulyMp4 = actualMime.includes('mp4');
+          const finalMime = isTrulyMp4 ? 'video/mp4' : 'video/webm';
+          const ext = isTrulyMp4 ? 'mp4' : 'webm';
+          setActualGeneratedFormat(ext);
 
-      if (audioDest && audioDest.stream.getAudioTracks().length > 0) {
-        const audioTrack = audioDest.stream.getAudioTracks()[0];
-        stream.addTrack(audioTrack);
-      }
+          const blob = new Blob(recordedChunks, { type: finalMime });
+          cachedVideoBlobRef.current = blob;
 
-      let mimeType = 'video/webm;codecs=vp9';
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'video/webm;codecs=vp8';
-      }
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'video/webm';
-      }
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        mimeType = 'video/mp4';
-      }
-
-      let recordedChunks: Blob[] = [];
-      let mediaRecorder: MediaRecorder;
-      try {
-        mediaRecorder = new MediaRecorder(stream, { mimeType });
-        exportMediaRecorderRef.current = mediaRecorder;
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data && event.data.size > 0) {
-            recordedChunks.push(event.data);
+          if (!blob || blob.size < 500) {
+            setVideoExportError(
+              lang === 'hi'
+                ? 'वीडियो रिकॉर्डिंग समाप्त हुई लेकिन कोई डेटा उत्पन्न नहीं हुआ। कृपया पुनः प्रयास करें।'
+                : 'Recording completed but video stream was empty (<500 bytes). Please try again.'
+            );
+            return;
           }
-        };
-        mediaRecorder.start(100);
-      } catch (err) {
-        console.error("Failed to create MediaRecorder:", err);
-        setIsRecordingVideoFile(false);
-        return;
-      }
 
-      const startTime = Date.now();
-      let lastTime = Date.now();
+          const videoUrl = URL.createObjectURL(blob);
+          const sizeMB = (blob.size / (1024 * 1024)).toFixed(1);
+          const sizeStr = `${sizeMB} MB`;
 
-      const bubbles = Array.from({ length: 15 }, () => ({
-        x: Math.random() * 1280,
-        y: Math.random() * 720,
-        r: Math.random() * 40 + 10,
-        alpha: Math.random() * 0.15 + 0.05,
-        dx: (Math.random() - 0.5) * 1.5,
-        dy: (Math.random() - 0.5) * 1.5
-      }));
+          const sanitizedTitle = query
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '_')
+            .replace(/_+/g, '_')
+            .substring(0, 36) || 'lecture';
+          const slideSuffix = isSingleSlide ? `_slide_${(singleSlideIndex ?? 0) + 1}` : '_full_lecture';
+          const fileName = `mascot_lecture_${sanitizedTitle}${slideSuffix}.${ext}`;
+          const genId = 'VID-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
-      // Active states driven by speech playback and guaranteed minimum slide duration
-      let currentQueueIdx = 0;
-      let isAudioPlaying = false;
-      let currentSlideIdx = 0;
-      let exportCompleted = false;
-      let currentSlideStartTime = Date.now();
-      const MIN_SLIDE_DISPLAY_MS = 6500; // Guarantee every slide is clearly visible for at least 6.5s
+          setGenerationId(genId);
+          setGeneratedVideoBlobUrl(videoUrl);
+          setGeneratedVideoFileName(fileName);
+          setGeneratedVideoSize(sizeStr);
+          setIsVideoExportReady(true);
+          setVideoRecordStatus(
+            lang === 'hi' 
+              ? `✅ वीडियो तैयार है (${sizeStr} • ${ext.toUpperCase()})!` 
+              : `✅ Video Ready (${sizeStr} • ${ext.toUpperCase()})!`
+          );
 
-      const finishRecording = () => {
-        if (exportCompleted) return;
-        exportCompleted = true;
-        recordingActiveRef.current = false;
-        
-        setVideoRecordProgress(100);
-        setVideoRecordStatus(lang === 'hi' ? 'एचडी वीडियो फ़ाइल तैयार हो रही है...' : 'Finalizing full HD movie file...');
-        
-        if (slideSwitchTimeoutRef.current) {
-          clearTimeout(slideSwitchTimeoutRef.current);
-          slideSwitchTimeoutRef.current = null;
-        }
-        if (tutorAudioRef.current) {
+          // Asynchronously stage to server for resumable HTTP 206 chunked streaming and optional MP4 transcode
           try {
-            tutorAudioRef.current.pause();
-            tutorAudioRef.current.src = '';
-          } catch (e) {
-            // Safe ignore
-          }
-          tutorAudioRef.current = null;
-        }
-
-        setTimeout(() => {
-          try {
-            mediaRecorder.stop();
-            setTimeout(() => {
-              const blob = new Blob(recordedChunks, { type: mimeType });
-              const videoUrl = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = videoUrl;
-              
-              const sanitizedTitle = query
-                .toLowerCase()
-                .replace(/[^a-z0-9]/g, '_')
-                .replace(/_+/g, '_')
-                .substring(0, 40);
-              const extension = (mimeType || '').includes('mp4') ? 'mp4' : 'webm';
-              const slideSuffix = isSingleSlide ? `_slide_${(singleSlideIndex ?? 0) + 1}` : '_full_lecture';
-              a.download = `mascot_lecture_${sanitizedTitle}${slideSuffix}.${extension}`;
-              
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(videoUrl);
-
-              if (beatIntervalId) clearInterval(beatIntervalId);
-              if (audioCtx) audioCtx.close();
-              if (exportBlobUrlsRef.current.length > 0) {
-                exportBlobUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
-                exportBlobUrlsRef.current = [];
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+              try {
+                const resStr = reader.result as string;
+                if (resStr && resStr.includes(',')) {
+                  const base64Data = resStr.split(',')[1];
+                  const resp = await fetch('/api/video/stage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      base64Data,
+                      filename: fileName,
+                      mimeType: finalMime,
+                      convertToMp4: targetFormat === 'mp4' && !isTrulyMp4
+                    })
+                  });
+                  const data = await resp.json();
+                  if (data.success) {
+                    if (data.downloadUrl) {
+                      setStagedStreamUrl(data.downloadUrl);
+                    }
+                    if (data.mp4Ready && data.mp4DownloadUrl) {
+                      setServerMp4Url(data.mp4DownloadUrl);
+                      if (data.mp4Size) {
+                        setServerMp4Size(`${(data.mp4Size / (1024 * 1024)).toFixed(1)} MB`);
+                      }
+                    }
+                  }
+                }
+              } catch (stageErr) {
+                console.warn("Background video staging info:", stageErr);
               }
+            };
+            reader.readAsDataURL(blob);
+          } catch (e) {}
 
-              setIsRecordingVideoFile(false);
-            }, 500);
-          } catch (err) {
-            console.error("Error finalizing recording:", err);
-            setIsRecordingVideoFile(false);
+          // Trigger automatic download
+          const a = document.createElement('a');
+          a.href = videoUrl;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            try { document.body.removeChild(a); } catch (e) {}
+          }, 1000);
+
+          if (beatIntervalId) clearInterval(beatIntervalId);
+          if (audioCtx) {
+            try { audioCtx.close(); } catch (e) {}
           }
-        }, 800);
-      };
-
-      const advanceToNextChunk = () => {
-        if (!recordingActiveRef.current || exportCompleted) return;
-
-        const nextQueueIdx = currentQueueIdx + 1;
-        if (nextQueueIdx >= audioQueue.length) {
-          // Finished all narration queue chunks. Ensure last slide had adequate time
-          const elapsedOnLastSlide = Date.now() - currentSlideStartTime;
-          const remainingWait = Math.max(MIN_SLIDE_DISPLAY_MS - elapsedOnLastSlide, 1000);
-          setVideoRecordStatus(
-            lang === 'hi' 
-              ? 'व्याख्यान समाप्त हो रहा है • वीडियो सहेजा जा रहा है...' 
-              : 'Wrapping up all slides • Saving lecture video...'
+          if (exportBlobUrlsRef.current.length > 0) {
+            exportBlobUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
+            exportBlobUrlsRef.current = [];
+          }
+        } catch (err) {
+          console.error("Error creating video blob:", err);
+          setVideoExportError(
+            lang === 'hi'
+              ? 'वीडियो फ़ाइल पैकेजिंग में त्रुटि हुई। कृपया पुनः प्रयास करें।'
+              : 'Failed to package video file. Please try again.'
           );
-          slideSwitchTimeoutRef.current = setTimeout(() => {
-            finishRecording();
-          }, remainingWait);
-          return;
-        }
-
-        const nextItem = audioQueue[nextQueueIdx];
-        const isSwitchingSlide = nextItem.slideIndex !== currentSlideIdx;
-
-        if (isSwitchingSlide) {
-          // If changing to the next slide, ensure the current slide was shown for at least MIN_SLIDE_DISPLAY_MS
-          const elapsedOnCurrentSlide = Date.now() - currentSlideStartTime;
-          const remainingWait = Math.max(MIN_SLIDE_DISPLAY_MS - elapsedOnCurrentSlide, 600);
-          setVideoRecordStatus(
-            lang === 'hi' 
-              ? `अगली स्लाइड पर जाया जा रहा है: स्लाइड ${nextItem.slideIndex + 1}/${slides.length}` 
-              : `Switching to Slide ${nextItem.slideIndex + 1} of ${slides.length}...`
-          );
-          slideSwitchTimeoutRef.current = setTimeout(() => {
-            currentQueueIdx = nextQueueIdx;
-            currentSlideStartTime = Date.now();
-            playNextChunk();
-          }, remainingWait);
-        } else {
-          // Same slide, next sentence chunk
-          slideSwitchTimeoutRef.current = setTimeout(() => {
-            currentQueueIdx = nextQueueIdx;
-            playNextChunk();
-          }, 350);
         }
       };
 
-      const playNextChunk = () => {
-        if (!recordingActiveRef.current || exportCompleted) return;
-
-        if (currentQueueIdx >= audioQueue.length) {
-          advanceToNextChunk();
-          return;
+      try {
+        if (mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
         }
+      } catch (err) {
+        console.error("Error calling mediaRecorder.stop():", err);
+      }
+    };
 
-        const item = audioQueue[currentQueueIdx];
-        currentSlideIdx = item.slideIndex;
+    const advanceToNextChunk = () => {
+      if (!recordingActiveRef.current || exportCompleted) return;
 
-        const slideTitle = slides[currentSlideIdx]?.title || `Slide ${currentSlideIdx + 1}`;
+      const nextQueueIdx = currentQueueIdx + 1;
+      if (nextQueueIdx >= audioQueue.length) {
+        const elapsedOnLastSlide = Date.now() - currentSlideStartTime;
+        const remainingWait = Math.max(MIN_SLIDE_DISPLAY_MS - elapsedOnLastSlide, 800);
         setVideoRecordStatus(
           lang === 'hi' 
-            ? `रिकॉर्ड हो रहा है: स्लाइड ${currentSlideIdx + 1}/${slides.length} (${cleanMathTextForCanvas(slideTitle).substring(0, 30)})`
-            : `Recording Slide ${currentSlideIdx + 1}/${slides.length}: ${cleanMathTextForCanvas(slideTitle).substring(0, 30)}`
+            ? 'व्याख्यान समाप्त हो रहा है • वीडियो सहेजा जा रहा है...' 
+            : 'Wrapping up lecture • Packaging video...'
         );
+        slideSwitchTimeoutRef.current = setTimeout(() => {
+          finishRecording();
+        }, remainingWait);
+        return;
+      }
 
-        if (!item.url) {
-          isAudioPlaying = false;
-          slideSwitchTimeoutRef.current = setTimeout(() => {
-            advanceToNextChunk();
-          }, 3500);
-          return;
-        }
+      const nextItem = audioQueue[nextQueueIdx];
+      const isSwitchingSlide = nextItem.slideIndex !== currentSlideIdx;
 
-        if (tutorAudioRef.current) {
-          tutorAudioRef.current.src = item.url;
-          isAudioPlaying = true;
+      if (isSwitchingSlide) {
+        const elapsedOnCurrentSlide = Date.now() - currentSlideStartTime;
+        const remainingWait = Math.max(MIN_SLIDE_DISPLAY_MS - elapsedOnCurrentSlide, 500);
+        setVideoRecordStatus(
+          lang === 'hi' 
+            ? `अगली स्लाइड पर जाया जा रहा है: स्लाइड ${nextItem.slideIndex + 1}/${slides.length}` 
+            : `Transitioning to Slide ${nextItem.slideIndex + 1} of ${slides.length}...`
+        );
+        slideSwitchTimeoutRef.current = setTimeout(() => {
+          currentQueueIdx = nextQueueIdx;
+          currentSlideStartTime = Date.now();
+          playNextChunk();
+        }, remainingWait);
+      } else {
+        slideSwitchTimeoutRef.current = setTimeout(() => {
+          currentQueueIdx = nextQueueIdx;
+          playNextChunk();
+        }, 300);
+      }
+    };
 
-          tutorAudioRef.current.play().catch(err => {
-            console.warn("Failed to play tutor audio chunk, falling back to timed display:", err);
-            isAudioPlaying = false;
-            slideSwitchTimeoutRef.current = setTimeout(() => {
-              advanceToNextChunk();
-            }, 3000);
-          });
-        } else {
-          isAudioPlaying = false;
-          slideSwitchTimeoutRef.current = setTimeout(() => {
-            advanceToNextChunk();
-          }, 3500);
-        }
-      };
+    const playNextChunk = () => {
+      if (!recordingActiveRef.current || exportCompleted) return;
+
+      if (currentQueueIdx >= audioQueue.length) {
+        advanceToNextChunk();
+        return;
+      }
+
+      const item = audioQueue[currentQueueIdx];
+      currentSlideIdx = item.slideIndex;
+
+      const slideTitle = slides[currentSlideIdx]?.title || `Slide ${currentSlideIdx + 1}`;
+      setVideoRecordStatus(
+        lang === 'hi' 
+          ? `रिकॉर्ड हो रहा है: स्लाइड ${currentSlideIdx + 1}/${slides.length} (${cleanMathTextForCanvas(slideTitle).substring(0, 28)})`
+          : `Recording Slide ${currentSlideIdx + 1}/${slides.length}: ${cleanMathTextForCanvas(slideTitle).substring(0, 28)}`
+      );
+
+      if (!item.url) {
+        isAudioPlaying = false;
+        slideSwitchTimeoutRef.current = setTimeout(() => {
+          advanceToNextChunk();
+        }, 3000);
+        return;
+      }
 
       if (tutorAudioRef.current) {
-        tutorAudioRef.current.onended = () => {
-          isAudioPlaying = false;
-          advanceToNextChunk();
-        };
-        tutorAudioRef.current.onerror = (e) => {
-          console.warn("Tutor audio error, proceeding with timed slide display:", e);
+        tutorAudioRef.current.src = item.url;
+        isAudioPlaying = true;
+
+        tutorAudioRef.current.play().catch(err => {
+          console.warn("Failed to play tutor audio chunk, using timed display:", err);
           isAudioPlaying = false;
           slideSwitchTimeoutRef.current = setTimeout(() => {
             advanceToNextChunk();
           }, 3000);
-        };
-      }
-
-      // Start sequential play of the narration queue
-      playNextChunk();
-
-      const renderFrame = () => {
-        if (!recordingActiveRef.current) return;
-
-        const now = Date.now();
-        const elapsed = now - startTime;
-        const dt = (now - lastTime) / 1000;
-        lastTime = now;
-
-        const progress = audioQueue.length > 0 ? Math.min((currentQueueIdx / audioQueue.length) * 100, 99) : 0;
-        setVideoRecordProgress(Math.floor(progress));
-        
-        const currentSlide = slides[currentSlideIdx] || slides[0] || {
-          id: 'slide-1',
-          title: query,
-          content: 'Lecture in progress...',
-          bullets: []
-        };
-
-        // Render full high-fidelity visual board, diagrams, formulas, and slide contents
-        drawCompleteSlideFrame(ctx, {
-          query,
-          subject,
-          avatarChar,
-          avatarName,
-          currentSlide,
-          currentSlideIndex: currentSlideIdx,
-          totalSlides: slides.length,
-          isAudioPlaying,
-          now,
-          elapsedMs: elapsed,
-          totalEstimatedSecs: Math.max(Math.floor(elapsed / 1000) + 2, audioQueue.length * 5),
-          progressPercent: progress,
-          lang,
-          bubbles
         });
+      } else {
+        isAudioPlaying = false;
+        slideSwitchTimeoutRef.current = setTimeout(() => {
+          advanceToNextChunk();
+        }, 3000);
+      }
+    };
 
-        animationFrameIdRef.current = requestAnimationFrame(renderFrame);
+    if (tutorAudioRef.current) {
+      tutorAudioRef.current.onended = () => {
+        isAudioPlaying = false;
+        advanceToNextChunk();
+      };
+      tutorAudioRef.current.onerror = (e) => {
+        console.warn("Tutor audio error, proceeding with timed display:", e);
+        isAudioPlaying = false;
+        slideSwitchTimeoutRef.current = setTimeout(() => {
+          advanceToNextChunk();
+        }, 3000);
+      };
+    }
+
+    playNextChunk();
+
+    const renderFrame = () => {
+      if (!recordingActiveRef.current) return;
+
+      const now = Date.now();
+      const elapsed = now - startTime;
+      lastTime = now;
+
+      const progress = audioQueue.length > 0 ? Math.min((currentQueueIdx / audioQueue.length) * 100, 99) : 0;
+      setVideoRecordProgress(Math.floor(progress));
+      
+      const currentSlide = slides[currentSlideIdx] || slides[0] || {
+        id: 'slide-1',
+        title: query,
+        content: 'Lecture in progress...',
+        bullets: []
       };
 
-      renderFrame();
-    }, 100);
+      drawCompleteSlideFrame(recCtx, {
+        query,
+        subject,
+        avatarChar,
+        avatarName,
+        currentSlide,
+        currentSlideIndex: currentSlideIdx,
+        totalSlides: slides.length,
+        isAudioPlaying,
+        now,
+        elapsedMs: elapsed,
+        totalEstimatedSecs: Math.max(Math.floor(elapsed / 1000) + 2, audioQueue.length * 5),
+        progressPercent: progress,
+        lang,
+        bubbles
+      });
+
+      mirrorToPreview();
+
+      animationFrameIdRef.current = requestAnimationFrame(renderFrame);
+    };
+
+    renderFrame();
   };
 
   const cancelVideoExport = () => {
@@ -2002,6 +2487,33 @@ export default function TutorTab({
       exportBlobUrlsRef.current.forEach(u => URL.revokeObjectURL(u));
       exportBlobUrlsRef.current = [];
     }
+    if (downloadAbortControllerRef.current) {
+      downloadAbortControllerRef.current.abort();
+      downloadAbortControllerRef.current = null;
+    }
+    downloadChunksRef.current = [];
+    cachedVideoBlobRef.current = null;
+    setStagedStreamUrl(null);
+    setActiveDownloadProgress({
+      isDownloading: false,
+      isPaused: false,
+      percent: 0,
+      transferredBytes: 0,
+      totalBytes: 0,
+      speedKbps: 0,
+      error: null,
+      success: false
+    });
+    if (generatedVideoBlobUrl) {
+      try { URL.revokeObjectURL(generatedVideoBlobUrl); } catch (e) {}
+      setGeneratedVideoBlobUrl(null);
+    }
+    setServerMp4Url(null);
+    setServerMp4Size(null);
+    setGenerationId('');
+    setDownloadFeedbackMsg(null);
+    setIsVideoExportReady(false);
+    setVideoExportError(null);
     stopSpeaking();
     setIsRecordingVideoFile(false);
   };
@@ -4380,12 +4892,15 @@ JSON Schema:
                                     <Pencil className="h-3.5 w-3.5" />
                                   </button>
 
-                                  {/* Download */}
+                                  {/* Download Video Lecture */}
                                   <button
                                     type="button"
-                                    onClick={() => downloadLessonVideoAndSlidesSpecific(item)}
+                                    onClick={() => {
+                                      setSelectedLesson(item);
+                                      startVideoExport(item);
+                                    }}
                                     className="p-1.5 rounded-md text-slate-400 hover:text-emerald-300 hover:bg-white/10 transition-colors cursor-pointer"
-                                    title={lang === "hi" ? "डाउनलोड करें" : "Download package"}
+                                    title={lang === "hi" ? "वीडियो लेक्चर डाउनलोड करें" : "Download Video Lecture"}
                                   >
                                     <Download className="h-3.5 w-3.5" />
                                   </button>
@@ -4592,7 +5107,7 @@ JSON Schema:
 
                           <button
                             type="button"
-                            onClick={() => setShowDownloadSelectionModal(true)}
+                            onClick={() => startVideoExport(selectedLesson)}
                             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full font-mono text-[10px] sm:text-xs font-black flex items-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
                             title={DOWNLOAD_TOOLTIPS[lang] || DOWNLOAD_TOOLTIPS['en']}
                           >
@@ -4919,181 +5434,187 @@ JSON Schema:
           </div>
         )}
 
-      {/* 📥 DOWNLOAD OPTIONS SELECTION MODAL */}
-      {showDownloadSelectionModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white shadow-2xl relative">
-            <button
-              type="button"
-              onClick={() => setShowDownloadSelectionModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 p-2 rounded-full transition-all cursor-pointer"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-3 text-xl">
-                📥
-              </div>
-              <h3 className="text-xl font-black font-display tracking-tight text-slate-100">
-                {lang === 'hi' ? 'पाठ सहेजें और डाउनलोड करें' : 'Save & Download Lesson'}
-              </h3>
-              <p className="text-xs text-slate-400 mt-1 font-sans">
-                {lang === 'hi' 
-                  ? 'अपनी पसंद के अनुसार ऑफ़लाइन पढ़ने का प्रारूप चुनें' 
-                  : 'Choose your preferred format for offline learning'}
-              </p>
-            </div>
-
-            <div className="space-y-3.5">
-              {/* Option 1: Full Video Lecture (All Slides) */}
-              <button
-                type="button"
-                onClick={() => startVideoExport(selectedLesson)}
-                className="w-full text-left bg-slate-800/40 hover:bg-slate-800/70 border border-slate-800 hover:border-indigo-500/30 p-4 rounded-2xl transition-all flex items-start gap-4 active:scale-98 cursor-pointer animate-none"
-              >
-                <div className="bg-[#E07A5F]/10 text-[#E07A5F] border border-[#E07A5F]/20 p-2.5 rounded-xl text-lg shrink-0 mt-0.5">
-                  🎥
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                    {lang === 'hi' ? 'संपूर्ण एचडी वीडियो व्याख्यान (.mp4 / .webm)' : 'Full HD Video Lecture (All Slides)'}
-                    <span className="bg-[#E07A5F]/10 text-[#E07A5F] border border-[#E07A5F]/20 text-[9px] font-mono px-2 py-0.5 rounded-full font-black">
-                      ALL SLIDES
-                    </span>
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-1 font-sans leading-relaxed">
-                    {lang === 'hi' 
-                      ? 'सभी स्लाइड आरेखों, सूत्रों, और आवाज़ के साथ पूरी वीडियो मूवी डाउनलोड करें।' 
-                      : 'Download complete movie with all visual diagrams, formulas, slide transitions, and narration.'}
-                  </p>
-                </div>
-              </button>
-
-              {/* Option 2: Current Slide Video Clip */}
-              {(() => {
-                const curSlides = getSlidesForLesson(selectedLesson, lang);
-                const curTitle = curSlides[currentSlideIndex]?.title || `Slide ${currentSlideIndex + 1}`;
-                return (
-                  <button
-                    type="button"
-                    onClick={() => startVideoExport(selectedLesson, currentSlideIndex)}
-                    className="w-full text-left bg-slate-800/40 hover:bg-slate-800/70 border border-slate-800 hover:border-amber-500/30 p-4 rounded-2xl transition-all flex items-start gap-4 active:scale-98 cursor-pointer animate-none"
-                  >
-                    <div className="bg-amber-500/10 text-amber-400 border border-amber-500/20 p-2.5 rounded-xl text-lg shrink-0 mt-0.5">
-                      ⭐
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                        {lang === 'hi' 
-                          ? `वर्तमान स्लाइड वीडियो क्लिप (स्लाइड ${currentSlideIndex + 1})` 
-                          : `Current Slide Video (Slide ${currentSlideIndex + 1} of ${curSlides.length})`}
-                        <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-mono px-2 py-0.5 rounded-full font-black">
-                          ACTIVE SLIDE
-                        </span>
-                      </h4>
-                      <p className="text-xs text-slate-400 mt-1 font-sans leading-relaxed">
-                        {lang === 'hi' 
-                          ? `वर्तमान में स्क्रीन पर दिख रही स्लाइड (${curTitle}) का आरेख और ऑडियो वीडियो डाउनलोड करें।` 
-                          : `Download an HD video of the exact slide currently displayed on screen with its animated diagram and audio.`}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })()}
-
-              {/* Option 3: Interactive Slides & Quiz HTML Package */}
-              <button
-                type="button"
-                onClick={() => {
-                  downloadLessonVideoAndSlidesSpecific(selectedLesson);
-                  setShowDownloadSelectionModal(false);
-                }}
-                className="w-full text-left bg-slate-800/40 hover:bg-slate-800/70 border border-slate-800 hover:border-emerald-500/30 p-4 rounded-2xl transition-all flex items-start gap-4 active:scale-98 cursor-pointer animate-none"
-              >
-                <div className="bg-[#81B29A]/10 text-[#81B29A] border border-[#81B29A]/20 p-2.5 rounded-xl text-lg shrink-0 mt-0.5">
-                  📚
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-bold text-sm text-slate-100">
-                    {lang === 'hi' ? 'इंटरएक्टिव स्लाइड और स्व-मूल्यांकन पैक (.html)' : 'Interactive Slide & Quiz Pack (.html)'}
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-1 font-sans leading-relaxed">
-                    {lang === 'hi' 
-                      ? 'स्लाइड प्लेयर, वॉयस-ओवर और स्व-जांच क्विज़ के साथ संपूर्ण इंटरएक्टिव ऑफ़लाइन पैकेज डाउनलोड करें।' 
-                      : 'Download the complete slide presentation, interactive self-test quiz game, and voice-over narration as an offline app.'}
-                  </p>
-                </div>
-              </button>
-            </div>
-
-            <div className="text-center mt-6 text-[10px] font-mono text-slate-500 uppercase tracking-widest border-t border-slate-800/60 pt-4">
-              Mascot Class Tutor • Offline Classroom
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 🎥 ACTIVE HD VIDEO RECORDING / RENDERING MODAL */}
+      {/* 🎥 ACTIVE HD VIDEO RECORDING / RENDERING / DOWNLOAD READY MODAL */}
       {isRecordingVideoFile && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full text-white shadow-2xl relative text-center">
-            
-            <div className="mb-4">
-              <span className="inline-flex h-3 w-3 rounded-full bg-red-500 animate-ping mr-2"></span>
-              <span className="text-[11px] font-mono text-red-400 uppercase font-extrabold tracking-widest">
-                {lang === 'hi' ? 'लाइव रेंडरिंग और रिकॉर्डिंग' : 'LIVE RENDERING & RECORDING'}
-              </span>
-            </div>
 
-            <h3 className="text-lg sm:text-xl font-black font-display tracking-tight text-slate-100">
-              {lang === 'hi' ? 'वीडियो व्याख्यान रेंडर किया जा रहा है...' : 'Generating Video Lecture...'}
-            </h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto leading-relaxed font-sans">
-              {lang === 'hi' 
-                ? 'हम आपके लिए सभी स्लाइड्स और पृष्ठभूमि संगीत को उच्च-गुणवत्ता वाली वीडियो फ़ाइल में संयोजित कर रहे हैं। कृपया इस टैब को चालू रखें!' 
-                : 'We are blending your customized tutor, animated slides, subtitles, and cozy ambient lofi music into a playable movie. Please do not close this tab!'}
-            </p>
-
-            {/* LIVE PREVIEW CANVAS */}
-            <div className="my-5 relative rounded-2xl overflow-hidden border border-slate-800 shadow-inner bg-slate-950 aspect-video w-full max-w-md mx-auto">
-              <canvas
-                ref={exportCanvasRef}
-                width={1280}
-                height={720}
-                className="w-full h-full object-contain"
-              />
-              <div className="absolute top-3 left-3 bg-red-600/90 text-white font-mono text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md">
-                REC 720P
+            {videoExportError ? (
+              /* ERROR STATE */
+              <div className="space-y-4 py-4">
+                <div className="w-14 h-14 bg-red-500/10 text-red-400 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto text-2xl">
+                  ⚠️
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-slate-100 font-display">
+                  {lang === 'hi' ? 'वीडियो रेंडरिंग में समस्या आई' : 'Video Generation Notice'}
+                </h3>
+                <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed font-sans">
+                  {videoExportError}
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => startVideoExport(selectedLesson, undefined, selectedVideoFormat)}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span>{lang === 'hi' ? 'पुनः प्रयास करें' : 'Try Again'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      cancelVideoExport();
+                      downloadLessonVideoAndSlidesSpecific(selectedLesson);
+                    }}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 rounded-xl font-bold text-xs transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>{lang === 'hi' ? 'एचटीएमएल पैकेज डाउनलोड करें' : 'Download HTML Package'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelVideoExport}
+                    className="w-full sm:w-auto px-4 py-2.5 text-slate-400 hover:text-white text-xs font-semibold cursor-pointer"
+                  >
+                    {lang === 'hi' ? 'बंद करें' : 'Close'}
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : isVideoExportReady && generatedVideoBlobUrl ? (
+              /* READY & DOWNLOAD STATE - SINGLE UNIFIED STREAMLINED ACTION */
+              <div className="space-y-4 py-2">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="inline-flex h-3 w-3 rounded-full bg-emerald-500 animate-ping"></span>
+                  <span className="text-xs font-mono text-emerald-400 uppercase font-extrabold tracking-widest">
+                    {lang === 'hi' ? 'वीडियो तैयार है!' : 'VIDEO READY TO DOWNLOAD'}
+                  </span>
+                </div>
 
-            {/* STATUS & PROGRESS */}
-            <div className="space-y-3 max-w-md mx-auto">
-              <div className="flex justify-between items-center text-xs font-mono text-slate-400">
-                <span className="truncate max-w-[80%] text-left font-sans italic">{videoRecordStatus}</span>
-                <span className="font-bold text-indigo-400 shrink-0">{videoRecordProgress}%</span>
+                <h3 className="text-xl sm:text-2xl font-black font-display tracking-tight text-slate-100">
+                  {lang === 'hi' ? 'व्याख्यान वीडियो तैयार है!' : 'Video Lecture Ready!'}
+                </h3>
+                <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed font-sans">
+                  {lang === 'hi'
+                    ? `आपका संपूर्ण एचडी वीडियो व्याख्यान (${generatedVideoSize}) तैयार है। नीचे दिए गए बटन पर क्लिक करके सीधे डाउनलोड करें!`
+                    : `Your full HD video lecture (${generatedVideoSize}) is ready. Click the button below to download directly:`}
+                </p>
+
+                {/* EMBEDDED VIDEO PREVIEW PLAYER */}
+                <div className="my-3 relative rounded-2xl overflow-hidden border border-emerald-500/40 shadow-2xl bg-black aspect-video w-full max-w-md mx-auto">
+                  <video
+                    id="generated-lecture-video-player"
+                    src={generatedVideoBlobUrl}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+
+                {/* Download Feedback Toast */}
+                {downloadFeedbackMsg && (
+                  <div className="max-w-md mx-auto p-2.5 bg-emerald-500/20 border border-emerald-500/50 rounded-xl text-emerald-300 text-xs font-bold text-center animate-fade-in shadow-lg">
+                    {downloadFeedbackMsg}
+                  </div>
+                )}
+
+                {/* ONLY ONE PROMINENT DOWNLOAD BUTTON */}
+                <div className="pt-2 flex flex-col items-center gap-3 max-w-md mx-auto w-full">
+                  <a
+                    href={generatedVideoBlobUrl}
+                    download={generatedVideoFileName}
+                    onClick={(e) => {
+                      if (!generatedVideoBlobUrl && !cachedVideoBlobRef.current) {
+                        e.preventDefault();
+                        downloadExactGeneratedVideo(false);
+                      } else {
+                        setDownloadFeedbackMsg(
+                          lang === 'hi'
+                            ? `✅ वीडियो डाउनलोड शुरू हुआ: ${generatedVideoFileName}`
+                            : `✅ Video download started: ${generatedVideoFileName}`
+                        );
+                        setTimeout(() => setDownloadFeedbackMsg(null), 4000);
+                      }
+                    }}
+                    className="w-full py-4 px-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm sm:text-base rounded-2xl shadow-xl shadow-emerald-950/40 flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-98 cursor-pointer text-center"
+                  >
+                    <Download className="h-5 w-5 shrink-0" />
+                    <span>
+                      {lang === 'hi'
+                        ? `वीडियो लेक्चर डाउनलोड करें (${generatedVideoSize})`
+                        : `Download Video Lecture (${generatedVideoSize})`}
+                    </span>
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={cancelVideoExport}
+                    className="text-xs text-slate-400 hover:text-white font-semibold transition-colors py-1 cursor-pointer"
+                  >
+                    {lang === 'hi' ? 'पूर्ण / बंद करें' : 'Done / Close'}
+                  </button>
+                </div>
               </div>
+            ) : (
+              /* LIVE RENDERING / RECORDING PROGRESS */
+              <>
+                <div className="mb-4">
+                  <span className="inline-flex h-3 w-3 rounded-full bg-red-500 animate-ping mr-2"></span>
+                  <span className="text-[11px] font-mono text-red-400 uppercase font-extrabold tracking-widest">
+                    {lang === 'hi' ? 'लाइव रेंडरिंग और रिकॉर्डिंग' : 'LIVE RENDERING & RECORDING'}
+                  </span>
+                </div>
 
-              {/* Progress track */}
-              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-[#E07A5F] rounded-full transition-all duration-300"
-                  style={{ width: `${videoRecordProgress}%` }}
-                />
-              </div>
-            </div>
+                <h3 className="text-lg sm:text-xl font-black font-display tracking-tight text-slate-100">
+                  {lang === 'hi' ? 'वीडियो व्याख्यान रेंडर किया जा रहा है...' : 'Generating Video Lecture...'}
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto leading-relaxed font-sans">
+                  {lang === 'hi' 
+                    ? 'हम आपके लिए सभी स्लाइड्स और पृष्ठभूमि संगीत को उच्च-गुणवत्ता वाली वीडियो फ़ाइल में संयोजित कर रहे हैं। कृपया इस टैब को चालू रखें!' 
+                    : 'We are blending your customized tutor, animated slides, subtitles, and cozy ambient lofi music into a playable movie. Please do not close this tab!'}
+                </p>
 
-            {/* CANCEL EXPORT */}
-            <div className="mt-6 flex justify-center gap-3">
-              <button
-                type="button"
-                onClick={cancelVideoExport}
-                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 hover:text-white rounded-xl font-semibold text-xs transition-all active:scale-95 cursor-pointer"
-              >
-                {lang === 'hi' ? 'रेंडरिंग रद्द करें' : 'Cancel Rendering'}
-              </button>
-            </div>
+                {/* LIVE PREVIEW CANVAS */}
+                <div className="my-5 relative rounded-2xl overflow-hidden border border-slate-800 shadow-inner bg-slate-950 aspect-video w-full max-w-md mx-auto">
+                  <canvas
+                    ref={exportCanvasRef}
+                    width={1280}
+                    height={720}
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="absolute top-3 left-3 bg-red-600/90 text-white font-mono text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md">
+                    REC 720P
+                  </div>
+                </div>
+
+                {/* STATUS & PROGRESS */}
+                <div className="space-y-3 max-w-md mx-auto">
+                  <div className="flex justify-between items-center text-xs font-mono text-slate-400">
+                    <span className="truncate max-w-[80%] text-left font-sans italic">{videoRecordStatus}</span>
+                    <span className="font-bold text-indigo-400 shrink-0">{videoRecordProgress}%</span>
+                  </div>
+
+                  {/* Progress track */}
+                  <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-[#E07A5F] rounded-full transition-all duration-300"
+                      style={{ width: `${videoRecordProgress}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* CANCEL EXPORT */}
+                <div className="mt-6 flex justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={cancelVideoExport}
+                    className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 hover:text-white rounded-xl font-semibold text-xs transition-all active:scale-95 cursor-pointer"
+                  >
+                    {lang === 'hi' ? 'रेंडरिंग रद्द करें' : 'Cancel Rendering'}
+                  </button>
+                </div>
+              </>
+            )}
 
             <div className="text-[9px] font-mono text-slate-600 uppercase tracking-widest mt-6 pt-4 border-t border-slate-800/60">
               Direct Hardware Accel Canvas Encoder

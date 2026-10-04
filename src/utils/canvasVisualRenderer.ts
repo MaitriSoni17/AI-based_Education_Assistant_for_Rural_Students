@@ -1359,11 +1359,225 @@ export function drawVisualLayoutContent(
       ctx.fillText(m.label, mx, tY + 42);
     });
 
-  } else {
-    // 12. DEFAULT CONCEPTUAL FLOW & GENERAL SUBJECTS
+  } else if (layout === 'cell-anatomy') {
+    // 12. CELL ANATOMY & BIOLOGY
+    ctx.fillStyle = '#34D399';
+    ctx.font = 'bold 13px "JetBrains Mono", monospace';
+    ctx.fillText("🔬 CELL ANATOMY & BIOLOGICAL STRUCTURE", boardX + 22, headerY + 16);
+
+    const cellX = boardX + 280;
+    const cellY = boardY + 280;
+
+    // Outer Cell Wall & Membrane
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+    ctx.strokeStyle = '#10B981';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(cellX, cellY, 180, 130, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Nucleus
+    ctx.fillStyle = 'rgba(99, 102, 241, 0.5)';
+    ctx.strokeStyle = '#6366F1';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cellX - 30, cellY - 10, 45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFF';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText("NUCLEUS", cellX - 30, cellY - 10);
+    ctx.font = '9px monospace';
+    ctx.fillText("(DNA Core)", cellX - 30, cellY + 6);
+
+    // Mitochondria (Powerhouse)
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.6)';
+    ctx.strokeStyle = '#F59E0B';
+    ctx.beginPath();
+    ctx.ellipse(cellX + 80, cellY + 35, 32, 18, Math.PI / 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#FFF';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText("Mitochondria", cellX + 80, cellY + 38);
+
+    // Labels card on right
+    const cardX = boardX + 510;
+    const cardY = boardY + 160;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(cardX, cardY, 200, 180, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#34D399';
+    ctx.font = 'bold 12px "JetBrains Mono", monospace';
+    ctx.fillText("CELL ORGANELLES", cardX + 16, cardY + 28);
+    const orgs = [
+      "🧬 Nucleus: Genetic DNA",
+      "⚡ Mitochondria: Powerhouse",
+      "🛡️ Membrane: Protection",
+      "🧪 Cytoplasm: Fluid Base"
+    ];
+    orgs.forEach((og, idx) => {
+      ctx.fillStyle = '#E2E8F0';
+      ctx.font = '11px "Inter", sans-serif';
+      ctx.fillText(og, cardX + 16, cardY + 62 + idx * 28);
+    });
+
+  } else if (layout === 'electric-circuit') {
+    // 13. ELECTRIC CIRCUIT & CURRENT
+    ctx.fillStyle = '#FBBF24';
+    ctx.font = 'bold 13px "JetBrains Mono", monospace';
+    ctx.fillText("⚡ ELECTRIC CIRCUIT & VOLTAGE FLOW", boardX + 22, headerY + 16);
+
+    const cirX = boardX + 100;
+    const cirY = boardY + 170;
+    const cirW = 380;
+    const cirH = 220;
+
+    // Circuit Wire Loop
+    ctx.strokeStyle = '#F59E0B';
+    ctx.lineWidth = 3.5;
+    ctx.strokeRect(cirX, cirY, cirW, cirH);
+
+    // Battery on left side
+    ctx.fillStyle = '#1E293B';
+    ctx.fillRect(cirX - 15, cirY + 70, 30, 80);
+    ctx.strokeStyle = '#38BDF8';
+    ctx.strokeRect(cirX - 15, cirY + 70, 30, 80);
+    ctx.fillStyle = '#38BDF8';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText("+ 12V -", cirX, cirY + 115);
+
+    // Light Bulb on top
+    const bulbX = cirX + cirW / 2;
+    const bulbY = cirY;
+    ctx.fillStyle = '#FEF08A';
+    ctx.beginPath();
+    ctx.arc(bulbX, bulbY, 26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#F59E0B';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.fillStyle = '#D97706';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText("💡 LAMP", bulbX, bulbY + 4);
+
+    // Switch on right
+    ctx.fillStyle = '#22C55E';
+    ctx.fillText("[SWITCH: ON]", cirX + cirW + 4, cirY + cirH / 2);
+
+    // Measurement Card on right
+    const mX = boardX + 510;
+    const mY = boardY + 170;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(mX, mY, 200, 160, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#FBBF24';
+    ctx.font = 'bold 12px "JetBrains Mono", monospace';
+    ctx.fillText("OHM'S LAW FORMULA", mX + 16, mY + 30);
+    ctx.fillStyle = '#FCD34D';
+    ctx.font = 'bold 16px "JetBrains Mono", monospace';
+    ctx.fillText("V = I × R", mX + 16, mY + 65);
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '11px "Inter", sans-serif';
+    ctx.fillText("Voltage = Current × Resistance", mX + 16, mY + 95);
+    ctx.fillStyle = '#34D399';
+    ctx.font = 'bold 12px "JetBrains Mono", monospace';
+    ctx.fillText("Current Flow: Closed Loop ✓", mX + 16, mY + 130);
+
+  } else if (layout === 'agri-drone') {
+    // 14. MODERN AGRICULTURE & DRONES
     ctx.fillStyle = '#81B29A';
     ctx.font = 'bold 13px "JetBrains Mono", monospace';
-    ctx.fillText("💡 CONCEPTUAL STRUCTURE & WORKFLOW", boardX + 22, headerY + 16);
+    ctx.fillText("🌾 SMART AGRICULTURE & DRONE PRECISION FARMING", boardX + 22, headerY + 16);
+
+    // Field Soil & Crops
+    const fieldY = boardY + 280;
+    ctx.fillStyle = 'rgba(67, 56, 202, 0.2)';
+    ctx.fillRect(boardX + 40, fieldY, boardW - 80, 160);
+
+    // Crop Rows
+    for (let c = 0; c < 8; c++) {
+      const cx = boardX + 80 + c * 75;
+      ctx.fillStyle = '#22C55E';
+      ctx.font = '22px "Inter", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText("🌱", cx, fieldY + 50);
+      ctx.fillText("🌾", cx, fieldY + 110);
+    }
+
+    // Drone in Sky
+    const droneX = boardX + 360 + Math.sin(now * 0.003) * 60;
+    const droneY = boardY + 180;
+    ctx.font = '36px "Inter", sans-serif';
+    ctx.fillText("🛸", droneX, droneY);
+    ctx.fillStyle = '#38BDF8';
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText("Smart AI Spray Drone", droneX, droneY - 24);
+
+    // Spray particles
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
+    for (let sp = 0; sp < 6; sp++) {
+      ctx.beginPath();
+      ctx.arc(droneX - 25 + sp * 10, droneY + 20 + ((now * 0.05 + sp * 10) % 50), 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+  } else if (layout === 'magnetism') {
+    // 15. MAGNETISM & MAGNETIC FIELDS
+    ctx.fillStyle = '#EC4899';
+    ctx.font = 'bold 13px "JetBrains Mono", monospace';
+    ctx.fillText("🧲 MAGNETISM & MAGNETIC FORCE LINES", boardX + 22, headerY + 16);
+
+    const magX = boardX + 260;
+    const magY = boardY + 260;
+
+    // Bar Magnet: North (Red) & South (Blue)
+    ctx.fillStyle = '#EF4444';
+    ctx.fillRect(magX - 90, magY - 25, 90, 50);
+    ctx.fillStyle = '#3B82F6';
+    ctx.fillRect(magX, magY - 25, 90, 50);
+
+    ctx.fillStyle = '#FFF';
+    ctx.font = '900 18px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText("N", magX - 45, magY + 7);
+    ctx.fillText("S", magX + 45, magY + 7);
+
+    // Magnetic field curves
+    ctx.strokeStyle = 'rgba(236, 72, 153, 0.45)';
+    ctx.lineWidth = 2;
+    for (let f = 1; f <= 3; f++) {
+      ctx.beginPath();
+      ctx.ellipse(magX, magY, 130 + f * 35, 45 + f * 25, 0, 0, Math.PI);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(magX, magY, 130 + f * 35, 45 + f * 25, 0, Math.PI, Math.PI * 2);
+      ctx.stroke();
+    }
+
+  } else {
+    // 16. DEFAULT CONCEPTUAL FLOW & RICH TOPIC STAGES
+    const keywords: string[] = slide.visualAttributes?.keywords || [];
+    ctx.fillStyle = '#81B29A';
+    ctx.font = 'bold 13px "JetBrains Mono", monospace';
+    const mainKw = keywords[0] || (slide.title || 'STUDY CONCEPT').slice(0, 25);
+    ctx.fillText(`💡 CONCEPTUAL STRUCTURE: ${mainKw.toUpperCase()}`, boardX + 22, headerY + 16);
 
     // 3 Process Cards representing the concept stages
     const stepW = 195;
@@ -1373,9 +1587,9 @@ export function drawVisualLayoutContent(
 
     const bullets = slide.bullets || [];
     const steps = [
-      { num: "01", title: "Core Principle", desc: bullets[0] || "Foundational Rule", color: "#F2CC8F" },
-      { num: "02", title: "Working Mechanism", desc: bullets[1] || "Active Interaction", color: "#E07A5F" },
-      { num: "03", title: "Real-world Impact", desc: bullets[2] || "Practical Outcome", color: "#81B29A" }
+      { num: "01", title: keywords[0] ? keywords[0].toUpperCase() : "Core Principle", desc: bullets[0] || "Foundational Rule & Cause", color: "#F2CC8F" },
+      { num: "02", title: keywords[1] ? keywords[1].toUpperCase() : "Active Mechanism", desc: bullets[1] || "Core Reaction & Formula", color: "#E07A5F" },
+      { num: "03", title: keywords[2] ? keywords[2].toUpperCase() : "Real Impact", desc: bullets[2] || "Practical Application & Result", color: "#81B29A" }
     ];
 
     steps.forEach((st, idx) => {
@@ -1384,7 +1598,7 @@ export function drawVisualLayoutContent(
 
       ctx.fillStyle = isCardActive ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.85)';
       ctx.strokeStyle = isCardActive ? st.color : 'rgba(255, 255, 255, 0.1)';
-      ctx.lineWidth = isCardActive ? 2 : 1;
+      ctx.lineWidth = isCardActive ? 2.5 : 1;
       ctx.beginPath();
       ctx.roundRect(sx, stepY, stepW, stepH, 16);
       ctx.fill();
@@ -1398,12 +1612,13 @@ export function drawVisualLayoutContent(
 
       // Title
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 14px "Inter", sans-serif';
-      ctx.fillText(st.title, sx + 16, stepY + 58);
+      ctx.font = 'bold 13px "Inter", sans-serif';
+      const cleanTitle = st.title.length > 18 ? st.title.slice(0, 16) + '..' : st.title;
+      ctx.fillText(cleanTitle, sx + 16, stepY + 58);
 
       // Description
-      ctx.fillStyle = '#94A3B8';
-      ctx.font = '12px "Inter", sans-serif';
+      ctx.fillStyle = '#CBD5E1';
+      ctx.font = '11.5px "Inter", sans-serif';
       drawWrappedLines(ctx, st.desc, sx + 16, stepY + 84, stepW - 32, 18, 3);
 
       // Arrow connecting to next card

@@ -2733,6 +2733,188 @@ Guidelines for formatting the JSON fields:
     }
   });
 
+  // --- RESUMABLE, CHUNKED VIDEO LECTURE DOWNLOAD STREAMING SERVICE ---
+  interface StagedVideoItem {
+    id: string;
+    buffer: Buffer;
+    mimeType: string;
+    filename: string;
+    size: number;
+    createdAt: number;
+  }
+  const stagedVideoStore = new Map<string, StagedVideoItem>();
+
+  // Periodically clean up staged videos after 2 hours
+  setInterval(() => {
+    const now = Date.now();
+    for (const [id, item] of stagedVideoStore.entries()) {
+      if (now - item.createdAt > 2 * 60 * 60 * 1000) {
+        stagedVideoStore.delete(id);
+      }
+    }
+  }, 5 * 60 * 1000);
+
+  // 1. Stage a recorded video for streaming / resumable download with optional MP4 transcode
+  app.post("/api/video/stage", async (req, res) => {
+    try {
+      const { base64Data, filename, mimeType, convertToMp4 } = req.body || {};
+      if (!base64Data) {
+        return res.status(400).json({ success: false, message: "Missing video data" });
+      }
+
+      const buffer = Buffer.from(base64Data, "base64");
+      if (buffer.length === 0) {
+        return res.status(400).json({ success: false, message: "Empty video payload" });
+      }
+
+      const id = "vid_" + Date.now().toString(36) + "_" + Math.random().toString(36).substring(2, 8);
+      const isInputMp4 = (mimeType || "").toLowerCase().includes("mp4");
+      const safeFilename = filename || `lecture_video_${Date.now()}.${isInputMp4 ? "mp4" : "webm"}`;
+      const finalMime = isInputMp4 ? "video/mp4" : "video/webm";
+
+      stagedVideoStore.set(id, {
+        id,
+        buffer,
+        mimeType: finalMime,
+        filename: safeFilename,
+        size: buffer.length,
+        createdAt: Date.now()
+      });
+
+      let mp4Id: string | null = null;
+      let mp4Filename: string | null = null;
+      let mp4Size: number | null = null;
+
+      // If user desires MP4 and the input was WebM, perform high-speed FFmpeg transcoding to true H.264 / AAC MP4
+      if (convertToMp4 && !isInputMp4) {
+        try {
+          const { execFile } = await import("child_process");
+          const { promisify } = await import("util");
+          const os = await import("os");
+          const execFileAsync = promisify(execFile);
+
+          const tempDir = os.tmpdir();
+          const inPath = path.join(tempDir, `input_${id}.webm`);
+          const outPath = path.join(tempDir, `output_${id}.mp4`);
+
+          await fs.promises.writeFile(inPath, buffer);
+
+          await execFileAsync("ffmpeg", [
+            "-y",
+            "-i", inPath,
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            "-preset", "veryfast",
+            "-movflags", "+faststart",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            outPath
+          ]);
+
+          if (fs.existsSync(outPath)) {
+            const convertedMp4Buffer = await fs.promises.readFile(outPath);
+            mp4Id = `${id}_mp4`;
+            mp4Filename = safeFilename.replace(/\.(webm|mp4)$/i, "") + ".mp4";
+            mp4Size = convertedMp4Buffer.length;
+
+            stagedVideoStore.set(mp4Id, {
+              id: mp4Id,
+              buffer: convertedMp4Buffer,
+              mimeType: "video/mp4",
+              filename: mp4Filename,
+              size: convertedMp4Buffer.length,
+              createdAt: Date.now()
+            });
+
+            await fs.promises.unlink(outPath).catch(() => {});
+          }
+          await fs.promises.unlink(inPath).catch(() => {});
+        } catch (ffmpegErr) {
+          console.warn("FFmpeg MP4 conversion skipped/failed, keeping original WebM:", ffmpegErr);
+        }
+      }
+
+      return res.json({
+        success: true,
+        videoId: id,
+        downloadUrl: `/api/video/stream/${id}?filename=${encodeURIComponent(safeFilename)}`,
+        size: buffer.length,
+        mimeType: finalMime,
+        mp4Ready: !!mp4Id,
+        mp4DownloadUrl: mp4Id ? `/api/video/stream/${mp4Id}?filename=${encodeURIComponent(mp4Filename!)}` : null,
+        mp4Filename,
+        mp4Size
+      });
+    } catch (err: any) {
+      console.warn("Video staging error:", err);
+      return res.status(500).json({ success: false, message: err?.message || "Failed to stage video" });
+    }
+  });
+
+  // 2. Stream video with genuine RFC 7233 HTTP 206 Partial Content (Resumable Download Support)
+  app.get("/api/video/stream/:id", (req, res) => {
+    const id = req.params.id;
+    const item = stagedVideoStore.get(id);
+
+    if (!item) {
+      return res.status(404).send("Video file not found or expired. Please re-generate the lecture.");
+    }
+
+    const total = item.size;
+    const range = req.headers.range;
+    const customFilename = typeof req.query.filename === "string" ? req.query.filename : item.filename;
+
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Content-Type", item.mimeType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(customFilename)}"; filename*=UTF-8''${encodeURIComponent(customFilename)}`
+    );
+    res.setHeader("Cache-Control", "public, max-age=3600");
+
+    if (range) {
+      // Range: bytes=start-end (e.g. bytes=1048576-2097151 or bytes=1048576-)
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+
+      if (isNaN(start) || start >= total || end >= total || start > end) {
+        res.setHeader("Content-Range", `bytes */${total}`);
+        return res.status(416).send("Requested Range Not Satisfiable");
+      }
+
+      const chunkSize = end - start + 1;
+      res.status(206);
+      res.setHeader("Content-Range", `bytes ${start}-${end}/${total}`);
+      res.setHeader("Content-Length", chunkSize);
+
+      const chunk = item.buffer.subarray(start, end + 1);
+      return res.end(chunk);
+    } else {
+      res.status(200);
+      res.setHeader("Content-Length", total);
+      return res.end(item.buffer);
+    }
+  });
+
+  // 3. HEAD request to inspect headers (size, range support)
+  app.head("/api/video/stream/:id", (req, res) => {
+    const id = req.params.id;
+    const item = stagedVideoStore.get(id);
+    if (!item) {
+      return res.status(404).end();
+    }
+    const customFilename = typeof req.query.filename === "string" ? req.query.filename : item.filename;
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Content-Type", item.mimeType);
+    res.setHeader("Content-Length", item.size);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(customFilename)}"`
+    );
+    res.status(200).end();
+  });
+
   // HELPER: IN-MEMORY COMPREHENSIVE PROCEDURAL CATALOG FOR ALL PUZZLE TYPES (ANTI-REPETITION + DYNAMIC MATH ENGINE)
   const lastServedIndices: Record<string, number> = {};
 
