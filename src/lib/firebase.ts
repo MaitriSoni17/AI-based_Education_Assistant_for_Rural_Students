@@ -194,6 +194,8 @@ export interface FirestoreUser {
   puzzleStrongTopics?: string; // Stringified JSON array
   puzzleWeakTopics?: string; // Stringified JSON array
   puzzleStatsByClass?: string; // Stringified JSON object mapping class to stats
+  isSuperAdmin?: boolean; // System Administrator with unrestricted root privileges
+  adminPermissions?: string | string[]; // Stringified JSON array or array of allowed AdminPermission tasks
 }
 
 export const ALLOWED_FIRESTORE_USER_FIELDS: (keyof FirestoreUser)[] = [
@@ -234,7 +236,9 @@ export const ALLOWED_FIRESTORE_USER_FIELDS: (keyof FirestoreUser)[] = [
   'puzzleSubjectProficiency',
   'puzzleStrongTopics',
   'puzzleWeakTopics',
-  'puzzleStatsByClass'
+  'puzzleStatsByClass',
+  'isSuperAdmin',
+  'adminPermissions'
 ];
 
 /**
@@ -698,61 +702,68 @@ export async function getAllFirebaseCertificates(): Promise<FirestoreCertificate
 }
 
 /**
- * Issue or save a new certificate in Firestore
+ * Issue or save a new certificate in Firestore.
+ * Requires that the student account is already registered in the application.
  */
 export async function issueFirebaseCertificate(cert: FirestoreCertificate): Promise<void> {
   if (isQuotaExceeded) return;
+
+  const cleanMobile = (cert.studentMobile || '').replace(/\D/g, '').trim();
+  if (!cleanMobile) {
+    throw new Error("Student mobile number is required to issue a certificate.");
+  }
+
+  // Strictly enforce that student account must be registered in the database
+  const userDocRef = doc(db, "users", cleanMobile);
+  const userSnap = await getDoc(userDocRef);
+  if (!userSnap.exists()) {
+    throw new Error(`Cannot issue certificate: Student account with mobile ${cleanMobile} is not registered in the application.`);
+  }
+
+  const userData = userSnap.data() as FirestoreUser;
   const path = `certificates/${cert.id}`;
   try {
     const certDocRef = doc(db, "certificates", cert.id);
     await setDoc(certDocRef, {
       ...cert,
+      studentMobile: cleanMobile,
+      studentName: cert.studentName || userData.name || "Student",
       createdAt: cert.createdAt || Date.now()
     });
 
     // Also attach to user document if user exists
-    if (cert.studentMobile) {
+    let userCerts: any[] = [];
+    if (userData.earnedCertificates) {
       try {
-        const userDocRef = doc(db, "users", cert.studentMobile);
-        const userSnap = await getDoc(userDocRef);
-        if (userSnap.exists()) {
-          const userData = userSnap.data() as FirestoreUser;
-          let userCerts: any[] = [];
-          if (userData.earnedCertificates) {
-            try {
-              userCerts = JSON.parse(userData.earnedCertificates);
-            } catch (e) {
-              userCerts = [];
-            }
-          }
-          const existingIndex = userCerts.findIndex((c: any) => c.id === cert.id);
-          const newCertObj = {
-            id: cert.id,
-            quizTitle: cert.title,
-            title: cert.title,
-            score: cert.score || 100,
-            date: cert.date,
-            recipientName: cert.studentName,
-            status: cert.status
-          };
-
-          if (existingIndex >= 0) {
-            userCerts[existingIndex] = newCertObj;
-          } else {
-            userCerts.unshift(newCertObj);
-          }
-
-          await updateDoc(userDocRef, {
-            earnedCertificates: JSON.stringify(userCerts),
-            updatedAt: Date.now()
-          });
-        }
-      } catch (userUpdateErr) {
-        console.warn("Failed syncing certificate to user record:", userUpdateErr);
+        userCerts = JSON.parse(userData.earnedCertificates);
+      } catch (e) {
+        userCerts = [];
       }
     }
+    const existingIndex = userCerts.findIndex((c: any) => c.id === cert.id);
+    const newCertObj = {
+      id: cert.id,
+      quizTitle: cert.title,
+      title: cert.title,
+      score: cert.score || 100,
+      date: cert.date,
+      recipientName: cert.studentName || userData.name,
+      status: cert.status
+    };
+
+    if (existingIndex >= 0) {
+      userCerts[existingIndex] = newCertObj;
+    } else {
+      userCerts.unshift(newCertObj);
+    }
+
+    await updateDoc(userDocRef, {
+      earnedCertificates: JSON.stringify(userCerts),
+      updatedAt: Date.now()
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
   }
 }
 

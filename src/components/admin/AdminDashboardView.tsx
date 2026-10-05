@@ -12,7 +12,16 @@ import { User, LanguageCode, AdminTab } from '../../types';
 import { registerBackHandler } from '../../utils/backNavigation';
 import { speakText, stopSpeaking } from '../../utils/speech';
 import { 
-  getAllFirebaseUsers, updateUserRole, deleteFirebaseUser, setFirebaseUser, updateFirebaseUserFields, FirestoreUser,
+  AdminPermission, 
+  ADMIN_PERMISSIONS_CATALOG, 
+  ALL_ADMIN_PERMISSION_IDS, 
+  isUserSuperAdmin, 
+  hasAdminPermission, 
+  canAccessAdminTab,
+  parseAdminPermissions 
+} from '../../utils/adminPermissions';
+import { 
+  getAllFirebaseUsers, getFirebaseUser, updateUserRole, deleteFirebaseUser, setFirebaseUser, updateFirebaseUserFields, FirestoreUser,
   getAllFirebaseCertificates, issueFirebaseCertificate, updateFirebaseCertificateStatus, deleteFirebaseCertificate, FirestoreCertificate,
   getAllFirebaseCurriculumFolders, getAllFirebaseCurriculumFiles, saveFirebaseCurriculumFolder, saveFirebaseCurriculumFile,
   deleteFirebaseCurriculumFolder, deleteFirebaseCurriculumFile, getFirebaseCurriculumFileDataUrl, FirestoreCurriculumFolder, FirestoreCurriculumFile
@@ -1685,10 +1694,46 @@ startxref
   const [isLoadingCerts, setIsLoadingCerts] = useState(true);
   const [certSearch, setCertSearch] = useState('');
   const [verificationResult, setVerificationResult] = useState<FirestoreCertificate | null | 'not_found'>(null);
-  const [newCertStudent, setNewCertStudent] = useState('');
-  const [newCertMobile, setNewCertMobile] = useState('');
+  const [selectedCertStudent, setSelectedCertStudent] = useState<FirestoreUser | null>(null);
+  const [certStudentSearchQuery, setCertStudentSearchQuery] = useState('');
+  const [isStudentDropdownOpen, setIsStudentDropdownOpen] = useState(false);
+  const studentDropdownRef = useRef<HTMLDivElement>(null);
   const [newCertTitle, setNewCertTitle] = useState('Mastery Certificate');
   const [showIssueCertModal, setShowIssueCertModal] = useState(false);
+  const [issueCertError, setIssueCertError] = useState<string | null>(null);
+  const [isIssuingCert, setIsIssuingCert] = useState(false);
+
+  // Close student dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (studentDropdownRef.current && !studentDropdownRef.current.contains(e.target as Node)) {
+        setIsStudentDropdownOpen(false);
+      }
+    };
+    if (isStudentDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isStudentDropdownOpen]);
+
+  // Registered students list for verification and quick selection
+  const registeredStudents = useMemo(() => {
+    return (usersList || []).filter((u) => (u.role || 'student') === 'student');
+  }, [usersList]);
+
+  // Filtered registered students matching search query
+  const filteredRegisteredStudents = useMemo(() => {
+    const q = certStudentSearchQuery.toLowerCase().trim();
+    if (!q) return registeredStudents;
+    return registeredStudents.filter((st) => {
+      const name = (st.name || '').toLowerCase();
+      const mobile = (st.mobile || '').toLowerCase();
+      const standard = (st.standard || '').toLowerCase();
+      const school = (st.school || '').toLowerCase();
+      const village = (st.village || '').toLowerCase();
+      return name.includes(q) || mobile.includes(q) || standard.includes(q) || school.includes(q) || village.includes(q);
+    });
+  }, [registeredStudents, certStudentSearchQuery]);
 
   // System settings state
   const [bandwidthCompression, setBandwidthCompression] = useState(() => getSystemSettings().bandwidthCompression);
@@ -1869,6 +1914,36 @@ startxref
   const [addAdminDept, setAddAdminDept] = useState('HQ Education Board');
   const [addAdminError, setAddAdminError] = useState('');
   const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
+  const [newAdminPermissions, setNewAdminPermissions] = useState<AdminPermission[]>([
+    'analytics',
+    'content',
+    'certificates'
+  ]);
+
+  // Super Admin Manage Permissions Modal State
+  const [showEditPermissionsModal, setShowEditPermissionsModal] = useState(false);
+  const [editingAdminUser, setEditingAdminUser] = useState<FirestoreUser | null>(null);
+  const [editingAdminPermissions, setEditingAdminPermissions] = useState<AdminPermission[]>([]);
+  const [isSavingPermissions, setIsSavingPermissions] = useState(false);
+  const [permissionsFeedback, setPermissionsFeedback] = useState<string | null>(null);
+
+  const openEditPermissionsModal = (targetAdmin: FirestoreUser) => {
+    setEditingAdminUser(targetAdmin);
+    setEditingAdminPermissions(parseAdminPermissions(targetAdmin));
+    setPermissionsFeedback(null);
+    setShowEditPermissionsModal(true);
+  };
+
+  // RBAC permissions evaluation
+  const isSuperAdmin = useMemo(() => isUserSuperAdmin(adminUser), [adminUser]);
+  const canPerform = (permission: AdminPermission) => hasAdminPermission(adminUser, permission);
+  const canAccessTab = (tab: AdminTab) => canAccessAdminTab(adminUser, tab);
+
+  const permittedTasks = useMemo(() => {
+    if (isSuperAdmin) return ADMIN_PERMISSIONS_CATALOG;
+    const userPerms = parseAdminPermissions(adminUser);
+    return ADMIN_PERMISSIONS_CATALOG.filter(p => userPerms.includes(p.id));
+  }, [isSuperAdmin, adminUser]);
 
   // Register mobile back button handlers for all admin dialogs and modals
   useEffect(() => {
@@ -1933,6 +2008,16 @@ startxref
       });
     }
   }, [showAddAdminModal]);
+
+  useEffect(() => {
+    if (showEditPermissionsModal) {
+      return registerBackHandler(() => {
+        setShowEditPermissionsModal(false);
+        setEditingAdminUser(null);
+        return true;
+      });
+    }
+  }, [showEditPermissionsModal]);
 
   // Handler for Admin Password / PIN Change in Platform Config
   const handleUpdateAdminPasswordSubmit = async (e: React.FormEvent) => {
@@ -2012,6 +2097,8 @@ startxref
         mobile: addAdminMobile,
         role: 'admin',
         adminPin: addAdminPin,
+        adminPermissions: JSON.stringify(newAdminPermissions),
+        isSuperAdmin: false,
         village: safeDept,
         school: 'State Education Board',
         standard: 'Administrator',
@@ -2033,7 +2120,7 @@ startxref
       setUsersList(updatedUsers);
 
       setAuditLogs((prev) => [
-        `[${new Date().toLocaleTimeString()}] Manually provisioned Administrator: ${addAdminName} (${addAdminMobile})`,
+        `[${new Date().toLocaleTimeString()}] System Administrator provisioned Administrator: ${addAdminName} (${addAdminMobile}) with [${newAdminPermissions.length} tasks permitted]`,
         ...prev
       ]);
 
@@ -2042,12 +2129,65 @@ startxref
       setAddAdminMobile('');
       setAddAdminPin('999999');
       setAddAdminDept('HQ Education Board');
+      setNewAdminPermissions(['analytics', 'content', 'certificates']);
       setShowAddAdminModal(false);
     } catch (err) {
       console.error('Failed to create admin manually:', err);
       setAddAdminError('Failed to create Administrator profile in Firestore.');
     } finally {
       setIsSubmittingAdmin(false);
+    }
+  };
+
+  // Handler for System Administrator to update an admin's permitted tasks
+  const handleSaveAdminPermissions = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAdminUser) return;
+    setIsSavingPermissions(true);
+    setPermissionsFeedback(null);
+
+    try {
+      const permsString = JSON.stringify(editingAdminPermissions);
+      await updateFirebaseUserFields(editingAdminUser.mobile, {
+        adminPermissions: permsString
+      });
+
+      // Update in-memory usersList
+      setUsersList((prev) =>
+        prev.map((u) =>
+          u.mobile === editingAdminUser.mobile
+            ? { ...u, adminPermissions: permsString }
+            : u
+        )
+      );
+
+      // If updating currently logged in admin user
+      if (adminUser.mobile === editingAdminUser.mobile) {
+        const updatedAdmin = {
+          ...adminUser,
+          adminPermissions: editingAdminPermissions
+        };
+        try {
+          localStorage.setItem('gramin_admin_session', JSON.stringify(updatedAdmin));
+        } catch (e) {}
+      }
+
+      setAuditLogs((prev) => [
+        `[${new Date().toLocaleTimeString()}] System Administrator updated task permissions for ${editingAdminUser.name} (${editingAdminUser.mobile}): [${editingAdminPermissions.join(', ')}]`,
+        ...prev
+      ]);
+
+      setPermissionsFeedback('Permissions successfully updated and saved in Firestore!');
+      setTimeout(() => {
+        setShowEditPermissionsModal(false);
+        setEditingAdminUser(null);
+        setPermissionsFeedback(null);
+      }, 1000);
+    } catch (err) {
+      console.error('Failed to update admin permissions:', err);
+      setPermissionsFeedback('Failed to update permissions in Firestore database.');
+    } finally {
+      setIsSavingPermissions(false);
     }
   };
 
@@ -3407,31 +3547,80 @@ startxref
     }
   };
 
-  // Issue new certificate in Firestore
+  // Issue new certificate in Firestore (Only for selected registered student)
   const handleIssueCertificate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCertStudent.trim() || !newCertMobile.trim()) return;
+    setIssueCertError(null);
 
-    const newCert: FirestoreCertificate = {
-      id: `CERT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      studentName: newCertStudent.trim(),
-      studentMobile: newCertMobile.trim(),
-      title: newCertTitle.trim(),
-      date: new Date().toISOString().split('T')[0],
-      score: 100,
-      status: 'valid',
-      issuedBy: 'Admin Console'
-    };
+    if (!selectedCertStudent) {
+      setIssueCertError("Please select a registered student from the dropdown.");
+      return;
+    }
+
+    const cleanMobile = selectedCertStudent.mobile.replace(/\D/g, '').trim();
+    if (!cleanMobile) {
+      setIssueCertError("Selected student does not have a valid mobile number.");
+      return;
+    }
+
+    setIsIssuingCert(true);
 
     try {
+      // 1. Verify student account exists in loaded registered students list
+      let studentRecord = registeredStudents.find((s) => s.mobile === cleanMobile) ||
+        (usersList || []).find((u) => u.mobile === cleanMobile && u.role !== 'admin');
+
+      // 2. Query Firestore directly in case student was recently registered
+      if (!studentRecord) {
+        try {
+          const liveUser = await getFirebaseUser(cleanMobile);
+          if (liveUser && liveUser.role !== 'admin') {
+            studentRecord = liveUser;
+          }
+        } catch (fetchErr) {
+          console.warn("Could not query Firestore user directly:", fetchErr);
+        }
+      }
+
+      // 3. Strictly reject certificate creation if student is not registered
+      if (!studentRecord) {
+        setIssueCertError(
+          `Cannot create certificate: Student account with mobile number "${cleanMobile}" is not registered in the web application.`
+        );
+        setIsIssuingCert(false);
+        return;
+      }
+
+      const verifiedStudentName = studentRecord.name || selectedCertStudent.name || 'Student';
+
+      const newCert: FirestoreCertificate = {
+        id: `CERT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+        studentName: verifiedStudentName,
+        studentMobile: cleanMobile,
+        title: newCertTitle.trim() || 'Mastery Certificate',
+        date: new Date().toISOString().split('T')[0],
+        score: 100,
+        status: 'valid',
+        issuedBy: 'Admin Console'
+      };
+
       await issueFirebaseCertificate(newCert);
       setCertificates((prev) => [newCert, ...prev]);
-      setNewCertStudent('');
-      setNewCertMobile('');
+      setSelectedCertStudent(null);
+      setCertStudentSearchQuery('');
+      setIsStudentDropdownOpen(false);
+      setNewCertTitle('Mastery Certificate');
       setShowIssueCertModal(false);
-      setAuditLogs((prev) => [`[${new Date().toLocaleTimeString()}] Certificate ${newCert.id} issued in Firestore to ${newCert.studentName}`, ...prev]);
-    } catch (err) {
-      alert("Failed to issue certificate in Firestore database");
+      setIssueCertError(null);
+      setAuditLogs((prev) => [
+        `[${new Date().toLocaleTimeString()}] Certificate ${newCert.id} issued in Firestore to registered student ${verifiedStudentName} (${cleanMobile})`,
+        ...prev
+      ]);
+    } catch (err: any) {
+      console.error("Failed to issue certificate:", err);
+      setIssueCertError(err?.message || "Failed to issue certificate in Firestore database");
+    } finally {
+      setIsIssuingCert(false);
     }
   };
 
@@ -3573,12 +3762,24 @@ startxref
               <h1 className="text-base sm:text-lg lg:text-xl font-black text-white tracking-tight leading-snug">
                 {t.dashboardTitle}
               </h1>
-              <span className="bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase whitespace-nowrap inline-flex items-center">
-                {t.superAdminBadge}
-              </span>
+              {isSuperAdmin ? (
+                <span className="bg-amber-400/20 border border-amber-400/40 text-amber-300 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase whitespace-nowrap inline-flex items-center gap-1 shadow-xs">
+                  <Shield className="h-3 w-3 text-amber-400" />
+                  SYSTEM ADMINISTRATOR (SUPER ADMIN)
+                </span>
+              ) : (
+                <span className="bg-indigo-400/20 border border-indigo-400/40 text-indigo-300 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase whitespace-nowrap inline-flex items-center gap-1 shadow-xs">
+                  <Lock className="h-3 w-3 text-indigo-300" />
+                  MANAGED ADMINISTRATOR
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-400">
-              {t.loggedInAs} <strong className="text-amber-300">{adminUser.name}</strong> <span className="text-slate-500 font-mono">({adminUser.mobile})</span> • {t.stateOps}
+              {isSuperAdmin ? (
+                <>Logged in as <strong className="text-amber-300">System Administrator</strong> <span className="text-slate-500 font-mono">({adminUser.mobile})</span> • Unrestricted Root Control Across All Tasks</>
+              ) : (
+                <>Logged in as <strong className="text-amber-300">{adminUser.name}</strong> <span className="text-slate-500 font-mono">({adminUser.mobile})</span> • Permissions Configured by System Administrator ({parseAdminPermissions(adminUser).length}/6 Tasks Active)</>
+              )}
             </p>
           </div>
         </div>
@@ -3586,17 +3787,32 @@ startxref
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto shrink-0 pt-2 md:pt-0">
           <button
             type="button"
-            onClick={() => setShowExportModal(true)}
-            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-xs font-bold rounded-xl border border-emerald-400 shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-all min-h-[42px] sm:min-h-[38px] whitespace-nowrap"
-            title={t.downloadAnalytics}
+            disabled={!canPerform('analytics_export')}
+            onClick={() => {
+              if (!canPerform('analytics_export')) {
+                setActionToast({ message: 'Export Restricted: Permission required from System Administrator.', type: 'error' });
+                return;
+              }
+              setShowExportModal(true);
+            }}
+            className={`w-full sm:w-auto px-4 py-2.5 sm:py-2 text-xs font-bold rounded-xl border shadow-sm flex items-center justify-center gap-2 transition-all min-h-[42px] sm:min-h-[38px] whitespace-nowrap ${
+              canPerform('analytics_export')
+                ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white border-emerald-400 cursor-pointer'
+                : 'bg-slate-800 border-slate-700 text-slate-400 opacity-60 cursor-not-allowed'
+            }`}
+            title={!canPerform('analytics_export') ? 'Task restricted by System Administrator' : t.downloadAnalytics}
           >
-            <AppDownloadIcon 
-              size={18} 
-              strokeWidth={2.4} 
-              color="#ffffff" 
-              className="text-white" 
-            />
-            <span className="leading-none">{t.downloadAnalytics}</span>
+            {!canPerform('analytics_export') ? (
+              <Lock className="h-4 w-4 text-slate-400" />
+            ) : (
+              <AppDownloadIcon 
+                size={18} 
+                strokeWidth={2.4} 
+                color="#ffffff" 
+                className="text-white" 
+              />
+            )}
+            <span className="leading-none">{t.downloadAnalytics} {!canPerform('analytics_export') && '(Restricted)'}</span>
           </button>
 
           <button
@@ -3619,26 +3835,12 @@ startxref
 
       {/* TOP TAB CONTROLS & MOBILE HORIZONTAL QUICK SCROLL DOCK */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs space-y-2.5">
-        {/* Header Row: Current active tab display */}
-        {/*<div className="flex items-center justify-between gap-2 px-1">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">{t.currentModule}</span>
-            <span className="text-xs sm:text-sm font-extrabold text-slate-800 truncate flex items-center gap-1.5">
-              <CurrentAdminNavIcon className="h-4 w-4 text-amber-500" />
-              {currentAdminNavItem.label}
-            </span>
-          </div>
-
-          <div className="text-[11px] font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200/60 shrink-0">
-            {adminNavItems.length} {t.adminModulesCount}
-          </div>
-        </div>*/}
-
         {/* Clean Horizontal Quick Pills on Mobile & Tablet / Symmetrical 5-Col Grid on Desktop */}
         <div className="flex overflow-x-auto gap-2 pb-1 pt-0.5 select-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:grid md:grid-cols-5 md:gap-2">
           {adminNavItems.map(item => {
             const IconComp = item.icon;
             const isSelected = activeTab === item.id;
+            const hasAccess = canAccessTab(item.id);
             return (
               <button
                 key={item.id}
@@ -3647,21 +3849,112 @@ startxref
                 className={`p-2.5 px-3.5 rounded-xl font-sans text-xs font-bold whitespace-nowrap flex items-center gap-2 transition-all duration-150 cursor-pointer border text-left shrink-0 md:justify-center ${
                   isSelected
                     ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-[1.01]'
-                    : 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100/90 hover:border-slate-300'
+                    : hasAccess
+                    ? 'bg-slate-50/70 border-slate-200 text-slate-700 hover:bg-slate-100/90 hover:border-slate-300'
+                    : 'bg-slate-100/70 border-slate-200/70 text-slate-400 hover:bg-slate-100'
                 }`}
+                title={!hasAccess ? 'Task restricted by System Administrator' : undefined}
               >
-                <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-white/20 text-white' : item.color}`}>
+                <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-white/20 text-white' : hasAccess ? item.color : 'bg-slate-200 text-slate-400'}`}>
                   <IconComp className="h-4 w-4" />
                 </div>
                 <span className="truncate">{item.label}</span>
+                {!hasAccess && (
+                  <Lock className="h-3 w-3 text-slate-400 shrink-0 ml-0.5" />
+                )}
               </button>
             );
           })}
         </div>
       </div>
 
+      {/* RESTRICTED ACCESS SCREEN IF TAB ACCESS IS NOT PERMITTED */}
+      {!canAccessTab(activeTab) && (
+        <div className="bg-white border-2 border-amber-300/80 rounded-3xl p-8 sm:p-12 text-center shadow-lg space-y-6 max-w-2xl mx-auto my-6 animate-fade-in">
+          <div className="w-20 h-20 bg-amber-500/10 border-2 border-amber-400/40 rounded-3xl flex items-center justify-center mx-auto text-amber-500 shadow-inner">
+            <Lock className="h-10 w-10 text-amber-500" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-mono font-bold uppercase rounded-full tracking-wider inline-flex items-center gap-1.5 shadow-2xs">
+              <Shield className="h-3 w-3 text-amber-600" />
+              Task Restricted by System Administrator
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              {currentAdminNavItem.label} is Restricted
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
+              Your administrator account (<span className="font-semibold text-slate-900">{adminUser.name}</span>) does not currently have permission from the <strong className="text-slate-900">System Administrator</strong> to use this task.
+            </p>
+            <p className="text-[11px] text-slate-500">
+              In accordance with security policies, all tasks in the Admin Module must be permitted by the System Administrator before you can use them.
+            </p>
+          </div>
+
+          {/* Permitted tasks list for this administrator */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                <KeyRound className="h-4 w-4 text-amber-500" />
+                Tasks Permitted for Your Account:
+              </span>
+              <span className="text-[11px] font-mono font-bold text-slate-600">
+                {permittedTasks.length} of {ADMIN_PERMISSIONS_CATALOG.length} Tasks Active
+              </span>
+            </div>
+
+            {permittedTasks.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-2">
+                No tasks are currently permitted for your account. Please ask the System Administrator to grant permissions.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {permittedTasks.map((task) => (
+                  <button
+                    key={`perm-btn-${task.id}`}
+                    type="button"
+                    onClick={() => setActiveTab(task.tab)}
+                    className="p-3 bg-white border border-slate-200 hover:border-amber-400 hover:bg-amber-50/50 rounded-xl text-xs flex items-center justify-between gap-2 transition-all cursor-pointer group text-left shadow-2xs"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-800 group-hover:text-amber-900 truncate flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3 text-emerald-500 shrink-0" />
+                        <span>{task.label}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{task.category}</div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-amber-600 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            {permittedTasks.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setActiveTab(permittedTasks[0].tab)}
+                className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Switch to Permitted Task: {permittedTasks[0].shortLabel}</span>
+                <ChevronRight className="h-4 w-4 text-slate-950" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSyncAllData}
+              className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Refresh Permissions from Cloud</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* TAB 1: STUDENT ANALYTICS & PROGRESS */}
-      {activeTab === 'analytics' && (
+      {activeTab === 'analytics' && canAccessTab('analytics') && (
         <div className="space-y-6">
 
           {/* Unified Executive Analytics & Custom Date Filter Control Center */}
@@ -3691,38 +3984,84 @@ startxref
               <div className="flex flex-col sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch sm:items-center gap-2 w-full lg:w-auto shrink-0 pt-2 lg:pt-0">
                 <button
                   type="button"
-                  onClick={() => handleExportMasterPDF(true)}
-                  className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 bg-red-600 hover:bg-red-500 active:scale-[0.98] text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px]"
-                  title={`Download PDF report for ${getDateFilterLabel()}`}
+                  disabled={!canPerform('analytics_export')}
+                  onClick={() => {
+                    if (!canPerform('analytics_export')) {
+                      setActionToast({ message: 'Export Restricted: Permission required from System Administrator.', type: 'error' });
+                      return;
+                    }
+                    handleExportMasterPDF(true);
+                  }}
+                  className={`w-full sm:w-auto px-3.5 py-2.5 sm:py-2 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px] ${
+                    canPerform('analytics_export')
+                      ? 'bg-red-600 hover:bg-red-500 active:scale-[0.98] cursor-pointer'
+                      : 'bg-slate-800 text-slate-400 opacity-50 cursor-not-allowed'
+                  }`}
+                  title={!canPerform('analytics_export') ? 'Export restricted by System Administrator' : `Download PDF report for ${getDateFilterLabel()}`}
                 >
-                  <AppDownloadIcon 
-                    size={18} 
-                    strokeWidth={2.4} 
-                    color="#ffffff" 
-                    className="text-white" 
-                  />
+                  {!canPerform('analytics_export') ? (
+                    <Lock className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <AppDownloadIcon 
+                      size={18} 
+                      strokeWidth={2.4} 
+                      color="#ffffff" 
+                      className="text-white" 
+                    />
+                  )}
                   <span>{t.pdfReport}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleExportMasterExcel(true)}
-                  className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-xs font-bold rounded-xl cursor-pointer transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px]"
-                  title={`Download Excel spreadsheet for ${getDateFilterLabel()}`}
+                  disabled={!canPerform('analytics_export')}
+                  onClick={() => {
+                    if (!canPerform('analytics_export')) {
+                      setActionToast({ message: 'Export Restricted: Permission required from System Administrator.', type: 'error' });
+                      return;
+                    }
+                    handleExportMasterExcel(true);
+                  }}
+                  className={`w-full sm:w-auto px-3.5 py-2.5 sm:py-2 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px] ${
+                    canPerform('analytics_export')
+                      ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] cursor-pointer'
+                      : 'bg-slate-800 text-slate-400 opacity-50 cursor-not-allowed'
+                  }`}
+                  title={!canPerform('analytics_export') ? 'Export restricted by System Administrator' : `Download Excel spreadsheet for ${getDateFilterLabel()}`}
                 >
-                  <AppDownloadIcon 
-                    size={18} 
-                    strokeWidth={2.4} 
-                    color="#ffffff" 
-                    className="text-white" 
-                  />
+                  {!canPerform('analytics_export') ? (
+                    <Lock className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <AppDownloadIcon 
+                      size={18} 
+                      strokeWidth={2.4} 
+                      color="#ffffff" 
+                      className="text-white" 
+                    />
+                  )}
                   <span>{t.excelExport}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowExportModal(true)}
-                  className="w-full sm:w-auto px-3 py-2.5 sm:py-2 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-200 text-xs font-bold rounded-xl border border-slate-700 cursor-pointer transition-all flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px]"
+                  disabled={!canPerform('analytics_export')}
+                  onClick={() => {
+                    if (!canPerform('analytics_export')) {
+                      setActionToast({ message: 'Export Restricted: Permission required from System Administrator.', type: 'error' });
+                      return;
+                    }
+                    setShowExportModal(true);
+                  }}
+                  className={`w-full sm:w-auto px-3 py-2.5 sm:py-2 text-xs font-bold rounded-xl border border-slate-700 transition-all flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px] ${
+                    canPerform('analytics_export')
+                      ? 'bg-slate-800 hover:bg-slate-700 active:scale-[0.98] text-slate-200 cursor-pointer'
+                      : 'bg-slate-900 text-slate-500 opacity-50 cursor-not-allowed'
+                  }`}
+                  title={!canPerform('analytics_export') ? 'Export restricted by System Administrator' : undefined}
                 >
-                  <Filter className="w-4 h-4 min-w-[16px] text-amber-400 shrink-0" strokeWidth={2.2} />
+                  {!canPerform('analytics_export') ? (
+                    <Lock className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <Filter className="w-4 h-4 min-w-[16px] text-amber-400 shrink-0" strokeWidth={2.2} />
+                  )}
                   <span>{t.allFormats}</span>
                 </button>
               </div>
@@ -4007,7 +4346,7 @@ startxref
       )}
 
       {/* TAB 2: CONTENT & CURRICULUM MANAGEMENT (FOLDER STRUCTURE) */}
-      {activeTab === 'content' && (
+      {activeTab === 'content' && canAccessTab('content') && (
         <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-3xs space-y-6">
           {/* Header */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -5628,7 +5967,7 @@ startxref
       )}
 
       {/* TAB 3: CERTIFICATES REGISTRY */}
-      {activeTab === 'certificates' && (
+      {activeTab === 'certificates' && canAccessTab('certificates') && (
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-3xs space-y-6">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
@@ -5642,7 +5981,14 @@ startxref
             </div>
 
             <button
-              onClick={() => setShowIssueCertModal(true)}
+              onClick={() => {
+                setIssueCertError(null);
+                setSelectedCertStudent(null);
+                setCertStudentSearchQuery('');
+                setIsStudentDropdownOpen(false);
+                setNewCertTitle('Mastery Certificate');
+                setShowIssueCertModal(true);
+              }}
               className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
             >
               <Plus className="h-4 w-4" />
@@ -5830,58 +6176,211 @@ startxref
           {showIssueCertModal && (
             <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
               <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-2xl space-y-4">
-                <h3 className="font-bold text-slate-900 text-base uppercase">Issue Certificate</h3>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-amber-100 text-amber-800 rounded-xl">
+                      <Award className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-base">Issue Student Certificate</h3>
+                      <p className="text-[11px] text-slate-500">Only for enrolled student accounts</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowIssueCertModal(false);
+                      setIssueCertError(null);
+                      setSelectedCertStudent(null);
+                      setCertStudentSearchQuery('');
+                      setIsStudentDropdownOpen(false);
+                    }}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
                 
-                <form onSubmit={handleIssueCertificate} className="space-y-3 text-xs text-left">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Student Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={newCertStudent}
-                      onChange={(e) => setNewCertStudent(e.target.value)}
-                      placeholder="e.g. Ramesh Patel"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
-                    />
+                <form onSubmit={handleIssueCertificate} className="space-y-4 text-xs text-left">
+                  {/* SEARCHABLE REGISTERED STUDENT DROPDOWN */}
+                  <div className="space-y-1.5" ref={studentDropdownRef}>
+                    <label className="block font-bold text-slate-700 flex items-center justify-between">
+                      <span>Select Registered Student <span className="text-red-500">*</span></span>
+                      <span className="text-[10px] text-slate-500 font-normal font-mono">
+                        {registeredStudents.length} Students Registered
+                      </span>
+                    </label>
+
+                    {/* If a student is selected, display selected student card with Change button */}
+                    {selectedCertStudent ? (
+                      <div className="p-3 bg-emerald-50/80 border border-emerald-300 rounded-2xl flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="h-9 w-9 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
+                            {selectedCertStudent.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-900 text-xs truncate flex items-center gap-1.5">
+                              <span>{selectedCertStudent.name}</span>
+                              <span className="px-1.5 py-0.5 bg-emerald-200 text-emerald-900 text-[9px] font-bold rounded-md uppercase tracking-wider">
+                                Verified
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                              <span>📱 {selectedCertStudent.mobile}</span>
+                              {selectedCertStudent.standard && <span>• Class {selectedCertStudent.standard}</span>}
+                            </div>
+                            {(selectedCertStudent.village || selectedCertStudent.school) && (
+                              <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                📍 {[selectedCertStudent.village, selectedCertStudent.school].filter(Boolean).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCertStudent(null);
+                            setIsStudentDropdownOpen(true);
+                            setCertStudentSearchQuery('');
+                          }}
+                          className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[11px] border border-slate-200 rounded-xl shrink-0 transition-colors cursor-pointer shadow-3xs"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        {/* Search input inside dropdown trigger */}
+                        <div className="relative">
+                          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={certStudentSearchQuery}
+                            onFocus={() => setIsStudentDropdownOpen(true)}
+                            onChange={(e) => {
+                              setCertStudentSearchQuery(e.target.value);
+                              setIsStudentDropdownOpen(true);
+                              setIssueCertError(null);
+                            }}
+                            placeholder="Search registered student by name, mobile, class..."
+                            className="w-full pl-9 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setIsStudentDropdownOpen(prev => !prev)}
+                            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                          >
+                            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isStudentDropdownOpen ? 'rotate-180' : ''}`} />
+                          </button>
+                        </div>
+
+                        {/* Dropdown Menu */}
+                        {isStudentDropdownOpen && (
+                          <div className="mt-1.5 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl divide-y divide-slate-100 z-20">
+                            {filteredRegisteredStudents.length === 0 ? (
+                              <div className="p-4 text-center text-slate-400 text-xs">
+                                {certStudentSearchQuery ? (
+                                  <>No registered student found matching <span className="font-semibold text-slate-600">"{certStudentSearchQuery}"</span></>
+                                ) : (
+                                  <>No registered students found in database</>
+                                )}
+                              </div>
+                            ) : (
+                              filteredRegisteredStudents.map((st) => (
+                                <button
+                                  key={st.mobile}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedCertStudent(st);
+                                    setIsStudentDropdownOpen(false);
+                                    setCertStudentSearchQuery('');
+                                    setIssueCertError(null);
+                                  }}
+                                  className="w-full p-2.5 text-left hover:bg-amber-50/60 transition-colors flex items-center justify-between gap-3 cursor-pointer group"
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="h-7 w-7 rounded-lg bg-slate-100 group-hover:bg-amber-100 text-slate-700 group-hover:text-amber-800 font-bold flex items-center justify-center text-[11px] shrink-0">
+                                      {st.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-slate-900 truncate text-xs">{st.name}</div>
+                                      <div className="text-[10px] text-slate-500 font-mono">
+                                        📱 {st.mobile} {st.standard ? `• Class ${st.standard}` : ''}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {st.village && (
+                                    <span className="text-[10px] text-slate-400 truncate max-w-[100px] shrink-0">
+                                      {st.village}
+                                    </span>
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
+                  {/* Certificate Title / Subject Input */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Student Mobile Number</label>
-                    <input
-                      type="tel"
-                      required
-                      maxLength={10}
-                      value={newCertMobile}
-                      onChange={(e) => setNewCertMobile(e.target.value.replace(/\D/g, ''))}
-                      placeholder="10-digit mobile"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Certificate Title / Subject</label>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Certificate Title / Subject <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
                       required
                       value={newCertTitle}
                       onChange={(e) => setNewCertTitle(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                      placeholder="e.g. Mastery Certificate / Science Quiz Winner"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
                     />
                   </div>
+
+                  {/* Error Alert Banner */}
+                  {issueCertError && (
+                    <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                      <span>{issueCertError}</span>
+                    </div>
+                  )}
 
                   <div className="flex gap-2 pt-2">
                     <button
                       type="button"
-                      onClick={() => setShowIssueCertModal(false)}
-                      className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                      onClick={() => {
+                        setShowIssueCertModal(false);
+                        setIssueCertError(null);
+                        setSelectedCertStudent(null);
+                        setCertStudentSearchQuery('');
+                        setIsStudentDropdownOpen(false);
+                      }}
+                      className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="w-1/2 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl cursor-pointer"
+                      disabled={isIssuingCert || !selectedCertStudent || !newCertTitle.trim()}
+                      className={`w-1/2 py-2.5 font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                        isIssuingCert || !selectedCertStudent || !newCertTitle.trim()
+                          ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                          : 'bg-amber-500 hover:bg-amber-600 text-slate-950 cursor-pointer shadow-xs'
+                      }`}
+                      title={!selectedCertStudent ? "Please select a registered student from the dropdown" : undefined}
                     >
-                      Issue Certificate
+                      {isIssuingCert ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Issuing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Award className="h-4 w-4" />
+                          <span>Issue Certificate</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
@@ -5892,7 +6391,7 @@ startxref
       )}
 
       {/* TAB 4: USER ROLE MANAGEMENT */}
-      {activeTab === 'users' && (
+      {activeTab === 'users' && canAccessTab('users') && (
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-3xs space-y-6">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
@@ -5906,16 +6405,19 @@ startxref
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => {
-                  setAddAdminError('');
-                  setShowAddAdminModal(true);
-                }}
-                className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-              >
-                <UserPlus className="h-4 w-4 text-slate-950" />
-                <span>{t.addUserBtn}</span>
-              </button>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => {
+                    setAddAdminError('');
+                    setNewAdminPermissions([...ALL_ADMIN_PERMISSION_IDS]);
+                    setShowAddAdminModal(true);
+                  }}
+                  className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                >
+                  <UserPlus className="h-4 w-4 text-slate-950" />
+                  <span>{t.addUserBtn}</span>
+                </button>
+              )}
 
               {/* Filter pills */}
               <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs font-bold">
@@ -5933,6 +6435,139 @@ startxref
               </div>
             </div>
           </div>
+
+          {/* System Administrator Privilege & Access Control Board */}
+          {(roleFilter === 'admin' || roleFilter === 'all') && (
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 text-white space-y-4 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                <div className="flex items-start sm:items-center gap-2.5">
+                  <div className="p-2 bg-amber-500/20 border border-amber-400/30 text-amber-400 rounded-xl shrink-0 mt-0.5 sm:mt-0">
+                    <KeyRound className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-bold text-white">
+                        Administrator Access & Restriction Control
+                      </h3>
+                      <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider">
+                        {isSuperAdmin ? 'Super Admin Master Governance' : 'Governed by System Administrator'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                      {isSuperAdmin
+                        ? 'All tasks in the Admin Module are governed by the System Administrator. Other administrators can only use tasks explicitly granted below.'
+                        : 'Your administrative account has restrictions configured by the System Administrator. You can only access permitted tasks.'}
+                    </p>
+                  </div>
+                </div>
+
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddAdminError('');
+                      setNewAdminPermissions([...ALL_ADMIN_PERMISSION_IDS]);
+                      setShowAddAdminModal(true);
+                    }}
+                    className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto shrink-0"
+                  >
+                    <UserPlus className="h-3.5 w-3.5 text-slate-950" />
+                    <span>Provision New Admin</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Admin Summary Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {usersList.filter(u => u.role === 'admin').length === 0 ? (
+                  <div className="col-span-full py-4 text-center text-slate-400 text-xs italic">
+                    No administrators registered in system yet.
+                  </div>
+                ) : (
+                  usersList.filter(u => u.role === 'admin').map(admin => {
+                    const isSuper = isUserSuperAdmin(admin);
+                    const perms = parseAdminPermissions(admin);
+                    return (
+                      <div
+                        key={`admin-ctrl-card-${admin.mobile}`}
+                        className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-inner"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="font-bold text-white text-xs truncate flex items-center gap-1.5">
+                              <span>{admin.name}</span>
+                              {isSuper ? (
+                                <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[9px] font-mono font-bold rounded-full uppercase">
+                                  System Administrator
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-[9px] font-mono font-bold rounded-full uppercase">
+                                  Managed Admin
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                              📱 {admin.mobile} • {admin.village || 'HQ Education Board'}
+                            </div>
+                          </div>
+
+                          {isSuperAdmin && !isSuper && (
+                            <button
+                              type="button"
+                              onClick={() => openEditPermissionsModal(admin)}
+                              className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] rounded-xl flex items-center gap-1 shadow-2xs transition-all cursor-pointer shrink-0"
+                              title="Configure task permissions and restrictions for this admin"
+                            >
+                              <KeyRound className="h-3 w-3 text-slate-950" />
+                              <span>Configure Permissions</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Badges for allowed tasks */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-800/80 text-[10px]">
+                          <span className="text-slate-400 font-semibold mr-0.5">Tasks:</span>
+                          {isSuper ? (
+                            <span className="px-2 py-0.5 bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 rounded-lg font-mono font-bold flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3 text-emerald-400" />
+                              <span>All 6 Tasks Permitted (Unrestricted Master)</span>
+                            </span>
+                          ) : perms.length === 0 ? (
+                            <span className="px-2 py-0.5 bg-rose-950/80 text-rose-300 border border-rose-800/60 rounded-lg font-mono font-bold flex items-center gap-1">
+                              <Lock className="h-3 w-3 text-rose-400" />
+                              <span>0 of 6 Tasks Permitted (Fully Restricted)</span>
+                            </span>
+                          ) : (
+                            ADMIN_PERMISSIONS_CATALOG.map(pDef => {
+                              const isPermitted = perms.includes(pDef.id);
+                              return (
+                                <span
+                                  key={`chip-${admin.mobile}-${pDef.id}`}
+                                  className={`px-2 py-0.5 rounded-lg font-mono text-[9px] font-bold flex items-center gap-1 ${
+                                    isPermitted
+                                      ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                                      : 'bg-slate-900 text-slate-500 border border-slate-800 line-through opacity-60'
+                                  }`}
+                                  title={isPermitted ? `${pDef.label}: Permitted` : `${pDef.label}: Restricted`}
+                                >
+                                  {isPermitted ? (
+                                    <Check className="h-2.5 w-2.5 text-emerald-400" />
+                                  ) : (
+                                    <Lock className="h-2.5 w-2.5 text-slate-500" />
+                                  )}
+                                  <span>{pDef.shortLabel}</span>
+                                </span>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Search bar */}
           <div className="relative max-w-md">
@@ -5963,16 +6598,27 @@ startxref
                         <div className="text-[11px] text-slate-700 font-mono font-semibold">{u.mobile}</div>
                         <div className="text-[10px] text-slate-400 font-mono">Reg: {u.signupDate}</div>
                       </div>
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center gap-1 shrink-0 ${
-                        currentRole === 'admin'
-                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                          : currentRole === 'teacher'
-                          ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {currentRole === 'admin' && <Shield className="h-3 w-3 text-amber-600" />}
-                        <span>{currentRole}</span>
-                      </span>
+                      {currentRole === 'admin' ? (
+                        isUserSuperAdmin(u) ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center gap-1 shrink-0 bg-amber-100 text-amber-900 border border-amber-300">
+                            <Shield className="h-3 w-3 text-amber-600" />
+                            <span>System Admin</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center gap-1 shrink-0 bg-indigo-100 text-indigo-900 border border-indigo-200">
+                            <Lock className="h-3 w-3 text-indigo-600" />
+                            <span>Admin ({parseAdminPermissions(u).length}/6)</span>
+                          </span>
+                        )
+                      ) : currentRole === 'teacher' ? (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center gap-1 shrink-0 bg-indigo-100 text-indigo-800 border border-indigo-200">
+                          {currentRole}
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center gap-1 shrink-0 bg-slate-100 text-slate-700">
+                          {currentRole}
+                        </span>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
@@ -5988,15 +6634,27 @@ startxref
                     </div>
 
                     <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100">
-                      {currentRole !== 'admin' && (
+                      {isSuperAdmin && currentRole === 'admin' && !isUserSuperAdmin(u) && (
                         <button
-                          onClick={() => handleRoleChange(u.mobile, 'admin')}
+                          onClick={() => openEditPermissionsModal(u)}
+                          className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center gap-1 shadow-2xs"
+                        >
+                          <KeyRound className="h-3.5 w-3.5 text-slate-950" />
+                          <span>Permissions</span>
+                        </button>
+                      )}
+                      {isSuperAdmin && currentRole !== 'admin' && (
+                        <button
+                          onClick={() => {
+                            handleRoleChange(u.mobile, 'admin');
+                            openEditPermissionsModal(u);
+                          }}
                           className="px-2.5 py-1.5 bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 rounded-lg text-xs font-bold cursor-pointer transition-colors"
                         >
                           Make Admin
                         </button>
                       )}
-                      {currentRole !== 'student' && (
+                      {isSuperAdmin && currentRole !== 'student' && !isUserSuperAdmin(u) && (
                         <button
                           onClick={() => handleRoleChange(u.mobile, 'student')}
                           className="px-2.5 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 rounded-lg text-xs font-bold cursor-pointer transition-colors"
@@ -6004,13 +6662,15 @@ startxref
                           Make Student
                         </button>
                       )}
-                      <button
-                        onClick={() => promptDeleteUser(u)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg cursor-pointer transition-colors"
-                        title="Delete User"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {isSuperAdmin && !isUserSuperAdmin(u) && (
+                        <button
+                          onClick={() => promptDeleteUser(u)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg cursor-pointer transition-colors"
+                          title="Delete User"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -6046,31 +6706,55 @@ startxref
                         <div className="text-[10px] text-slate-500">{u.school || u.standard || 'Primary Grade'}</div>
                       </td>
                       <td className="p-3.5">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center w-max gap-1 ${
-                          currentRole === 'admin'
-                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                            : currentRole === 'teacher'
-                            ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          {currentRole === 'admin' && <Shield className="h-3 w-3 text-amber-600" />}
-                          <span>{currentRole}</span>
-                        </span>
+                        {currentRole === 'admin' ? (
+                          isUserSuperAdmin(u) ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center w-max gap-1 bg-amber-100 text-amber-900 border border-amber-300">
+                              <Shield className="h-3 w-3 text-amber-600" />
+                              <span>System Administrator</span>
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center w-max gap-1 bg-indigo-100 text-indigo-900 border border-indigo-200">
+                              <Lock className="h-3 w-3 text-indigo-600" />
+                              <span>Managed Admin ({parseAdminPermissions(u).length}/6)</span>
+                            </span>
+                          )
+                        ) : currentRole === 'teacher' ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center w-max gap-1 bg-indigo-100 text-indigo-800 border border-indigo-200">
+                            <span>{currentRole}</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase flex items-center w-max gap-1 bg-slate-100 text-slate-700">
+                            <span>{currentRole}</span>
+                          </span>
+                        )}
                       </td>
                       <td className="p-3.5 font-mono text-[11px]">
                         <span className="text-amber-600 font-bold">{u.totalPoints || 0} XP</span>
                         <div className="text-slate-500 text-[10px]">{u.studyMins || 0} mins</div>
                       </td>
-                      <td className="p-3.5 text-right space-x-1">
-                        {currentRole !== 'admin' && (
+                      <td className="p-3.5 text-right space-x-1 whitespace-nowrap">
+                        {isSuperAdmin && currentRole === 'admin' && !isUserSuperAdmin(u) && (
                           <button
-                            onClick={() => handleRoleChange(u.mobile, 'admin')}
+                            onClick={() => openEditPermissionsModal(u)}
+                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-md text-[10px] inline-flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+                            title="Configure task permissions and restrictions for this administrator"
+                          >
+                            <KeyRound className="h-3 w-3 text-slate-950" />
+                            <span>Permissions</span>
+                          </button>
+                        )}
+                        {isSuperAdmin && currentRole !== 'admin' && (
+                          <button
+                            onClick={() => {
+                              handleRoleChange(u.mobile, 'admin');
+                              openEditPermissionsModal(u);
+                            }}
                             className="px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-md text-[10px] font-bold cursor-pointer"
                           >
                             Make Admin
                           </button>
                         )}
-                        {currentRole !== 'student' && (
+                        {isSuperAdmin && currentRole !== 'student' && !isUserSuperAdmin(u) && (
                           <button
                             onClick={() => handleRoleChange(u.mobile, 'student')}
                             className="px-2 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-md text-[10px] font-bold cursor-pointer"
@@ -6078,13 +6762,18 @@ startxref
                             Make Student
                           </button>
                         )}
-                        <button
-                          onClick={() => promptDeleteUser(u)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded-md cursor-pointer ml-1"
-                          title="Delete User"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        {isSuperAdmin && !isUserSuperAdmin(u) && (
+                          <button
+                            onClick={() => promptDeleteUser(u)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded-md cursor-pointer ml-1"
+                            title="Delete User"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {!isSuperAdmin && (
+                          <span className="text-[10px] text-slate-400 italic">Read-Only</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -6169,6 +6858,69 @@ startxref
                     />
                   </div>
 
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block font-bold text-slate-700">Permitted Administrative Tasks *</label>
+                      <div className="flex items-center gap-1.5 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setNewAdminPermissions([...ALL_ADMIN_PERMISSION_IDS])}
+                          className="text-amber-600 hover:underline font-bold cursor-pointer"
+                        >
+                          Select All
+                        </button>
+                        <span className="text-slate-300">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setNewAdminPermissions([])}
+                          className="text-slate-500 hover:underline cursor-pointer"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mb-2">
+                      As System Administrator, select which tasks this administrator will be permitted to access. Unselected tasks will be restricted.
+                    </p>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                      {ADMIN_PERMISSIONS_CATALOG.map((perm) => {
+                        const isChecked = newAdminPermissions.includes(perm.id);
+                        return (
+                          <label
+                            key={`new-admin-perm-${perm.id}`}
+                            className={`flex items-start gap-2.5 p-2 rounded-lg border text-left cursor-pointer transition-colors ${
+                              isChecked
+                                ? 'bg-amber-500/10 border-amber-300 text-slate-900'
+                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setNewAdminPermissions(prev => [...prev, perm.id]);
+                                } else {
+                                  setNewAdminPermissions(prev => prev.filter(p => p !== perm.id));
+                                }
+                              }}
+                              className="mt-0.5 rounded text-amber-500 focus:ring-amber-500 cursor-pointer"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="font-bold text-[11px] flex items-center justify-between">
+                                <span>{perm.label}</span>
+                                <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold uppercase ${isChecked ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+                                  {isChecked ? 'Permitted' : 'Restricted'}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 mt-0.5">{perm.description}</div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <div className="flex gap-2 pt-3">
                     <button
                       type="button"
@@ -6190,11 +6942,186 @@ startxref
               </div>
             </div>
           )}
+
+          {/* Modal: Edit Administrator Permissions & Restrictions */}
+          {showEditPermissionsModal && editingAdminUser && (
+            <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-white rounded-3xl p-6 max-w-lg w-full border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-xl">
+                      <KeyRound className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-base flex items-center gap-1.5">
+                        <span>Administrator Permissions & Restrictions</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        Configured by <strong className="text-amber-700">System Administrator</strong>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditPermissionsModal(false);
+                      setEditingAdminUser(null);
+                    }}
+                    className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Target Admin Info Card */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 shrink-0">
+                  <div>
+                    <div className="font-black text-slate-900 text-sm">{editingAdminUser.name}</div>
+                    <div className="text-xs text-slate-500 font-mono mt-0.5">
+                      📱 {editingAdminUser.mobile} • {editingAdminUser.village || 'Admin Hub'}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="px-2.5 py-1 bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-mono font-bold uppercase rounded-full">
+                      {editingAdminPermissions.length} of {ADMIN_PERMISSIONS_CATALOG.length} Tasks Permitted
+                    </span>
+                  </div>
+                </div>
+
+                {permissionsFeedback && (
+                  <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 ${
+                    permissionsFeedback.includes('successfully')
+                      ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                      : 'bg-red-50 border border-red-200 text-red-700'
+                  }`}>
+                    {permissionsFeedback.includes('successfully') ? (
+                      <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+                    )}
+                    <span>{permissionsFeedback}</span>
+                  </div>
+                )}
+
+                {/* Quick Preset Buttons */}
+                <div className="flex flex-wrap items-center justify-between gap-2 shrink-0 pb-1">
+                  <span className="text-xs font-bold text-slate-700">Allowed Tasks:</span>
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setEditingAdminPermissions([...ALL_ADMIN_PERMISSION_IDS])}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer"
+                    >
+                      Permit All Tasks
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingAdminPermissions([])}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg cursor-pointer"
+                    >
+                      Restrict All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingAdminPermissions(['content', 'certificates'])}
+                      className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold rounded-lg cursor-pointer"
+                    >
+                      Education Only
+                    </button>
+                  </div>
+                </div>
+
+                {/* Task List Form */}
+                <form onSubmit={handleSaveAdminPermissions} className="space-y-2 flex-1 overflow-y-auto pr-1">
+                  <div className="space-y-2">
+                    {ADMIN_PERMISSIONS_CATALOG.map((perm) => {
+                      const isChecked = editingAdminPermissions.includes(perm.id);
+                      return (
+                        <label
+                          key={`edit-perm-check-${perm.id}`}
+                          className={`p-3 rounded-2xl border flex items-start gap-3 cursor-pointer transition-all ${
+                            isChecked
+                              ? 'bg-amber-500/10 border-amber-300 text-slate-900 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setEditingAdminPermissions((prev) => [...prev, perm.id]);
+                              } else {
+                                setEditingAdminPermissions((prev) => prev.filter((p) => p !== perm.id));
+                              }
+                            }}
+                            className="mt-1 h-4 w-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`font-bold text-xs ${isChecked ? 'text-slate-900' : 'text-slate-600'}`}>
+                                {perm.label}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider shrink-0 ${
+                                isChecked
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+                              }`}>
+                                {isChecked ? 'Permitted' : 'Restricted'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                              {perm.description}
+                            </p>
+                            <div className="mt-1.5 flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                              <span className="uppercase">Module: {perm.tab}</span>
+                              <span>•</span>
+                              <span>Category: {perm.category}</span>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex gap-2 pt-3 border-t border-slate-100 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowEditPermissionsModal(false);
+                        setEditingAdminUser(null);
+                      }}
+                      className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSavingPermissions}
+                      className="w-1/2 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      {isSavingPermissions ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin text-slate-950" />
+                          <span>Saving to Cloud...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Shield className="h-4 w-4 text-slate-950" />
+                          <span>Save Permissions</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* TAB 5: PLATFORM CONFIG & SYSTEM AUDIT */}
-      {activeTab === 'settings' && (
+      {activeTab === 'settings' && canAccessTab('settings') && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-3xs space-y-4">
             <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider flex items-center gap-2">
@@ -6884,18 +7811,27 @@ startxref
         {adminNavItems.map((dockItem) => {
           const DockIcon = dockItem.icon;
           const isDockSelected = activeTab === dockItem.id;
+          const hasAccess = canAccessTab(dockItem.id);
           return (
             <button
               key={`admin-dock-${dockItem.id}`}
               type="button"
               onClick={() => setActiveTab(dockItem.id)}
-              className={`flex flex-col items-center justify-center p-1.5 px-2 rounded-xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center p-1.5 px-2 rounded-xl transition-all cursor-pointer relative ${
                 isDockSelected
                   ? 'text-amber-400 font-extrabold'
-                  : 'text-slate-400 hover:text-slate-200 font-medium'
+                  : hasAccess
+                  ? 'text-slate-400 hover:text-slate-200 font-medium'
+                  : 'text-slate-600 hover:text-slate-400 font-normal'
               }`}
+              title={!hasAccess ? 'Task restricted by System Administrator' : undefined}
             >
-              <DockIcon className={`h-4.5 w-4.5 ${isDockSelected ? 'text-amber-400' : 'text-slate-400'}`} />
+              <div className="relative">
+                <DockIcon className={`h-4.5 w-4.5 ${isDockSelected ? 'text-amber-400' : hasAccess ? 'text-slate-400' : 'text-slate-600'}`} />
+                {!hasAccess && (
+                  <Lock className="h-2.5 w-2.5 text-slate-500 absolute -top-1 -right-1.5" />
+                )}
+              </div>
               <span className="text-[10px] mt-0.5 truncate max-w-[64px]">
                 {dockItem.id === 'analytics' ? 'Analytics' : dockItem.id === 'content' ? 'Curriculum' : dockItem.id === 'certificates' ? 'Certs' : dockItem.id === 'users' ? 'Users' : 'Config'}
               </span>

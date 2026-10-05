@@ -3,6 +3,7 @@ import { Shield, Lock, Smartphone, KeyRound, ArrowLeft, CheckCircle2, AlertCircl
 import { User, LanguageCode } from '../../types';
 import { getFirebaseUser, setFirebaseUser } from '../../lib/firebase';
 import { getSafeDateString } from '../../utils/dateUtils';
+import { isUserSuperAdmin, ALL_ADMIN_PERMISSION_IDS } from '../../utils/adminPermissions';
 
 interface AdminAuthViewProps {
   onSuccess: (adminUser: User) => void;
@@ -222,15 +223,31 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
         dbUser = { ...dbUser, role: 'admin' };
       }
 
+      const isSuper = isUserSuperAdmin(dbUser) || (!dbUser?.adminPermissions && (dbUser?.name || 'System Administrator').toLowerCase().includes('system administrator'));
+      let permissions = [...ALL_ADMIN_PERMISSION_IDS];
+      if (!isSuper) {
+        if (dbUser?.adminPermissions) {
+          try {
+            permissions = typeof dbUser.adminPermissions === 'string' ? JSON.parse(dbUser.adminPermissions) : dbUser.adminPermissions;
+          } catch {
+            permissions = [];
+          }
+        } else {
+          permissions = [];
+        }
+      }
+
       const adminUser: User = {
         mobile: dbUser?.mobile || mobile,
-        name: dbUser?.name || 'System Administrator',
+        name: dbUser?.name || (isSuper ? 'System Administrator' : 'Administrator'),
         defaultLanguage: dbUser?.defaultLanguage || currentLang,
         role: 'admin',
+        isSuperAdmin: isSuper,
+        adminPermissions: permissions,
         signupDate: dbUser?.signupDate || getSafeDateString(),
         village: dbUser?.village || 'HQ Control Center',
         school: dbUser?.school || 'State Education Board',
-        standard: dbUser?.standard || 'Admin Staff',
+        standard: dbUser?.standard || (isSuper ? 'System Administrator' : 'Staff Administrator'),
         streakDays: dbUser?.streakDays ?? 99,
         totalPoints: dbUser?.totalPoints ?? 5000,
         studyMins: dbUser?.studyMins ?? 1200

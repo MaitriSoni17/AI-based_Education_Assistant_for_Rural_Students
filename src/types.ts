@@ -54,6 +54,8 @@ export interface User {
   puzzleStrongTopics?: string; // Stringified JSON array
   puzzleWeakTopics?: string; // Stringified JSON array
   puzzleStatsByClass?: string; // Stringified JSON object mapping class to stats
+  isSuperAdmin?: boolean; // System Administrator with unrestricted root privileges
+  adminPermissions?: string | string[]; // Permissions granted by System Administrator
 }
 
 export interface QuizQuestion {
