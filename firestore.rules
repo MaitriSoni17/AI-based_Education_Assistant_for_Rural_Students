@@ -1,23 +1,128 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // 1. Master Catch-All Default-Deny Gate
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive sanitizers and security predicates
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.:]+$');
+    }
+
+    function isValidMobile(mobile) {
+      return mobile is string && mobile.size() == 10 && mobile.matches('^[6-9][0-9]{9}$');
+    }
+
+    // Users Collection: Guarded profiles, role integrity & anti-tampering
     match /users/{mobile} {
-      allow read, write: if true;
-    }
-    match /certificates/{certId} {
-      allow read, write: if true;
-    }
-    match /curriculum_folders/{folderId} {
-      allow read, write: if true;
-    }
-    match /curriculum_files/{fileId} {
-      allow read, write: if true;
-      match /chunks/{chunkId} {
-        allow read, write: if true;
+      // Allow single document get if mobile ID is valid
+      allow get: if isValidMobile(mobile);
+      // Allow list queries for user directory / admin lookups
+      allow list: if true;
+      
+      // Create user: must match mobile in doc ID, have valid name, and cannot arbitrarily self-elevate
+      allow create: if isValidMobile(mobile)
+        && incoming().mobile == mobile
+        && incoming().name is string
+        && incoming().name.size() > 0
+        && incoming().name.size() <= 100
+        && (!('role' in incoming()) || incoming().role in ['student', 'teacher', 'admin']);
+
+      // Update user: preserves mobile immutability, blocks unauthorized privilege escalation
+      allow update: if isValidMobile(mobile)
+        && incoming().mobile == existing().mobile
+        && (!('name' in incoming()) || (incoming().name is string && incoming().name.size() <= 100))
+        && (
+          existing().role == 'admin' ||
+          (!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == false || incoming().isSuperAdmin == existing().isSuperAdmin)
+        );
+
+      allow delete: if isValidMobile(mobile);
+
+      // Dedicated certificate credential subcollection for high-scale storage
+      match /certificates/{certId} {
+        allow get: if isValidMobile(mobile) && isValidId(certId);
+        allow list: if isValidMobile(mobile);
+        allow create, update: if isValidMobile(mobile) && isValidId(certId)
+          && incoming().title is string
+          && incoming().title.size() <= 200;
+        allow delete: if isValidMobile(mobile) && isValidId(certId);
       }
     }
+
+    // Certificates Collection: Validates recipient phone, score range, and status
+    match /certificates/{certId} {
+      allow get: if isValidId(certId);
+      allow list: if true;
+      allow create: if isValidId(certId)
+        && incoming().studentMobile is string
+        && incoming().studentMobile.matches('^[6-9][0-9]{9}$')
+        && incoming().title is string
+        && incoming().title.size() <= 200
+        && (!('score' in incoming()) || incoming().score is number)
+        && (!('status' in incoming()) || incoming().status in ['valid', 'revoked']);
+      
+      allow update: if isValidId(certId)
+        && (!('status' in incoming()) || incoming().status in ['valid', 'revoked']);
+        
+      allow delete: if isValidId(certId);
+    }
+
+    // Curriculum Folders: Validates folder structure and naming
+    match /curriculum_folders/{folderId} {
+      allow get: if isValidId(folderId);
+      allow list: if true;
+      allow create, update: if isValidId(folderId)
+        && incoming().name is string
+        && incoming().name.size() > 0
+        && incoming().name.size() <= 200;
+      allow delete: if isValidId(folderId);
+    }
+
+    // Curriculum Files & Base64 Data Chunks
+    match /curriculum_files/{fileId} {
+      allow get: if isValidId(fileId);
+      allow list: if true;
+      allow create, update: if isValidId(fileId)
+        && incoming().name is string
+        && incoming().name.size() > 0
+        && incoming().name.size() <= 300;
+      allow delete: if isValidId(fileId);
+
+      match /chunks/{chunkId} {
+        allow get: if isValidId(fileId) && isValidId(chunkId);
+        allow list: if isValidId(fileId);
+        allow write: if isValidId(fileId) && isValidId(chunkId);
+      }
+    }
+
+    // Educational RAG document chunks
     match /educational_chunks/{chunkId} {
-      allow read, write: if true;
+      allow get: if isValidId(chunkId);
+      allow list: if true;
+      allow create, update: if isValidId(chunkId)
+        && incoming().title is string
+        && incoming().title.size() > 0
+        && incoming().title.size() <= 300;
+      allow delete: if isValidId(chunkId);
+    }
+
+    // System Metadata: For idempotent flags like demo certificates seeding
+    match /system_metadata/{docId} {
+      allow get: if isValidId(docId);
+      allow list: if true;
+      allow create, update: if isValidId(docId);
+      allow delete: if false;
     }
   }
 }

@@ -196,6 +196,7 @@ export interface FirestoreUser {
   puzzleStatsByClass?: string; // Stringified JSON object mapping class to stats
   isSuperAdmin?: boolean; // System Administrator with unrestricted root privileges
   adminPermissions?: string | string[]; // Stringified JSON array or array of allowed AdminPermission tasks
+  totalCertificatesCount?: number;
 }
 
 export const ALLOWED_FIRESTORE_USER_FIELDS: (keyof FirestoreUser)[] = [
@@ -683,15 +684,24 @@ export async function getAllFirebaseCertificates(): Promise<FirestoreCertificate
       console.warn("Could not aggregate user earnedCertificates:", e);
     }
 
-    // 3. Seed default certificates if database has none
+    // 3. Seed default certificates only if database has never been seeded before
     if (certsMap.size === 0) {
-      for (const demoCert of DEFAULT_DEMO_CERTIFICATES) {
-        certsMap.set(demoCert.id, demoCert);
-        try {
-          await setDoc(doc(db, "certificates", demoCert.id), demoCert);
-        } catch (seedErr) {
-          console.warn("Failed to seed demo cert:", demoCert.id, seedErr);
+      try {
+        const configDocRef = doc(db, "system_metadata", "certificates_config");
+        const configSnap = await getDoc(configDocRef);
+        if (!configSnap.exists() || !configSnap.data()?.seeded) {
+          for (const demoCert of DEFAULT_DEMO_CERTIFICATES) {
+            certsMap.set(demoCert.id, demoCert);
+            try {
+              await setDoc(doc(db, "certificates", demoCert.id), demoCert);
+            } catch (seedErr) {
+              console.warn("Failed to seed demo cert:", demoCert.id, seedErr);
+            }
+          }
+          await setDoc(configDocRef, { seeded: true, seededAt: Date.now() }, { merge: true });
         }
+      } catch (metaErr) {
+        console.warn("Could not check or set certificates seeding status:", metaErr);
       }
     }
 
@@ -704,6 +714,8 @@ export async function getAllFirebaseCertificates(): Promise<FirestoreCertificate
 /**
  * Issue or save a new certificate in Firestore.
  * Requires that the student account is already registered in the application.
+ * Employs a dedicated subcollection (users/{mobile}/certificates/{certId})
+ * for infinite horizontal scaling and avoids 1MB user document size bottlenecks.
  */
 export async function issueFirebaseCertificate(cert: FirestoreCertificate): Promise<void> {
   if (isQuotaExceeded) return;
@@ -724,14 +736,39 @@ export async function issueFirebaseCertificate(cert: FirestoreCertificate): Prom
   const path = `certificates/${cert.id}`;
   try {
     const certDocRef = doc(db, "certificates", cert.id);
-    await setDoc(certDocRef, {
+    const certPayload = {
       ...cert,
       studentMobile: cleanMobile,
       studentName: cert.studentName || userData.name || "Student",
       createdAt: cert.createdAt || Date.now()
-    });
+    };
+    await setDoc(certDocRef, certPayload);
 
-    // Also attach to user document if user exists
+    const newCertObj = {
+      id: cert.id,
+      quizTitle: cert.title,
+      title: cert.title,
+      score: cert.score || 100,
+      date: cert.date,
+      recipientName: cert.studentName || userData.name,
+      status: cert.status,
+      issuedBy: cert.issuedBy || 'Admin'
+    };
+
+    // 1. SCALABLE SUBCOLLECTION STORAGE: users/{mobile}/certificates/{certId}
+    // Keeps large credential histories separated from the root user document
+    try {
+      const userSubcertRef = doc(db, "users", cleanMobile, "certificates", cert.id);
+      await setDoc(userSubcertRef, {
+        ...newCertObj,
+        createdAt: cert.createdAt || Date.now(),
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (subErr) {
+      console.warn("Could not write to user certificates subcollection:", subErr);
+    }
+
+    // 2. COMPACT SUMMARY FOR ROOT USER DOCUMENT (Max 10 recent to prevent 1MB limit explosion)
     let userCerts: any[] = [];
     if (userData.earnedCertificates) {
       try {
@@ -741,30 +778,61 @@ export async function issueFirebaseCertificate(cert: FirestoreCertificate): Prom
       }
     }
     const existingIndex = userCerts.findIndex((c: any) => c.id === cert.id);
-    const newCertObj = {
-      id: cert.id,
-      quizTitle: cert.title,
-      title: cert.title,
-      score: cert.score || 100,
-      date: cert.date,
-      recipientName: cert.studentName || userData.name,
-      status: cert.status
-    };
-
     if (existingIndex >= 0) {
       userCerts[existingIndex] = newCertObj;
     } else {
       userCerts.unshift(newCertObj);
     }
 
+    // Cap at most 10 recent certificates to keep user doc compact
+    const MAX_RECENT_CERTS = 10;
+    const cappedUserCerts = userCerts.slice(0, MAX_RECENT_CERTS);
+
     await updateDoc(userDocRef, {
-      earnedCertificates: JSON.stringify(userCerts),
+      earnedCertificates: JSON.stringify(cappedUserCerts),
+      totalCertificatesCount: (userData.totalCertificatesCount || 0) + (existingIndex >= 0 ? 0 : 1),
       updatedAt: Date.now()
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
+}
+
+/**
+ * Fetch all certificates for a student from their subcollection, falling back to user summary.
+ */
+export async function getUserFirebaseCertificates(mobile: string): Promise<any[]> {
+  if (isQuotaExceeded) return [];
+  const cleanMobile = mobile.replace(/\D/g, '').trim();
+  if (!cleanMobile) return [];
+
+  try {
+    const subCol = collection(db, "users", cleanMobile, "certificates");
+    const subSnap = await getDocs(subCol);
+    if (!subSnap.empty) {
+      const results: any[] = [];
+      subSnap.forEach(d => results.push({ id: d.id, ...d.data() }));
+      return results;
+    }
+  } catch (e) {
+    console.warn("Could not query user certificates subcollection:", e);
+  }
+
+  // Fallback to earnedCertificates string on root user document
+  try {
+    const userSnap = await getDoc(doc(db, "users", cleanMobile));
+    if (userSnap.exists()) {
+      const uData = userSnap.data() as FirestoreUser;
+      if (uData.earnedCertificates) {
+        return JSON.parse(uData.earnedCertificates);
+      }
+    }
+  } catch (e) {
+    console.warn("Could not read earnedCertificates from user:", e);
+  }
+
+  return [];
 }
 
 /**
@@ -786,10 +854,18 @@ export async function updateFirebaseCertificateStatus(
       await setDoc(certDocRef, { id, status }, { merge: true });
     }
 
-    // Sync with user's earnedCertificates if mobile provided
+    // Sync with user's subcollection and earnedCertificates if mobile provided
     if (studentMobile) {
+      const cleanMobile = studentMobile.replace(/\D/g, '').trim();
       try {
-        const userDocRef = doc(db, "users", studentMobile);
+        const subcertRef = doc(db, "users", cleanMobile, "certificates", id);
+        await setDoc(subcertRef, { status, updatedAt: Date.now() }, { merge: true });
+      } catch (subErr) {
+        // ignore subcollection sync error
+      }
+
+      try {
+        const userDocRef = doc(db, "users", cleanMobile);
         const userSnap = await getDoc(userDocRef);
         if (userSnap.exists()) {
           const userData = userSnap.data() as FirestoreUser;
@@ -816,12 +892,42 @@ export async function updateFirebaseCertificateStatus(
 /**
  * Delete a certificate from Firestore
  */
-export async function deleteFirebaseCertificate(id: string): Promise<void> {
+export async function deleteFirebaseCertificate(id: string, studentMobile?: string): Promise<void> {
   if (isQuotaExceeded) return;
   const path = `certificates/${id}`;
   try {
     const certDocRef = doc(db, "certificates", id);
     await deleteDoc(certDocRef);
+
+    if (studentMobile) {
+      const cleanMobile = studentMobile.replace(/\D/g, '').trim();
+      try {
+        const subcertRef = doc(db, "users", cleanMobile, "certificates", id);
+        await deleteDoc(subcertRef);
+      } catch (e) {
+        // ignore
+      }
+
+      try {
+        const userDocRef = doc(db, "users", cleanMobile);
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          const userData = userSnap.data() as FirestoreUser;
+          if (userData.earnedCertificates) {
+            let userCerts = JSON.parse(userData.earnedCertificates);
+            if (Array.isArray(userCerts)) {
+              userCerts = userCerts.filter((c: any) => c.id !== id);
+              await updateDoc(userDocRef, {
+                earnedCertificates: JSON.stringify(userCerts),
+                updatedAt: Date.now()
+              });
+            }
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }

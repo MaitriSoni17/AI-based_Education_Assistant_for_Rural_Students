@@ -250,6 +250,13 @@
     "/educational_chunks/{chunkId}": {
       "schema": "EducationalChunk",
       "description": "RAG educational document chunks stored for context retrieval and factual grounding."
+    },
+    "/users/{mobile}/certificates/{certId}": {
+      "schema": "Certificate",
+      "description": "Student certificate credential subcollection for high-scale storage."
+    },
+    "/system_metadata/{docId}": {
+      "description": "System level persistent state flags including certificate demo seeding state."
     }
   }
 }

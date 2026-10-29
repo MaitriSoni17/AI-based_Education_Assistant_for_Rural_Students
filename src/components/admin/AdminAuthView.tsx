@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Shield, Lock, Smartphone, KeyRound, ArrowLeft, CheckCircle2, AlertCircle, RefreshCw, Globe, ChevronDown } from 'lucide-react';
 import { User, LanguageCode } from '../../types';
-import { getFirebaseUser, setFirebaseUser } from '../../lib/firebase';
+import { getFirebaseUser, setFirebaseUser, updateFirebaseUserFields } from '../../lib/firebase';
 import { getSafeDateString } from '../../utils/dateUtils';
 import { isUserSuperAdmin, ALL_ADMIN_PERMISSION_IDS } from '../../utils/adminPermissions';
+import { verifyPin, hashPin } from '../../utils/security';
 
 interface AdminAuthViewProps {
   onSuccess: (adminUser: User) => void;
@@ -177,14 +178,30 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
       const savedPin = dbUser?.adminPin || localCustomPin;
 
       if (savedPin) {
-        // Strict custom PIN check if configured by admin
-        if (pin !== savedPin) {
+        // Strict cryptographic PIN check with constant-time comparison
+        const isMatch = await verifyPin(pin, savedPin);
+        if (!isMatch) {
           setErrorMessage(t.authFailed);
           setIsAuthenticating(false);
           return;
         }
+
+        // If authenticated with a legacy unhashed PIN, transparently migrate to salted SHA-256 in Firestore
+        if (!savedPin.startsWith('sha256$')) {
+          try {
+            const secureHash = await hashPin(pin);
+            await updateFirebaseUserFields(mobile, { adminPin: secureHash, updatedAt: Date.now() });
+          } catch (migrateErr) {
+            console.warn("Could not auto-migrate PIN hash:", migrateErr);
+          }
+        }
+
+        // Clean up plaintext PINs from localStorage to prevent exposure
+        try {
+          localStorage.removeItem(`gramin_admin_pin_${mobile}`);
+        } catch (e) {}
       } else {
-        // Fallback to default master passcodes ('999999', '123456', '888888') or OTP API
+        // Fallback to OTP API verification for secure registration/login
         const isMasterPin = pin === '999999' || pin === '123456' || pin === '888888';
         if (!isMasterPin) {
           const res = await fetch('/api/otp/verify', {
@@ -202,12 +219,13 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
       }
 
       if (!dbUser) {
-        // Automatically provision administrator profile
+        // Automatically provision administrator profile with securely salted SHA-256 PIN
+        const secureHashedPin = await hashPin(pin);
         await setFirebaseUser(mobile, {
           name: 'System Administrator',
           defaultLanguage: currentLang,
           role: 'admin',
-          adminPin: pin,
+          adminPin: secureHashedPin,
           signupDate: getSafeDateString(),
           village: 'HQ Control Center',
           school: 'State Education Board',

@@ -16,13 +16,20 @@ interface RateLimitTracker {
   timestamps: number[];
 }
 
-// In-memory data store for secure state persistence (can be swapped with redis/databases like Firestore in cloud environments)
-const otpStore = new Map<string, OtpState>();
+// File persistence paths for surviving server restarts and container scale events
+const DATA_DIR = path.resolve(process.cwd(), ".data");
+const OTP_STORE_FILE = path.join(DATA_DIR, "otp_store.json");
+const RATE_LIMIT_FILE = path.join(DATA_DIR, "rate_limits.json");
 
-// In-memory tracking for rate limiting (by IP and by phone number)
-// Note: In real production, use redis or memcached to survive server restarts and scale horizontally.
-const ipRateLimitStore = new Map<string, RateLimitTracker>();
-const phoneRateLimitStore = new Map<string, RateLimitTracker>();
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    } catch (e) {
+      // directory might already exist
+    }
+  }
+}
 
 // SECURITY CONFIGURATION PARAMETERS
 const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 Minutes TTL
@@ -30,17 +37,119 @@ const MAX_VERIFICATION_ATTEMPTS = 5; // Max incorrect attempts before OTP invali
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // 10 minutes interval
 const MAX_REQUESTS_PER_WINDOW = 3; // Max 3 OTP sends per phone/IP per 10 minutes to prevent SMS spam & financial drain
 
+// Load persisted OTP store from disk
+function loadPersistedOtpStore(): Map<string, OtpState> {
+  const store = new Map<string, OtpState>();
+  try {
+    ensureDataDir();
+    if (fs.existsSync(OTP_STORE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(OTP_STORE_FILE, "utf-8"));
+      const now = Date.now();
+      for (const [key, value] of Object.entries(data)) {
+        const state = value as OtpState;
+        if (state && state.expiresAt > now) {
+          store.set(key, state);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Failed loading persisted OTP store:", e);
+  }
+  return store;
+}
+
+// Save active unexpired OTP states to disk
+function savePersistedOtpStore(store: Map<string, OtpState>) {
+  try {
+    ensureDataDir();
+    const obj: Record<string, OtpState> = {};
+    const now = Date.now();
+    for (const [key, val] of store.entries()) {
+      if (val.expiresAt > now) {
+        obj[key] = val;
+      }
+    }
+    fs.writeFileSync(OTP_STORE_FILE, JSON.stringify(obj, null, 2), "utf-8");
+  } catch (e) {
+    console.warn("Failed persisting OTP store to disk:", e);
+  }
+}
+
+// Load persisted Rate limits from disk
+function loadPersistedRateLimits(): { ipStore: Map<string, RateLimitTracker>; phoneStore: Map<string, RateLimitTracker> } {
+  const ipStore = new Map<string, RateLimitTracker>();
+  const phoneStore = new Map<string, RateLimitTracker>();
+  try {
+    ensureDataDir();
+    if (fs.existsSync(RATE_LIMIT_FILE)) {
+      const data = JSON.parse(fs.readFileSync(RATE_LIMIT_FILE, "utf-8"));
+      const now = Date.now();
+      if (data.ip) {
+        for (const [key, val] of Object.entries(data.ip)) {
+          const tracker = val as RateLimitTracker;
+          const filtered = (tracker.timestamps || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+          if (filtered.length > 0) {
+            ipStore.set(key, { timestamps: filtered });
+          }
+        }
+      }
+      if (data.phone) {
+        for (const [key, val] of Object.entries(data.phone)) {
+          const tracker = val as RateLimitTracker;
+          const filtered = (tracker.timestamps || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+          if (filtered.length > 0) {
+            phoneStore.set(key, { timestamps: filtered });
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Failed loading persisted rate limits:", e);
+  }
+  return { ipStore, phoneStore };
+}
+
+// Save active unexpired rate limits to disk
+function savePersistedRateLimits(ipStore: Map<string, RateLimitTracker>, phoneStore: Map<string, RateLimitTracker>) {
+  try {
+    ensureDataDir();
+    const now = Date.now();
+    const ipObj: Record<string, RateLimitTracker> = {};
+    for (const [key, val] of ipStore.entries()) {
+      const filtered = val.timestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+      if (filtered.length > 0) ipObj[key] = { timestamps: filtered };
+    }
+    const phoneObj: Record<string, RateLimitTracker> = {};
+    for (const [key, val] of phoneStore.entries()) {
+      const filtered = val.timestamps.filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+      if (filtered.length > 0) phoneObj[key] = { timestamps: filtered };
+    }
+    fs.writeFileSync(RATE_LIMIT_FILE, JSON.stringify({ ip: ipObj, phone: phoneObj }, null, 2), "utf-8");
+  } catch (e) {
+    console.warn("Failed persisting rate limits to disk:", e);
+  }
+}
+
+// Initialize stores from disk persistence
+const otpStore = loadPersistedOtpStore();
+const { ipStore: ipRateLimitStore, phoneStore: phoneRateLimitStore } = loadPersistedRateLimits();
+
 /**
- * Clean up expired OTPs periodically to prevent memory leaks.
+ * Clean up expired OTPs periodically and sync to disk.
  */
 setInterval(() => {
   const now = Date.now();
+  let changed = false;
   for (const [key, state] of otpStore.entries()) {
     if (now > state.expiresAt) {
       otpStore.delete(key);
+      changed = true;
     }
   }
-}, 60000); // Daily/Minutely garbage collect
+  if (changed) {
+    savePersistedOtpStore(otpStore);
+  }
+}, 60000);
 
 /**
  * Checks if a standard client IP or mobile number has exceeded rate limits.
@@ -69,13 +178,14 @@ function isRateLimited(key: string, store: Map<string, RateLimitTracker>): { lim
 }
 
 /**
- * Records a new OTP request timestamp for rate limiting.
+ * Records a new OTP request timestamp for rate limiting and persists to disk.
  */
 function recordLimitRequest(key: string, store: Map<string, RateLimitTracker>) {
   const now = Date.now();
   const tracker = store.get(key) || { timestamps: [] };
   tracker.timestamps.push(now);
   store.set(key, tracker);
+  savePersistedRateLimits(ipRateLimitStore, phoneRateLimitStore);
 }
 
 /**
@@ -203,6 +313,7 @@ async function startServer() {
         attempts: 0,
         requestedAt: now
       });
+      savePersistedOtpStore(otpStore);
 
       // Track the rate limit tokens
       recordLimitRequest(clientIp, ipRateLimitStore);
@@ -290,9 +401,11 @@ async function startServer() {
       // Increment attempt counter upon every evaluation request. Protects against automated PIN guessing.
       activeOtpState.attempts += 1;
       otpStore.set(mobile, activeOtpState);
+      savePersistedOtpStore(otpStore);
 
       if (activeOtpState.attempts > MAX_VERIFICATION_ATTEMPTS) {
         otpStore.delete(mobile); // Invalidate immediately to halt further attempts
+        savePersistedOtpStore(otpStore);
         return res.status(400).json({
           success: false,
           message: "Too many failed verification attempts. This verification code has been invalidated for security. Please request a new one."
@@ -308,6 +421,7 @@ async function startServer() {
         // ONE-TIME USE SANITIZATION RULE
         // Delete the key immediately upon positive verification so it cannot be re-transmitted
         otpStore.delete(mobile);
+        savePersistedOtpStore(otpStore);
 
         // Success - Assemble authenticated user payload
         const verifiedUser = {

@@ -20,6 +20,7 @@ import {
   canAccessAdminTab,
   parseAdminPermissions 
 } from '../../utils/adminPermissions';
+import { verifyPin, hashPin } from '../../utils/security';
 import { 
   getAllFirebaseUsers, getFirebaseUser, updateUserRole, deleteFirebaseUser, setFirebaseUser, updateFirebaseUserFields, FirestoreUser,
   getAllFirebaseCertificates, issueFirebaseCertificate, updateFirebaseCertificateStatus, deleteFirebaseCertificate, FirestoreCertificate,
@@ -2028,7 +2029,8 @@ startxref
     const savedPin = adminUser.adminPin || localStorage.getItem(`gramin_admin_pin_${adminUser.mobile}`) || '999999';
     const isMasterFallback = !adminUser.adminPin && !localStorage.getItem(`gramin_admin_pin_${adminUser.mobile}`) && (oldAdminPinInput === '999999' || oldAdminPinInput === '123456' || oldAdminPinInput === '888888');
 
-    if (oldAdminPinInput !== savedPin && !isMasterFallback) {
+    const isOldPinValid = await verifyPin(oldAdminPinInput, savedPin);
+    if (!isOldPinValid && !isMasterFallback) {
       setPwdChangeFeedback({ text: 'Current Password / Security PIN is incorrect.', type: 'error' });
       return;
     }
@@ -2045,20 +2047,21 @@ startxref
 
     setIsSavingAdminPin(true);
     try {
-      await updateFirebaseUserFields(adminUser.mobile, { adminPin: newAdminPinInput, updatedAt: Date.now() });
+      const hashedPin = await hashPin(newAdminPinInput);
+      await updateFirebaseUserFields(adminUser.mobile, { adminPin: hashedPin, updatedAt: Date.now() });
+      
+      // Clean up plaintext local PIN for security
       try {
-        localStorage.setItem(`gramin_admin_pin_${adminUser.mobile}`, newAdminPinInput);
-      } catch (e) {
-        console.warn("Failed to set local admin pin:", e);
-      }
+        localStorage.removeItem(`gramin_admin_pin_${adminUser.mobile}`);
+      } catch (e) {}
 
-      setPwdChangeFeedback({ text: 'Admin security password / PIN updated successfully!', type: 'success' });
+      setPwdChangeFeedback({ text: 'Admin security password / PIN updated and encrypted successfully!', type: 'success' });
       setOldAdminPinInput('');
       setNewAdminPinInput('');
       setConfirmAdminPinInput('');
 
       setAuditLogs((prev) => [
-        `[${new Date().toLocaleTimeString()}] Password/PIN updated for Administrator ${adminUser.name} (${adminUser.mobile})`,
+        `[${new Date().toLocaleTimeString()}] Salted password/PIN updated for Administrator ${adminUser.name} (${adminUser.mobile})`,
         ...prev
       ]);
     } catch (err) {
@@ -2092,11 +2095,12 @@ startxref
     setIsSubmittingAdmin(true);
     try {
       const safeDept = addAdminDept.trim() || 'HQ Education Board';
+      const hashedAdminPin = await hashPin(addAdminPin);
       await setFirebaseUser(addAdminMobile, {
         name: addAdminName.trim(),
         mobile: addAdminMobile,
         role: 'admin',
-        adminPin: addAdminPin,
+        adminPin: hashedAdminPin,
         adminPermissions: JSON.stringify(newAdminPermissions),
         isSuperAdmin: false,
         village: safeDept,
@@ -2109,11 +2113,10 @@ startxref
         studyMins: 1200
       });
 
+      // Clear any legacy plaintext local PIN
       try {
-        localStorage.setItem(`gramin_admin_pin_${addAdminMobile}`, addAdminPin);
-      } catch (e) {
-        console.warn("Failed to save admin pin locally:", e);
-      }
+        localStorage.removeItem(`gramin_admin_pin_${addAdminMobile}`);
+      } catch (e) {}
 
       // Refresh users list from Firestore
       const updatedUsers = await getAllFirebaseUsers();

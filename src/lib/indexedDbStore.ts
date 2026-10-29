@@ -20,13 +20,65 @@ function getDB(): Promise<IDBDatabase> {
   });
 }
 
-export async function saveFileLocal(fileId: string, fileDataUrl: string): Promise<void> {
+/**
+ * Converts a Base64 Data URL to a native binary Blob to eliminate ~33% memory overhead
+ */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  try {
+    const parts = dataUrl.split(',');
+    const mimeMatch = parts[0]?.match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const base64Data = parts[1] || '';
+    if (typeof Buffer !== 'undefined') {
+      const buf = Buffer.from(base64Data, 'base64');
+      return new Blob([buf], { type: mime });
+    }
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Uint8Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    return new Blob([byteNumbers], { type: mime });
+  } catch (e) {
+    // Fallback if data is not a standard data URL
+    return new Blob([dataUrl], { type: 'text/plain' });
+  }
+}
+
+/**
+ * Converts a binary Blob back to a Data URL (isomorphic for browser & testing runtimes)
+ */
+export async function blobToDataUrl(blob: Blob): Promise<string> {
+  if (typeof FileReader !== 'undefined') {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+  // Node.js isomorphic fallback
+  const buffer = await blob.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString('base64');
+  return `data:${blob.type || 'application/octet-stream'};base64,${base64}`;
+}
+
+/**
+ * Saves file data into IndexedDB as a binary Blob to minimize device RAM/storage pressure.
+ * Supports both raw Data URL strings and direct Blob objects.
+ */
+export async function saveFileLocal(fileId: string, fileData: string | Blob): Promise<void> {
   try {
     const db = await getDB();
+    // Convert base64 data URLs to binary Blob for ~33% memory reduction
+    const payload = typeof fileData === 'string' && fileData.startsWith('data:')
+      ? dataUrlToBlob(fileData)
+      : fileData;
+
     return new Promise<void>((resolve, reject) => {
       const transaction = db.transaction(STORE_NAME, 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
-      const request = store.put(fileDataUrl, fileId);
+      const request = store.put(payload, fileId);
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
@@ -35,6 +87,10 @@ export async function saveFileLocal(fileId: string, fileDataUrl: string): Promis
   }
 }
 
+/**
+ * Retrieves file data from IndexedDB, returning a Data URL string.
+ * Transparently supports both modern binary Blobs and legacy string records.
+ */
 export async function getFileLocal(fileId: string): Promise<string | null> {
   try {
     const db = await getDB();
@@ -42,11 +98,59 @@ export async function getFileLocal(fileId: string): Promise<string | null> {
       const transaction = db.transaction(STORE_NAME, 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.get(fileId);
-      request.onsuccess = () => resolve(request.result || null);
+      request.onsuccess = async () => {
+        const result = request.result;
+        if (!result) {
+          resolve(null);
+          return;
+        }
+        if (result instanceof Blob) {
+          try {
+            const dataUrl = await blobToDataUrl(result);
+            resolve(dataUrl);
+          } catch (blobErr) {
+            console.warn("Error converting Blob to Data URL:", blobErr);
+            resolve(null);
+          }
+        } else if (typeof result === 'string') {
+          // Legacy backwards compatibility for previously cached Base64 strings
+          resolve(result);
+        } else {
+          resolve(null);
+        }
+      };
       request.onerror = () => reject(request.error);
     });
   } catch (err) {
     console.warn("Failed to retrieve file data from IndexedDB:", err);
+    return null;
+  }
+}
+
+/**
+ * Retrieves the raw binary Blob directly from IndexedDB without base64 conversion.
+ */
+export async function getFileBlobLocal(fileId: string): Promise<Blob | null> {
+  try {
+    const db = await getDB();
+    return new Promise<Blob | null>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(fileId);
+      request.onsuccess = () => {
+        const result = request.result;
+        if (result instanceof Blob) {
+          resolve(result);
+        } else if (typeof result === 'string') {
+          resolve(dataUrlToBlob(result));
+        } else {
+          resolve(null);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.warn("Failed to retrieve Blob from IndexedDB:", err);
     return null;
   }
 }
