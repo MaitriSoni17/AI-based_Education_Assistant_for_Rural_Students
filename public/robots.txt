@@ -1,0 +1,23 @@
+# Robots.txt for GyaanBot (Gramin Shiksha)
+# Clean path crawling configuration for search engines
+
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /features
+Allow: /login
+Allow: /signup
+Allow: /dashboard
+Allow: /dashboard/
+Allow: /manifest.json
+Allow: /sitemap.xml
+
+# Disallow administrative control panels and internal API endpoints
+Disallow: /admin
+Disallow: /admin/
+Disallow: /admin-login
+Disallow: /admin-dashboard
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/sitemap.xml

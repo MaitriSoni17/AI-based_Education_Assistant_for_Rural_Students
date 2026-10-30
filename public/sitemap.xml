@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <!-- Home Page -->
+  <url>
+    <loc>https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/?lang=en" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/?lang=hi" />
+    <xhtml:link rel="alternate" hreflang="gu" href="https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/?lang=gu" />
+    <xhtml:link rel="alternate" hreflang="mr" href="https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/?lang=mr" />
+    <xhtml:link rel="alternate" hreflang="ta" href="https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/?lang=ta" />
+    <xhtml:link rel="alternate" hreflang="te" href="https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/?lang=te" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/" />
+  </url>
+
+  <!-- About Us & Rural Mission -->
+  <url>
+    <loc>https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/about</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Educational Features & Offline Capabilities -->
+  <url>
+    <loc>https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/features</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Student AI Assistant & Study Mentor -->
+  <url>
+    <loc>https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/dashboard/ai-assistant</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- NCERT Curriculum & Offline Textbooks -->
+  <url>
+    <loc>https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/dashboard/admin-pdfs</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Verified Course Certificates -->
+  <url>
+    <loc>https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/dashboard/certificates</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Student Login & Registration -->
+  <url>
+    <loc>https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/login</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ais-pre-a23u4lghqblnvdkhq4afuz-639537119276.asia-southeast1.run.app/signup</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+</urlset>

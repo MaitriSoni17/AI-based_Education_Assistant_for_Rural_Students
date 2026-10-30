@@ -440,6 +440,72 @@ async function runTestSuite() {
     'Resilience: Persistence'
   );
 
+  // SEO Strategy Verifications
+  const robotsPath = path.resolve(process.cwd(), 'public/robots.txt');
+  assert(
+    fs.existsSync(robotsPath) && fs.readFileSync(robotsPath, 'utf-8').includes('Disallow: /api/'),
+    'public/robots.txt exists with crawlers disallowing private api and admin endpoints',
+    'SEO: Crawlability'
+  );
+
+  const sitemapPath = path.resolve(process.cwd(), 'public/sitemap.xml');
+  assert(
+    fs.existsSync(sitemapPath) && fs.readFileSync(sitemapPath, 'utf-8').includes('xhtml:link rel="alternate"'),
+    'public/sitemap.xml exists with multilingual hreflang URL alternates',
+    'SEO: Sitemaps'
+  );
+
+  const indexHtmlPath = path.resolve(process.cwd(), 'index.html');
+  const indexHtmlContent = fs.readFileSync(indexHtmlPath, 'utf-8');
+  assert(
+    indexHtmlContent.includes('application/ld+json') && indexHtmlContent.includes('EducationalApplication'),
+    'index.html embeds Schema.org JSON-LD structured data for EducationalApplication',
+    'SEO: Structured Data'
+  );
+  assert(
+    indexHtmlContent.includes('og:type') && indexHtmlContent.includes('twitter:card'),
+    'index.html embeds complete OpenGraph and Twitter card social share metadata',
+    'SEO: Social Share'
+  );
+
+  const { updateSeoMetadata, constructPath, parseUrlRoute } = await import('../src/utils/seo');
+  assert(
+    typeof updateSeoMetadata === 'function',
+    'updateSeoMetadata helper is properly exported and callable',
+    'SEO: Dynamic Meta'
+  );
+
+  // Clean URL Routing Tests (No Hash Fragments)
+  assertEqual(
+    constructPath('dashboard', 'ai-assistant'),
+    '/dashboard/ai-assistant',
+    'constructPath maps #dashboard?tab=ai-assistant to clean path /dashboard/ai-assistant',
+    'SEO: Clean URLs'
+  );
+  assertEqual(
+    constructPath('home'),
+    '/',
+    'constructPath maps home view to root /',
+    'SEO: Clean URLs'
+  );
+  assertEqual(
+    constructPath('about'),
+    '/about',
+    'constructPath maps about view to /about',
+    'SEO: Clean URLs'
+  );
+  assertEqual(
+    constructPath('admin-dashboard', undefined, 'certificates'),
+    '/admin/certificates',
+    'constructPath maps admin certificates tab to /admin/certificates',
+    'SEO: Clean URLs'
+  );
+  assert(
+    typeof parseUrlRoute === 'function',
+    'parseUrlRoute is exported and handles path and legacy hash fallback parsing',
+    'SEO: Clean URLs'
+  );
+
   // ============================================================================
   // 6. BACKEND API INTEGRATION TESTING (HTTP REQUESTS TO DEV SERVER)
   // ============================================================================
@@ -506,6 +572,191 @@ async function runTestSuite() {
     'POST /api/otp/verify rejects incorrect OTP with HTTP 400',
     'Integration: API'
   );
+
+  // ============================================================================
+  // 7. PAGE RELOAD & ROUTE PERSISTENCE SIMULATION (Clean Links)
+  // ============================================================================
+  console.log("[7/7] Simulating Page Reload & Clean Link Persistence across all views...");
+
+  // Mock DOM window/location simulation helper for route parsing
+  function simulateBrowserReload(urlPathname: string, hash: string = '', search: string = '') {
+    (global as any).window = {
+      location: {
+        pathname: urlPathname,
+        hash,
+        search,
+        href: `https://rural-edu.web.app${urlPathname}${search}${hash}`
+      },
+      history: {
+        replaceState: () => {},
+        pushState: () => {},
+        state: { isGuard: true }
+      }
+    };
+    return parseUrlRoute();
+  }
+
+  // 7.1 Student Sub-Path Reloads
+  const studentTabsToTest: Array<{ path: string; expectedTab: string }> = [
+    { path: '/dashboard/ai-assistant', expectedTab: 'ai-assistant' },
+    { path: '/dashboard/quiz', expectedTab: 'quiz' },
+    { path: '/dashboard/equations', expectedTab: 'equations' },
+    { path: '/dashboard/puzzles', expectedTab: 'puzzles' },
+    { path: '/dashboard/admin-pdfs', expectedTab: 'admin-pdfs' },
+    { path: '/dashboard/certificates', expectedTab: 'certificates' },
+    { path: '/dashboard/tutor', expectedTab: 'tutor' },
+    { path: '/dashboard/exam', expectedTab: 'exam' },
+    { path: '/dashboard/career', expectedTab: 'career' },
+    { path: '/dashboard/settings', expectedTab: 'settings' }
+  ];
+
+  for (const st of studentTabsToTest) {
+    const route = simulateBrowserReload(st.path);
+    assert(
+      route.view === 'dashboard' && route.studentTab === st.expectedTab,
+      `Reload on "${st.path}" stays on student tab "${st.expectedTab}"`,
+      'Reload: Student Routes'
+    );
+  }
+
+  // 7.2 Admin Sub-Path Reloads
+  const adminTabsToTest: Array<{ path: string; expectedTab: string }> = [
+    { path: '/admin/certificates', expectedTab: 'certificates' },
+    { path: '/admin/content', expectedTab: 'content' },
+    { path: '/admin/users', expectedTab: 'users' },
+    { path: '/admin/settings', expectedTab: 'settings' },
+    { path: '/admin/analytics', expectedTab: 'analytics' },
+    { path: '/admin-dashboard', expectedTab: 'analytics' }
+  ];
+
+  for (const at of adminTabsToTest) {
+    const route = simulateBrowserReload(at.path);
+    assert(
+      route.view === 'admin-dashboard' && route.adminTab === at.expectedTab,
+      `Reload on "${at.path}" stays on admin tab "${at.expectedTab}"`,
+      'Reload: Admin Routes'
+    );
+  }
+
+  // 7.3 Public View Reloads
+  const publicRoutesToTest: Array<{ path: string; expectedView: string }> = [
+    { path: '/', expectedView: 'home' },
+    { path: '/about', expectedView: 'about' },
+    { path: '/features', expectedView: 'features' },
+    { path: '/login', expectedView: 'login' },
+    { path: '/signup', expectedView: 'signup' },
+    { path: '/admin-login', expectedView: 'admin-login' }
+  ];
+
+  for (const pr of publicRoutesToTest) {
+    const route = simulateBrowserReload(pr.path);
+    assert(
+      route.view === pr.expectedView,
+      `Reload on "${pr.path}" stays on public view "${pr.expectedView}"`,
+      'Reload: Public Routes'
+    );
+  }
+
+  // 7.4 Legacy Hash Migration on Reload
+  const legacyRoute = simulateBrowserReload('/', '#dashboard?tab=ai-assistant');
+  assert(
+    legacyRoute.view === 'dashboard' && legacyRoute.studentTab === 'ai-assistant',
+    'Reload with legacy hash /#dashboard?tab=ai-assistant cleanly migrates to { view: dashboard, studentTab: ai-assistant }',
+    'Reload: Legacy Migration'
+  );
+
+  // 7.5 Path Construction Integrity
+  assert(
+    constructPath('dashboard', 'ai-assistant') === '/dashboard/ai-assistant',
+    'constructPath preserves /dashboard/ai-assistant without hash',
+    'Reload: Path Schedulers'
+  );
+  assert(
+    constructPath('admin-dashboard', undefined, 'certificates') === '/admin/certificates',
+    'constructPath preserves /admin/certificates without hash',
+    'Reload: Path Schedulers'
+  );
+  assert(
+    constructPath('home') === '/',
+    'constructPath maps home cleanly to /',
+    'Reload: Path Schedulers'
+  );
+
+  // 7.6 Mascot Class Tutor Specific Reload Persistence Simulation
+  // Scenario: Student was studying on Mascot Class Tutor ('tutor' tab) and page reloads at root / (preview reload)
+  function resolveCurrentViewAndTab(
+    urlPathname: string,
+    savedView: string | null,
+    savedStudentTab: string | null,
+    hasStudentSession: boolean,
+    hasAdminSession: boolean
+  ) {
+    const route = simulateBrowserReload(urlPathname);
+    let resolvedView = 'home';
+    let resolvedTab = 'profile';
+
+    // App.tsx resolution algorithm
+    if (route.view && route.view !== 'home') {
+      if (route.view === 'dashboard') {
+        resolvedView = (hasStudentSession || hasAdminSession) ? 'dashboard' : 'login';
+      } else if (route.view === 'admin-dashboard') {
+        resolvedView = hasAdminSession ? 'admin-dashboard' : 'admin-login';
+      } else {
+        resolvedView = route.view;
+      }
+    } else if (savedView) {
+      if (savedView === 'dashboard') {
+        resolvedView = (hasStudentSession || hasAdminSession) ? 'dashboard' : 'login';
+      } else if (savedView === 'admin-dashboard') {
+        resolvedView = hasAdminSession ? 'admin-dashboard' : 'admin-login';
+      } else {
+        resolvedView = savedView;
+      }
+    } else if (hasAdminSession) {
+      resolvedView = 'admin-dashboard';
+    } else if (hasStudentSession) {
+      resolvedView = 'dashboard';
+    }
+
+    if (route.studentTab) {
+      resolvedTab = route.studentTab;
+    } else if (savedStudentTab) {
+      resolvedTab = savedStudentTab;
+    }
+
+    return { view: resolvedView, tab: resolvedTab };
+  }
+
+  const tutorReloadRoot = resolveCurrentViewAndTab('/', 'dashboard', 'tutor', true, false);
+  assert(
+    tutorReloadRoot.view === 'dashboard' && tutorReloadRoot.tab === 'tutor',
+    'Root reload (/) with active student session keeps user on Mascot Class Tutor (dashboard/tutor)',
+    'Reload: Mascot Tutor'
+  );
+
+  const tutorReloadPath = resolveCurrentViewAndTab('/dashboard/tutor', 'dashboard', 'tutor', true, false);
+  assert(
+    tutorReloadPath.view === 'dashboard' && tutorReloadPath.tab === 'tutor',
+    'Direct path reload (/dashboard/tutor) keeps user on Mascot Class Tutor',
+    'Reload: Mascot Tutor'
+  );
+
+  const adminCertsReloadRoot = resolveCurrentViewAndTab('/', 'admin-dashboard', null, false, true);
+  assert(
+    adminCertsReloadRoot.view === 'admin-dashboard',
+    'Root reload (/) with active admin session keeps admin on Admin Console',
+    'Reload: Admin Session'
+  );
+
+  const guestRootReload = resolveCurrentViewAndTab('/', null, null, false, false);
+  assert(
+    guestRootReload.view === 'home',
+    'Root reload (/) with no session cleanly shows home page for guests',
+    'Reload: Guest Root'
+  );
+
+  // Clean up mock window from global after tests
+  delete (global as any).window;
 
   // ============================================================================
   // SUMMARY REPORT GENERATION

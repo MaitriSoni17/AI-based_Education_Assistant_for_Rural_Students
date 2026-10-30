@@ -1,7 +1,10 @@
 {
   "name": "GyaanBot - AI Rural Education Companion",
   "short_name": "GyaanBot",
-  "description": "An offline-first, multilingual AI education assistant designed for rural students with text-to-speech support and interactive learning.",
+  "description": "An offline-first, multilingual AI education assistant designed for rural students with text-to-speech support, NCERT textbooks, and interactive learning.",
+  "categories": ["education", "books", "reference"],
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
   "id": "/",
   "display": "standalone",
