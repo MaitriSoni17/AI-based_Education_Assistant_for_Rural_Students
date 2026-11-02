@@ -53,7 +53,10 @@ function loadPersistedOtpStore(): Map<string, OtpState> {
       }
     }
   } catch (e) {
-    console.warn("Failed loading persisted OTP store:", e);
+    console.warn("Failed loading persisted OTP store, resetting corrupted file:", e);
+    try {
+      fs.writeFileSync(OTP_STORE_FILE, "{}", "utf-8");
+    } catch (_) {}
   }
   return store;
 }
@@ -104,7 +107,10 @@ function loadPersistedRateLimits(): { ipStore: Map<string, RateLimitTracker>; ph
       }
     }
   } catch (e) {
-    console.warn("Failed loading persisted rate limits:", e);
+    console.warn("Failed loading persisted rate limits, resetting corrupted file:", e);
+    try {
+      fs.writeFileSync(RATE_LIMIT_FILE, JSON.stringify({ ip: {}, phone: {} }, null, 2), "utf-8");
+    } catch (_) {}
   }
   return { ipStore, phoneStore };
 }

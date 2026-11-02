@@ -1,12 +1,14 @@
-<<<<<<< Updated upstream
 {
   "9999911223": {
-    "otp": "580795",
-    "expiresAt": 1793639599371,
+    "otp": "919236",
+    "expiresAt": 1793641017665,
     "attempts": 1,
-    "requestedAt": 1793639299371
+    "requestedAt": 1793640717665
+  },
+  "9876543210": {
+    "otp": "571206",
+    "expiresAt": 1793641059179,
+    "attempts": 0,
+    "requestedAt": 1793640759179
   }
 }
-=======
-{}
->>>>>>> Stashed changes
