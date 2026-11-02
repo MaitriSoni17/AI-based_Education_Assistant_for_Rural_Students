@@ -1709,13 +1709,13 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                     onChange={(e) => setAiFavoriteSubject(e.target.value)}
                     className="w-full p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#81B29A]"
                   />
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {activeSuggestions.subjects.map((sub) => (
                       <button
                         key={sub}
                         type="button"
                         onClick={() => setAiFavoriteSubject(sub)}
-                        className="p-1 px-2 rounded-md border border-gray-150 bg-gray-50 hover:bg-gray-100 text-[10px] text-gray-650 font-medium"
+                        className="py-1.5 px-3 min-h-[36px] rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xs text-slate-700 font-semibold transition-colors cursor-pointer touch-manipulation"
                       >
                         {sub}
                       </button>
@@ -1733,13 +1733,13 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                     onChange={(e) => setAiInterests(e.target.value)}
                     className="w-full p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#81B29A]"
                   />
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {activeSuggestions.interests.map((int) => (
                       <button
                         key={int}
                         type="button"
                         onClick={() => setAiInterests(int)}
-                        className="p-1 px-2 rounded-md border border-gray-150 bg-gray-50 hover:bg-gray-100 text-[10px] text-gray-650 font-medium"
+                        className="py-1.5 px-3 min-h-[36px] rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xs text-slate-700 font-semibold transition-colors cursor-pointer touch-manipulation"
                       >
                         {int}
                       </button>
@@ -1757,13 +1757,13 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                     onChange={(e) => setAiHobbies(e.target.value)}
                     className="w-full p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#81B29A]"
                   />
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {activeSuggestions.hobbies.map((hob) => (
                       <button
                         key={hob}
                         type="button"
                         onClick={() => setAiHobbies(hob)}
-                        className="p-1 px-2 rounded-md border border-gray-150 bg-gray-50 hover:bg-gray-100 text-[10px] text-gray-650 font-medium"
+                        className="py-1.5 px-3 min-h-[36px] rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xs text-slate-700 font-semibold transition-colors cursor-pointer touch-manipulation"
                       >
                         {hob}
                       </button>
@@ -1781,13 +1781,13 @@ export default function CareerGuidanceTab({ lang, user }: CareerGuidanceTabProps
                     onChange={(e) => setAiSkills(e.target.value)}
                     className="w-full p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#81B29A]"
                   />
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     {activeSuggestions.skills.map((sk) => (
                       <button
                         key={sk}
                         type="button"
                         onClick={() => setAiSkills(sk)}
-                        className="p-1 px-2 rounded-md border border-gray-150 bg-gray-50 hover:bg-gray-100 text-[10px] text-gray-650 font-medium"
+                        className="py-1.5 px-3 min-h-[36px] rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 active:bg-gray-200 text-xs text-slate-700 font-semibold transition-colors cursor-pointer touch-manipulation"
                       >
                         {sk}
                       </button>

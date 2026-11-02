@@ -297,7 +297,18 @@ export default function AuthView({
             
             {/* If in Signup mode, request full student registration info */}
             {mode === 'signup' && (
-              <div className="space-y-4 animate-fade-in">
+              <div className="space-y-4 animate-fade-in relative">
+                {/* Click-outside backdrop to dismiss open dropdowns */}
+                {(isStateOpen || isStandardOpen || isBoardOpen) && (
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => {
+                      setIsStateOpen(false);
+                      setIsStandardOpen(false);
+                      setIsBoardOpen(false);
+                    }}
+                  />
+                )}
                 {/* 1. Full Name */}
                 <div className="space-y-1.5 text-left">
                   <label className="block text-xs font-display font-black text-gray-750 uppercase tracking-widest">

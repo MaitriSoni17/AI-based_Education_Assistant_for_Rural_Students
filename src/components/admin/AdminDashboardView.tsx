@@ -3995,7 +3995,7 @@ startxref
                     }
                     handleExportMasterPDF(true);
                   }}
-                  className={`w-full sm:w-auto px-3.5 py-2.5 sm:py-2 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px] ${
+                  className={`w-full sm:w-auto px-4 py-2.5 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap min-h-[44px] ${
                     canPerform('analytics_export')
                       ? 'bg-red-600 hover:bg-red-500 active:scale-[0.98] cursor-pointer'
                       : 'bg-slate-800 text-slate-400 opacity-50 cursor-not-allowed'
@@ -4024,7 +4024,7 @@ startxref
                     }
                     handleExportMasterExcel(true);
                   }}
-                  className={`w-full sm:w-auto px-3.5 py-2.5 sm:py-2 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap min-h-[40px] sm:min-h-[36px] ${
+                  className={`w-full sm:w-auto px-4 py-2.5 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap min-h-[44px] ${
                     canPerform('analytics_export')
                       ? 'bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] cursor-pointer'
                       : 'bg-slate-800 text-slate-400 opacity-50 cursor-not-allowed'

@@ -746,7 +746,7 @@ const getDifficultyBadge = (difficulty: string | undefined, lang: string) => {
   }
 
   return (
-    <span className={`px-2 py-0.5 rounded-full border text-[9px] font-bold tracking-wider uppercase inline-flex items-center gap-1 ${colorClasses}`}>
+    <span className={`px-2 py-0.5 rounded-md border text-[9px] font-bold tracking-wider uppercase inline-flex items-center gap-1 ${colorClasses}`}>
       {text}
     </span>
   );
@@ -2626,9 +2626,9 @@ JSON Schema:
                       key={oIdx}
                       disabled={selectedOpt !== null}
                       onClick={() => handleOptSelect(oIdx)}
-                      className={`w-full p-3 rounded-xl border text-left text-xs sm:text-sm font-sans cursor-pointer transition-all ${optStyle}`}
+                      className={`w-full p-3 min-h-[48px] rounded-xl border text-left text-xs sm:text-sm font-sans cursor-pointer transition-all flex items-center break-words ${optStyle}`}
                     >
-                      <span className="font-mono font-bold mr-1">{String.fromCharCode(65 + oIdx)}.</span> {opt}
+                      <span><span className="font-mono font-bold mr-1.5">{String.fromCharCode(65 + oIdx)}.</span> {opt}</span>
                     </button>
                   );
                 })}

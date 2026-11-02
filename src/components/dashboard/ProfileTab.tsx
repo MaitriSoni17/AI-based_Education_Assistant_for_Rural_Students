@@ -663,7 +663,7 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
                   <h2 className="font-display font-extrabold text-2xl text-[#3D405B]">
                     {user.name}
                   </h2>
-                  <span className="inline-flex self-center sm:self-auto items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[#81B29A]/10 text-emerald-700 border border-[#81B29A]/30">
+                  <span className="inline-flex self-center sm:self-auto items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-[#81B29A]/10 text-emerald-800 border border-[#81B29A]/30">
                     {pText.activeStudent}
                   </span>
                 </div>
@@ -803,14 +803,14 @@ export default function ProfileTab({ user, lang, claimedMedals, offlineCount, on
             <h4 className="font-display font-black text-xs text-[#3D405B] uppercase tracking-wider">
               {pText.chooseAvatar}
             </h4>
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2.5 pt-1">
               {AVATARS.map(av => (
                 <button
                   key={av.id}
                   onClick={() => setSelectedAvatar(av.emoji)}
-                  className={`p-2.5 rounded-xl text-3xl transition-all cursor-pointer border ${
+                  className={`w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded-xl text-3xl transition-all cursor-pointer border touch-manipulation active:scale-95 ${
                     selectedAvatar === av.emoji 
-                      ? 'bg-amber-100 border-[#F2CC8F] scale-110 shadow-3xs' 
+                      ? 'bg-amber-100 border-[#F2CC8F] scale-105 shadow-sm ring-2 ring-[#F2CC8F]/50' 
                       : 'bg-white border-gray-200 hover:bg-gray-100'
                   }`}
                   title={av.name}

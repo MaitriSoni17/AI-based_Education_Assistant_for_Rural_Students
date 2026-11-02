@@ -1936,8 +1936,8 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                             <UploadCloud className="h-5 w-5" />
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-gray-700">{t.dragDrop}</p>
-                            <p className="text-[10px] text-gray-400">{t.allowedTypes}</p>
+                            <p className="text-xs font-bold text-gray-800">{t.dragDrop}</p>
+                            <p className="text-xs text-slate-500 font-medium">{t.allowedTypes}</p>
                           </div>
                         </label>
 
@@ -1957,16 +1957,19 @@ export default function ExamPrepTab({ user, lang, onUpdateUser }: ExamPrepTabPro
                               )}
                               <div className="overflow-hidden">
                                 <p className="text-xs font-bold text-gray-700 truncate">{studentAnswersFile.file.name}</p>
-                                <p className="text-[9px] text-gray-400">
+                                <p className="text-[10px] text-gray-500">
                                   {(studentAnswersFile.file.size / 1024).toFixed(1)} KB
                                 </p>
                               </div>
                             </div>
                             <button 
+                              type="button"
                               onClick={(e) => { e.preventDefault(); setStudentAnswersFile(null); }}
-                              className="text-gray-400 hover:text-rose-500 p-1"
+                              className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-rose-50 text-gray-500 hover:text-rose-600 transition-colors cursor-pointer touch-manipulation"
+                              aria-label="Remove uploaded file"
+                              title="Remove file"
                             >
-                              <Trash2 className="h-4.5 w-4.5" />
+                              <Trash2 className="h-5 w-5" />
                             </button>
                           </div>
                         )}

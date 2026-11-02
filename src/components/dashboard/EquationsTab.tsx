@@ -5565,14 +5565,15 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                     } ${editingMessageId === msg.id ? 'w-full' : ''}`}>
                       {/* Floating Edit & Reply Icon buttons on hover / touch for User messages */}
                       {msg.sender === 'user' && editingMessageId !== msg.id && (
-                        <div className="absolute -top-2 -left-2 flex items-center gap-1 z-10">
+                        <div className="absolute -top-3.5 -left-2 sm:-left-3 flex items-center gap-1.5 z-10">
                           <button
                             type="button"
                             onClick={() => handleStartEditMessage(msg)}
-                            className="p-1.5 rounded-full bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-slate-50 shadow-sm border border-slate-200 transition-all opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
+                            className="w-8 h-8 rounded-lg bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-slate-50 shadow-sm border border-slate-200 transition-all opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 flex items-center justify-center cursor-pointer touch-manipulation"
                             title={chatbotLang === 'hi' ? 'प्रश्न संपादित करें' : 'Edit question'}
+                            aria-label="Edit question"
                           >
-                            <Pencil className="h-3 w-3" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
                             type="button"
@@ -5580,10 +5581,11 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                               setReplyingTo(msg);
                               setTimeout(() => inputRef.current?.focus(), 100);
                             }}
-                            className="p-1.5 rounded-full bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-rose-50 shadow-sm border border-slate-200 transition-all opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 cursor-pointer"
+                            className="w-8 h-8 rounded-lg bg-white text-slate-700 hover:text-[#E07A5F] hover:bg-rose-50 shadow-sm border border-slate-200 transition-all opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 flex items-center justify-center cursor-pointer touch-manipulation"
                             title={chatbotLang === 'hi' ? 'उत्तर दें (Reply)' : 'Reply to message'}
+                            aria-label="Reply to message"
                           >
-                            <CornerUpLeft className="h-3 w-3" />
+                            <CornerUpLeft className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       )}
@@ -5630,16 +5632,16 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                       )}
 
                       {msg.sender === 'user' && editingMessageId === msg.id ? (
-                        <div className="space-y-3 mt-1 w-full max-w-full sm:min-w-[400px] text-slate-900">
+                        <div className="space-y-3 mt-1 w-full max-w-full sm:min-w-[400px] text-slate-900 scroll-mt-20">
                           <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-3">
-                            <label className="block text-[10px] font-black text-white/90 uppercase tracking-widest">
+                            <label className="block text-[11px] font-black text-white/95 uppercase tracking-wider">
                               {chatbotLang === 'hi' ? 'अपना प्रश्न संपादित करें:' : 'Edit Your Question'}
                             </label>
                             <textarea
                               value={editingText}
                               onChange={(e) => setEditingText(e.target.value)}
-                              className="w-full p-4 rounded-xl bg-white text-slate-900 border-none focus:ring-2 focus:ring-amber-400 text-sm sm:text-base font-sans outline-none resize-y min-h-[120px] shadow-lg leading-relaxed"
-                              rows={4}
+                              className="w-full p-3 sm:p-4 rounded-xl bg-white text-slate-900 border-none focus:ring-2 focus:ring-amber-400 text-sm sm:text-base font-sans outline-none resize-y min-h-[90px] sm:min-h-[110px] max-h-[220px] shadow-lg leading-relaxed"
+                              rows={3}
                               autoFocus
                               placeholder={chatbotLang === 'hi' ? 'अपना प्रश्न लिखें...' : 'Type your question...'}
                             />
@@ -5647,7 +5649,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                               <button
                                 type="button"
                                 onClick={handleCancelEditMessage}
-                                className="px-4 py-2 rounded-xl text-[10px] font-bold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer border border-white/10 uppercase tracking-tight"
+                                className="px-4 py-2 min-h-[38px] rounded-xl text-xs font-bold bg-white/15 text-white hover:bg-white/25 active:scale-95 transition-all cursor-pointer border border-white/15 uppercase tracking-tight"
                               >
                                 {chatbotLang === 'hi' ? 'रद्द करें' : 'Cancel'}
                               </button>
@@ -5655,7 +5657,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                                 type="button"
                                 onClick={() => handleSaveAndResubmitEdit(msg.id)}
                                 disabled={!editingText.trim()}
-                                className="px-5 py-2 rounded-xl text-[10px] font-black bg-white text-[#E07A5F] hover:bg-rose-50 flex items-center gap-2 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer uppercase tracking-tight"
+                                className="px-5 py-2 min-h-[38px] rounded-xl text-xs font-black bg-white text-[#E07A5F] hover:bg-rose-50 active:scale-95 flex items-center gap-2 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer uppercase tracking-tight"
                               >
                                 <RotateCcw className="h-4 w-4" />
                                 <span>{chatbotLang === 'hi' ? 'सहेजें और पुनः हल करें' : 'Save & Resolve'}</span>

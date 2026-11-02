@@ -682,7 +682,7 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                         <span className="text-[9px] font-mono tracking-widest text-amber-300/90 uppercase font-bold">
                           ★ {lang === 'hi' ? "आधिकारिक प्रमाण पत्र" : "OFFICIAL CREDENTIAL"}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-black flex items-center gap-1 ${
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-black flex items-center gap-1 ${
                           isPerfect 
                             ? 'bg-amber-400 text-amber-950 shadow-xs' 
                             : accuracy >= 80 
@@ -730,30 +730,32 @@ export default function CertificatesTab({ user, lang, onNavigateToTab, onUpdateU
                             e.stopPropagation();
                             handleOpenCertificate(cert);
                           }}
-                          className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors"
+                          className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-colors active:scale-95"
                         >
                           <span>{lang === 'hi' ? "विवरण देखें" : "View Details"}</span>
                           <ChevronRight className="h-3.5 w-3.5 text-amber-700" />
                         </button>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDownloadPDF(cert);
                             }}
-                            className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-xl border border-emerald-200 transition-colors cursor-pointer"
+                            className="w-9 h-9 sm:w-10 sm:h-10 text-emerald-700 hover:bg-emerald-50 rounded-xl border border-emerald-200 transition-colors cursor-pointer flex items-center justify-center active:scale-95"
                             title={lang === 'hi' ? "डाउनलोड PDF" : "Download PDF"}
+                            aria-label="Download Certificate PDF"
                           >
-                            <Download className="h-3.5 w-3.5" />
+                            <Download className="h-4 w-4" />
                           </button>
                           
                           <button
                             onClick={(e) => handleDeleteCertificate(cert.id, e)}
-                            className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-gray-200 transition-colors cursor-pointer"
+                            className="w-9 h-9 sm:w-10 sm:h-10 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-gray-200 transition-colors cursor-pointer flex items-center justify-center active:scale-95"
                             title={lang === 'hi' ? "प्रमाण पत्र हटाएं" : "Delete Certificate"}
+                            aria-label="Delete Certificate"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </div>

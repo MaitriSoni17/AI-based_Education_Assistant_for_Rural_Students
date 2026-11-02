@@ -28,7 +28,7 @@ export default function HomeView({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           {/* Main Content Info */}
           <div className="lg:col-span-7 space-y-6 text-left">
-            <div className="inline-flex items-center space-x-2 bg-[#F2CC8F]/30 text-[#8B6E32] px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider border border-[#F2CC8F]/50 max-w-full">
+            <div className="inline-flex items-center space-x-2 bg-[#F2CC8F]/30 text-[#8B6E32] px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider border border-[#F2CC8F]/50 max-w-full">
               <Sparkles className="h-3.5 w-3.5 text-[#E07A5F] shrink-0" />
               <span className="whitespace-nowrap">{t.connectivityLabel}</span>
             </div>
@@ -121,7 +121,7 @@ export default function HomeView({
 
       {/* Connectivity & Offline focus Highlights */}
       <section className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#F2CC8F]/20 shadow-xs">
-        <h3 className="font-display font-extrabold text-xl sm:text-sm text-[#3D405B] text-center mb-8">
+        <h3 className="font-display font-extrabold text-xl sm:text-2xl text-[#3D405B] text-center mb-8">
           🛠️ How We Make Offline Study Possible For Rural Areas
         </h3>
 

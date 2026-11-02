@@ -918,24 +918,24 @@ export default function PuzzleGamesTab({ user, lang, onUpdateUser }: PuzzleGames
           </p>
         </div>
 
-        {/* Sync Badges & Quick Stats */}
-        <div className="flex items-center flex-wrap gap-2 sm:self-center">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50/80 text-blue-800 border border-blue-200/70 rounded-xl text-xs font-semibold">
+        {/* Sync Badges & Quick Stats (Balanced 2x2 grid on mobile, flex on desktop) */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto sm:self-center">
+          <div className="flex items-center justify-center sm:justify-start gap-1.5 px-3 py-1.5 bg-blue-50/80 text-blue-800 border border-blue-200/70 rounded-xl text-xs font-semibold">
             <GraduationCap className="h-3.5 w-3.5 text-blue-600" />
             <span>{activeGrade}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50/80 text-purple-800 border border-purple-200/70 rounded-xl text-xs font-semibold uppercase">
+          <div className="flex items-center justify-center sm:justify-start gap-1.5 px-3 py-1.5 bg-purple-50/80 text-purple-800 border border-purple-200/70 rounded-xl text-xs font-semibold uppercase">
             <Globe className="h-3.5 w-3.5 text-purple-600" />
             <span>{activeLang}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50/80 text-amber-800 border border-amber-200/70 rounded-xl text-xs font-bold">
+          <div className="flex items-center justify-center sm:justify-start gap-1.5 px-3 py-1.5 bg-amber-50/80 text-amber-800 border border-amber-200/70 rounded-xl text-xs font-bold">
             <Flame className="h-3.5 w-3.5 text-amber-600" />
             <span>{puzzleStreak} {t.streak}</span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50/80 text-emerald-800 border border-emerald-200/70 rounded-xl text-xs font-bold">
+          <div className="flex items-center justify-center sm:justify-start gap-1.5 px-3 py-1.5 bg-emerald-50/80 text-emerald-800 border border-emerald-200/70 rounded-xl text-xs font-bold">
             <Trophy className="h-3.5 w-3.5 text-emerald-600" />
             <span>{puzzlesSolved} {t.solvedPuzzles}</span>
           </div>
@@ -1104,7 +1104,7 @@ export default function PuzzleGamesTab({ user, lang, onUpdateUser }: PuzzleGames
 
         {/* Active Puzzle Canvas */}
         {!isLoading && !errorMsg && activePuzzle && (
-          <div className="p-4 sm:p-6 space-y-6">
+          <div className={`p-4 sm:p-6 space-y-6 transition-opacity ${isEvaluating ? 'pointer-events-none opacity-80' : ''}`}>
             
             {/* Puzzle Title & Instruction */}
             <div className="space-y-1.5">

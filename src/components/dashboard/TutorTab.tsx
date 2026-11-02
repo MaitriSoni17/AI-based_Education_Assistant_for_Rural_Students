@@ -4028,26 +4028,28 @@ JSON Schema:
               </span>
             </h2>
 
-            {/* Carousel navigation controls for mobile (neatly placed at top right) */}
-            <div className="flex md:hidden items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0">
+            {/* Carousel navigation controls for mobile (neatly placed at top right with touch targets >= 40px) */}
+            <div className="flex md:hidden items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
               <button
                 type="button"
                 onClick={scrollMascotCarouselLeft}
-                className="w-6 h-6 rounded bg-white shadow-2xs flex items-center justify-center text-slate-700 hover:text-slate-900 active:scale-95 transition-all"
-                title="Previous"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white shadow-2xs flex items-center justify-center text-slate-700 hover:text-slate-900 active:scale-95 transition-all cursor-pointer"
+                title="Previous Mascot"
+                aria-label="Previous Mascot"
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-4.5 h-4.5" />
               </button>
-              <span className="text-[10px] font-semibold text-slate-600 px-1">
+              <span className="text-[11px] font-bold text-slate-600 px-1 font-mono">
                 Tutor
               </span>
               <button
                 type="button"
                 onClick={scrollMascotCarouselRight}
-                className="w-6 h-6 rounded bg-white shadow-2xs flex items-center justify-center text-slate-700 hover:text-slate-900 active:scale-95 transition-all"
-                title="Next"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-white shadow-2xs flex items-center justify-center text-slate-700 hover:text-slate-900 active:scale-95 transition-all cursor-pointer"
+                title="Next Mascot"
+                aria-label="Next Mascot"
               >
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-4.5 h-4.5" />
               </button>
             </div>
           </div>
@@ -4401,14 +4403,15 @@ JSON Schema:
               }}
             />
 
-            <div className="absolute right-3 top-2.5 flex items-center gap-1.5">
+            <div className="absolute right-2.5 top-2 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => document.getElementById('classroom-file-upload')?.click()}
-                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-[#E07A5F] transition-all flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 sm:w-9 sm:h-9 hover:bg-gray-100 rounded-xl text-gray-500 hover:text-[#E07A5F] transition-all flex items-center justify-center cursor-pointer active:scale-95"
                 title={lang === 'hi' ? "पीडीएफ या चित्र संलग्न करें" : "Attach PDF or Image"}
+                aria-label={lang === 'hi' ? "पीडीएफ या चित्र संलग्न करें" : "Attach PDF or Image"}
               >
-                <Paperclip className="h-4 w-4" />
+                <Paperclip className="h-4.5 w-4.5" />
               </button>
               <SpeechInputButton 
                 lang={lang} 
@@ -4833,8 +4836,8 @@ JSON Schema:
                                       "{item.query}"
                                     </h4>
                                   )}
-                                  <p className="text-[10px] text-gray-500 flex items-center gap-1.5 mt-1 font-mono">
-                                    <Clock className="h-3 w-3 text-gray-500 shrink-0" />
+                                  <p className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-1 font-mono">
+                                    <Clock className="h-3 w-3 text-slate-400 shrink-0" />
                                     <span>Guided by {item.avatarName}</span>
                                   </p>
                                 </div>
@@ -4959,7 +4962,7 @@ JSON Schema:
                       className="w-full h-full"
                     />
                   </div>
-                  <span className="mt-2 text-[10px] font-mono font-bold bg-[#E07A5F]/20 text-[#F2CC8F] border border-[#E07A5F]/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                  <span className="mt-2 text-[10px] font-mono font-bold bg-[#E07A5F]/20 text-[#F2CC8F] border border-[#E07A5F]/40 px-2.5 py-0.5 rounded-lg uppercase tracking-wider shadow-2xs">
                     {effectiveMascot ? effectiveMascot.avatarName : (selectedLesson.avatarName || "AI Tutor")}
                   </span>
                 </div>
@@ -5115,19 +5118,20 @@ JSON Schema:
                             <span>{DOWNLOAD_LABELS[lang] || DOWNLOAD_LABELS['en']}</span>
                           </button>
 
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[9px] font-mono text-gray-400 font-extrabold uppercase tracking-widest">
-                              AUTOPLAY NEXT:
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-mono text-gray-300 font-extrabold uppercase tracking-wider">
+                              AUTOPLAY:
                             </span>
                             <button 
                               type="button"
                               onClick={() => setIsAutoplayEnabled(!isAutoplayEnabled)}
-                              className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              aria-label="Toggle autoplay next slide"
+                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                                 isAutoplayEnabled ? 'bg-[#81B29A]' : 'bg-slate-700'
                               }`}
                             >
-                              <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                                isAutoplayEnabled ? 'translate-x-3' : 'translate-x-0'
+                              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                isAutoplayEnabled ? 'translate-x-5' : 'translate-x-0'
                               }`} />
                             </button>
                           </div>

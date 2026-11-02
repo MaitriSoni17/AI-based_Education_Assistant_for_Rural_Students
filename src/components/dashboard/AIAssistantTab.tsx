@@ -2724,45 +2724,48 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                       
                       {/* Action buttons (Reply, Speak aloud, Download PDF, & Copy Plain Text) inside character box */}
                       {!isMe && (
-                        <div className="absolute -bottom-3 -right-2 flex items-center gap-1 bg-white p-0.5 rounded-full border border-gray-100 shadow-sm z-10">
+                        <div className="absolute -bottom-3.5 -right-2 flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-md z-10">
                           <button
                             type="button"
                             onClick={() => {
                               setReplyingTo(msg);
                               setTimeout(() => chatInputRef.current?.focus(), 100);
                             }}
-                            className="p-1 rounded-full text-xs text-blue-600 hover:bg-blue-50 cursor-pointer transition-all"
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs text-blue-600 hover:bg-blue-50 cursor-pointer transition-all active:scale-95"
                             title={lang === 'hi' ? "उत्तर दें (Reply)" : "Reply to AI message"}
+                            aria-label="Reply to message"
                           >
-                            <CornerUpLeft className="h-3 w-3" />
+                            <CornerUpLeft className="h-3.5 w-3.5" />
                           </button>
 
                           <button
                             type="button"
                             onClick={() => speakMessageAloud(msg)}
-                            className={`p-1 rounded-full text-xs cursor-pointer transition-all ${
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer transition-all active:scale-95 ${
                               isPlayingVoice === msg.id 
                                 ? 'bg-rose-500 text-white animate-bounce shadow-sm' 
                                 : 'text-[#E07A5F] hover:bg-gray-50'
                             }`}
                             title={READ_ALOUD_TOOLTIP_LABELS[lang] || READ_ALOUD_TOOLTIP_LABELS['en']}
+                            aria-label="Read message aloud"
                           >
-                            {isPlayingVoice === msg.id ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                            {isPlayingVoice === msg.id ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                           </button>
                           
                           <button
                             type="button"
                             onClick={() => exportMessageToPDF(msg)}
-                            className="p-1 rounded-full text-xs text-blue-600 hover:bg-gray-50 cursor-pointer transition-all"
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs text-blue-600 hover:bg-gray-50 cursor-pointer transition-all active:scale-95"
                             title={lang === 'en' ? "Download PDF Version" : "PDF संस्करण डाउनलोड करें"}
+                            aria-label="Download message PDF"
                           >
-                            <FileDown className="h-3 w-3" />
+                            <FileDown className="h-3.5 w-3.5" />
                           </button>
 
                           <button
                             type="button"
                             onClick={() => copyMessageToClipboard(msg)}
-                            className={`p-1 rounded-full text-xs cursor-pointer transition-all ${
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer transition-all active:scale-95 ${
                               copiedMessageId === msg.id 
                                 ? 'bg-emerald-500 text-white shadow-sm' 
                                 : 'text-gray-500 hover:bg-gray-50'
@@ -2770,14 +2773,15 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                             title={copiedMessageId === msg.id 
                               ? (lang === 'hi' ? 'कॉपी हो गया!' : 'Copied!') 
                               : (lang === 'hi' ? 'प्लेन टेक्स्ट कॉपी करें' : 'Copy plain-text version')}
+                            aria-label="Copy message text"
                           >
-                            {copiedMessageId === msg.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                            {copiedMessageId === msg.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                           </button>
                         </div>
                       )}
                     </div>
                     
-                    <span className={`text-[9px] font-mono text-gray-400 block ${isMe ? 'text-right' : 'text-left'}`}>
+                    <span className={`text-[10px] font-mono text-gray-500 block ${isMe ? 'text-right' : 'text-left'}`}>
                       {msg.timestamp} {msg.pending && <span className="text-amber-600 font-bold ml-1 animate-pulse">⏱️ ({SYNC_PENDING_LABELS[lang] || SYNC_PENDING_LABELS['en']})</span>}
                     </span>
                   </div>

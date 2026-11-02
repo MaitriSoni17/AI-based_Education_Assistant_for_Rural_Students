@@ -329,7 +329,8 @@ export default function Navbar({
               <button
                 id="language-dropdown-toggle-mobile"
                 onClick={() => setIsMobileLangOpen(!isMobileLangOpen)}
-                className="flex items-center gap-1 bg-white border border-[#F2CC8F]/50 rounded-xl px-2.5 py-1.5 cursor-pointer active:scale-95"
+                className="flex items-center gap-1.5 bg-white border border-[#F2CC8F]/50 rounded-xl px-2.5 py-2 min-h-[38px] cursor-pointer active:scale-95 shadow-3xs"
+                aria-label="Select language"
               >
                 <Globe className="h-3.5 w-3.5 text-[#E07A5F]" />
                 <span className="text-[11px] font-sans font-black text-[#3D405B]">
@@ -385,7 +386,8 @@ export default function Navbar({
             <button
               id="mobile-menu-toggle"
               onClick={() => setIsOpen(!isOpen)}
-              className="p-1.5 rounded-lg text-[#3D405B] hover:bg-white/60 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] cursor-pointer"
+              className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-[#3D405B] hover:bg-white/60 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] cursor-pointer active:scale-95"
+              aria-label="Toggle mobile menu"
             >
               {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>

@@ -168,7 +168,7 @@ export default function SlideVisualBoard({
               <span className="text-[11px] font-mono font-bold text-white tracking-wide truncate">
                 {isPlaying ? '=SUM(B2:D2) * 1.18' : '=EXCEL_CALC(Data_Rows)'}
               </span>
-              <span className="ml-auto text-[8px] font-mono text-emerald-300 font-extrabold bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-400/30 animate-pulse">
+              <span className="ml-auto text-[8px] font-mono text-emerald-300 font-extrabold bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-400/30 animate-pulse">
                 AUTOSUM ACTIVE ✨
               </span>
             </div>
@@ -968,77 +968,79 @@ export default function SlideVisualBoard({
               <span className="text-[10px] font-mono text-[#F2CC8F] font-bold uppercase tracking-widest truncate max-w-[240px]">
                 {slide.visualAttributes?.stepTitle || slide.title}
               </span>
-              <span className="text-[9px] bg-slate-900 text-emerald-300 font-mono font-black px-2.5 py-0.5 rounded-full border border-emerald-500/30 uppercase tracking-wider flex items-center gap-1 shrink-0">
+              <span className="text-[9px] bg-slate-900 text-emerald-300 font-mono font-black px-2.5 py-0.5 rounded-md border border-emerald-500/30 uppercase tracking-wider flex items-center gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
                 Step-by-Step Flow
               </span>
             </div>
 
-            {/* 3-Stage Connected Concept Architecture Cards */}
-            <div className="flex-1 flex items-center justify-between gap-1.5 sm:gap-2 relative min-h-[135px] my-1">
+            {/* 3-Stage Connected Concept Architecture Cards (Stacked on small screens, row on desktop) */}
+            <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-2 relative min-h-[140px] my-1">
               {/* Stage 1: Observation / Cause */}
-              <div className="flex-1 bg-slate-900/90 border border-amber-500/30 rounded-xl p-2 flex flex-col justify-between h-full relative overflow-hidden shadow-md">
+              <div className="flex-1 bg-slate-900/90 border border-amber-500/30 rounded-xl p-2.5 flex flex-col justify-between relative overflow-hidden shadow-md">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[8px] font-mono font-bold text-amber-400 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/30">
                     Phase 1
                   </span>
                   <span className="text-xs">💡</span>
                 </div>
-                <h5 className="text-[10px] sm:text-[11px] font-bold text-white line-clamp-2 leading-tight">
+                <h5 className="text-[11px] font-bold text-white line-clamp-2 leading-tight">
                   {keywords[0] ? keywords[0].toUpperCase() : 'ORIGIN & CAUSE'}
                 </h5>
-                <p className="text-[8.5px] text-slate-300 line-clamp-2 font-sans mt-0.5">
+                <p className="text-[9.5px] text-slate-300 line-clamp-2 font-sans mt-0.5">
                   {slide.bullets[0] || 'Initial concept conditions and background factors'}
                 </p>
-                <div className="h-1 w-full bg-amber-500/30 rounded-full mt-1.5 overflow-hidden">
+                <div className="h-1 w-full bg-amber-500/30 rounded-full mt-2 overflow-hidden">
                   <div className="h-full bg-amber-400 w-full animate-pulse" />
                 </div>
               </div>
 
               {/* Connecting Glow Arrow 1 ➔ 2 */}
-              <div className="flex flex-col items-center shrink-0">
-                <ArrowRight className="h-4 w-4 text-[#F2CC8F] animate-pulse" />
+              <div className="flex items-center justify-center shrink-0">
+                <ArrowRight className="h-4 w-4 text-[#F2CC8F] animate-pulse hidden sm:block" />
+                <span className="text-[#F2CC8F] font-bold text-xs sm:hidden">↓</span>
               </div>
 
               {/* Stage 2: Active Working Mechanism */}
-              <div className="flex-1 bg-slate-900/95 border-2 border-emerald-400/50 rounded-xl p-2 flex flex-col justify-between h-full relative overflow-hidden shadow-lg scale-102">
+              <div className="flex-1 bg-slate-900/95 border-2 border-emerald-400/50 rounded-xl p-2.5 flex flex-col justify-between relative overflow-hidden shadow-lg scale-100 sm:scale-102">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[8px] font-mono font-bold text-emerald-300 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-500/40">
                     Mechanism
                   </span>
                   <span className="text-xs animate-spin" style={{ animationDuration: '6s' }}>⚙️</span>
                 </div>
-                <h5 className="text-[10px] sm:text-[11px] font-black text-emerald-300 line-clamp-2 leading-tight">
+                <h5 className="text-[11px] font-black text-emerald-300 line-clamp-2 leading-tight">
                   {keywords[1] ? keywords[1].toUpperCase() : 'ACTIVE PROCESS'}
                 </h5>
-                <p className="text-[8.5px] text-slate-200 line-clamp-2 font-sans mt-0.5">
+                <p className="text-[9.5px] text-slate-200 line-clamp-2 font-sans mt-0.5">
                   {slide.bullets[1] || 'Core scientific reaction, rule, or mechanism'}
                 </p>
-                <div className="h-1 w-full bg-emerald-500/30 rounded-full mt-1.5 overflow-hidden">
+                <div className="h-1 w-full bg-emerald-500/30 rounded-full mt-2 overflow-hidden">
                   <div className="h-full bg-emerald-400 w-full animate-pulse" />
                 </div>
               </div>
 
               {/* Connecting Glow Arrow 2 ➔ 3 */}
-              <div className="flex flex-col items-center shrink-0">
-                <ArrowRight className="h-4 w-4 text-emerald-400 animate-pulse" />
+              <div className="flex items-center justify-center shrink-0">
+                <ArrowRight className="h-4 w-4 text-emerald-400 animate-pulse hidden sm:block" />
+                <span className="text-emerald-400 font-bold text-xs sm:hidden">↓</span>
               </div>
 
               {/* Stage 3: Result & Outcome */}
-              <div className="flex-1 bg-slate-900/90 border border-sky-500/30 rounded-xl p-2 flex flex-col justify-between h-full relative overflow-hidden shadow-md">
+              <div className="flex-1 bg-slate-900/90 border border-sky-500/30 rounded-xl p-2.5 flex flex-col justify-between relative overflow-hidden shadow-md">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[8px] font-mono font-bold text-sky-400 bg-sky-950/80 px-1.5 py-0.5 rounded border border-sky-500/30">
                     Result
                   </span>
                   <span className="text-xs">🎯</span>
                 </div>
-                <h5 className="text-[10px] sm:text-[11px] font-bold text-white line-clamp-2 leading-tight">
+                <h5 className="text-[11px] font-bold text-white line-clamp-2 leading-tight">
                   {keywords[2] ? keywords[2].toUpperCase() : 'APPLICATION'}
                 </h5>
-                <p className="text-[8.5px] text-slate-300 line-clamp-2 font-sans mt-0.5">
+                <p className="text-[9.5px] text-slate-300 line-clamp-2 font-sans mt-0.5">
                   {slide.bullets[2] || 'Final impact, observation, or practical application'}
                 </p>
-                <div className="h-1 w-full bg-sky-500/30 rounded-full mt-1.5 overflow-hidden">
+                <div className="h-1 w-full bg-sky-500/30 rounded-full mt-2 overflow-hidden">
                   <div className="h-full bg-sky-400 w-full animate-pulse" />
                 </div>
               </div>
@@ -1069,7 +1071,7 @@ export default function SlideVisualBoard({
             {isPlaying && (
               <span className="absolute inset-0 rounded-full border-2 border-[#E07A5F] animate-ping opacity-75 pointer-events-none" />
             )}
-            <div className="absolute top-0.5 right-0.5 bg-black/85 backdrop-blur-xs px-1 py-0.2 rounded-full text-[6px] font-mono text-white tracking-tighter select-none z-30 border border-white/10">
+            <div className="absolute top-0.5 right-0.5 bg-black/85 backdrop-blur-xs px-1 py-0.5 rounded-md text-[7px] font-mono text-white tracking-tight select-none z-30 border border-white/10">
               {isPlaying ? "🔴" : "🎙️"}
             </div>
           </div>

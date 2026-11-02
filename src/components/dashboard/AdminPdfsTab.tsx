@@ -2475,7 +2475,7 @@ This comprehensive study resource provides essential conceptual foundation and p
         </div>
 
         <div className="relative z-10 max-w-4xl space-y-3">
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-200 max-w-full">
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-200 max-w-full">
             <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />
             <span className="whitespace-nowrap">{t.officialHubBadge}</span>
           </div>
@@ -2489,11 +2489,11 @@ This comprehensive study resource provides essential conceptual foundation and p
           </p>
 
           <div className="flex items-center gap-2 sm:gap-3 pt-1 text-[11px] sm:text-xs overflow-x-auto no-scrollbar whitespace-nowrap">
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-1.5 shrink-0">
+            <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl flex items-center gap-1.5 shrink-0">
               <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300 shrink-0" />
               <span className="font-bold">{files.length} {t.badgeOfficialDocs}</span>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full flex items-center gap-1.5 shrink-0">
+            <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl flex items-center gap-1.5 shrink-0">
               <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-300 shrink-0" />
               <span className="font-bold">{folders.length} {t.badgeFolders}</span>
             </div>
@@ -2511,7 +2511,7 @@ This comprehensive study resource provides essential conceptual foundation and p
             <div>
               <h3 className="text-sm sm:text-lg font-black tracking-tight text-white flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <span>{t.aiGeneratorTitle}</span>
-                <span className="text-[9px] sm:text-[10px] bg-rose-500/30 text-rose-300 font-extrabold px-2 py-0.5 rounded-full border border-rose-500/40">
+                <span className="text-[9px] sm:text-[10px] bg-rose-500/30 text-rose-300 font-extrabold px-2 py-0.5 rounded-md border border-rose-500/40">
                   Topic-Based
                 </span>
               </h3>

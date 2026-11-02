@@ -260,7 +260,7 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="text-[10px] font-mono uppercase text-gray-400 font-bold block">
+                <label className="text-xs font-mono uppercase text-slate-600 font-bold block">
                   Village / City / District
                 </label>
                 <input
@@ -274,7 +274,7 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
             </div>
 
             <div className="space-y-1.5 text-left">
-              <label className="text-[10px] font-mono uppercase text-gray-400 font-bold block">
+              <label className="text-xs font-mono uppercase text-slate-600 font-bold block">
                 My High School / Institution
               </label>
               <input
@@ -287,7 +287,7 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
             </div>
 
             <div className="space-y-1.5 text-left relative">
-              <label className="text-[10px] font-mono uppercase text-gray-400 font-bold block">
+              <label className="text-xs font-mono uppercase text-slate-600 font-bold block">
                 Standard / Grade Class
               </label>
               <button
@@ -336,7 +336,7 @@ export default function SettingsTab({ user, onUpdateUser, lang, onChangeLanguage
             </div>
 
             <div className="space-y-1.5 text-left relative">
-              <label className="text-[10px] font-mono uppercase text-gray-400 font-bold block">
+              <label className="text-xs font-mono uppercase text-slate-600 font-bold block">
                 Academic Board / Syllabus
               </label>
               <button

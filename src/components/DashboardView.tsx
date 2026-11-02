@@ -400,9 +400,9 @@ export default function DashboardView({ user, lang, onUpdateUser, activeTab: pro
         </div>
 
         {/* Global summary stats indicators */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:flex md:flex-wrap lg:flex-nowrap items-center gap-2.5 sm:gap-3 w-full md:w-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:flex md:flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-3 w-full md:w-auto">
           {/* Real-time XP Gained Indicator */}
-          <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-2 sm:px-3.5 sm:py-2 flex items-center gap-2.5 shadow-3xs hover-float duration-300 transition-all cursor-default min-w-0">
+          <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-2 sm:px-3 sm:py-2 flex items-center gap-2 sm:gap-2.5 shadow-3xs hover-float duration-300 transition-all cursor-default min-w-0">
             <div className="p-1.5 bg-emerald-100/80 rounded-xl shrink-0">
               <Sparkles className="h-4 w-4 text-emerald-600 animate-pulse" />
             </div>
