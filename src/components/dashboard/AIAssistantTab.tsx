@@ -2447,7 +2447,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                                                 <InteractiveDiagram data={parsed.diagram} lang={lang} />
                                               )}
                                               {/* RAG Grounding Citation Badge */}
-                                              {!isMe && msg.ragSources && msg.ragSources.length > 0 && (
+                                              {/*!isMe && msg.ragSources && msg.ragSources.length > 0 && (
                                                 <div className="mt-3 pt-2 border-t border-blue-100/90 text-left">
                                                   <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-700 mb-1">
                                                     <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
@@ -2468,7 +2468,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                                                     ))}
                                                   </div>
                                                 </div>
-                                              )}
+                                              )*/}
                                             </div>
                                           );
                                       })()}
@@ -2695,7 +2695,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                                 <InteractiveDiagram data={parsed.diagram} lang={lang} />
                               )}
                               {/* RAG Grounding Citation Badge */}
-                              {!isMe && msg.ragSources && msg.ragSources.length > 0 && (
+                              {/*!isMe && msg.ragSources && msg.ragSources.length > 0 && (
                                 <div className="mt-3 pt-2.5 border-t border-blue-100/90 text-left">
                                   <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-700 mb-1">
                                     <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
@@ -2716,7 +2716,7 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                                     ))}
                                   </div>
                                 </div>
-                              )}
+                              )*/}
                             </div>
                           );
                         })()
