@@ -38,7 +38,7 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobilePlaceholder: "Enter 10-digit Admin Mobile",
     sendCodeBtn: "Send Verification Code",
     sendingCode: "Sending Code via Firebase...",
-    directPinOption: "Or enter Permanent Security PIN directly",
+    //directPinOption: "Or enter Permanent Security PIN directly",
     codeSentNotice: "A 6-digit verification code has been dispatched to your mobile.",
     codeLabel: "6-Digit Security Code / PIN",
     codePlaceholder: "Enter 6-digit SMS Code or PIN (999999)",
@@ -67,7 +67,7 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobilePlaceholder: "10-अंकों का एडमिन मोबाइल दर्ज करें",
     sendCodeBtn: "सत्यापन कोड भेजें",
     sendingCode: "Firebase द्वारा कोड भेजा जा रहा है...",
-    directPinOption: "या सीधे स्थायी सुरक्षा पिन दर्ज करें",
+    //directPinOption: "या सीधे स्थायी सुरक्षा पिन दर्ज करें",
     codeSentNotice: "आपके मोबाइल नंबर पर 6-अंकों का सत्यापन कोड भेज दिया गया है।",
     codeLabel: "6-अंकों का सुरक्षा कोड / पिन",
     codePlaceholder: "6-अंकों का एसएमएस कोड या पिन दर्ज करें (999999)",
@@ -96,7 +96,7 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobilePlaceholder: "10-અંકનો એડમિન મોબાઈલ દાખલ કરો",
     sendCodeBtn: "વેરિફિકેશન કોડ મોકલો",
     sendingCode: "Firebase દ્વારા કોડ મોકલાઈ રહ્યો છે...",
-    directPinOption: "અથવા સીધો કાયમી સુરક્ષા પિન દાખલ કરો",
+    //directPinOption: "અથવા સીધો કાયમી સુરક્ષા પિન દાખલ કરો",
     codeSentNotice: "તમારા મોબાઇલ પર 6-અંકનો વેરિફિકેશન કોડ મોકલવામાં આવ્યો છે.",
     codeLabel: "6-અંકનો સુરક્ષા કોડ / પિન",
     codePlaceholder: "6-અંકનો SMS કોડ અથવા પિન દાખલ કરો (999999)",
@@ -125,7 +125,7 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobilePlaceholder: "10-अंकी ॲडमिन मोबाईल प्रविष्ट करा",
     sendCodeBtn: "पडताळणी कोड पाठवा",
     sendingCode: "Firebase द्वारे कोड पाठवला जात आहे...",
-    directPinOption: "किंवा थेट कायमस्वरूपी सुरक्षा पिन प्रविष्ट करा",
+    //directPinOption: "किंवा थेट कायमस्वरूपी सुरक्षा पिन प्रविष्ट करा",
     codeSentNotice: "तुमच्या मोबाईलवर 6-अंकी पडताळणी कोड पाठवला गेला आहे.",
     codeLabel: "6-अंकी सुरक्षा कोड / पिन",
     codePlaceholder: "6-अंकी SMS कोड किंवा पिन प्रविष्ट करा (999999)",
@@ -154,7 +154,7 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobilePlaceholder: "10-இலக்க நிர்வாகி கைபேசி எண்ணை உள்ளிடவும்",
     sendCodeBtn: "சரிபார்ப்புக் குறியீட்டை அனுப்பு",
     sendingCode: "Firebase வழியாக குறியீடு அனுப்பப்படுகிறது...",
-    directPinOption: "அல்லது நேரடியாக நிரந்தர பாதுகாப்பு பின்னை உள்ளிடவும்",
+    //directPinOption: "அல்லது நேரடியாக நிரந்தர பாதுகாப்பு பின்னை உள்ளிடவும்",
     codeSentNotice: "உங்கள் கைபேசிக்கு 6-இலக்க சரிபார்ப்புக் குறியீடு அனுப்பப்பட்டுள்ளது.",
     codeLabel: "6-இலக்க பாதுகாப்புக் குறியீடு / PIN",
     codePlaceholder: "6-இலக்க SMS குறியீடு அல்லது PIN (999999)",
@@ -183,7 +183,7 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobilePlaceholder: "10-అంకెల అడ్మిన్ మొబైల్ నమోదు చేయండి",
     sendCodeBtn: "ధృవీకరణ కోడ్ పంపండి",
     sendingCode: "Firebase ద్వారా కోడ్ పంపబడుతోంది...",
-    directPinOption: "లేదా నేరుగా శాశ్వత భద్రతా పిన్ నమోదు చేయండి",
+    //directPinOption: "లేదా నేరుగా శాశ్వత భద్రతా పిన్ నమోదు చేయండి",
     codeSentNotice: "మీ మొబైల్ నంబర్‌కు 6-అంకెల ధృవీకరణ కోడ్ పంపబడింది.",
     codeLabel: "6-అంకెల భద్రతా కోడ్ / PIN",
     codePlaceholder: "6-అంకెల SMS కోడ్ లేదా PIN (999999)",
@@ -560,7 +560,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
               </button>
 
               {/* Direct Permanent PIN Option link for instant login without SMS wait */}
-              <div className="text-center pt-2">
+              {/*<div className="text-center pt-2">
                 <button
                   type="button"
                   onClick={handleProceedWithPermanentPin}
@@ -569,7 +569,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
                   <KeyRound className="h-3.5 w-3.5" />
                   <span>{t.directPinOption}</span>
                 </button>
-              </div>
+              </div>*/}
             </form>
           ) : (
             /* STEP 2: CODE ENTRY (Accepts BOTH Firebase SMS OTP and Permanent Security PIN) */
