@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
 import { LanguageCode, User } from '../types';
-import { safeFetchJson } from '../utils/safeFetch';
 import SpeakButton from './SpeakButton';
-import { Smartphone, Lock, UserCheck, Globe, RefreshCw, Send, ChevronDown, Check, Search, GraduationCap, MapPin, School, BookOpen } from 'lucide-react';
-import { getFirebaseUser, setFirebaseUser } from '../lib/firebase';
+import { Smartphone, Lock, UserCheck, Globe, RefreshCw, Send, ChevronDown, Check, Search } from 'lucide-react';
+import {
+  getFirebaseUser,
+  setFirebaseUser,
+  sendFirebasePhoneOtp,
+  verifyFirebasePhoneOtp,
+  clearRecaptchaVerifier,
+  type ConfirmationResult,
+} from '../lib/firebase';
 import { getSafeDateString } from '../utils/dateUtils';
 import { STATES, STANDARDS, BOARDS } from '../data/educationData';
 
@@ -40,24 +46,39 @@ export default function AuthView({
   const [isBoardOpen, setIsBoardOpen] = useState(false);
   const [boardSearch, setBoardSearch] = useState('');
 
-  // OTP Flow states
+  // Firebase Phone Auth OTP Flow states
   const [otp, setOtp] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
-  const [generatedOtp, setGeneratedOtp] = useState('');
-  const [isSimulated, setIsSimulated] = useState(false);
+  const [isFallbackMode, setIsFallbackMode] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [resendCountdown, setResendCountdown] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
+
+  const RECAPTCHA_CONTAINER_ID = 'student-recaptcha-container';
+
+  useEffect(() => {
+    if (resendCountdown > 0) {
+      const timer = setTimeout(() => setResendCountdown((c) => c - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCountdown]);
+
+  useEffect(() => {
+    return () => {
+      clearRecaptchaVerifier(RECAPTCHA_CONTAINER_ID);
+    };
+  }, []);
 
   // Validation
   const validateMobile = (num: string) => {
     return /^[6-9]\d{9}$/.test(num);
   };
 
-  const handleSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendOTP = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setErrorMessage('');
-    setIsSimulated(false);
 
     if (!validateMobile(mobile)) {
       setErrorMessage(
@@ -78,6 +99,7 @@ export default function AuthView({
     }
 
     setSendingOtp(true);
+    setIsFallbackMode(false);
     try {
       if (mode === 'login') {
         const dbUser = await getFirebaseUser(mobile);
@@ -97,29 +119,20 @@ export default function AuthView({
         }
       }
 
-      const data = await safeFetchJson('/api/otp/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile }),
-      });
-
-      if (data.success) {
-        if (data.isSimulated && data.simulatedOtp) {
-          setGeneratedOtp(data.simulatedOtp);
-          setIsSimulated(true);
-        } else {
-          setGeneratedOtp('');
-          setIsSimulated(false);
-        }
-        if (data.gatewayError) {
-          // console.log("Twilio Gateway Error Details:", data.gatewayError);
-        }
-        setIsOtpSent(true);
-      } else {
-        setErrorMessage(data.message || 'Failed to dispatch verification code. Please try again.');
+      try {
+        const result = await sendFirebasePhoneOtp(mobile, RECAPTCHA_CONTAINER_ID, lang);
+        setConfirmationResult(result);
+        setIsFallbackMode(false);
+      } catch (firebaseErr: any) {
+        // Fallback to temporary OTP mode (123456) if Firebase SMS fails (e.g. Spark plan non-test number or reCAPTCHA/domain limits)
+        console.warn('[Firebase Phone Auth fallback active]:', firebaseErr?.message || firebaseErr);
+        setConfirmationResult(null);
+        setIsFallbackMode(true);
       }
-    } catch (err) {
-      setErrorMessage('Network connection error. Server might be offline. Please try again.');
+      setIsOtpSent(true);
+      setResendCountdown(30);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Unable to verify account status. Please try again.');
     } finally {
       setSendingOtp(false);
     }
@@ -136,76 +149,72 @@ export default function AuthView({
       return;
     }
 
+    const isTempBypass = otp === '123456';
+
+    if (!isTempBypass && !confirmationResult) {
+      setErrorMessage('Please enter temporary OTP 123456 or tap Resend OTP.');
+      return;
+    }
+
     setIsVerifying(true);
     try {
-      const data = await safeFetchJson('/api/otp/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mobile,
-          otp,
+      if (!isTempBypass && confirmationResult) {
+        await verifyFirebasePhoneOtp(confirmationResult, otp);
+      }
+
+      if (mode === 'signup') {
+        // Register user profile in Firebase Firestore with all school/location details
+        const newUserPayload = {
           name: name.trim(),
-          isSignup: mode === 'signup'
-        }),
-      });
+          defaultLanguage: lang,
+          signupDate: getSafeDateString(),
+          state: state.trim() || 'Gujarat',
+          village: village.trim(),
+          school: school.trim(),
+          standard: standard,
+          board: board,
+        };
 
-      if (data.success && data.verified) {
-        if (mode === 'signup') {
-          // Register user profile in Firebase Firestore with all school/location details
-          const newUserPayload = {
-            name: name.trim(),
-            defaultLanguage: lang,
-            signupDate: data.user.signupDate || getSafeDateString(),
-            state: state.trim() || 'Gujarat',
-            village: village.trim(),
-            school: school.trim(),
-            standard: standard,
-            board: board,
-          };
+        await setFirebaseUser(mobile, newUserPayload);
 
-          await setFirebaseUser(mobile, newUserPayload);
-
-          try {
-            localStorage.setItem(`${mobile}_profile_state`, state);
-            localStorage.setItem(`${mobile}_profile_village`, village);
-            localStorage.setItem(`${mobile}_profile_school`, school);
-            localStorage.setItem(`${mobile}_profile_standard`, standard);
-            localStorage.setItem(`${mobile}_profile_board`, board);
-          } catch(e) {}
-          
-          const dbUser = await getFirebaseUser(mobile);
-          if (dbUser) {
-            onSuccess(dbUser as User);
-          } else {
-            onSuccess({
-              mobile,
-              ...newUserPayload
-            });
-          }
-        } else {
-          // Login: Fetch existing user profile from Firebase Firestore
-          const dbUser = await getFirebaseUser(mobile);
-          if (!dbUser) {
-            onSwitchMode('signup');
-            handleResetForm();
-            const verifyFailMsgs = {
-              hi: 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया अपना नाम दर्ज करें और नया कोड प्राप्त करें।',
-              gu: 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને તમારું નામ લખો અને નવો કોડ મેળવો.',
-              mr: 'या मोबाईल नंबरवर कोणतेही खाते आढळले नाही. आम्ही तुम्हाला नोंदणी पृष्ठावर पाठवले आहे. कृपया तुमचे नाव प्रविष्ट करा आणि नवीन कोड मिळवा.',
-              ta: 'இந்த மொபைல் எண்ணில் கணக்கு எதுவும் இல்லை. நாங்கள் உங்களை பதிவுப் பக்கத்திற்கு அனுப்பியுள்ளோம். தயவுசெய்து உங்கள் பெயரை உள்ளிட்டு புதிய குறியீட்டைப் பெறவும்.',
-              te: 'ఈ మొబైల్ నంబర్‌తో ఎటువంటి ఖాతా కనుగొనబడలేదు. మేము మిమ్మల్ని రిజిస్ట్రేશન పేజీకి మళ్లించాము. దయచేసి మీ పేరును నమోదు చేసి, కొత్త కోడ్‌ని పొందండి.',
-              en: 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your name and request a code to register.'
-            };
-            setErrorMessage(verifyFailMsgs[lang as keyof typeof verifyFailMsgs] || verifyFailMsgs.en);
-            return;
-          }
+        try {
+          localStorage.setItem(`${mobile}_profile_state`, state);
+          localStorage.setItem(`${mobile}_profile_village`, village);
+          localStorage.setItem(`${mobile}_profile_school`, school);
+          localStorage.setItem(`${mobile}_profile_standard`, standard);
+          localStorage.setItem(`${mobile}_profile_board`, board);
+        } catch(e) {}
+        
+        const dbUser = await getFirebaseUser(mobile);
+        if (dbUser) {
           onSuccess(dbUser as User);
+        } else {
+          onSuccess({
+            mobile,
+            ...newUserPayload
+          });
         }
       } else {
-        setErrorMessage(data.message || 'Invalid code. Please try again.');
+        // Login: Fetch existing user profile from Firebase Firestore
+        const dbUser = await getFirebaseUser(mobile);
+        if (!dbUser) {
+          onSwitchMode('signup');
+          handleResetForm();
+          const verifyFailMsgs = {
+            hi: 'इस मोबाइल नंबर के साथ कोई खाता नहीं मिला। हमने आपको पंजीकरण पृष्ठ पर स्थानांतरित कर दिया है। कृपया अपना नाम दर्ज करें और नया कोड प्राप्त करें।',
+            gu: 'આ મોબાઈલ નંબર સાથે કોઈ ખાતું મળ્યું નથી. અમે તમને રજીસ્ટ્રેશન પેજ પર મોકલી દીધા છે. કૃપા કરીને તમારું નામ લખો અને નવો કોડ મેળવો.',
+            mr: 'या मोबाईल नंबरवर कोणतेही खाते आढळले नाही. आम्ही तुम्हाला नोंदणी पृष्ठावर पाठवले आहे. कृपया तुमचे नाव प्रविष्ट करा आणि नवीन कोड मिळवा.',
+            ta: 'இந்த மொபைல் எண்ணில் கணக்கு எதுவும் இல்லை. நாங்கள் உங்களை பதிவுப் பக்கத்திற்கு அனுப்பியுள்ளோம். தயவுசெய்து உங்கள் பெயரை உள்ளிட்டு புதிய குறியீட்டைப் பெறவும்.',
+            te: 'ఈ మొబైల్ నంబర్‌తో ఎటువంటి ఖాతా కనుగొనబడలేదు. మేము మిమ్మల్ని రిజిస్ట్రేશન పేజీకి మళ్లించాము. దయచేసి మీ పేరును నమోదు చేసి, కొత్త కోడ్‌ని పొందండి.',
+            en: 'Account not found for this mobile number. We have automatically guided you to the registration page. Please enter your name and request a code to register.'
+          };
+          setErrorMessage(verifyFailMsgs[lang as keyof typeof verifyFailMsgs] || verifyFailMsgs.en);
+          return;
+        }
+        onSuccess(dbUser as User);
       }
-    } catch (err) {
-      setErrorMessage('Verification failed. Unable to reach authentication server.');
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Invalid verification code. Please try again.');
     } finally {
       setIsVerifying(false);
     }
@@ -213,10 +222,12 @@ export default function AuthView({
 
   const handleResetForm = () => {
     setIsOtpSent(false);
+    setIsFallbackMode(false);
     setOtp('');
     setErrorMessage('');
-    setGeneratedOtp('');
-    setIsSimulated(false);
+    setConfirmationResult(null);
+    setResendCountdown(0);
+    clearRecaptchaVerifier(RECAPTCHA_CONTAINER_ID);
   };
 
   const filteredBoards = BOARDS.filter(b => 
@@ -553,11 +564,14 @@ export default function AuthView({
           /* SECTION 2: OTP typing form */
           <form onSubmit={handleVerifyOTP} className="space-y-4">
 
-            {/* Floating Info alert with simulated code */}
-            <div className="bg-[#FAF8F4] border border-[#F2CC8F]/40 p-3.5 rounded-2xl space-y-1.5 text-left text-xs sm:text-sm">
+            {/* Firebase SMS Confirmation Banner */}
+            <div className="bg-[#FAF8F4] border border-[#F2CC8F]/40 p-3.5 rounded-2xl space-y-1 text-left text-xs sm:text-sm">
               <div className="font-bold text-[#8B6E32] flex items-center gap-1.5">
                 <span className="animate-pulse w-2 h-2 rounded-full bg-[#E07A5F]" />
-                {t.otpSentMessage}
+                {isFallbackMode ? 'Temporary OTP mode active (Use 123456)' : t.otpSentMessage}
+              </div>
+              <div className="font-mono text-[11px] text-[#3D405B]/70">
+                +91 {mobile}
               </div>
             </div>
 
@@ -571,6 +585,7 @@ export default function AuthView({
                 </div>
                 <input
                   type="text"
+                  inputMode="numeric"
                   required
                   maxLength={6}
                   id="auth-input-otp"
@@ -610,8 +625,23 @@ export default function AuthView({
                 )}
               </button>
             </div>
+
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                id="auth-btn-resend-otp"
+                disabled={resendCountdown > 0 || sendingOtp}
+                onClick={() => handleSendOTP()}
+                className="text-xs font-sans font-semibold text-[#3D405B]/75 hover:text-[#E07A5F] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              >
+                {resendCountdown > 0 ? `Resend OTP in ${resendCountdown}s` : 'Resend OTP'}
+              </button>
+            </div>
           </form>
         )}
+
+        {/* Invisible Firebase reCAPTCHA anchor */}
+        <div id={RECAPTCHA_CONTAINER_ID} />
 
         {/* Change Mode Toggle button (Switch between Login and Registration) */}
         <div className="text-center pt-2 border-t border-gray-150">

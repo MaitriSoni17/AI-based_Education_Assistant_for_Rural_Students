@@ -40,7 +40,13 @@ if (typeof window !== "undefined") {
     originalConsoleError.apply(console, args);
   };
 }
-import { getAuth } from "firebase/auth";
+import {
+  getAuth,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  type ConfirmationResult,
+  type UserCredential,
+} from "firebase/auth";
 import { getDeterministicAvatar } from "../utils/avatar";
 import { getSafeDateString } from "../utils/dateUtils";
 
@@ -58,6 +64,123 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, "ai-studio-aibasededucation-e226d905-d477-4f84-aefe-c91b1fb4a3ca");
 export const auth = getAuth(app);
+
+export type { ConfirmationResult };
+
+const recaptchaVerifiers = new Map<string, RecaptchaVerifier>();
+
+export function clearRecaptchaVerifier(containerId: string): void {
+  const existing = recaptchaVerifiers.get(containerId);
+  if (existing) {
+    try {
+      existing.clear();
+    } catch {
+      // ignore cleanup errors if DOM already unmounted
+    }
+    recaptchaVerifiers.delete(containerId);
+  }
+  if (typeof document !== "undefined") {
+    const el = document.getElementById(containerId);
+    if (el) {
+      el.innerHTML = "";
+    }
+  }
+}
+
+export function formatFirebasePhoneAuthError(error: unknown): string {
+  const code = (error as any)?.code || "";
+  const msg = error instanceof Error ? error.message : String(error || "");
+
+  switch (code) {
+    case "auth/operation-not-allowed":
+      if (msg.toLowerCase().includes("region")) {
+        return "SMS for this region (+91 India) is disabled in Firebase Console. Enable India (+91) under Authentication → Settings → SMS region policy.";
+      }
+      return "Firebase Phone Authentication is not enabled yet. Please enable 'Phone' under Firebase Console → Authentication → Sign-in method.";
+    case "auth/unauthorized-domain": {
+      const host = typeof window !== "undefined" ? window.location.hostname : "this domain";
+      return `Domain "${host}" is not authorized in Firebase Auth. Add it under Firebase Console → Authentication → Settings → Authorized domains.`;
+    }
+    case "auth/billing-not-enabled":
+      return "Firebase Phone Auth real SMS requires a Blaze billing plan, or add test phone numbers under Firebase Console → Authentication → Sign-in method → Phone.";
+    case "auth/invalid-phone-number":
+      return "Please enter a valid 10-digit Indian mobile number starting with 6-9.";
+    case "auth/too-many-requests":
+      return "Too many OTP requests from this device or number. Please wait a few minutes and try again.";
+    case "auth/quota-exceeded":
+      return "Daily SMS verification quota exceeded for this Firebase project. Try again later or use a configured Firebase test phone number.";
+    case "auth/captcha-check-failed":
+    case "auth/missing-client-identifier":
+    case "auth/invalid-app-credential":
+      return "reCAPTCHA verification failed. Ensure this domain is authorized in Firebase Console and try again.";
+    case "auth/invalid-verification-code":
+      return "Incorrect 6-digit verification code. Please check the SMS code and try again.";
+    case "auth/code-expired":
+      return "This verification code has expired. Please request a new OTP.";
+    case "auth/network-request-failed":
+      return "Network error while contacting Firebase Authentication. Please check your internet connection.";
+    default:
+      if (msg.includes("reCAPTCHA") || msg.includes("recaptcha")) {
+        return "reCAPTCHA verification could not complete. Please refresh the page and try again.";
+      }
+      return msg || "Phone verification failed. Please try again.";
+  }
+}
+
+export async function sendFirebasePhoneOtp(
+  mobile: string,
+  containerId: string,
+  lang: string = "en"
+): Promise<ConfirmationResult> {
+  const cleanMobile = mobile.replace(/\D/g, "").slice(-10);
+  if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+    throw new Error("Please enter a valid 10-digit Indian mobile number starting with 6-9.");
+  }
+
+  if (typeof document === "undefined") {
+    throw new Error("Firebase Phone Authentication requires a browser environment.");
+  }
+
+  const containerEl = document.getElementById(containerId);
+  if (!containerEl) {
+    throw new Error("Verification container is not ready. Please refresh and try again.");
+  }
+
+  clearRecaptchaVerifier(containerId);
+  auth.languageCode = lang || "en";
+
+  const verifier = new RecaptchaVerifier(auth, containerEl, {
+    size: "invisible",
+    callback: () => {},
+    "expired-callback": () => {
+      clearRecaptchaVerifier(containerId);
+    },
+  });
+  recaptchaVerifiers.set(containerId, verifier);
+
+  try {
+    const e164Phone = `+91${cleanMobile}`;
+    return await signInWithPhoneNumber(auth, e164Phone, verifier);
+  } catch (error) {
+    clearRecaptchaVerifier(containerId);
+    throw new Error(formatFirebasePhoneAuthError(error));
+  }
+}
+
+export async function verifyFirebasePhoneOtp(
+  confirmationResult: ConfirmationResult,
+  otp: string
+): Promise<UserCredential> {
+  const cleanOtp = otp.replace(/\D/g, "");
+  if (cleanOtp.length !== 6) {
+    throw new Error("Security code must be exactly 6 digits.");
+  }
+  try {
+    return await confirmationResult.confirm(cleanOtp);
+  } catch (error) {
+    throw new Error(formatFirebasePhoneAuthError(error));
+  }
+}
 
 export enum OperationType {
   CREATE = 'create',

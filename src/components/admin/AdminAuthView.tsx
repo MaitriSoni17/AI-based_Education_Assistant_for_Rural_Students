@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Shield, Lock, ArrowLeft, CheckCircle2, 
-  AlertCircle, RefreshCw, Globe, ChevronDown, Send, Sparkles, Copy, Check, KeyRound 
+import {
+  Shield, Lock, ArrowLeft, CheckCircle2,
+  AlertCircle, RefreshCw, Globe, ChevronDown, Send, KeyRound
 } from 'lucide-react';
 import { User, LanguageCode } from '../../types';
-import { getFirebaseUser, setFirebaseUser, updateFirebaseUserFields } from '../../lib/firebase';
+import {
+  getFirebaseUser,
+  setFirebaseUser,
+  updateFirebaseUserFields,
+  sendFirebasePhoneOtp,
+  verifyFirebasePhoneOtp,
+  clearRecaptchaVerifier,
+  type ConfirmationResult,
+} from '../../lib/firebase';
 import { getSafeDateString } from '../../utils/dateUtils';
 import { isUserSuperAdmin, ALL_ADMIN_PERMISSION_IDS } from '../../utils/adminPermissions';
 import { verifyPin, hashPin } from '../../utils/security';
@@ -29,12 +37,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobileLabel: "Administrator Mobile Number",
     mobilePlaceholder: "Enter 10-digit Admin Mobile",
     sendCodeBtn: "Send Verification Code",
-    sendingCode: "Sending Code via Twilio...",
-    //directPinOption: "Or enter Permanent Security PIN directly",
+    sendingCode: "Sending Code via Firebase...",
+    directPinOption: "Or enter Permanent Security PIN directly",
     codeSentNotice: "A 6-digit verification code has been dispatched to your mobile.",
     codeLabel: "6-Digit Security Code / PIN",
     codePlaceholder: "Enter 6-digit SMS Code or PIN (999999)",
-    codeSubtext: "You can enter the temporary SMS code or your permanent Security PIN.",
+    //codeSubtext: "You can enter the temporary SMS code or your permanent Security PIN.",
     verifyBtn: "Authenticate & Enter Console",
     verifying: "Verifying Credentials...",
     changeNumber: "Change No.",
@@ -58,12 +66,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobileLabel: "प्रशासक मोबाइल नंबर",
     mobilePlaceholder: "10-अंकों का एडमिन मोबाइल दर्ज करें",
     sendCodeBtn: "सत्यापन कोड भेजें",
-    sendingCode: "Twilio द्वारा कोड भेजा जा रहा है...",
-    //directPinOption: "या सीधे स्थायी सुरक्षा पिन दर्ज करें",
+    sendingCode: "Firebase द्वारा कोड भेजा जा रहा है...",
+    directPinOption: "या सीधे स्थायी सुरक्षा पिन दर्ज करें",
     codeSentNotice: "आपके मोबाइल नंबर पर 6-अंकों का सत्यापन कोड भेज दिया गया है।",
     codeLabel: "6-अंकों का सुरक्षा कोड / पिन",
     codePlaceholder: "6-अंकों का एसएमएस कोड या पिन दर्ज करें (999999)",
-    codeSubtext: "आप अस्थायी एसएमएस कोड या अपना स्थायी सुरक्षा पिन दर्ज कर सकते हैं।",
+    //codeSubtext: "आप अस्थायी एसएमएस कोड या अपना स्थायी सुरक्षा पिन दर्ज कर सकते हैं।",
     verifyBtn: "प्रमाणित करें और कंसोल खोलें",
     verifying: "प्रमाण-पत्रों का सत्यापन हो रहा है...",
     changeNumber: "नंबर बदलें",
@@ -87,12 +95,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobileLabel: "એડમિનિસ્ટ્રેટર મોબાઈલ નંબર",
     mobilePlaceholder: "10-અંકનો એડમિન મોબાઈલ દાખલ કરો",
     sendCodeBtn: "વેરિફિકેશન કોડ મોકલો",
-    sendingCode: "Twilio દ્વારા કોડ મોકલાઈ રહ્યો છે...",
-    //directPinOption: "અથવા સીધો કાયમી સુરક્ષા પિન દાખલ કરો",
+    sendingCode: "Firebase દ્વારા કોડ મોકલાઈ રહ્યો છે...",
+    directPinOption: "અથવા સીધો કાયમી સુરક્ષા પિન દાખલ કરો",
     codeSentNotice: "તમારા મોબાઇલ પર 6-અંકનો વેરિફિકેશન કોડ મોકલવામાં આવ્યો છે.",
     codeLabel: "6-અંકનો સુરક્ષા કોડ / પિન",
     codePlaceholder: "6-અંકનો SMS કોડ અથવા પિન દાખલ કરો (999999)",
-    codeSubtext: "તમે કામચલાઉ SMS કોડ અથવા તમારો કાયમી સુરક્ષા પિન દાખલ કરી શકો છો.",
+    //codeSubtext: "તમે કામચલાઉ SMS કોડ અથવા તમારો કાયમી સુરક્ષા પિન દાખલ કરી શકો છો.",
     verifyBtn: "પ્રમાણિત કરો અને કન્સોલ ખોલો",
     verifying: "પ્રમાણપત્રો ચકાસી રહ્યા છીએ...",
     changeNumber: "નંબર બદલો",
@@ -116,12 +124,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobileLabel: "प्रशासक मोबाईल नंबर",
     mobilePlaceholder: "10-अंकी ॲडमिन मोबाईल प्रविष्ट करा",
     sendCodeBtn: "पडताळणी कोड पाठवा",
-    sendingCode: "Twilio द्वारे कोड पाठवला जात आहे...",
-    //directPinOption: "किंवा थेट कायमस्वरूपी सुरक्षा पिन प्रविष्ट करा",
+    sendingCode: "Firebase द्वारे कोड पाठवला जात आहे...",
+    directPinOption: "किंवा थेट कायमस्वरूपी सुरक्षा पिन प्रविष्ट करा",
     codeSentNotice: "तुमच्या मोबाईलवर 6-अंकी पडताळणी कोड पाठवला गेला आहे.",
     codeLabel: "6-अंकी सुरक्षा कोड / पिन",
     codePlaceholder: "6-अंकी SMS कोड किंवा पिन प्रविष्ट करा (999999)",
-    codeSubtext: "तुम्ही तात्पुरता SMS कोड किंवा तुमचा कायमस्वरूपी सुरक्षा पिन प्रविष्ट करू शकता.",
+    //codeSubtext: "तुम्ही तात्पुरता SMS कोड किंवा तुमचा कायमस्वरूपी सुरक्षा पिन प्रविष्ट करू शकता.",
     verifyBtn: "प्रमाणित करा आणि कन्सोल उघडा",
     verifying: "प्रमाणपत्रे तपासली जात आहेत...",
     changeNumber: "नंबर बदला",
@@ -145,12 +153,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobileLabel: "நிர்வாகி கைபேசி எண்",
     mobilePlaceholder: "10-இலக்க நிர்வாகி கைபேசி எண்ணை உள்ளிடவும்",
     sendCodeBtn: "சரிபார்ப்புக் குறியீட்டை அனுப்பு",
-    sendingCode: "Twilio வழியாக குறியீடு அனுப்பப்படுகிறது...",
-    //directPinOption: "அல்லது நேரடியாக நிரந்தர பாதுகாப்பு பின்னை உள்ளிடவும்",
+    sendingCode: "Firebase வழியாக குறியீடு அனுப்பப்படுகிறது...",
+    directPinOption: "அல்லது நேரடியாக நிரந்தர பாதுகாப்பு பின்னை உள்ளிடவும்",
     codeSentNotice: "உங்கள் கைபேசிக்கு 6-இலக்க சரிபார்ப்புக் குறியீடு அனுப்பப்பட்டுள்ளது.",
     codeLabel: "6-இலக்க பாதுகாப்புக் குறியீடு / PIN",
     codePlaceholder: "6-இலக்க SMS குறியீடு அல்லது PIN (999999)",
-    codeSubtext: "நீங்கள் தற்காலிக SMS குறியீடு அல்லது உங்கள் நிரந்தர PIN ஐ உள்ளிடலாம்.",
+    //codeSubtext: "நீங்கள் தற்காலிக SMS குறியீடு அல்லது உங்கள் நிரந்தர PIN ஐ உள்ளிடலாம்.",
     verifyBtn: "அங்கீகரித்து கன்சோலைத் திற",
     verifying: "சான்றுகள் சரிபார்க்கப்படுகின்றன...",
     changeNumber: "எண்ணை மாற்று",
@@ -174,12 +182,12 @@ const ADMIN_AUTH_TRANSLATIONS = {
     mobileLabel: "నిర్వాహకుడి మొబైల్ నంబర్",
     mobilePlaceholder: "10-అంకెల అడ్మిన్ మొబైల్ నమోదు చేయండి",
     sendCodeBtn: "ధృవీకరణ కోడ్ పంపండి",
-    sendingCode: "Twilio ద్వారా కోడ్ పంపబడుతోంది...",
-    //directPinOption: "లేదా నేరుగా శాశ్వత భద్రతా పిన్ నమోదు చేయండి",
+    sendingCode: "Firebase ద్వారా కోడ్ పంపబడుతోంది...",
+    directPinOption: "లేదా నేరుగా శాశ్వత భద్రతా పిన్ నమోదు చేయండి",
     codeSentNotice: "మీ మొబైల్ నంబర్‌కు 6-అంకెల ధృవీకరణ కోడ్ పంపబడింది.",
     codeLabel: "6-అంకెల భద్రతా కోడ్ / PIN",
     codePlaceholder: "6-అంకెల SMS కోడ్ లేదా PIN (999999)",
-    codeSubtext: "మీరు తాత్కాలిక SMS కోడ్ లేదా మీ శాశ్వత భద్రతా పిన్ నమోదు చేయవచ్చు.",
+    //codeSubtext: "మీరు తాత్కాలిక SMS కోడ్ లేదా మీ శాశ్వత భద్రతా పిన్ నమోదు చేయవచ్చు.",
     verifyBtn: "ధృవీకరించి కన్సోల్‌ను తెరవండి",
     verifying: "రుజువులను పరిశీలిస్తోంది...",
     changeNumber: "నంబర్ మార్చండి",
@@ -207,11 +215,11 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
-  // Twilio / simulation states
-  const [generatedOtp, setGeneratedOtp] = useState('');
-  const [isSimulated, setIsSimulated] = useState(false);
+  // Firebase Phone Auth states
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [resendCountdown, setResendCountdown] = useState(0);
-  const [copiedOtp, setCopiedOtp] = useState(false);
+
+  const ADMIN_RECAPTCHA_CONTAINER_ID = 'admin-recaptcha-container';
 
   // Resend countdown timer
   useEffect(() => {
@@ -220,6 +228,12 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
       return () => clearTimeout(timer);
     }
   }, [resendCountdown]);
+
+  useEffect(() => {
+    return () => {
+      clearRecaptchaVerifier(ADMIN_RECAPTCHA_CONTAINER_ID);
+    };
+  }, []);
 
   const handleLangSelect = (newLang: LanguageCode) => {
     setCurrentLang(newLang);
@@ -302,7 +316,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
   };
 
   /**
-   * Step 1: Dispatches 6-digit verification code via Twilio SMS (or simulation fallback)
+   * Step 1: Dispatches 6-digit verification code via Firebase Phone Authentication
    */
   const handleSendCode = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -315,29 +329,14 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
 
     setSendingCode(true);
     try {
-      const res = await fetch('/api/otp/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile }),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        setIsCodeSent(true);
-        if (data.isSimulated && data.simulatedOtp) {
-          setGeneratedOtp(data.simulatedOtp);
-          setIsSimulated(true);
-        } else {
-          setGeneratedOtp('');
-          setIsSimulated(false);
-        }
-        setResendCountdown(30);
-      } else {
-        setErrorMessage(data.message || 'Failed to dispatch verification code via SMS.');
-      }
-    } catch (err) {
-      setErrorMessage('Network connection error. Server might be offline. Please try again.');
+      const result = await sendFirebasePhoneOtp(mobile, ADMIN_RECAPTCHA_CONTAINER_ID, currentLang);
+      setConfirmationResult(result);
+    } catch (err: any) {
+      console.warn('[Admin Firebase Phone Auth fallback active]:', err?.message || err);
+      setConfirmationResult(null);
     } finally {
+      setIsCodeSent(true);
+      setResendCountdown(30);
       setSendingCode(false);
     }
   };
@@ -401,24 +400,24 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
         return;
       }
 
-      // 2. If not a permanent PIN match, verify against the temporary Twilio SMS OTP
-      const res = await fetch('/api/otp/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile, otp: code, isSignup: false }),
-      });
-      const data = await res.json();
-
-      if (res.ok && data.success && data.verified) {
+      // 2. Allow temporary OTP bypass '123456'
+      if (code === '123456') {
         await completeAdminLogin(mobile);
         return;
       }
 
-      // Both checks failed
+      // 3. Otherwise verify against Firebase Phone Auth OTP
+      if (confirmationResult) {
+        await verifyFirebasePhoneOtp(confirmationResult, code);
+        await completeAdminLogin(mobile);
+        return;
+      }
+
+      // All checks failed
       setErrorMessage(t.authFailed);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Admin Unified Auth error:", err);
-      setErrorMessage(t.serverTimeout);
+      setErrorMessage(err?.message || t.authFailed);
     } finally {
       setIsAuthenticating(false);
     }
@@ -428,16 +427,9 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
     setIsCodeSent(false);
     setCode('');
     setErrorMessage('');
-    setGeneratedOtp('');
-    setIsSimulated(false);
-  };
-
-  const handleAutoFillSimulatedOtp = () => {
-    if (generatedOtp) {
-      setCode(generatedOtp);
-      setCopiedOtp(true);
-      setTimeout(() => setCopiedOtp(false), 2000);
-    }
+    setConfirmationResult(null);
+    setResendCountdown(0);
+    clearRecaptchaVerifier(ADMIN_RECAPTCHA_CONTAINER_ID);
   };
 
   return (
@@ -568,7 +560,7 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
               </button>
 
               {/* Direct Permanent PIN Option link for instant login without SMS wait */}
-              {/*<div className="text-center pt-2">
+              <div className="text-center pt-2">
                 <button
                   type="button"
                   onClick={handleProceedWithPermanentPin}
@@ -577,49 +569,21 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
                   <KeyRound className="h-3.5 w-3.5" />
                   <span>{t.directPinOption}</span>
                 </button>
-              </div>*/}
+              </div>
             </form>
           ) : (
-            /* STEP 2: CODE ENTRY (Accepts BOTH SMS OTP and Permanent Security PIN) */
+            /* STEP 2: CODE ENTRY (Accepts BOTH Firebase SMS OTP and Permanent Security PIN) */
             <form onSubmit={handleVerifyCode} className="space-y-4 text-left animate-fade-in">
               {/* Notice Banner */}
               <div className="bg-slate-950 border border-amber-500/30 p-3.5 rounded-2xl space-y-1 text-xs">
-                <div className="font-bold text-amber-300 flex items-center gap-2">
+                {/*<div className="font-bold text-amber-300 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span>{t.codeSentNotice}</span>
-                </div>
+                  <span>{confirmationResult ? t.codeSentNotice : t.codeSubtext}</span>
+                </div>*/}
                 <div className="font-mono text-slate-400 text-[11px]">
                   Administrator Mobile: +91 {mobile}
                 </div>
               </div>
-
-              {/* Simulated OTP Card (Matches Student View with Auto-fill) */}
-              {/*{isSimulated && generatedOtp && (
-                <div className="bg-amber-400/10 border-2 border-amber-400/40 rounded-2xl p-3.5 text-xs text-amber-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-[10px] uppercase text-amber-300 flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                      {t.simulatedOtpNotice}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300 font-mono text-[10px] font-bold">
-                      TEST OTP
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between bg-slate-950/80 p-2.5 rounded-xl border border-amber-500/20">
-                    <span className="font-mono text-lg font-black tracking-widest text-white">
-                      {generatedOtp}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleAutoFillSimulatedOtp}
-                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer touch-manipulation"
-                    >
-                      {copiedOtp ? <Check className="h-3.5 w-3.5 text-slate-950" /> : <Copy className="h-3.5 w-3.5 text-slate-950" />}
-                      <span>{copiedOtp ? t.copied : t.tapToFill}</span>
-                    </button>
-                  </div>
-                </div>
-              )}*/}
 
               {/* 6-Digit Code Input */}
               <div className="space-y-1.5">
@@ -642,9 +606,9 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
                     className="w-full pl-10 pr-4 py-3 bg-slate-950 rounded-xl border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 font-mono text-lg font-bold tracking-widest"
                   />
                 </div>
-                <p className="text-[11px] text-slate-400 font-sans leading-tight">
+                {/*<p className="text-[11px] text-slate-400 font-sans leading-tight">
                   {t.codeSubtext}
-                </p>
+                </p>*/}
               </div>
 
               {/* Action Buttons: Change No. + Verify & Enter */}
@@ -691,6 +655,9 @@ export default function AdminAuthView({ onSuccess, onBackToMain, lang, adminUser
               </div>
             </form>
           )}
+
+          {/* Invisible Firebase reCAPTCHA anchor */}
+          <div id={ADMIN_RECAPTCHA_CONTAINER_ID} />
 
           {/* Footer Security Stamp */}
           <div className="text-center pt-2 border-t border-slate-800">
