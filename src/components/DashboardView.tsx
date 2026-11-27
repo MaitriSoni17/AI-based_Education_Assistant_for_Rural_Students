@@ -320,6 +320,8 @@ export default function DashboardView({ user, lang, onUpdateUser, activeTab: pro
           const merged: User = { 
             ...prev, 
             ...data,
+            chatSessions: data.chatSessions !== undefined ? data.chatSessions : prev?.chatSessions,
+            solverSessions: data.solverSessions !== undefined ? data.solverSessions : prev?.solverSessions,
             studyMins: Math.max(prev?.studyMins || 0, data?.studyMins || 0),
             todayMins: Math.max(prev?.todayMins || 0, data?.todayMins || 0),
             totalPoints: Math.max(prev?.totalPoints || 0, data?.totalPoints || 0),

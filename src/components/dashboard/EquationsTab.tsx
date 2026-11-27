@@ -19,6 +19,16 @@ import SpeechInputButton from '../SpeechInputButton';
 import SpeakButton from '../SpeakButton';
 import MathRenderer, { normalizeFractions } from '../common/MathRenderer';
 import { compressImageToDataUrl } from '../../utils/imageCompressor';
+import { getUserStudyHistory, saveUserStudyHistory } from '../../lib/firebase';
+import {
+  capSerializedSessions,
+  formatSessionTimestamp,
+  mergeHistorySessions,
+  parseSessionList,
+  pruneHistorySessions,
+  readHistoryFromLocalStorage,
+  safeWriteHistoryToLocalStorage
+} from '../../utils/historyPersistence';
 
 interface EquationsTabProps {
   user: User;
@@ -57,6 +67,7 @@ interface ChatSession {
   id: string;
   title: string;
   timestamp: string;
+  updatedAt?: number;
   messages: ChatMessage[];
   starred?: boolean;
 }
@@ -1898,13 +1909,12 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
     ];
   });
 
+  const getSolverBackupKey = (mobile: string) => `gramin_solver_sessions_${mobile}`;
+
   const [solverSessions, setSolverSessions] = useState<ChatSession[]>(() => {
-    try {
-      const saved = user.solverSessions;
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    const fromUser = parseSessionList<ChatSession>(user.solverSessions);
+    const fromLocal = readHistoryFromLocalStorage<ChatSession>(getSolverBackupKey(user.mobile));
+    return mergeHistorySessions(fromUser, fromLocal, 35);
   });
 
   const [showHistory, setShowHistory] = useState<boolean>(false);
@@ -1976,7 +1986,8 @@ export default function EquationsTab({ user, lang, onUpdateUser }: EquationsTabP
     const updatedMessagesList = [...previousMsgs, updatedUserMsg];
 
     if (activeSessionId) {
-      setSolverSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, messages: updatedMessagesList } : s));
+      isSessionsDirtyRef.current = true;
+      setSolverSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, messages: updatedMessagesList, timestamp: formatSessionTimestamp(), updatedAt: Date.now() } : s));
     }
     setChatMessages(updatedMessagesList);
 
@@ -2066,12 +2077,15 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
   const handleToggleStarSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSolverSessions(prev => prev.map(s => s.id === sessionId ? { ...s, starred: !s.starred } : s));
+    isSessionsDirtyRef.current = true;
+    setSolverSessions(prev => prev.map(s => s.id === sessionId ? { ...s, starred: !s.starred, updatedAt: Date.now() } : s));
   };
 
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
   const [activeSessionId, setActiveSessionIdState] = useState<string | null>(null);
   const activeSessionIdRef = React.useRef<string | null>(null);
+  const isSessionsDirtyRef = React.useRef<boolean>(false);
+  const prevMobileRef = React.useRef<string>(user.mobile);
 
   const setActiveSessionId = (id: string | null) => {
     activeSessionIdRef.current = id;
@@ -2086,18 +2100,21 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
       
       if (userMsgs.length > 0) {
         const currentSessId = activeSessionIdRef.current;
+        const now = Date.now();
+        const formattedTs = formatSessionTimestamp();
+        isSessionsDirtyRef.current = true;
         if (currentSessId) {
-          setSolverSessions(prevSessions => prevSessions.map(s => s.id === currentSessId ? { ...s, messages: updated } : s));
+          setSolverSessions(prevSessions => prevSessions.map(s => s.id === currentSessId ? { ...s, messages: updated, timestamp: formattedTs, updatedAt: now } : s));
         } else {
           const firstUserMsg = userMsgs[0].text;
           const title = firstUserMsg.length > 30 ? firstUserMsg.slice(0, 30) + '...' : firstUserMsg;
-          const timestamp = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-          const newSessId = 'sess-' + Date.now();
+          const newSessId = 'sess-' + now;
           
           const newSession: ChatSession = {
             id: newSessId,
             title,
-            timestamp,
+            timestamp: formattedTs,
+            updatedAt: now,
             messages: updated
           };
           
@@ -2152,12 +2169,14 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
       setEditingSessionId(null);
       return;
     }
-    setSolverSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: editingSessionTitle.trim() } : s));
+    isSessionsDirtyRef.current = true;
+    setSolverSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: editingSessionTitle.trim(), updatedAt: Date.now() } : s));
     setEditingSessionId(null);
   };
 
   const handleMoveSessionUp = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    isSessionsDirtyRef.current = true;
     setSolverSessions(prev => {
       const idx = prev.findIndex(s => s.id === sessionId);
       if (idx <= 0) return prev;
@@ -2171,6 +2190,7 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
 
   const handleMoveSessionDown = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    isSessionsDirtyRef.current = true;
     setSolverSessions(prev => {
       const idx = prev.findIndex(s => s.id === sessionId);
       if (idx < 0 || idx >= prev.length - 1) return prev;
@@ -2183,15 +2203,17 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
   };
 
   const handleDeleteMessageFromSession = (sessionId: string, messageId: string) => {
+    isSessionsDirtyRef.current = true;
     setSolverSessions(prev => prev.map(s => {
       if (s.id !== sessionId) return s;
-      return { ...s, messages: s.messages.filter(m => m.id !== messageId) };
+      return { ...s, messages: s.messages.filter(m => m.id !== messageId), updatedAt: Date.now() };
     }));
   };
 
   const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(chatbotLang === "hi" ? "क्या आप सचमुच इस चैट को इतिहास से हटाना चाहते हैं?" : "Are you sure you want to delete this solver session?")) return;
+    isSessionsDirtyRef.current = true;
     setSolverSessions(prev => prev.filter(s => s.id !== sessionId));
     if (activeSessionIdRef.current === sessionId) {
       handleNewChat();
@@ -2385,62 +2407,121 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
     }
   ];
 
-  // Sync state to parent user profile whenever solverSessions array updates
+  // Persist ONLY when user actually mutated solverSessions (never overwrite remote/local history with [] on mount)
   useEffect(() => {
-    // Keep max 15 sessions, max 25 messages, and strip oversized attachmentUrls
-    const prunedSessions = solverSessions.slice(0, 15).map(s => ({
-      ...s,
-      messages: (s.messages || []).slice(-25).map(m => {
-        if (m.attachmentUrl && m.attachmentUrl.length > 50000) {
-          return {
-            ...m,
-            attachmentUrl: ''
-          };
-        }
-        return m;
-      })
-    }));
-    const serialized = JSON.stringify(prunedSessions);
-    if (user.solverSessions !== serialized) {
-      onUpdateUser({ solverSessions: serialized });
-    }
-  }, [solverSessions]);
+    if (!isSessionsDirtyRef.current) return;
+    isSessionsDirtyRef.current = false;
 
-  // Synchronize when the user profile itself updates or session updates externally
+    const prunedFull = pruneHistorySessions(solverSessions, 35, 35);
+    safeWriteHistoryToLocalStorage(getSolverBackupKey(user.mobile), JSON.stringify(prunedFull));
+
+    const cappedForUserDoc = capSerializedSessions(prunedFull, 140000, 15, 25);
+    if (user.solverSessions !== cappedForUserDoc) {
+      onUpdateUser({ solverSessions: cappedForUserDoc });
+    }
+
+    saveUserStudyHistory(user.mobile, 'equations_hub', {
+      type: 'equations_hub',
+      sessions: prunedFull,
+      updatedAt: Date.now()
+    }).catch(err => console.warn('[EquationsTab] Failed to save study_history:', err));
+  }, [solverSessions, user.mobile]);
+
+  // Hydrate full Equation Hub history from Firestore study_history subcollection + local backup + legacy migration
   useEffect(() => {
+    let isCancelled = false;
+    const mobile = user.mobile;
+    if (!mobile) return;
+
+    if (prevMobileRef.current !== mobile) {
+      prevMobileRef.current = mobile;
+      handleNewChat();
+    }
+
+    // One-time migration from legacy key if present
+    let migratedSessions: ChatSession[] = [];
     try {
-      const savedSess = user.solverSessions;
-      if (savedSess) {
-        setSolverSessions(JSON.parse(savedSess));
-      } else {
-        // Migration code from old key
-        const oldSaved = localStorage.getItem(`${user.mobile}_equations_chatbot_history`);
-        if (oldSaved) {
-          const oldMsgs = JSON.parse(oldSaved);
-          if (oldMsgs.length > 1) {
-            const userMsgs = oldMsgs.filter((m: ChatMessage) => m.sender === 'user');
-            const firstUserMsg = userMsgs.length > 0 ? userMsgs[0].text : 'Previous Chat';
-            const title = firstUserMsg.length > 30 ? firstUserMsg.slice(0, 30) + '...' : firstUserMsg;
-            const migratedSession: ChatSession = {
-              id: 'migrated-' + Date.now(),
-              title,
-              timestamp: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-              messages: oldMsgs
-            };
-            setSolverSessions([migratedSession]);
-            setChatMessages(oldMsgs);
-            setActiveSessionId(migratedSession.id);
-            localStorage.removeItem(`${user.mobile}_equations_chatbot_history`);
-            return;
+      const oldSaved = localStorage.getItem(`${mobile}_equations_chatbot_history`);
+      if (oldSaved) {
+        const oldMsgs = JSON.parse(oldSaved);
+        if (Array.isArray(oldMsgs) && oldMsgs.length > 1) {
+          const userMsgs = oldMsgs.filter((m: ChatMessage) => m.sender === 'user');
+          const firstUserMsg = userMsgs.length > 0 ? userMsgs[0].text : 'Previous Chat';
+          const title = firstUserMsg.length > 30 ? firstUserMsg.slice(0, 30) + '...' : firstUserMsg;
+          migratedSessions = [{
+            id: 'migrated-' + Date.now(),
+            title,
+            timestamp: formatSessionTimestamp(),
+            updatedAt: Date.now(),
+            messages: oldMsgs
+          }];
+          localStorage.removeItem(`${mobile}_equations_chatbot_history`);
+        }
+      }
+    } catch {}
+
+    const localBackup = readHistoryFromLocalStorage<ChatSession>(getSolverBackupKey(mobile));
+    const fromUser = parseSessionList<ChatSession>(user.solverSessions);
+    const initialMerged = mergeHistorySessions(
+      mergeHistorySessions(fromUser, localBackup, 35),
+      migratedSessions,
+      35
+    );
+
+    if (initialMerged.length > 0 && !isSessionsDirtyRef.current) {
+      setSolverSessions(initialMerged);
+      safeWriteHistoryToLocalStorage(getSolverBackupKey(mobile), JSON.stringify(pruneHistorySessions(initialMerged, 35, 35)));
+      if (migratedSessions.length > 0) {
+        onUpdateUser({ solverSessions: capSerializedSessions(initialMerged, 140000, 15, 25) });
+      }
+    }
+
+    getUserStudyHistory<ChatSession>(mobile, 'equations_hub')
+      .then((remoteHistory) => {
+        if (isCancelled || isSessionsDirtyRef.current) return;
+        const remoteSessions = remoteHistory?.sessions || [];
+        const latestLocal = readHistoryFromLocalStorage<ChatSession>(getSolverBackupKey(mobile));
+        const latestUser = parseSessionList<ChatSession>(user.solverSessions);
+        const merged = mergeHistorySessions(
+          mergeHistorySessions(remoteSessions, latestUser, 35),
+          latestLocal,
+          35
+        );
+
+        if (merged.length > 0) {
+          setSolverSessions(merged);
+          const pruned = pruneHistorySessions(merged, 35, 35);
+          safeWriteHistoryToLocalStorage(getSolverBackupKey(mobile), JSON.stringify(pruned));
+          const capped = capSerializedSessions(pruned, 140000, 15, 25);
+          if (user.solverSessions !== capped && latestUser.length === 0) {
+            onUpdateUser({ solverSessions: capped });
+          }
+          if (remoteSessions.length < merged.length) {
+            saveUserStudyHistory(mobile, 'equations_hub', {
+              type: 'equations_hub',
+              sessions: pruned,
+              updatedAt: Date.now()
+            }).catch(() => {});
           }
         }
-        setSolverSessions([]);
-        handleNewChat();
-      }
-    } catch (e) {
-      console.error("Failed to parse user solverSessions:", e);
+      })
+      .catch(err => console.warn('[EquationsTab] Failed to fetch remote study_history:', err));
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user.mobile]);
+
+  // Synchronize non-destructively when parent user.solverSessions updates externally (never clear active chat)
+  useEffect(() => {
+    if (isSessionsDirtyRef.current) return;
+    const fromUser = parseSessionList<ChatSession>(user.solverSessions);
+    const fromLocal = readHistoryFromLocalStorage<ChatSession>(getSolverBackupKey(user.mobile));
+    if (fromUser.length > 0) {
+      const merged = mergeHistorySessions(fromUser, fromLocal, 35);
+      setSolverSessions(merged);
+    } else if (user.solverSessions === '[]' && fromLocal.length === 0) {
       setSolverSessions([]);
-      handleNewChat();
     }
   }, [user.solverSessions, user.mobile]);
 
@@ -5142,9 +5223,17 @@ Please tailor your explanations, complexity, and vocabulary to match this studen
                               ? "क्या आप सचमुच पूरा इतिहास मिटाना चाहते हैं?" 
                               : "Are you sure you want to permanently clear all solver history?";
                             if (confirm(confirmMsg)) {
+                              isSessionsDirtyRef.current = true;
                               setSolverSessions([]);
                               setActiveSessionId(null);
+                              safeWriteHistoryToLocalStorage(getSolverBackupKey(user.mobile), '[]');
                               handleNewChat();
+                              onUpdateUser({ solverSessions: JSON.stringify([]) });
+                              saveUserStudyHistory(user.mobile, 'equations_hub', {
+                                type: 'equations_hub',
+                                sessions: [],
+                                updatedAt: Date.now()
+                              }).catch(() => {});
                             }
                           }}
                           className="text-[10px] sm:text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"

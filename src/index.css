@@ -204,6 +204,13 @@ button, a {
   position: absolute;
   white-space: pre;
   transform-origin: 0% 0%;
+  font-family: 'Noto Sans Gujarati', 'Shruti', 'Noto Sans Devanagari', 'Inter', system-ui, sans-serif;
+}
+
+.textLayer .endOfContent,
+.pdf-text-layer .endOfContent {
+  pointer-events: none !important;
+  user-select: none !important;
 }
 
 .textLayer,

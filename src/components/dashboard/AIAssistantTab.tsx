@@ -29,8 +29,19 @@ import {
   queryRelevantEducationalChunks, 
   deleteEducationalChunk,
   seedDefaultEducationalChunks,
-  DEFAULT_RAG_EDUCATIONAL_CHUNKS 
+  DEFAULT_RAG_EDUCATIONAL_CHUNKS,
+  getUserStudyHistory,
+  saveUserStudyHistory
 } from '../../lib/firebase';
+import {
+  capSerializedSessions,
+  formatSessionTimestamp,
+  mergeHistorySessions,
+  parseSessionList,
+  pruneHistorySessions,
+  readHistoryFromLocalStorage,
+  safeWriteHistoryToLocalStorage
+} from '../../utils/historyPersistence';
 
 // Utility helper to safely extract and parse diagram-data JSON blocks from AI responses
 const parseMessageContent = (text: string) => {
@@ -83,6 +94,7 @@ interface ChatSession {
   id: string;
   title: string;
   timestamp: string;
+  updatedAt?: number;
   messages: ChatMessage[];
   starred?: boolean;
 }
@@ -683,13 +695,12 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   const [pdfExportFullChatTitle, setPdfExportFullChatTitle] = useState<string>("");
   const [isExportingPDF, setIsExportingPDF] = useState<boolean>(false);
 
+  const getChatBackupKey = (mobile: string) => `gramin_chat_sessions_${mobile}`;
+
   const [chatSessions, setChatSessions] = useState<ChatSession[]>(() => {
-    try {
-      const saved = user.chatSessions;
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    const fromUser = parseSessionList<ChatSession>(user.chatSessions);
+    const fromLocal = readHistoryFromLocalStorage<ChatSession>(getChatBackupKey(user.mobile));
+    return mergeHistorySessions(fromUser, fromLocal, 35);
   });
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -762,51 +773,106 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
 
   const handleToggleStarSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setChatSessions(prev => prev.map(s => s.id === sessionId ? { ...s, starred: !s.starred } : s));
+    isSessionsDirtyRef.current = true;
+    setChatSessions(prev => prev.map(s => s.id === sessionId ? { ...s, starred: !s.starred, updatedAt: Date.now() } : s));
   };
 
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
   const [activeSessionId, setActiveSessionIdState] = useState<string | null>(null);
   const activeSessionIdRef = useRef<string | null>(null);
+  const isSessionsDirtyRef = useRef<boolean>(false);
+  const prevMobileRef = useRef<string>(user.mobile);
 
   const setActiveSessionId = (id: string | null) => {
     activeSessionIdRef.current = id;
     setActiveSessionIdState(id);
   };
 
+  // Persist ONLY when user actually mutated sessions (never overwrite remote/local history with [] on mount)
   useEffect(() => {
-    // Keep max 15 sessions, max 25 messages each, and ensure no oversized base64 strings
-    const prunedSessions = chatSessions.slice(0, 15).map(s => ({
-      ...s,
-      messages: (s.messages || []).slice(-25).map(m => {
-        if (m.image && (m.image.mimeType === 'application/pdf' || (m.image.data && m.image.data.length > 50000))) {
-          return {
-            ...m,
-            image: {
-              name: m.image.name || 'document',
-              mimeType: m.image.mimeType || 'application/octet-stream',
-              data: ''
-            }
-          };
-        }
-        return m;
-      })
-    }));
-    const serialized = JSON.stringify(prunedSessions);
-    if (user.chatSessions !== serialized) {
-      onUpdateUser({ chatSessions: serialized });
-    }
-  }, [chatSessions]);
+    if (!isSessionsDirtyRef.current) return;
+    isSessionsDirtyRef.current = false;
 
-  // Synchronize student data when logged-in student session changes
+    const prunedFull = pruneHistorySessions(chatSessions, 35, 35);
+    const fullSerialized = JSON.stringify(prunedFull);
+    safeWriteHistoryToLocalStorage(getChatBackupKey(user.mobile), fullSerialized);
+
+    const cappedForUserDoc = capSerializedSessions(prunedFull, 140000, 15, 25);
+    if (user.chatSessions !== cappedForUserDoc) {
+      onUpdateUser({ chatSessions: cappedForUserDoc });
+    }
+
+    saveUserStudyHistory(user.mobile, 'ai_chatbot', {
+      type: 'ai_chatbot',
+      sessions: prunedFull,
+      updatedAt: Date.now()
+    }).catch(err => console.warn('[AIAssistantTab] Failed to save study_history:', err));
+  }, [chatSessions, user.mobile]);
+
+  // Hydrate full AI Chatbot history from Firestore study_history subcollection + local backup on mount / user switch
   useEffect(() => {
-    try {
-      const savedSess = user.chatSessions;
-      setChatSessions(savedSess ? JSON.parse(savedSess) : []);
-    } catch {
+    let isCancelled = false;
+    const mobile = user.mobile;
+    if (!mobile) return;
+
+    const localBackup = readHistoryFromLocalStorage<ChatSession>(getChatBackupKey(mobile));
+    const fromUser = parseSessionList<ChatSession>(user.chatSessions);
+    const initialMerged = mergeHistorySessions(fromUser, localBackup, 35);
+
+    if (initialMerged.length > 0 && !isSessionsDirtyRef.current) {
+      setChatSessions(initialMerged);
+      safeWriteHistoryToLocalStorage(getChatBackupKey(mobile), JSON.stringify(pruneHistorySessions(initialMerged, 35, 35)));
+    }
+
+    getUserStudyHistory<ChatSession>(mobile, 'ai_chatbot')
+      .then((remoteHistory) => {
+        if (isCancelled || isSessionsDirtyRef.current) return;
+        const remoteSessions = remoteHistory?.sessions || [];
+        const latestLocal = readHistoryFromLocalStorage<ChatSession>(getChatBackupKey(mobile));
+        const latestUser = parseSessionList<ChatSession>(user.chatSessions);
+        const merged = mergeHistorySessions(
+          mergeHistorySessions(remoteSessions, latestUser, 35),
+          latestLocal,
+          35
+        );
+
+        if (merged.length > 0) {
+          setChatSessions(merged);
+          const pruned = pruneHistorySessions(merged, 35, 35);
+          safeWriteHistoryToLocalStorage(getChatBackupKey(mobile), JSON.stringify(pruned));
+          const capped = capSerializedSessions(pruned, 140000, 15, 25);
+          if (user.chatSessions !== capped && latestUser.length === 0) {
+            onUpdateUser({ chatSessions: capped });
+          }
+          // Backfill remote study_history if local/user had sessions missing from subcollection
+          if (remoteSessions.length < merged.length) {
+            saveUserStudyHistory(mobile, 'ai_chatbot', {
+              type: 'ai_chatbot',
+              sessions: pruned,
+              updatedAt: Date.now()
+            }).catch(() => {});
+          }
+        }
+      })
+      .catch(err => console.warn('[AIAssistantTab] Failed to fetch remote study_history:', err));
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user.mobile]);
+
+  // Synchronize non-destructively if parent user.chatSessions updates externally
+  useEffect(() => {
+    if (isSessionsDirtyRef.current) return;
+    const fromUser = parseSessionList<ChatSession>(user.chatSessions);
+    const fromLocal = readHistoryFromLocalStorage<ChatSession>(getChatBackupKey(user.mobile));
+    if (fromUser.length > 0) {
+      const merged = mergeHistorySessions(fromUser, fromLocal, 35);
+      setChatSessions(merged);
+    } else if (user.chatSessions === '[]' && fromLocal.length === 0) {
       setChatSessions([]);
     }
-  }, [user.chatSessions]);
+  }, [user.chatSessions, user.mobile]);
 
   useEffect(() => {
     setActivePathId(user.activePathId || null);
@@ -821,10 +887,16 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     }
   }, [user.completedMilestones]);
 
-  // Reset temporary chat message state for security ONLY when the actual logged-in user changes
+  // Reset temporary chat message state ONLY when the actual logged-in user changes
   useEffect(() => {
-    setMsgHistory({});
-    setActiveSessionId(null);
+    if (prevMobileRef.current !== user.mobile) {
+      prevMobileRef.current = user.mobile;
+      setMsgHistory({});
+      setActiveSessionId(null);
+      const fromUser = parseSessionList<ChatSession>(user.chatSessions);
+      const fromLocal = readHistoryFromLocalStorage<ChatSession>(getChatBackupKey(user.mobile));
+      setChatSessions(mergeHistorySessions(fromUser, fromLocal, 35));
+    }
   }, [user.mobile]);
 
   const updateActiveSessionMessages = (updatedMsgs: ChatMessage[]) => {
@@ -832,19 +904,22 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
     if (userMsgs.length === 0) return;
 
     const currentSessId = activeSessionIdRef.current;
+    const now = Date.now();
+    const formattedTs = formatSessionTimestamp();
+    isSessionsDirtyRef.current = true;
 
     if (currentSessId) {
-      setChatSessions(prev => prev.map(s => s.id === currentSessId ? { ...s, messages: updatedMsgs } : s));
+      setChatSessions(prev => prev.map(s => s.id === currentSessId ? { ...s, messages: updatedMsgs, timestamp: formattedTs, updatedAt: now } : s));
     } else {
       const firstUserMsg = userMsgs[0].text;
       const title = firstUserMsg.length > 30 ? firstUserMsg.slice(0, 30) + '...' : firstUserMsg;
-      const timestamp = new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      const newSessId = 'sess-' + Date.now();
+      const newSessId = 'sess-' + now;
       
       const newSession: ChatSession = {
         id: newSessId,
         title,
-        timestamp,
+        timestamp: formattedTs,
+        updatedAt: now,
         messages: updatedMsgs
       };
       
@@ -896,12 +971,14 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
       setEditingSessionId(null);
       return;
     }
-    setChatSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: editingSessionTitle.trim() } : s));
+    isSessionsDirtyRef.current = true;
+    setChatSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: editingSessionTitle.trim(), updatedAt: Date.now() } : s));
     setEditingSessionId(null);
   };
 
   const handleMoveSessionUp = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    isSessionsDirtyRef.current = true;
     setChatSessions(prev => {
       const idx = prev.findIndex(s => s.id === sessionId);
       if (idx <= 0) return prev;
@@ -915,6 +992,7 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
 
   const handleMoveSessionDown = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    isSessionsDirtyRef.current = true;
     setChatSessions(prev => {
       const idx = prev.findIndex(s => s.id === sessionId);
       if (idx < 0 || idx >= prev.length - 1) return prev;
@@ -927,15 +1005,17 @@ export default function AIAssistantTab({ user, lang, onUpdateUser }: AIAssistant
   };
 
   const handleDeleteMessageFromSession = (sessionId: string, messageId: string) => {
+    isSessionsDirtyRef.current = true;
     setChatSessions(prev => prev.map(s => {
       if (s.id !== sessionId) return s;
-      return { ...s, messages: s.messages.filter(m => m.id !== messageId) };
+      return { ...s, messages: s.messages.filter(m => m.id !== messageId), updatedAt: Date.now() };
     }));
   };
 
   const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm(lang === "hi" ? "क्या आप सचमुच इस चैट को इतिहास से हटाना चाहते हैं?" : "Are you sure you want to delete this chat session?")) return;
+    isSessionsDirtyRef.current = true;
     setChatSessions(prev => prev.filter(s => s.id !== sessionId));
     if (activeSessionIdRef.current === sessionId) {
       setActiveSessionId(null);
@@ -2083,8 +2163,10 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                     <button
                       onClick={() => {
                         if (confirm(lang === 'hi' ? "क्या आप सचमुच पूरा इतिहास मिटाना चाहते हैं?" : "Are you sure you want to permanently clear all search history?")) {
+                          isSessionsDirtyRef.current = true;
                           setChatSessions([]);
                           setActiveSessionId(null);
+                          safeWriteHistoryToLocalStorage(getChatBackupKey(user.mobile), '[]');
                           // Reset active chat window to welcome message
                           const defaultWelcomeText = selectedChar.welcome[lang] || selectedChar.welcome['en'];
                           const welcomeMsg: ChatMessage = {
@@ -2104,6 +2186,11 @@ Option 2: For Hierarchical Concepts/Mind Maps/Concept Maps:
                               chatSessions: JSON.stringify([])
                             });
                           }
+                          saveUserStudyHistory(user.mobile, 'ai_chatbot', {
+                            type: 'ai_chatbot',
+                            sessions: [],
+                            updatedAt: Date.now()
+                          }).catch(() => {});
                         }
                       }}
                       className="text-[10px] sm:text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"

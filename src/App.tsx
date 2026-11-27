@@ -17,6 +17,12 @@ import { fireContinuousFireworks } from './utils/confetti';
 import { getSafeDateString, getDaysDifference } from './utils/dateUtils';
 import { executeBackHandlers, EXIT_TOAST_MESSAGES } from './utils/backNavigation';
 import { sanitizeUserSession } from './utils/imageCompressor';
+import {
+  capSerializedSessions,
+  mergeHistorySessions,
+  parseSessionList,
+  readHistoryFromLocalStorage
+} from './utils/historyPersistence';
 import { AnimatePresence, motion } from 'motion/react';
 import { 
   updateSeoMetadata, 
@@ -342,10 +348,23 @@ export default function App() {
   }, [currentView, studentActiveTab, adminActiveTab, user, adminUser]);
 
   const handleAdminAuthSuccess = (authenticatedAdmin: User) => {
-    setAdminUser(authenticatedAdmin);
-    safeSetLocalStorage('gramin_admin_session', JSON.stringify(authenticatedAdmin));
-    setUser(authenticatedAdmin);
-    safeSetLocalStorage('gramin_student_session', JSON.stringify(authenticatedAdmin));
+    const localChatBackup = readHistoryFromLocalStorage(`gramin_chat_sessions_${authenticatedAdmin.mobile}`);
+    const localSolverBackup = readHistoryFromLocalStorage(`gramin_solver_sessions_${authenticatedAdmin.mobile}`);
+    const hydratedAdmin: User = {
+      ...authenticatedAdmin,
+      chatSessions:
+        parseSessionList(authenticatedAdmin.chatSessions).length > 0 || localChatBackup.length === 0
+          ? authenticatedAdmin.chatSessions
+          : capSerializedSessions(localChatBackup, 140000, 15, 25),
+      solverSessions:
+        parseSessionList(authenticatedAdmin.solverSessions).length > 0 || localSolverBackup.length === 0
+          ? authenticatedAdmin.solverSessions
+          : capSerializedSessions(localSolverBackup, 140000, 15, 25)
+    };
+    setAdminUser(hydratedAdmin);
+    safeSetLocalStorage('gramin_admin_session', JSON.stringify(hydratedAdmin));
+    setUser(hydratedAdmin);
+    safeSetLocalStorage('gramin_student_session', JSON.stringify(hydratedAdmin));
 
     // Restore intended tab if admin was deep-linked or reloaded on a specific tab
     let targetAdminTab: AdminTab = 'analytics';
@@ -445,6 +464,25 @@ export default function App() {
           } else {
             finalUser = { ...remoteUser, ...user };
           }
+
+          // Never lose chatSessions or solverSessions when remote lacks them (e.g. daily reset / older doc)
+          const localChatBackup = readHistoryFromLocalStorage(`gramin_chat_sessions_${user.mobile}`);
+          const mergedChats = mergeHistorySessions(
+            mergeHistorySessions(parseSessionList(user.chatSessions), parseSessionList(remoteUser.chatSessions)),
+            localChatBackup
+          );
+          if (mergedChats.length > 0) {
+            finalUser.chatSessions = capSerializedSessions(mergedChats, 140000, 15, 25);
+          }
+
+          const localSolverBackup = readHistoryFromLocalStorage(`gramin_solver_sessions_${user.mobile}`);
+          const mergedSolvers = mergeHistorySessions(
+            mergeHistorySessions(parseSessionList(user.solverSessions), parseSessionList(remoteUser.solverSessions)),
+            localSolverBackup
+          );
+          if (mergedSolvers.length > 0) {
+            finalUser.solverSessions = capSerializedSessions(mergedSolvers, 140000, 15, 25);
+          }
         } else {
           finalUser = { ...user };
         }
@@ -456,10 +494,17 @@ export default function App() {
         safeSetLocalStorage('gramin_student_session', JSON.stringify(updatedUser));
 
         if (wasReset) {
-          updateFirebaseUserFields(user.mobile, fields)
+          const resetFieldsWithHistory: Partial<User> = { ...fields };
+          if (updatedUser.chatSessions && !dbUser?.chatSessions) {
+            resetFieldsWithHistory.chatSessions = updatedUser.chatSessions;
+          }
+          if (updatedUser.solverSessions && !dbUser?.solverSessions) {
+            resetFieldsWithHistory.solverSessions = updatedUser.solverSessions;
+          }
+          updateFirebaseUserFields(user.mobile, resetFieldsWithHistory)
             .catch((err) => console.error("[Startup Sync Reset] Failed to sync reset to Firebase:", err));
         } else if (dbUser && JSON.stringify(dbUser) !== JSON.stringify(finalUser)) {
-          // If we resolved a local-first win but didn't trigger a reset, update remote with newer local details
+          // If we resolved a local-first win or hydrated missing history, update remote
           updateFirebaseUserFields(user.mobile, finalUser)
             .catch((err) => console.error("[Startup Sync Update] Failed to sync merged user to Firebase:", err));
         }
@@ -657,10 +702,19 @@ export default function App() {
       if (navigator.onLine && !isOfflineSimulated) {
         const { resolvedUser, conflictResolved, source } = await syncFirebaseUserWithLWW(user.mobile, updatedUser);
         if (conflictResolved && source === 'remote') {
-          // A newer remote update was found (e.g. from another shared device). Remote wins.
-          setUser(resolvedUser as User);
-          safeSetLocalStorage('gramin_student_session', JSON.stringify(resolvedUser));
-          // console.log("[LWW Sync] Resolved conflict: remote data was newer and has overwritten local changes.");
+          const safeResolved: User = {
+            ...(resolvedUser as User),
+            chatSessions:
+              fields.chatSessions !== undefined
+                ? fields.chatSessions
+                : ((resolvedUser as User).chatSessions !== undefined ? (resolvedUser as User).chatSessions : updatedUser.chatSessions),
+            solverSessions:
+              fields.solverSessions !== undefined
+                ? fields.solverSessions
+                : ((resolvedUser as User).solverSessions !== undefined ? (resolvedUser as User).solverSessions : updatedUser.solverSessions)
+          };
+          setUser(safeResolved);
+          safeSetLocalStorage('gramin_student_session', JSON.stringify(safeResolved));
         }
       } else {
         // console.log("[LWW Sync] Saved update locally while offline. Sync will reconcile via LWW once online.");
@@ -678,8 +732,24 @@ export default function App() {
   };
 
   const handleAuthSuccess = (authenticatedUser: User) => {
-    // Override Default Language with the student's selected language at Auth
-    const userWithUpdatedLanguage = { ...authenticatedUser, defaultLanguage: currentLanguage };
+    const localChatBackup = readHistoryFromLocalStorage(`gramin_chat_sessions_${authenticatedUser.mobile}`);
+    const localSolverBackup = readHistoryFromLocalStorage(`gramin_solver_sessions_${authenticatedUser.mobile}`);
+    const remoteChats = parseSessionList(authenticatedUser.chatSessions);
+    const remoteSolvers = parseSessionList(authenticatedUser.solverSessions);
+
+    // Override Default Language with the student's selected language at Auth and preserve/hydrate history
+    const userWithUpdatedLanguage: User = {
+      ...authenticatedUser,
+      defaultLanguage: currentLanguage,
+      chatSessions:
+        remoteChats.length > 0 || localChatBackup.length === 0
+          ? authenticatedUser.chatSessions
+          : capSerializedSessions(localChatBackup, 140000, 15, 25),
+      solverSessions:
+        remoteSolvers.length > 0 || localSolverBackup.length === 0
+          ? authenticatedUser.solverSessions
+          : capSerializedSessions(localSolverBackup, 140000, 15, 25)
+    };
     setUser(userWithUpdatedLanguage);
     safeSetLocalStorage('gramin_student_session', JSON.stringify(userWithUpdatedLanguage));
 

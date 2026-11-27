@@ -6,6 +6,15 @@ import { safeFetchJson } from '../../utils/safeFetch';
 import MathRenderer, { normalizeMathText } from '../common/MathRenderer';
 import { downloadSmartReaderPdf, generateSmartReaderPdfDataUrl } from '../../utils/pdfExport';
 import { saveFileLocal } from '../../lib/indexedDbStore';
+import { getUserStudyHistory, saveUserStudyHistory } from '../../lib/firebase';
+import {
+  buildPdfHistoryDocId,
+  formatSessionTimestamp,
+  mergeHistorySessions,
+  pruneHistorySessions,
+  readHistoryFromLocalStorage,
+  safeWriteHistoryToLocalStorage
+} from '../../utils/historyPersistence';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -69,132 +78,128 @@ import { speakText, stopSpeaking } from '../../utils/speech';
 import SpeechInputButton from '../SpeechInputButton';
 import { LanguageCode, User } from '../../types';
 import { CustomSelect } from '../common/CustomSelect';
+import {
+  cleanPdfExtractedText,
+  convertKrutiDevToUnicode,
+  extractReadableTextFromPdfItems,
+  assessPdfPageTextQuality,
+  measurePdfTextWidth
+} from '../../utils/pdfTextHelpers';
 
-/**
- * Utility to convert Kruti Dev 010 / Devlys 010 ASCII text & clean up garbled NCERT PDF text
- * (commonly extracted from Indian textbook PDFs with misplaced Devanagari matras)
- * into standard, pristine Devanagari Unicode text.
- */
-export function convertKrutiDevToUnicode(text: string): string {
-  return cleanPdfExtractedText(text);
+export { cleanPdfExtractedText, convertKrutiDevToUnicode };
+import { getDeterministicAvatar } from '../../utils/avatar';
+
+const PDFJS_VERSION = '2.16.105';
+const PDF_DOC_OPTIONS = {
+  cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/cmaps/`,
+  cMapPacked: true,
+  standardFontDataUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/standard_fonts/`,
+  useSystemFonts: true,
+};
+
+const INDIC_SCRIPT_FONT_FALLBACK = "'Noto Sans Gujarati', 'Shruti', 'Noto Sans Devanagari', 'Inter', system-ui, sans-serif";
+
+interface OcrLineBox {
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
-export function cleanPdfExtractedText(rawText: string): string {
-  if (!rawText || typeof rawText !== 'string') return '';
-  let str = rawText.trim();
-  if (!str) return '';
+interface OcrPageData {
+  fullText: string;
+  lines: OcrLineBox[];
+}
 
-  // 1. If text is predominantly KrutiDev 8-bit ASCII, convert character mappings first
-  const devanagariCount = (str.match(/[\u0900-\u097F]/g) || []).length;
-  if (devanagariCount < str.length * 0.25) {
-    const isKrutiDev = /([iN]yh|d\{kk|esa\]|gsa|osQ|osq|fdl|idkj|la\[;k|ls\[kk|js\[kk|nsf\[k|vki|vkSj|fujwfir|vkd`fr|pqosQ|pudh)/.test(str);
-    if (isKrutiDev) {
-      const ligatures: [string, string][] = [
-        ['d{kkvsa', 'कक्षाओं'],
-        ['d{kkvks', 'कक्षाओं'],
-        ['d{kk', 'कक्षा'],
-        ['la[;k', 'संख्या'],
-        ['ls[kk', 'संख्या'],
-        ['js[kk', 'रेखा'],
-        ['nsf[k,', 'देखिए'],
-        ['nsf[k', 'देखि'],
-        ['fujwfir', 'निरूपित'],
-        ['fujwfi', 'निरूपि'],
-        ['idkj', 'प्रकार'],
-        ['fdl', 'किस'],
-        ['vki', 'आप'],
-        ['vkj', 'और'],
-        ['vkSj', 'और'],
-        ['ogka', 'वहाँ'],
-        ['osq', 'के'],
-        ['osQ', 'के'],
-        ['esa]', 'में,'],
-        ['esa', 'में'],
-        ['gsa', 'हैं'],
-        ['gS', 'है'],
-        ['vkd`fr', 'आकृति'],
-        ['ij', 'पर'],
-        ['iNyh', 'पिछली'],
-        ['iNys', 'पिछले'],
-        ['iNyk', 'पिछला'],
-        ['pqosQ', 'चुके'],
-        ['pudh', 'चुकी'],
-        ['pqdk', 'चुका'],
-        [';g', 'यह'],
-        ['Hkh', 'भी'],
-        ['rFkk', 'तथा'],
-        [',oa', 'एवं'],
-      ];
-      for (const [kruti, uni] of ligatures) {
-        str = str.split(kruti).join(uni);
-      }
-      const charMap: [string, string][] = [
-        ['k', 'ा'], ['h', 'ी'], ['q', 'ु'], ['w', 'ू'], ['s', 'े'], ['S', 'ै'], ['a', 'ं'], ['A', 'ॉ'],
-        ['f', 'ि'], ['i', 'ि'],
-        ['v', 'अ'], ['o', 'इ'], ['u', 'उ'], ['U', 'ऊ'], ['c', 'ब'], ['C', 'ण'], ['d', 'क'], ['D', 'क्'],
-        ['e', 'म'], ['E', 'म्'], ['g', 'ह'], ['G', 'ह्'], ['j', 'र'], ['J', 'र्'], ['l', 'स'], ['L', 'स्'],
-        ['m', 'स'], ['n', 'द'], ['N', 'छ'], ['p', 'च'], ['P', 'च्'], ['r', 'त'], ['R', 'त्'],
-        ['t', 'त'], ['T', 'त्'], ['y', 'ल'], ['Y', 'ल्'], ['b', 'इ'], ['B', 'ई'],
-        ['x', 'ग'], ['X', 'ग्'], ['z', '्र'], ['Z', 'र्'], ['[', 'ख'], ['{', 'क्ष'], [']', ','],
-        ['}', 'द्व'], ['|', '।']
-      ];
-      for (const [k, u] of charMap) {
-        str = str.split(k).join(u);
-      }
+const renderPdfPageToJpegDataUrl = async (
+  pdfDoc: any,
+  pageNum: number,
+  maxDim = 1550
+): Promise<string | null> => {
+  if (!pdfDoc || pageNum < 1 || pageNum > (pdfDoc.numPages || 0)) return null;
+  try {
+    const page = await pdfDoc.getPage(pageNum);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const largestDim = Math.max(baseViewport.width, baseViewport.height) || 792;
+    const renderScale = Math.min(2.2, Math.max(1.2, maxDim / largestDim));
+    const viewport = page.getViewport({ scale: renderScale });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    return canvas.toDataURL('image/jpeg', 0.85);
+  } catch (err) {
+    console.warn(`[PdfCanvasViewer] Failed to rasterize Page ${pageNum}:`, err);
+    return null;
+  }
+};
+
+const renderOcrSelectableTextLayer = (
+  containerDiv: HTMLElement,
+  ocrData: OcrPageData,
+  viewportWidth: number,
+  viewportHeight: number
+) => {
+  containerDiv.innerHTML = '';
+  if (!ocrData) return;
+
+  if (!Array.isArray(ocrData.lines) || ocrData.lines.length === 0) {
+    if (ocrData.fullText) {
+      renderAiStructuredTextLayer(containerDiv, ocrData.fullText, viewportWidth, viewportHeight);
     }
+    return;
   }
 
-  // 2. Fix specific NCERT Devanagari font artifacts & misplaced glyphs
-  // NCERT PDF font artifact: 'िफ' at start of word before consonant is 'प्र'
-  str = str.replace(/\bिफरारंभ/g, 'प्रारंभ');
-  str = str.replace(/\bिफारंभ/g, 'प्रारंभ');
-  str = str.replace(/\bिफथम/g, 'प्रथम');
-  str = str.replace(/\bिफयोग/g, 'प्रयोग');
-  str = str.replace(/\bिफकार/g, 'प्रकार');
-  str = str.replace(/\bिफशन/g, 'प्रश्न');
-  str = str.replace(/\bिफश्न/g, 'प्रश्न');
-  str = str.replace(/\bिफतियोग्यता/g, 'प्रतियोग्यता');
-  str = str.replace(/\bिफत्येक/g, 'प्रत्येक');
-  str = str.replace(/\bिफाप्त/g, 'प्राप्त');
-  str = str.replace(/\bिफक्रिया/g, 'प्रक्रिया');
-  str = str.replace(/\bिफति/g, 'प्रति');
-  str = str.replace(/\bिफि/g, 'प्र');
+  for (const line of ocrData.lines) {
+    if (!line || !line.text || !line.text.trim()) continue;
 
-  // Fix misplaced 'ि' inside conjuncts (NCERT PDF text layer defect)
-  str = str.replace(/कल्िपना/g, 'कल्पना');
-  str = str.replace(/कल्िप/g, 'कल्प');
-  str = str.replace(/ल्िप/g, 'ल्प');
-  str = str.replace(/न्ित/g, 'न्त');
-  str = str.replace(/त्िय/g, 'त्य');
-  str = str.replace(/स्ित/g, 'स्थित');
-  str = str.replace(/द्िव/g, 'द्वि');
-  str = str.replace(/द्िब/g, 'द्वि');
-  str = str.replace(/द्िय/g, 'द्वि');
-  str = str.replace(/त्िर/g, 'त्र');
+    const normX = Math.max(0, Math.min(0.95, Number(line.x) || 0.05));
+    const normY = Math.max(0, Math.min(0.98, Number(line.y) || 0.05));
+    const normW = Math.max(0.04, Math.min(1 - normX, Number(line.w) || 0.85));
+    const normH = Math.max(0.014, Math.min(0.25, Number(line.h) || 0.025));
 
-  // Fix misplaced \u093F ('ि' matra) occurring BEFORE a consonant (\u0915-\u0939):
-  // e.g. 'िक' (\u093F + क) -> 'कि' (क + \u093F)
-  str = str.replace(/\u093F([\u0915-\u0939]\u093C?)/g, '$1\u093F');
+    const leftPx = normX * viewportWidth;
+    const topPx = normY * viewportHeight;
+    const boxWidthPx = normW * viewportWidth;
+    const boxHeightPx = normH * viewportHeight;
+    const fontSizePx = Math.max(10, Math.min(44, boxHeightPx * 0.78));
 
-  // Deduplicate repeated matras (e.g. 'किि' -> 'कि')
-  str = str.replace(/\u093F{2,}/g, '\u093F');
+    const span = document.createElement('span');
+    span.textContent = line.text;
+    span.setAttribute('data-original-text', line.text);
+    span.style.position = 'absolute';
+    span.style.left = `${leftPx}px`;
+    span.style.top = `${topPx}px`;
+    span.style.fontSize = `${fontSizePx}px`;
+    span.style.lineHeight = '1.05';
+    span.style.fontFamily = INDIC_SCRIPT_FONT_FALLBACK;
+    span.style.whiteSpace = 'pre';
+    span.style.color = 'transparent';
+    span.style.cursor = 'text';
+    span.style.userSelect = 'text';
+    span.style.unicodeBidi = 'plaintext';
 
-  // 3. Fix NCERT Math / Symbol font artifacts
-  // '०ूऊ;' or '०ूऊ' -> '0'
-  str = str.replace(/['"]?०ूऊ;?['"]?/g, "'0'");
-  str = str.replace(/H\u093E|H\u0901|H/g, ''); // remove orphan H glyph artifacts
-  str = str.replace(/ↀ/g, '');
-  str = str.replace(/०ा/g, 'ा');
-  str = str.replace(/;\s*/g, ', ');
-  str = str.replace(/,\s*,/g, ',');
+    const measuredWidth = measurePdfTextWidth(line.text, `${fontSizePx}px ${INDIC_SCRIPT_FONT_FALLBACK}`);
+    if (measuredWidth > 0 && boxWidthPx > 0) {
+      const ratio = boxWidthPx / measuredWidth;
+      if (ratio > 0.35 && ratio < 2.8) {
+        span.style.transform = `scaleX(${ratio})`;
+        span.style.transformOrigin = '0% 0%';
+      }
+    }
 
-  // Clean zero-width non-printable joiners/spaces
-  str = str.replace(/[\uFEFF\u200B\u200C\u200D]/g, '');
-  str = str.replace(/\s+/g, ' ');
-
-  return str.trim();
-}
-import { getDeterministicAvatar } from '../../utils/avatar';
+    containerDiv.appendChild(span);
+    containerDiv.appendChild(document.createTextNode('\n'));
+  }
+};
 
 const TOP_NAV_LANGUAGES: { code: LanguageCode; name: string; nativeName: string; flag: string }[] = [
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
@@ -654,7 +659,7 @@ const renderAiStructuredTextLayer = (
   outerBlock.style.height = `${viewportHeight}px`;
   outerBlock.style.padding = `${48 * sf}px ${56 * sf}px ${64 * sf}px ${56 * sf}px`;
   outerBlock.style.boxSizing = 'border-box';
-  outerBlock.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Hind", "Gujarati", "Mukta", sans-serif';
+  outerBlock.style.fontFamily = `system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", ${INDIC_SCRIPT_FONT_FALLBACK}`;
   outerBlock.style.overflow = 'hidden';
   outerBlock.style.pointerEvents = 'auto';
   outerBlock.style.userSelect = 'text';
@@ -795,6 +800,10 @@ interface PdfPageItemProps {
   scale: number;
   rotation: number;
   pageSize: { width: number; height: number };
+  fileName?: string;
+  targetLanguage?: string;
+  ocrPageData?: OcrPageData;
+  onRequestPageOcr?: (pageNum: number) => void;
   searchQuery: string;
   currentActiveMatchPage?: number;
   activeMatchSnippet?: string;
@@ -815,6 +824,10 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
   scale,
   rotation,
   pageSize,
+  fileName,
+  targetLanguage,
+  ocrPageData,
+  onRequestPageOcr,
   searchQuery,
   currentActiveMatchPage,
   activeMatchSnippet,
@@ -891,9 +904,10 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
   const applySearchHighlights = useCallback((container: HTMLElement, query: string) => {
     if (!container || !query.trim()) return;
     const q = query.trim().toLowerCase();
-    const spans = container.querySelectorAll('span');
+    const spans = container.querySelectorAll('span[data-original-text]');
 
     spans.forEach((span) => {
+      if (span.children.length > 0 && !span.querySelector('mark')) return;
       const originalText = span.getAttribute('data-original-text') || span.textContent || '';
       if (!span.hasAttribute('data-original-text')) {
         span.setAttribute('data-original-text', originalText);
@@ -902,13 +916,13 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
       if (originalText.toLowerCase().includes(q)) {
         const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
         span.innerHTML = originalText.replace(regex, '<mark class="highlight">$1</mark>');
-      } else {
+      } else if (span.querySelector('mark')) {
         span.textContent = originalText;
       }
     });
   }, []);
 
-  // Handle PDF Canvas rendering & Native Text Layer extraction
+  // Handle PDF Canvas rendering & Native / OCR Text Layer extraction
   useEffect(() => {
     if (!isVisible || !pdfDoc) {
       if (renderTaskRef.current) {
@@ -952,11 +966,20 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
 
         await renderTask.promise;
 
-        // Render Native Text Layer for pixel-perfect alignment & authentic browser text selection
+        // Render Native Text Layer (or OCR selectable overlay when PDF uses legacy/scanned Gujarati glyphs)
         if (isMounted) {
-          const textContent = await page.getTextContent();
-          const fullTxt = textContent.items.map((i: any) => i.str || '').join(' ').trim();
-          setPageFullText(fullTxt || fallbackText || '');
+          const textContent = await page.getTextContent({
+            normalizeWhitespace: false,
+            disableCombineTextItems: false,
+          });
+          const rawExtracted = extractReadableTextFromPdfItems(textContent.items || []);
+          const cleanExtracted = cleanPdfExtractedText(rawExtracted);
+          const quality = assessPdfPageTextQuality(cleanExtracted, fileName, targetLanguage);
+
+          const effectiveText = quality.isReadable
+            ? cleanExtracted
+            : (ocrPageData?.fullText || fallbackText || '');
+          setPageFullText(effectiveText);
 
           const textLayerDiv = textLayerRef.current;
           if (textLayerDiv) {
@@ -964,7 +987,7 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
             textLayerDiv.style.width = `${Math.floor(viewport.width)}px`;
             textLayerDiv.style.height = `${Math.floor(viewport.height)}px`;
 
-            if (textContent.items && textContent.items.length > 0) {
+            if (quality.isReadable && textContent.items && textContent.items.length > 0) {
               const pdfjsLib = (window as any).pdfjsLib;
               let renderedNative = false;
 
@@ -981,6 +1004,34 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
                 } catch (err) {
                   console.warn(`PDF.js native textLayer failed for page ${pageNum}:`, err);
                 }
+              }
+
+              // Ensure Indic/Gujarati font fallback and normalize broken Gujarati matra ordering inside rendered spans
+              if (renderedNative) {
+                const nativeSpans = textLayerDiv.querySelectorAll('span');
+                nativeSpans.forEach((span) => {
+                  const rawSpanTxt = span.textContent || '';
+                  const currentFont = span.style.fontFamily || '';
+                  if (!currentFont.includes('Noto Sans Gujarati')) {
+                    span.style.fontFamily = currentFont
+                      ? `${currentFont}, ${INDIC_SCRIPT_FONT_FALLBACK}`
+                      : INDIC_SCRIPT_FONT_FALLBACK;
+                  }
+                  span.style.unicodeBidi = 'plaintext';
+
+                  if (/[\u0A80-\u0AFF\u0900-\u097F]/.test(rawSpanTxt)) {
+                    const normalizedSpanTxt = cleanPdfExtractedText(rawSpanTxt);
+                    if (normalizedSpanTxt && normalizedSpanTxt !== rawSpanTxt.trim()) {
+                      // Preserve leading/trailing single whitespace if PDF.js span had it
+                      const lead = /^\s/.test(rawSpanTxt) ? ' ' : '';
+                      const trail = /\s$/.test(rawSpanTxt) ? ' ' : '';
+                      span.textContent = `${lead}${normalizedSpanTxt}${trail}`;
+                    }
+                    span.setAttribute('data-original-text', span.textContent || normalizedSpanTxt);
+                  } else {
+                    span.setAttribute('data-original-text', rawSpanTxt);
+                  }
+                });
               }
 
               // Fallback manual layout generator when native textLayer is not applicable
@@ -1004,21 +1055,30 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
                   const top = tx[5] - fontAscent;
 
                   const span = document.createElement('span');
-                  span.textContent = item.str;
-                  span.setAttribute('data-original-text', item.str);
+                  const itemText = /[\u0A80-\u0AFF\u0900-\u097F]/.test(item.str)
+                    ? cleanPdfExtractedText(item.str)
+                    : item.str;
+                  const fontFamily = item.fontName
+                    ? `${item.fontName}, ${INDIC_SCRIPT_FONT_FALLBACK}`
+                    : INDIC_SCRIPT_FONT_FALLBACK;
+
+                  span.textContent = itemText;
+                  span.setAttribute('data-original-text', itemText);
                   span.style.left = `${left}px`;
                   span.style.top = `${top}px`;
                   span.style.fontSize = `${fontSize}px`;
-                  span.style.fontFamily = item.fontName || 'sans-serif';
+                  span.style.fontFamily = fontFamily;
                   span.style.lineHeight = '1';
                   span.style.position = 'absolute';
                   span.style.whiteSpace = 'pre';
                   span.style.color = 'transparent';
                   span.style.cursor = 'text';
+                  span.style.unicodeBidi = 'plaintext';
 
                   if (item.width && item.width > 0) {
                     const expectedWidth = item.width * scale;
-                    const approxWidth = fontSize * item.str.length * 0.52;
+                    const measured = measurePdfTextWidth(itemText, `${fontSize}px ${fontFamily}`);
+                    const approxWidth = measured > 0 ? measured : fontSize * itemText.length * 0.52;
                     if (approxWidth > 0) {
                       span.style.transform = `scaleX(${expectedWidth / approxWidth})`;
                       span.style.transformOrigin = '0% 0%';
@@ -1028,14 +1088,26 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
                   textLayerDiv.appendChild(span);
                 }
               }
-            } else if (fallbackText) {
-              renderAiStructuredTextLayer(textLayerDiv, fallbackText, Math.floor(viewport.width), Math.floor(viewport.height));
+            } else if (ocrPageData) {
+              renderOcrSelectableTextLayer(
+                textLayerDiv,
+                ocrPageData,
+                Math.floor(viewport.width),
+                Math.floor(viewport.height)
+              );
+            } else {
+              if (quality.needsOcr && onRequestPageOcr) {
+                onRequestPageOcr(pageNum);
+              }
+              if (fallbackText) {
+                renderAiStructuredTextLayer(textLayerDiv, fallbackText, Math.floor(viewport.width), Math.floor(viewport.height));
+              }
             }
 
-            // Tag each span with original text attribute for query highlighting
+            // Tag each leaf span with original text attribute for query highlighting
             const allSpans = textLayerDiv.querySelectorAll('span');
             allSpans.forEach(s => {
-              if (!s.hasAttribute('data-original-text')) {
+              if (s.children.length === 0 && !s.hasAttribute('data-original-text')) {
                 s.setAttribute('data-original-text', s.textContent || '');
               }
             });
@@ -1060,17 +1132,21 @@ const PdfPageItem: React.FC<PdfPageItemProps> = ({
         renderTaskRef.current.cancel();
       }
     };
-  }, [isVisible, pdfDoc, scale, rotation, pageNum, fallbackText, searchQuery, applySearchHighlights]);
+  }, [isVisible, pdfDoc, scale, rotation, pageNum, fileName, targetLanguage, ocrPageData, onRequestPageOcr, fallbackText, searchQuery, applySearchHighlights]);
 
   // Reactive updates to search highlights without re-rendering the full canvas
   useEffect(() => {
     const textLayerDiv = textLayerRef.current;
     if (!textLayerDiv) return;
 
-    const spans = textLayerDiv.querySelectorAll('span');
+    const spans = textLayerDiv.querySelectorAll('span[data-original-text]');
     spans.forEach(span => {
-      const orig = span.getAttribute('data-original-text') || span.textContent || '';
-      span.textContent = orig;
+      if (span.children.length === 0 || span.querySelector('mark')) {
+        const orig = span.getAttribute('data-original-text') || span.textContent || '';
+        if (span.querySelector('mark')) {
+          span.textContent = orig;
+        }
+      }
     });
 
     if (searchQuery.trim()) {
@@ -1298,7 +1374,10 @@ const SmartReaderView: React.FC<SmartReaderViewProps> = ({
     : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200';
 
   return (
-    <div className={`w-full min-h-full py-6 px-3 sm:px-6 md:px-8 overflow-y-auto ${themeClasses[theme]} transition-colors duration-200 select-text`}>
+    <div
+      data-pdf-selectable-area="true"
+      className={`w-full min-h-full py-6 px-3 sm:px-6 md:px-8 overflow-y-auto ${themeClasses[theme]} transition-colors duration-200 select-text`}
+    >
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Document Header Card */}
@@ -1638,12 +1717,139 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState<{ width: number; height: number }>({ width: 612, height: 792 });
 
-  // Search indexing and results state
+  // Search indexing, OCR cache (for scanned / legacy-font Gujarati PDFs), and results state
   const [pagesText, setPagesText] = useState<{ pageNum: number; text: string }[]>([]);
+  const onPagesTextExtractedRef = useRef(onPagesTextExtracted);
+  useEffect(() => {
+    onPagesTextExtractedRef.current = onPagesTextExtracted;
+  }, [onPagesTextExtracted]);
+  useEffect(() => {
+    if (pagesText.length > 0 && onPagesTextExtractedRef.current) {
+      onPagesTextExtractedRef.current(pagesText);
+    }
+  }, [pagesText]);
   const [indexingText, setIndexingText] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchResults, setSearchResults] = useState<{ pageNum: number; snippet: string }[]>([]);
   const [currentSearchResultIndex, setCurrentSearchResultIndex] = useState<number>(-1);
+
+  const ocrStorageKey = useMemo(() => `gyaanbot_pdf_ocr_${fileId || 'doc'}`, [fileId]);
+  const [ocrPagesData, setOcrPagesData] = useState<Record<number, OcrPageData>>(() => {
+    try {
+      const raw = localStorage.getItem(`gyaanbot_pdf_ocr_${fileId || 'doc'}`);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const ocrPagesDataRef = useRef<Record<number, OcrPageData>>(ocrPagesData);
+  const inFlightOcrPagesRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    ocrPagesDataRef.current = ocrPagesData;
+  }, [ocrPagesData]);
+
+  useEffect(() => {
+    inFlightOcrPagesRef.current.clear();
+    try {
+      const raw = localStorage.getItem(ocrStorageKey);
+      const parsed = raw ? JSON.parse(raw) : {};
+      setOcrPagesData(parsed);
+      ocrPagesDataRef.current = parsed;
+    } catch {
+      setOcrPagesData({});
+      ocrPagesDataRef.current = {};
+    }
+  }, [ocrStorageKey]);
+
+  const requestPageOcr = useCallback(async (pageNumToOcr: number) => {
+    if (!pdfDoc || isAiGen || pageNumToOcr < 1 || pageNumToOcr > (pdfDoc.numPages || 0)) return;
+    if (ocrPagesDataRef.current[pageNumToOcr] || inFlightOcrPagesRef.current.has(pageNumToOcr)) return;
+
+    inFlightOcrPagesRef.current.add(pageNumToOcr);
+    try {
+      const pageImg = await renderPdfPageToJpegDataUrl(pdfDoc, pageNumToOcr, 1500);
+      if (!pageImg) return;
+
+      const ocrPrompt = `Perform accurate OCR on this document page image (Page ${pageNumToOcr} of "${fileName}").
+Preserve the exact original language and script (such as Gujarati Unicode ગુજરાતી, Hindi Devanagari, English, math formulas, and numbers).
+Return ONLY valid JSON with this exact schema:
+{
+  "fullText": "complete extracted readable text in reading order with line breaks",
+  "lines": [
+    { "text": "exact text of a single visual line", "x": 0.08, "y": 0.12, "w": 0.82, "h": 0.025 }
+  ]
+}
+Where x, y, w, h are normalized 0.0 to 1.0 bounding box coordinates relative to the top-left of the page image.`;
+
+      const data = await safeFetchJson('/api/gemini/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: ocrPrompt,
+          image: { data: pageImg, mimeType: 'image/jpeg' },
+          responseMimeType: 'application/json',
+          systemInstruction: 'You are a high-precision multilingual OCR engine specializing in Gujarati, Hindi, and Indian school textbooks. Output ONLY valid JSON matching the requested schema.',
+          lang: /[\u0A80-\u0AFF]|guj/i.test(fileName || '') ? 'gu' : 'en',
+        }),
+      });
+
+      const rawRespText = typeof data?.text === 'string' ? data.text.trim() : '';
+      if (!rawRespText) return;
+
+      const cleanedJson = rawRespText
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```$/, '')
+        .trim();
+      const parsed = JSON.parse(cleanedJson);
+
+      // Ignore generic offline quiz/slides fallback
+      if (!parsed || Array.isArray(parsed.slides) || typeof parsed.fullText !== 'string') {
+        return;
+      }
+
+      const normalizedFullText = cleanPdfExtractedText(parsed.fullText);
+      const rawLines: OcrLineBox[] = Array.isArray(parsed.lines)
+        ? parsed.lines
+            .filter((l: any) => l && typeof l.text === 'string' && l.text.trim())
+            .map((l: any) => ({
+              text: cleanPdfExtractedText(l.text),
+              x: Number(l.x) || 0.06,
+              y: Number(l.y) || 0.06,
+              w: Number(l.w) || 0.85,
+              h: Number(l.h) || 0.025,
+            }))
+        : [];
+
+      if (!normalizedFullText && rawLines.length === 0) return;
+
+      const entry: OcrPageData = {
+        fullText: normalizedFullText || rawLines.map(l => l.text).join('\n'),
+        lines: rawLines,
+      };
+
+      const nextOcrCache = { ...ocrPagesDataRef.current, [pageNumToOcr]: entry };
+      ocrPagesDataRef.current = nextOcrCache;
+      try {
+        localStorage.setItem(ocrStorageKey, JSON.stringify(nextOcrCache));
+      } catch {
+        // Ignore quota issues for OCR cache
+      }
+
+      setOcrPagesData((prev) => ({ ...prev, [pageNumToOcr]: entry }));
+
+      setPagesText((prev) => {
+        const exists = prev.some((p) => p.pageNum === pageNumToOcr);
+        return exists
+          ? prev.map((p) => (p.pageNum === pageNumToOcr ? { pageNum: p.pageNum, text: entry.fullText } : p))
+          : [...prev, { pageNum: pageNumToOcr, text: entry.fullText }].sort((a, b) => a.pageNum - b.pageNum);
+      });
+    } catch (err) {
+      console.warn(`[PdfCanvasViewer] OCR extraction notice for page ${pageNumToOcr}:`, err);
+    } finally {
+      inFlightOcrPagesRef.current.delete(pageNumToOcr);
+    }
+  }, [pdfDoc, isAiGen, fileName, ocrStorageKey]);
 
   // Copy Feedback Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -1707,11 +1913,12 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   }[] | null>(null);
   const [pdfExportFullChatTitle, setPdfExportFullChatTitle] = useState<string>('');
 
-  // PDF Chat History & Sessions state
-  const [chatSessions, setChatSessions] = useState<{
+  // PDF Chat History & Sessions state (scoped per user + PDF, backed by Firestore + localStorage)
+  type PdfChatSession = {
     id: string;
     title: string;
     timestamp: string;
+    updatedAt?: number;
     messages: {
       id: string;
       sender: 'user' | 'assistant';
@@ -1721,17 +1928,43 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     }[];
     starred?: boolean;
     activePageNum?: number;
-  }[]>(() => {
-    try {
-      const storageKey = `gyaanbot_pdf_solver_sessions_${fileName || 'doc'}`;
-      const saved = localStorage.getItem(storageKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  };
 
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const ownerMobile = user?.mobile || adminUser?.mobile || '';
+  const pdfHistoryDocId = useMemo(() => buildPdfHistoryDocId(fileId, fileName), [fileId, fileName]);
+
+  const loadLocalPdfSessions = useCallback((mob: string, docId: string): PdfChatSession[] => {
+    const primaryKey = `gyaanbot_pdf_solver_sessions_${mob || 'guest'}_${docId}`;
+    const primary = readHistoryFromLocalStorage<PdfChatSession>(primaryKey);
+    const legacyByName = fileName
+      ? readHistoryFromLocalStorage<PdfChatSession>(`gyaanbot_pdf_solver_sessions_${fileName}`)
+      : [];
+    const legacyByDoc = readHistoryFromLocalStorage<PdfChatSession>(`gyaanbot_pdf_solver_sessions_${fileName || 'doc'}`);
+    return mergeHistorySessions(
+      mergeHistorySessions(primary, legacyByName, 35),
+      legacyByDoc,
+      35
+    );
+  }, [fileName]);
+
+  const [chatSessions, setChatSessions] = useState<PdfChatSession[]>(() =>
+    loadLocalPdfSessions(ownerMobile, pdfHistoryDocId)
+  );
+
+  const [activeSessionId, setActiveSessionIdState] = useState<string | null>(null);
+  const activeSessionIdRef = useRef<string | null>(null);
+  const isPdfHistoryDirtyRef = useRef<boolean>(false);
+  const chatSessionsRef = useRef<PdfChatSession[]>(chatSessions);
+
+  useEffect(() => {
+    chatSessionsRef.current = chatSessions;
+  }, [chatSessions]);
+
+  const setActiveSessionId = useCallback((id: string | null) => {
+    activeSessionIdRef.current = id;
+    setActiveSessionIdState(id);
+  }, []);
+
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [historySearchQuery, setHistorySearchQuery] = useState<string>('');
   const [historyFilterType, setHistoryFilterType] = useState<'all' | 'starred'>('all');
@@ -1739,55 +1972,126 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingSessionTitle, setEditingSessionTitle] = useState<string>('');
 
-  const saveChatSessionsToStorage = useCallback((sessions: typeof chatSessions) => {
-    try {
-      const storageKey = `gyaanbot_pdf_solver_sessions_${fileName || 'doc'}`;
-      localStorage.setItem(storageKey, JSON.stringify(sessions));
-    } catch (err) {
-      console.error("Failed to save PDF chat sessions:", err);
-    }
-  }, [fileName]);
+  const saveChatSessionsToStorage = useCallback((sessions: PdfChatSession[]) => {
+    const pruned = pruneHistorySessions(sessions, 35, 35) as PdfChatSession[];
+    const primaryKey = `gyaanbot_pdf_solver_sessions_${ownerMobile || 'guest'}_${pdfHistoryDocId}`;
+    safeWriteHistoryToLocalStorage(primaryKey, JSON.stringify(pruned));
 
+    if (ownerMobile && /^[6-9][0-9]{9}$/.test(ownerMobile)) {
+      saveUserStudyHistory(ownerMobile, pdfHistoryDocId, {
+        type: 'pdf_solver',
+        sessions: pruned,
+        fileId,
+        fileName,
+        updatedAt: Date.now()
+      }).catch(err => console.warn('[PdfCanvasViewer] Failed to sync PDF history to Firestore:', err));
+    }
+  }, [ownerMobile, pdfHistoryDocId, fileId, fileName]);
+
+  const prevDocIdRef = useRef<string>(pdfHistoryDocId);
+
+  // Hydrate PDF solver history from Firestore & localStorage on mount, user change, or PDF change
+  useEffect(() => {
+    let isCancelled = false;
+    isPdfHistoryDirtyRef.current = false;
+
+    if (prevDocIdRef.current !== pdfHistoryDocId) {
+      prevDocIdRef.current = pdfHistoryDocId;
+      setActiveSessionId(null);
+      setAiMessages([
+        {
+          id: 'ai-welcome-' + Date.now(),
+          sender: 'assistant',
+          text: `Hello! I am your **AI Study Task Assistant** for **${fileName}**. You can ask me to summarize pages, extract key formulas, generate quizzes, or answer questions!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    }
+
+    const localSessions = loadLocalPdfSessions(ownerMobile, pdfHistoryDocId);
+    setChatSessions(localSessions);
+
+    if (ownerMobile && /^[6-9][0-9]{9}$/.test(ownerMobile)) {
+      getUserStudyHistory<PdfChatSession>(ownerMobile, pdfHistoryDocId)
+        .then((remoteHistory) => {
+          if (isCancelled || isPdfHistoryDirtyRef.current) return;
+          const remoteSessions = remoteHistory?.sessions || [];
+          const latestLocal = loadLocalPdfSessions(ownerMobile, pdfHistoryDocId);
+          const merged = mergeHistorySessions(remoteSessions, latestLocal, 35);
+
+          if (merged.length > 0) {
+            setChatSessions(merged);
+            const primaryKey = `gyaanbot_pdf_solver_sessions_${ownerMobile}_${pdfHistoryDocId}`;
+            safeWriteHistoryToLocalStorage(primaryKey, JSON.stringify(pruneHistorySessions(merged, 35, 35)));
+
+            if (remoteSessions.length < merged.length) {
+              saveUserStudyHistory(ownerMobile, pdfHistoryDocId, {
+                type: 'pdf_solver',
+                sessions: merged,
+                fileId,
+                fileName,
+                updatedAt: Date.now()
+              }).catch(() => {});
+            }
+          }
+        })
+        .catch(err => console.warn('[PdfCanvasViewer] Failed to fetch remote PDF history:', err));
+    }
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [ownerMobile, pdfHistoryDocId, fileId, fileName, loadLocalPdfSessions, setActiveSessionId]);
+
+  // Mirror active AI messages into chatSessions cleanly (no side-effects inside state updaters)
   useEffect(() => {
     const userMsgCount = aiMessages.filter(m => m.sender === 'user').length;
     if (userMsgCount === 0) return;
 
-    setChatSessions(prev => {
-      let updated: typeof prev;
-      const firstUserMsg = aiMessages.find(m => m.sender === 'user');
-      const defaultTitle = firstUserMsg
-        ? cleanPdfExtractedText(firstUserMsg.text).slice(0, 35) + (firstUserMsg.text.length > 35 ? '...' : '')
-        : `Page ${activePageNum} Study Session`;
+    const currentId = activeSessionIdRef.current;
+    const existingSession = currentId ? chatSessionsRef.current.find(s => s.id === currentId) : undefined;
+    if (
+      existingSession &&
+      existingSession.messages.length === aiMessages.length &&
+      existingSession.messages[existingSession.messages.length - 1]?.id === aiMessages[aiMessages.length - 1]?.id &&
+      existingSession.messages[existingSession.messages.length - 1]?.text === aiMessages[aiMessages.length - 1]?.text
+    ) {
+      return;
+    }
 
-      if (activeSessionId) {
-        updated = prev.map(s => {
-          if (s.id === activeSessionId) {
-            return {
-              ...s,
-              messages: aiMessages,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              activePageNum
-            };
-          }
-          return s;
-        });
-      } else {
-        const newId = 'session-' + Date.now();
-        setActiveSessionId(newId);
-        const newSession = {
-          id: newId,
-          title: defaultTitle,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          messages: aiMessages,
-          activePageNum
-        };
-        updated = [newSession, ...prev];
-      }
+    const now = Date.now();
+    const formattedTs = formatSessionTimestamp();
+    const firstUserMsg = aiMessages.find(m => m.sender === 'user');
+    const defaultTitle = firstUserMsg
+      ? cleanPdfExtractedText(firstUserMsg.text).slice(0, 35) + (firstUserMsg.text.length > 35 ? '...' : '')
+      : `Page ${activePageNum} Study Session`;
 
+    isPdfHistoryDirtyRef.current = true;
+
+    if (existingSession) {
+      const updated = chatSessionsRef.current.map(s =>
+        s.id === currentId
+          ? { ...s, messages: aiMessages, timestamp: formattedTs, updatedAt: now, activePageNum }
+          : s
+      );
+      setChatSessions(updated);
       saveChatSessionsToStorage(updated);
-      return updated;
-    });
-  }, [aiMessages, activeSessionId, activePageNum, saveChatSessionsToStorage]);
+    } else {
+      const newId = currentId || 'session-' + now;
+      setActiveSessionId(newId);
+      const newSession: PdfChatSession = {
+        id: newId,
+        title: defaultTitle,
+        timestamp: formattedTs,
+        updatedAt: now,
+        messages: aiMessages,
+        activePageNum
+      };
+      const updated = [newSession, ...chatSessionsRef.current.filter(s => s.id !== newId)];
+      setChatSessions(updated);
+      saveChatSessionsToStorage(updated);
+    }
+  }, [aiMessages, activePageNum, saveChatSessionsToStorage, setActiveSessionId]);
 
   const handleStartNewChat = useCallback(() => {
     const welcomeMsg = {
@@ -1802,7 +2106,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     setReplyingTo(null);
     setToastMessage('Started a new study chat session');
     setTimeout(() => setToastMessage(null), 2500);
-  }, [fileName]);
+  }, [fileName, setActiveSessionId]);
 
   const handleExportFullChatPDF = useCallback((customMessages?: typeof aiMessages, customTitle?: string) => {
     const messagesToExport = customMessages || aiMessages;
@@ -1921,36 +2225,43 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
   const handleToggleStarSession = useCallback((sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setChatSessions(prev => {
-      const updated = prev.map(s => s.id === sessionId ? { ...s, starred: !s.starred } : s);
-      saveChatSessionsToStorage(updated);
-      return updated;
-    });
+    isPdfHistoryDirtyRef.current = true;
+    const updated = chatSessionsRef.current.map(s =>
+      s.id === sessionId ? { ...s, starred: !s.starred, updatedAt: Date.now() } : s
+    );
+    setChatSessions(updated);
+    saveChatSessionsToStorage(updated);
   }, [saveChatSessionsToStorage]);
 
   const handleDeleteSession = useCallback((sessionId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (confirm(targetLanguage === 'Hindi' ? "क्या आप इस चैट सत्र को हटाना चाहते हैं?" : "Are you sure you want to delete this study session?")) {
-      setChatSessions(prev => {
-        const updated = prev.filter(s => s.id !== sessionId);
-        saveChatSessionsToStorage(updated);
-        return updated;
-      });
-      if (activeSessionId === sessionId) {
+    const deleteConfirmMsg =
+      targetLanguage === 'Hindi'
+        ? "क्या आप इस चैट सत्र को हटाना चाहते हैं?"
+        : targetLanguage === 'Gujarati'
+        ? "શું તમે ખરેખર આ ચેટ સત્ર કાઢી નાખવા માંગો છો?"
+        : "Are you sure you want to delete this study session?";
+    if (confirm(deleteConfirmMsg)) {
+      isPdfHistoryDirtyRef.current = true;
+      const updated = chatSessionsRef.current.filter(s => s.id !== sessionId);
+      setChatSessions(updated);
+      saveChatSessionsToStorage(updated);
+      if (activeSessionIdRef.current === sessionId) {
         handleStartNewChat();
       }
       setToastMessage('Session deleted');
       setTimeout(() => setToastMessage(null), 2000);
     }
-  }, [targetLanguage, activeSessionId, handleStartNewChat, saveChatSessionsToStorage]);
+  }, [targetLanguage, handleStartNewChat, saveChatSessionsToStorage]);
 
   const handleSaveRenameSession = useCallback((sessionId: string) => {
     if (!editingSessionTitle.trim()) return;
-    setChatSessions(prev => {
-      const updated = prev.map(s => s.id === sessionId ? { ...s, title: editingSessionTitle.trim() } : s);
-      saveChatSessionsToStorage(updated);
-      return updated;
-    });
+    isPdfHistoryDirtyRef.current = true;
+    const updated = chatSessionsRef.current.map(s =>
+      s.id === sessionId ? { ...s, title: editingSessionTitle.trim(), updatedAt: Date.now() } : s
+    );
+    setChatSessions(updated);
+    saveChatSessionsToStorage(updated);
     setEditingSessionId(null);
     setEditingSessionTitle('');
     setToastMessage('Renamed chat session');
@@ -1958,22 +2269,34 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
   }, [editingSessionTitle, saveChatSessionsToStorage]);
 
   const handleClearAllHistory = useCallback(() => {
-    if (confirm(targetLanguage === 'Hindi' ? "क्या आप सचमुच पूरा इतिहास मिटाना चाहते हैं?" : "Are you sure you want to permanently clear all study search history?")) {
+    const clearConfirmMsg =
+      targetLanguage === 'Hindi'
+        ? "क्या आप सचमुच पूरा इतिहास मिटाना चाहते हैं?"
+        : targetLanguage === 'Gujarati'
+        ? "શું તમે ખરેખર આ PDF નો સંપૂર્ણ અભ્યાસ ઇતિહાસ કાયમ માટે સાફ કરવા માંગો છો?"
+        : "Are you sure you want to permanently clear all study search history?";
+    if (confirm(clearConfirmMsg)) {
+      isPdfHistoryDirtyRef.current = true;
       setChatSessions([]);
       saveChatSessionsToStorage([]);
+      // Also clear legacy keys so cleared history is not re-migrated
+      try {
+        if (fileName) localStorage.removeItem(`gyaanbot_pdf_solver_sessions_${fileName}`);
+        localStorage.removeItem('gyaanbot_pdf_solver_sessions_doc');
+      } catch {}
       handleStartNewChat();
       setToastMessage('Cleared all study history');
       setTimeout(() => setToastMessage(null), 2500);
     }
-  }, [targetLanguage, handleStartNewChat, saveChatSessionsToStorage]);
+  }, [targetLanguage, fileName, handleStartNewChat, saveChatSessionsToStorage]);
 
-  const handleRestoreSession = useCallback((session: typeof chatSessions[0]) => {
+  const handleRestoreSession = useCallback((session: PdfChatSession) => {
     setAiMessages(session.messages);
     setActiveSessionId(session.id);
     setShowHistory(false);
     setToastMessage('Restored study session!');
     setTimeout(() => setToastMessage(null), 2500);
-  }, []);
+  }, [setActiveSessionId]);
 
   const [aiPromptInput, setAiPromptInput] = useState<string>('');
   const aiChatScrollRef = useRef<HTMLDivElement | null>(null);
@@ -2314,6 +2637,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
   // Selection change listener for Floating Copy & AI Popover Menu
   useEffect(() => {
+    let selectionDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
     const updateSelectionState = () => {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
@@ -2322,13 +2647,24 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
         return;
       }
 
+      const anchorEl = sel.anchorNode instanceof Element ? sel.anchorNode : sel.anchorNode?.parentElement;
+      if (!anchorEl || !anchorEl.closest('[data-pdf-selectable-area="true"]')) {
+        return;
+      }
+
       const text = sel.toString().trim();
-      if (text.length > 1) {
+      const hasIndicSelection = /[\u0A80-\u0AFF\u0900-\u097F\u0B80-\u0BFF\u0C00-\u0C7F]/.test(text);
+      if (text.length > 1 || (hasIndicSelection && text.length >= 1)) {
         try {
           const range = sel.getRangeAt(0);
           const rect = range?.getBoundingClientRect();
           if (rect && (rect.width > 0 || rect.height > 0)) {
             const clean = cleanPdfExtractedText(text);
+            if (!clean) {
+              setSelectedText('');
+              setSelectionPos(null);
+              return;
+            }
             setSelectedText(clean);
 
             const estimatedPopupWidth = 295;
@@ -2362,16 +2698,21 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     };
 
     const handleSelectionChange = () => {
+      if (selectionDebounceTimer) clearTimeout(selectionDebounceTimer);
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.toString().trim()) {
         setSelectedText('');
         setSelectionPos(null);
+        return;
       }
+      // Support mobile touch-handle dragging, double-click, and keyboard selection
+      selectionDebounceTimer = setTimeout(updateSelectionState, 110);
     };
 
     const handleMouseUpOrTouchEnd = () => {
+      if (selectionDebounceTimer) clearTimeout(selectionDebounceTimer);
       // Small timeout to allow browser selection range to settle
-      setTimeout(updateSelectionState, 20);
+      setTimeout(updateSelectionState, 25);
     };
 
     // When clicking outside the selection menu, if selection is gone or collapsed, clear immediately
@@ -2396,6 +2737,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     document.addEventListener('mousedown', handlePointerDown);
 
     return () => {
+      if (selectionDebounceTimer) clearTimeout(selectionDebounceTimer);
       document.removeEventListener('selectionchange', handleSelectionChange);
       document.removeEventListener('mouseup', handleMouseUpOrTouchEnd);
       document.removeEventListener('touchend', handleMouseUpOrTouchEnd);
@@ -2504,7 +2846,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
         let loadingTask: any = null;
 
         if (dataUrlToUse.startsWith('http://') || dataUrlToUse.startsWith('https://') || dataUrlToUse.startsWith('blob:')) {
-          loadingTask = pdfjsLib.getDocument({ url: dataUrlToUse });
+          loadingTask = pdfjsLib.getDocument({ url: dataUrlToUse, ...PDF_DOC_OPTIONS });
         } else if (dataUrlToUse.startsWith('data:')) {
           const base64Parts = dataUrlToUse.split(',');
           if (base64Parts.length < 2) {
@@ -2514,11 +2856,9 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           const base64 = base64Parts[1].replace(/[\s\r\n]/g, '');
           const binaryString = atob(base64);
           const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
-          const blob = new Blob([bytes], { type: 'application/pdf' });
-          const blobUrl = URL.createObjectURL(blob);
-          loadingTask = pdfjsLib.getDocument({ url: blobUrl });
+          loadingTask = pdfjsLib.getDocument({ data: bytes, ...PDF_DOC_OPTIONS });
         } else {
-          loadingTask = pdfjsLib.getDocument({ url: dataUrlToUse });
+          loadingTask = pdfjsLib.getDocument({ url: dataUrlToUse, ...PDF_DOC_OPTIONS });
         }
 
         const pdf = await loadingTask.promise;
@@ -2566,23 +2906,38 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
     const indexPages = async () => {
       const extracted: { pageNum: number; text: string }[] = [];
+      let firstNeedsOcrPage: number | null = null;
       try {
         for (let i = 1; i <= pdfDoc.numPages; i++) {
           if (!isMounted) break;
           const page = await pdfDoc.getPage(i);
-          const textContent = await page.getTextContent();
-          let text = textContent.items.map((item: any) => item.str).join(' ').trim();
+          const textContent = await page.getTextContent({
+            normalizeWhitespace: false,
+            disableCombineTextItems: false,
+          });
+          let text = extractReadableTextFromPdfItems(textContent.items || []);
           if (!text && fullContent) {
             text = getPageFallbackText(i, pdfDoc.numPages);
           }
           text = cleanPdfExtractedText(text);
+          const quality = assessPdfPageTextQuality(text, fileName, targetLanguage);
+          if (quality.needsOcr) {
+            const cachedOcr = ocrPagesDataRef.current[i]?.fullText;
+            text = cachedOcr || '';
+            if (!cachedOcr && firstNeedsOcrPage === null) {
+              firstNeedsOcrPage = i;
+            }
+          }
           extracted.push({ pageNum: i, text });
         }
         if (isMounted) {
           setPagesText(extracted);
           setIndexingText(false);
-          if (onPagesTextExtracted) {
-            onPagesTextExtracted(extracted);
+          if (firstNeedsOcrPage !== null && !ocrPagesDataRef.current[activePageNum]) {
+            const pageQuality = extracted.find(p => p.pageNum === activePageNum);
+            if (!pageQuality?.text) {
+              requestPageOcr(activePageNum);
+            }
           }
         }
       } catch (err) {
@@ -2646,14 +3001,25 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     triggerToast(`Copied text of Page ${pageNum} to clipboard!`);
   };
 
-  const handleCopyFullDocumentText = () => {
-    const fullText = pagesText.map(p => `--- PAGE ${p.pageNum} ---\n${p.text}`).join('\n\n');
-    if (!fullText) {
+  const handleCopyFullDocumentText = async () => {
+    const nonEmptyPages = pagesText.filter(p => p.text && p.text.trim());
+    if (nonEmptyPages.length === 0) {
+      if (pdfDoc && !isAiGen) {
+        triggerToast(`Extracting readable text for Page ${activePageNum}... please wait a moment.`);
+        await requestPageOcr(activePageNum);
+        const ocrTxt = ocrPagesDataRef.current[activePageNum]?.fullText;
+        if (ocrTxt) {
+          navigator.clipboard.writeText(`--- PAGE ${activePageNum} ---\n${ocrTxt}`);
+          triggerToast(`Copied extracted text of Page ${activePageNum}!`);
+        }
+        return;
+      }
       triggerToast('Document text layer is still indexing, please try again in a moment.');
       return;
     }
+    const fullText = nonEmptyPages.map(p => `--- PAGE ${p.pageNum} ---\n${p.text}`).join('\n\n');
     navigator.clipboard.writeText(fullText);
-    triggerToast(`Copied complete text of all ${numPages} pages!`);
+    triggerToast(`Copied complete text of ${nonEmptyPages.length} page${nonEmptyPages.length > 1 ? 's' : ''}!`);
   };
 
   const handleCopySelectedText = () => {
@@ -2676,51 +3042,101 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     setAiLoading(true);
     setShowAiAssistant(true);
 
-    const currentPageText = pagesText.find(p => p.pageNum === pageNumToUse)?.text || '';
-    const fullDocText = pagesText.map(p => `[Page ${p.pageNum}]: ${p.text}`).join('\n').slice(0, 8000);
+    const indexedPageText = pagesText.find(p => p.pageNum === pageNumToUse)?.text || '';
+    const cachedOcrText = ocrPagesDataRef.current[pageNumToUse]?.fullText || '';
+    let currentPageText = indexedPageText || cachedOcrText || '';
+    let fullDocText = pagesText
+      .filter(p => p.text && p.text.trim())
+      .map(p => `[Page ${p.pageNum}]: ${p.text}`)
+      .join('\n')
+      .slice(0, 8000);
+
+    // If page text hasn't been indexed yet and we have a PDF doc, extract on the fly
+    if (!currentPageText && pdfDoc && !isAiGen) {
+      try {
+        const page = await pdfDoc.getPage(pageNumToUse);
+        const textContent = await page.getTextContent({
+          normalizeWhitespace: false,
+          disableCombineTextItems: false,
+        });
+        const candidate = cleanPdfExtractedText(extractReadableTextFromPdfItems(textContent.items || []));
+        const q = assessPdfPageTextQuality(candidate, fileName, targetLanguage);
+        if (q.isReadable) {
+          currentPageText = candidate;
+        }
+      } catch {
+        // Ignore and use multimodal page image below
+      }
+    }
+
+    const pageQuality = assessPdfPageTextQuality(currentPageText, fileName, targetLanguage);
+    const docQuality = assessPdfPageTextQuality(fullDocText, fileName, targetLanguage);
+    const shouldAttachPageImage =
+      !isAiGen &&
+      Boolean(pdfDoc) &&
+      (pageQuality.needsOcr || ((taskType === 'translate_doc' || taskType === 'summarize_doc') && docQuality.needsOcr));
+
+    let pageImageDataUrl: string | null = null;
+    if (shouldAttachPageImage) {
+      pageImageDataUrl = await renderPdfPageToJpegDataUrl(pdfDoc, pageNumToUse, 1600);
+    }
+
+    const langCodeMap: Record<string, LanguageCode> = {
+      'English': 'en',
+      'Hindi': 'hi',
+      'Gujarati': 'gu',
+      'Marathi': 'mr',
+      'Tamil': 'ta',
+      'Telugu': 'te',
+    };
+    const targetLangCode = langCodeMap[targetLanguage] || currentLangCode || 'en';
+
+    const visualContextHint = pageImageDataUrl
+      ? `\n[VISUAL PDF PAGE IMAGE ATTACHED: Carefully read all Gujarati / regional / English text, tables, formulas, diagrams, and questions directly from the attached Page ${pageNumToUse} image.]`
+      : '';
 
     let promptText = '';
     let userDisplayMsg = '';
 
-    // Convert KrutiDev/ASCII font characters if selectedText contains legacy Indian PDF encoding
+    // Convert KrutiDev/ASCII font characters only if applicable; preserves clean Gujarati Unicode
     const cleanSelection = selectedText ? convertKrutiDevToUnicode(selectedText) : '';
 
     switch (taskType) {
       case 'translate_page':
         userDisplayMsg = `Translate Page ${pageNumToUse} (${targetLanguage})`;
-        promptText = `CRITICAL INSTRUCTION: You are a professional multilingual educational translator. Translate the entire text content of Page ${pageNumToUse} of the study material "${fileName}" into ${targetLanguage} ONLY. Do NOT output any introductory phrases in English. Do NOT mix English into the translated text except for standard scientific units or chemical formulas. Every single sentence and heading must be fully translated into ${targetLanguage}.\n\nPage Content to Translate:\n${currentPageText || fullDocText}`;
+        promptText = `CRITICAL INSTRUCTION: You are a professional multilingual educational translator. Translate the entire text content of Page ${pageNumToUse} of the study material "${fileName}" into ${targetLanguage} ONLY. Do NOT output any introductory phrases in English. Do NOT mix English into the translated text except for standard scientific units or chemical formulas. Every single sentence and heading must be fully translated into ${targetLanguage}.${visualContextHint}\n\nPage Content to Translate:\n${currentPageText || fullDocText || '(See attached page image)'}`;
         break;
       case 'translate_doc':
         userDisplayMsg = `Translate PDF Document (${targetLanguage})`;
-        promptText = `CRITICAL INSTRUCTION: You are a professional multilingual educational translator. Translate the key topics and content of the PDF document "${fileName}" into ${targetLanguage} ONLY. Do NOT output any conversational filler or English introduction. Every sentence, heading, and conclusion must be fully translated into ${targetLanguage}.\n\nDocument Content to Translate:\n${fullDocText}`;
+        promptText = `CRITICAL INSTRUCTION: You are a professional multilingual educational translator. Translate the key topics and content of the PDF document "${fileName}" into ${targetLanguage} ONLY. Do NOT output any conversational filler or English introduction. Every sentence, heading, and conclusion must be fully translated into ${targetLanguage}.${visualContextHint}\n\nDocument Content to Translate:\n${fullDocText || currentPageText || '(See attached page image)'}`;
         break;
       case 'summarize_page':
         userDisplayMsg = `Summarize Page ${pageNumToUse}`;
-        promptText = `Please provide a clear, structured bulleted summary of Page ${pageNumToUse} of the study material "${fileName}" in ${targetLanguage === 'English' ? 'English' : `${targetLanguage} (Translate all summary points fully into ${targetLanguage})`}.\n\nPage Text Content:\n${currentPageText}`;
+        promptText = `Please provide a clear, structured bulleted summary of Page ${pageNumToUse} of the study material "${fileName}" in ${targetLanguage === 'English' ? 'English' : `${targetLanguage} (Translate all summary points fully into ${targetLanguage})`}.${visualContextHint}\n\nPage Text Content:\n${currentPageText || '(See attached page image)'}`;
         break;
       case 'summarize_doc':
         userDisplayMsg = `Summarize entire PDF document`;
-        promptText = `Please provide an executive summary, key takeaways, and chapter breakdown for the PDF study material "${fileName}" in ${targetLanguage === 'English' ? 'English' : `${targetLanguage} (Translate all points fully into ${targetLanguage})`}.\n\nDocument Content:\n${fullDocText}`;
+        promptText = `Please provide an executive summary, key takeaways, and chapter breakdown for the PDF study material "${fileName}" in ${targetLanguage === 'English' ? 'English' : `${targetLanguage} (Translate all points fully into ${targetLanguage})`}.${visualContextHint}\n\nDocument Content:\n${fullDocText || currentPageText || '(See attached page image)'}`;
         break;
       case 'solve_questions':
         userDisplayMsg = `Solve Questions on Page ${pageNumToUse}`;
-        promptText = `Identify and solve all practice questions, exercises, or numerical problems found in Page ${pageNumToUse} of "${fileName}". Provide step-by-step solutions, formulas used, and final answers fully translated into ${targetLanguage}.\n\nPage Content:\n${currentPageText || fullDocText}`;
+        promptText = `Identify and solve all practice questions, exercises, or numerical problems found in Page ${pageNumToUse} of "${fileName}". Provide step-by-step solutions, formulas used, and final answers fully written in ${targetLanguage}.${visualContextHint}\n\nPage Content:\n${currentPageText || fullDocText || '(See attached page image)'}`;
         break;
       case 'short_notes':
         userDisplayMsg = `Create Revision Short Notes for Page ${pageNumToUse}`;
-        promptText = `Create concise, high-yield revision short notes, formula cheat sheet, and memory key points for Page ${pageNumToUse} of "${fileName}" fully written in ${targetLanguage}.\n\nPage Content:\n${currentPageText || fullDocText}`;
+        promptText = `Create concise, high-yield revision short notes, formula cheat sheet, and memory key points for Page ${pageNumToUse} of "${fileName}" fully written in ${targetLanguage}.${visualContextHint}\n\nPage Content:\n${currentPageText || fullDocText || '(See attached page image)'}`;
         break;
       case 'key_concepts':
         userDisplayMsg = `Extract key concepts & formulas (Page ${pageNumToUse})`;
-        promptText = `Extract all key definitions, formulas, rules, and core concepts from Page ${pageNumToUse} of "${fileName}" fully presented in ${targetLanguage}.\n\nContext:\n${currentPageText || fullDocText}`;
+        promptText = `Extract all key definitions, formulas, rules, and core concepts from Page ${pageNumToUse} of "${fileName}" fully presented in ${targetLanguage}.${visualContextHint}\n\nContext:\n${currentPageText || fullDocText || '(See attached page image)'}`;
         break;
       case 'quiz':
         userDisplayMsg = `Generate 5 Practice Questions (Page ${pageNumToUse})`;
-        promptText = `Create 5 multiple choice questions (with options A, B, C, D and detailed correct answer explanations) based on Page ${pageNumToUse} of "${fileName}". All questions, options, and explanations must be written in ${targetLanguage}.\n\nContent:\n${currentPageText || fullDocText}`;
+        promptText = `Create 5 multiple choice questions (with options A, B, C, D and detailed correct answer explanations) based on Page ${pageNumToUse} of "${fileName}". All questions, options, and explanations must be written in ${targetLanguage}.${visualContextHint}\n\nContent:\n${currentPageText || fullDocText || '(See attached page image)'}`;
         break;
       case 'simplify':
         userDisplayMsg = `Simplify language for students (Page ${pageNumToUse})`;
-        promptText = `Rewrite and explain the concepts in Page ${pageNumToUse} of "${fileName}" in simple, friendly, easy-to-understand language suitable for school students, fully written in ${targetLanguage}.\n\nContent:\n${currentPageText}`;
+        promptText = `Rewrite and explain the concepts in Page ${pageNumToUse} of "${fileName}" in simple, friendly, easy-to-understand language suitable for school students, fully written in ${targetLanguage}.${visualContextHint}\n\nContent:\n${currentPageText || '(See attached page image)'}`;
         break;
       case 'explain_selection': {
         const shortSnippet = cleanSelection.length > 55 ? `${cleanSelection.slice(0, 55)}...` : cleanSelection;
@@ -2732,7 +3148,7 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           'Telugu': `ఎంచుకున్న వచనాన్ని వివరించండి: "${shortSnippet}"`,
         };
         userDisplayMsg = labels[targetLanguage] || `Explain selected text: "${shortSnippet}"`;
-        promptText = `Explain the following selected text excerpt from "${fileName}" (Page ${pageNumToUse}) in detail with simple analogies, written in ${targetLanguage}:\n\n"${cleanSelection}"\n\nFull Active Page Context:\n${currentPageText}`;
+        promptText = `Explain the following selected text excerpt from "${fileName}" (Page ${pageNumToUse}) in detail with simple analogies, written in ${targetLanguage}:${visualContextHint}\n\n"${cleanSelection}"\n\nFull Active Page Context:\n${currentPageText || '(See attached page image)'}`;
         break;
       }
       case 'translate_selection': {
@@ -2745,12 +3161,12 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           'Telugu': `ఎంచుకున్న వచనాన్ని అనువదించండి: "${shortSnippet}"`,
         };
         userDisplayMsg = labels[targetLanguage] || `Translate selected text into ${targetLanguage}: "${shortSnippet}"`;
-        promptText = `CRITICAL INSTRUCTION: You are a professional translator. Translate the following selected text excerpt from "${fileName}" into ${targetLanguage} strictly and completely. Do NOT include any English introductory text, quotation marks, or English explanations. Return ONLY the direct translation in ${targetLanguage}.\n\nText to Translate:\n"${cleanSelection}"\n\nFull Active Page Context:\n${currentPageText}`;
+        promptText = `CRITICAL INSTRUCTION: You are a professional translator. Translate the following selected text excerpt from "${fileName}" into ${targetLanguage} strictly and completely. Do NOT include any English introductory text, quotation marks, or English explanations. Return ONLY the direct translation in ${targetLanguage}.${visualContextHint}\n\nText to Translate:\n"${cleanSelection}"\n\nFull Active Page Context:\n${currentPageText || '(See attached page image)'}`;
         break;
       }
       case 'chat':
         userDisplayMsg = customPrompt || `Question about Page ${pageNumToUse}`;
-        promptText = `Study Material Document: "${fileName}"\nActive Page: ${pageNumToUse}\n\nContext Page Text:\n${currentPageText}\n\nStudent Question: ${customPrompt}`;
+        promptText = `Study Material Document: "${fileName}"\nActive Page: ${pageNumToUse}${visualContextHint}\n\nContext Page Text:\n${currentPageText || '(See attached page image)'}\n\nStudent Question: ${customPrompt}`;
         break;
     }
 
@@ -2777,6 +3193,8 @@ export const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
         body: JSON.stringify({
           message: promptText,
           prompt: promptText,
+          lang: targetLangCode,
+          ...(pageImageDataUrl ? { image: { data: pageImageDataUrl, mimeType: 'image/jpeg' } } : {}),
           systemInstruction: `You are GyaanBot's extraordinarily sweet, warm, expressive, and loving study companion and storyteller for young learners (ages 3–12).
 Help the student understand the study material document "${fileName}" with heartfelt kindness and enthusiastic praise.
 Follow these speech and formatting rules:
@@ -2956,7 +3374,7 @@ Follow these speech and formatting rules:
             title="Copy Selected Text"
           >
             <Copy className="w-3.5 h-3.5 shrink-0" />
-            <span className="whitespace-nowrap">{targetLanguage === 'Hindi' ? 'कॉपी' : 'Copy'}</span>
+            <span className="whitespace-nowrap">{targetLanguage === 'Hindi' ? 'कॉपी' : targetLanguage === 'Gujarati' ? 'કોપી' : 'Copy'}</span>
           </button>
           <button
             type="button"
@@ -2969,7 +3387,7 @@ Follow these speech and formatting rules:
             title="Explain Selected Text with AI"
           >
             <Wand2 className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-            <span className="whitespace-nowrap">{targetLanguage === 'Hindi' ? 'स्पष्ट करें' : 'Explain'}</span>
+            <span className="whitespace-nowrap">{targetLanguage === 'Hindi' ? 'स्पष्ट करें' : targetLanguage === 'Gujarati' ? 'સમજાવો' : 'Explain'}</span>
           </button>
           <button
             type="button"
@@ -2982,7 +3400,7 @@ Follow these speech and formatting rules:
             title={`Translate Selected Text to ${targetLanguage}`}
           >
             <Languages className="w-3.5 h-3.5 text-purple-200 shrink-0" />
-            <span className="whitespace-nowrap">{targetLanguage === 'Hindi' ? 'अनुवाद' : (tPdf.translate || 'Translate')}</span>
+            <span className="whitespace-nowrap">{targetLanguage === 'Hindi' ? 'अनुवाद' : targetLanguage === 'Gujarati' ? 'અનુવાદ' : (tPdf.translate || 'Translate')}</span>
           </button>
           <button
             type="button"
@@ -2995,7 +3413,7 @@ Follow these speech and formatting rules:
                 'Tamil': 'ta',
                 'Telugu': 'te',
               };
-              const speechLang = codeMap[targetLanguage] || 'hi';
+              const speechLang = codeMap[targetLanguage] || currentLangCode || 'en';
               speakText(cleanPdfExtractedText(selectedText), speechLang);
             }}
             className="p-1.5 hover:bg-slate-800 rounded-xl text-cyan-300 hover:text-white cursor-pointer transition-colors shrink-0"
@@ -3646,6 +4064,7 @@ Follow these speech and formatting rules:
           /* Central PDF Canvas Viewport with Virtualized Rendering & Smooth Pan Controls */
           <div
             ref={scrollContainerRef}
+            data-pdf-selectable-area="true"
             onMouseDown={handleMouseDownOnViewport}
             onMouseMove={handleMouseMoveOnViewport}
             onMouseUp={handleMouseUpOnViewport}
@@ -3711,6 +4130,10 @@ Follow these speech and formatting rules:
                     scale={scale}
                     rotation={rotation}
                     pageSize={pageSize}
+                    fileName={fileName}
+                    targetLanguage={targetLanguage}
+                    ocrPageData={ocrPagesData[pageNum]}
+                    onRequestPageOcr={requestPageOcr}
                     searchQuery={searchQuery}
                     currentActiveMatchPage={activeMatch?.pageNum}
                     activeMatchSnippet={activeMatch?.snippet}
@@ -4118,11 +4541,19 @@ Follow these speech and formatting rules:
                   <div className="min-w-0 flex-1">
                     <h3 className="font-bold text-sm text-purple-200 flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-purple-400 shrink-0" />
-                      <span className="truncate">{targetLanguage === 'Hindi' ? 'मेरा सम्पूर्ण अध्ययन इतिहास' : 'My Entire PDF Study History'}</span>
+                      <span className="truncate">
+                        {targetLanguage === 'Hindi'
+                          ? 'मेरा सम्पूर्ण अध्ययन इतिहास'
+                          : targetLanguage === 'Gujarati'
+                          ? 'મારો સંપૂર્ણ અભ્યાસ ઇતિહાસ'
+                          : 'My Entire PDF Study History'}
+                      </span>
                     </h3>
                     <p className="text-[11px] text-slate-400 mt-0.5 break-words">
                       {targetLanguage === 'Hindi'
                         ? 'आपके द्वारा इस PDF के लिए पहले पूछे गए सभी प्रश्न और सत्र यहाँ सहेजे गए हैं।'
+                        : targetLanguage === 'Gujarati'
+                        ? 'આ PDF માટે તમે અગાઉ પૂછેલા બધા પ્રશ્નો અને સત્રો અહીં સાચવેલા છે.'
                         : 'All your previously recorded study sessions and questions for this PDF are saved below.'}
                     </p>
                   </div>
@@ -4134,7 +4565,13 @@ Follow these speech and formatting rules:
                         className="text-xs bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 whitespace-nowrap"
                       >
                         <Trash className="w-3.5 h-3.5" />
-                        <span>{targetLanguage === 'Hindi' ? 'इतिहास साफ़ करें' : 'Clear All'}</span>
+                        <span>
+                          {targetLanguage === 'Hindi'
+                            ? 'इतिहास साफ़ करें'
+                            : targetLanguage === 'Gujarati'
+                            ? 'બધો ઇતિહાસ સાફ કરો'
+                            : 'Clear All'}
+                        </span>
                       </button>
                     )}
                     <button
@@ -4142,7 +4579,11 @@ Follow these speech and formatting rules:
                       onClick={() => setShowHistory(false)}
                       className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all active:scale-95 whitespace-nowrap"
                     >
-                      {targetLanguage === 'Hindi' ? 'चैट पर वापस जाएं' : 'Back to Chat'}
+                      {targetLanguage === 'Hindi'
+                        ? 'चैट पर वापस जाएं'
+                        : targetLanguage === 'Gujarati'
+                        ? 'ચેટ પર પાછા જાઓ'
+                        : 'Back to Chat'}
                     </button>
                   </div>
                 </div>
@@ -4156,7 +4597,13 @@ Follow these speech and formatting rules:
                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                         <input
                           type="text"
-                          placeholder={targetLanguage === 'Hindi' ? 'सत्र शीर्षक या प्रश्न खोजें...' : 'Search study sessions or questions...'}
+                          placeholder={
+                            targetLanguage === 'Hindi'
+                              ? 'सत्र शीर्षक या प्रश्न खोजें...'
+                              : targetLanguage === 'Gujarati'
+                              ? 'સત્રનું શીર્ષક અથવા પ્રશ્ન શોધો...'
+                              : 'Search study sessions or questions...'
+                          }
                           value={historySearchQuery}
                           onChange={(e) => setHistorySearchQuery(e.target.value)}
                           className="w-full pl-9 pr-8 py-1.5 text-xs rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 bg-slate-950 text-slate-100 placeholder-slate-500"

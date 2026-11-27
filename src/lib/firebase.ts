@@ -13,6 +13,12 @@ import {
   disableNetwork,
   setLogLevel
 } from "firebase/firestore";
+import {
+  capSerializedSessions,
+  GenericHistorySession,
+  parseSessionList,
+  pruneHistorySessions
+} from "../utils/historyPersistence";
 
 // Suppress raw SDK internal console errors/warnings for quota exhaustion
 try {
@@ -320,6 +326,8 @@ export interface FirestoreUser {
   isSuperAdmin?: boolean; // System Administrator with unrestricted root privileges
   adminPermissions?: string | string[]; // Stringified JSON array or array of allowed AdminPermission tasks
   totalCertificatesCount?: number;
+  chatSessions?: string; // Bounded JSON string of AI Study Chatbot sessions
+  solverSessions?: string; // Bounded JSON string of Smart Equation Hub solver sessions
 }
 
 export const ALLOWED_FIRESTORE_USER_FIELDS: (keyof FirestoreUser)[] = [
@@ -348,6 +356,8 @@ export const ALLOWED_FIRESTORE_USER_FIELDS: (keyof FirestoreUser)[] = [
   'chatHistoryDadi',
   'chatHistoryChanda',
   'chatHistorySwami',
+  'chatSessions',
+  'solverSessions',
   'studyMins',
   'adminPin',
   'checkInDates',
@@ -369,9 +379,9 @@ export const ALLOWED_FIRESTORE_USER_FIELDS: (keyof FirestoreUser)[] = [
  * Sanitizes and caps the size of user data written to Firestore.
  * Firestore strictly enforces a 1,048,576 byte limit per document.
  * This function guarantees documents stay well under 600KB by:
- * 1. Filtering out non-blueprint properties (e.g. chatSessions, solverSessions with raw images).
- * 2. Pruning array sizes for mascotLessonsHistory, chat histories, and certificates.
- * 3. Ensuring no raw base64 images or oversized strings are written.
+ * 1. Keeping only known blueprint properties.
+ * 2. Pruning array sizes for mascotLessonsHistory, chatSessions, solverSessions, chat histories, and certificates.
+ * 3. Stripping oversized raw base64 images/PDF payloads while preserving all text/math/study history.
  */
 export function sanitizeFirestoreUserData(
   data: Partial<FirestoreUser> & Record<string, any>,
@@ -389,10 +399,20 @@ export function sanitizeFirestoreUserData(
     }
   } else {
     for (const [key, val] of Object.entries(data)) {
-      if (key !== 'chatSessions' && key !== 'solverSessions' && val !== undefined) {
+      if (val !== undefined) {
         sanitized[key] = val;
       }
     }
+  }
+
+  // 0. Bound chatSessions and solverSessions safely (strip raw blobs, cap at ~140KB each)
+  if (typeof sanitized.chatSessions === 'string') {
+    const parsed = parseSessionList(sanitized.chatSessions);
+    sanitized.chatSessions = capSerializedSessions(parsed, 140000, 15, 25);
+  }
+  if (typeof sanitized.solverSessions === 'string') {
+    const parsed = parseSessionList(sanitized.solverSessions);
+    sanitized.solverSessions = capSerializedSessions(parsed, 140000, 15, 25);
   }
 
   // 1. Bound mascotLessonsHistory (keep at most 8 recent lessons, no embedded base64)
@@ -490,17 +510,39 @@ export function sanitizeFirestoreUserData(
     }
   }
 
-  // 6. Overall byte size check - must stay comfortably below 600KB
+  // 6. Overall byte size check - must stay comfortably below 650KB without wiping history
   try {
     const jsonStr = JSON.stringify(sanitized);
     const byteSize = new TextEncoder().encode(jsonStr).length;
-    if (byteSize > 600000) {
-      console.warn(`[Firestore Sanitizer] Document byte size ${byteSize} exceeds 600KB. Compacting further...`);
-      if (sanitized.mascotLessonsHistory) {
-        sanitized.mascotLessonsHistory = '[]';
+    if (byteSize > 650000) {
+      console.warn(`[Firestore Sanitizer] Document byte size ${byteSize} exceeds 650KB. Compacting gracefully...`);
+      if (typeof sanitized.chatSessions === 'string') {
+        sanitized.chatSessions = capSerializedSessions(parseSessionList(sanitized.chatSessions), 80000, 8, 15);
+      }
+      if (typeof sanitized.solverSessions === 'string') {
+        sanitized.solverSessions = capSerializedSessions(parseSessionList(sanitized.solverSessions), 80000, 8, 15);
+      }
+      if (typeof sanitized.mascotLessonsHistory === 'string') {
+        try {
+          const lessons = JSON.parse(sanitized.mascotLessonsHistory);
+          if (Array.isArray(lessons)) {
+            sanitized.mascotLessonsHistory = JSON.stringify(lessons.slice(0, 4));
+          }
+        } catch {
+          sanitized.mascotLessonsHistory = '[]';
+        }
       }
       for (const cKey of chatKeys) {
-        if (sanitized[cKey]) sanitized[cKey] = '[]';
+        if (typeof sanitized[cKey] === 'string') {
+          try {
+            const msgs = JSON.parse(sanitized[cKey] as string);
+            if (Array.isArray(msgs)) {
+              sanitized[cKey] = JSON.stringify(msgs.slice(-8));
+            }
+          } catch {
+            sanitized[cKey] = '[]';
+          }
+        }
       }
     }
   } catch (err) {
@@ -593,10 +635,14 @@ export async function syncFirebaseUserWithLWW(
 
     // Last-Write-Wins comparison
     if (remoteUpdatedAt > localUpdatedAt) {
-      // console.log(`[LWW Conflict Resolution] Remote version is newer (${remoteUpdatedAt} > ${localUpdatedAt}). Remote wins.`);
-      return { resolvedUser: remoteUser, conflictResolved: true, source: 'remote' };
+      // Preserve local chatSessions/solverSessions if remote lacks them (e.g. background timer / daily reset)
+      const mergedRemote: FirestoreUser = {
+        ...remoteUser,
+        chatSessions: remoteUser.chatSessions !== undefined ? remoteUser.chatSessions : localUser.chatSessions,
+        solverSessions: remoteUser.solverSessions !== undefined ? remoteUser.solverSessions : localUser.solverSessions
+      };
+      return { resolvedUser: mergedRemote, conflictResolved: true, source: 'remote' };
     } else {
-      // console.log(`[LWW Conflict Resolution] Local version is newer (${localUpdatedAt} >= ${remoteUpdatedAt}). Local wins. Updating remote.`);
       const updatedUser: FirestoreUser = {
         ...remoteUser,
         ...localUser,
@@ -682,6 +728,72 @@ export async function updateFirebaseUserFields(mobile: string, fields: Partial<F
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export type StudyHistoryType = 'ai_chatbot' | 'equations_hub' | 'pdf_solver';
+
+/**
+ * Saves bounded study/chat session history into `/users/{mobile}/study_history/{historyId}`
+ * so histories survive logout, 24h daily resets, and cross-device logins without bloating the main user doc.
+ */
+export async function saveUserStudyHistory(
+  mobile: string,
+  historyId: string,
+  payload: {
+    type: StudyHistoryType;
+    sessions: any[];
+    fileId?: string;
+    fileName?: string;
+    updatedAt?: number;
+  }
+): Promise<void> {
+  if (isQuotaExceeded || !mobile || !/^[6-9][0-9]{9}$/.test(mobile) || !historyId) return;
+  const safeId = historyId.replace(/[^a-zA-Z0-9_\-.:]/g, '_').slice(0, 128);
+  if (!safeId) return;
+  const path = `users/${mobile}/study_history/${safeId}`;
+  try {
+    const pruned = pruneHistorySessions(payload.sessions || [], 35, 35);
+    const serialized = capSerializedSessions(pruned, 600000, 35, 35);
+    const docRef = doc(db, "users", mobile, "study_history", safeId);
+    const docData: Record<string, any> = {
+      id: safeId,
+      type: payload.type,
+      sessions: serialized,
+      updatedAt: typeof payload.updatedAt === 'number' ? payload.updatedAt : Date.now()
+    };
+    if (payload.fileId) docData.fileId = String(payload.fileId).slice(0, 200);
+    if (payload.fileName) docData.fileName = String(payload.fileName).slice(0, 300);
+    await setDoc(docRef, docData);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Fetches persisted study/chat session history from `/users/{mobile}/study_history/{historyId}`.
+ */
+export async function getUserStudyHistory<T extends GenericHistorySession = GenericHistorySession>(
+  mobile: string,
+  historyId: string
+): Promise<{ sessions: T[]; updatedAt: number } | null> {
+  if (isQuotaExceeded || !mobile || !/^[6-9][0-9]{9}$/.test(mobile) || !historyId) return null;
+  const safeId = historyId.replace(/[^a-zA-Z0-9_\-.:]/g, '_').slice(0, 128);
+  if (!safeId) return null;
+  const path = `users/${mobile}/study_history/${safeId}`;
+  try {
+    const docRef = doc(db, "users", mobile, "study_history", safeId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data() as any;
+    const sessions = parseSessionList<T>(data?.sessions);
+    return {
+      sessions: sessions as T[],
+      updatedAt: typeof data?.updatedAt === 'number' ? data.updatedAt : 0
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
   }
 }
 

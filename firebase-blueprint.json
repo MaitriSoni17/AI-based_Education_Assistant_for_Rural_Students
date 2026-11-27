@@ -146,6 +146,14 @@
         "puzzleStatsByClass": {
           "type": "string",
           "description": "JSON stringified object mapping class names to standard-specific puzzle metrics."
+        },
+        "chatSessions": {
+          "type": "string",
+          "description": "Bounded JSON stringified array of AI Study Chatbot sessions."
+        },
+        "solverSessions": {
+          "type": "string",
+          "description": "Bounded JSON stringified array of Smart Equation Hub solver sessions."
         }
       },
       "required": ["mobile", "name"]
@@ -225,12 +233,30 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "title", "content"]
+    },
+    "StudyHistory": {
+      "title": "StudyHistory",
+      "description": "Persistent study chat and solver session history for AI Study Chatbot, Smart Equation Hub, and PDF AI Solver.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["ai_chatbot", "equations_hub", "pdf_solver"] },
+        "sessions": { "type": "string", "maxLength": 700000 },
+        "updatedAt": { "type": "number" },
+        "fileId": { "type": "string", "maxLength": 200 },
+        "fileName": { "type": "string", "maxLength": 300 }
+      },
+      "required": ["id", "type", "sessions", "updatedAt"]
     }
   },
   "firestore": {
     "/users/{mobile}": {
       "schema": "User",
       "description": "User profile document containing progress metrics and config."
+    },
+    "/users/{mobile}/study_history/{historyId}": {
+      "schema": "StudyHistory",
+      "description": "Persistent chat and solver session histories scoped per user and tool/PDF."
     },
     "/certificates/{certId}": {
       "schema": "Certificate",

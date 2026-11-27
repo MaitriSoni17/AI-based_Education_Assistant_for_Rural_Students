@@ -410,9 +410,10 @@ const generateMultiLanguagePdfDataUrl = async (
 
       const totalPages = (pdf as any).internal.getNumberOfPages();
 
-      // Embed pixel-accurate invisible selectable text layer into PDF document stream
+      // Embed pixel-accurate invisible selectable text layer into PDF document stream (ASCII only; jsPDF Helvetica corrupts Indic/Gujarati WinAnsi bytes)
       try {
         for (const lineItem of domMeasuredLines) {
+          if (!/^[\x00-\x7F]+$/.test(lineItem.text)) continue;
           const pageIndex = Math.floor(lineItem.yMm / 297);
           const pageNum = pageIndex + 1;
           if (pageNum <= totalPages) {

@@ -23,6 +23,21 @@ service cloud.firestore {
       return mobile is string && mobile.size() == 10 && mobile.matches('^[6-9][0-9]{9}$');
     }
 
+    function isValidStudyHistory(data, historyId) {
+      return data.keys().hasAll(['id', 'type', 'sessions', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'type', 'sessions', 'updatedAt', 'fileId', 'fileName'])
+        && data.id is string
+        && data.id.size() > 0
+        && data.id.size() <= 128
+        && data.id == historyId
+        && data.type in ['ai_chatbot', 'equations_hub', 'pdf_solver']
+        && data.sessions is string
+        && data.sessions.size() <= 700000
+        && data.updatedAt is number
+        && (!('fileId' in data) || (data.fileId is string && data.fileId.size() <= 200))
+        && (!('fileName' in data) || (data.fileName is string && data.fileName.size() <= 300));
+    }
+
     // Users Collection: Guarded profiles, role integrity & anti-tampering
     match /users/{mobile} {
       // Allow single document get if mobile ID is valid
@@ -57,6 +72,20 @@ service cloud.firestore {
           && incoming().title is string
           && incoming().title.size() <= 200;
         allow delete: if isValidMobile(mobile) && isValidId(certId);
+      }
+
+      // Dedicated study history subcollection for AI Chatbot, Smart Equation Hub, and PDF AI Solver
+      match /study_history/{historyId} {
+        allow get: if isValidMobile(mobile) && isValidId(historyId);
+        allow list: if isValidMobile(mobile);
+        allow create: if isValidMobile(mobile) && isValidId(historyId)
+          && isValidStudyHistory(incoming(), historyId);
+        allow update: if isValidMobile(mobile) && isValidId(historyId)
+          && isValidStudyHistory(incoming(), historyId)
+          && incoming().id == existing().id
+          && incoming().type == existing().type
+          && incoming().diff(existing()).affectedKeys().hasOnly(['sessions', 'updatedAt', 'fileId', 'fileName']);
+        allow delete: if isValidMobile(mobile) && isValidId(historyId);
       }
     }
 
